@@ -1,7 +1,4 @@
-import {
-  extractClientIp,
-  isLocalNetworkIp,
-} from '../../utils/ip-detector.util';
+import { extractClientIp, isLocalNetworkIp } from '../../utils/ip-detector.util';
 
 describe('isLocalNetworkIp', () => {
   describe('IPv4 localhost (127.0.0.0/8)', () => {

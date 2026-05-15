@@ -36,7 +36,7 @@ export class SharedStorageVerifierService {
   constructor(
     @Inject('IStorageShareRepository')
     private readonly storageShareRepository: IStorageShareRepository,
-    private readonly nodeRepository: NodeRepository,
+    private readonly nodeRepository: NodeRepository
   ) {}
 
   /**
@@ -83,10 +83,7 @@ export class SharedStorageVerifierService {
         nodesChecked.add(share.nodeId);
 
         // Verify mount point is actually mounted
-        const isMounted = this.checkMountPointInOutput(
-          share.mountPoint,
-          mountOutput,
-        );
+        const isMounted = this.checkMountPointInOutput(share.mountPoint, mountOutput);
 
         if (isMounted) {
           nodesWithWorkingMounts.add(share.nodeId);
@@ -99,7 +96,7 @@ export class SharedStorageVerifierService {
         } else {
           unavailableCount++;
           this.logger.warn(
-            `⚠️  Share "${share.name}" on node ${share.node?.name} claims mounted but ${share.mountPoint} is NOT in system mounts`,
+            `⚠️  Share "${share.name}" on node ${share.node?.name} claims mounted but ${share.mountPoint} is NOT in system mounts`
           );
 
           // Update share status to reflect actual state
@@ -107,8 +104,7 @@ export class SharedStorageVerifierService {
             isMounted: false,
             status: StorageShareStatus.UNMOUNTED,
             lastHealthCheckAt: new Date(),
-            lastError:
-              'Mount point not found in system mounts during health check',
+            lastError: 'Mount point not found in system mounts during health check',
           });
         }
       }
@@ -122,7 +118,7 @@ export class SharedStorageVerifierService {
 
         if (!hasWorkingMount && node.hasSharedStorage) {
           this.logger.warn(
-            `⚠️  Node ${node.name} has no working mounts. Setting hasSharedStorage=false`,
+            `⚠️  Node ${node.name} has no working mounts. Setting hasSharedStorage=false`
           );
           await this.nodeRepository.updateData(nodeId, {
             hasSharedStorage: false,
@@ -130,7 +126,7 @@ export class SharedStorageVerifierService {
           });
         } else if (hasWorkingMount && !node.hasSharedStorage) {
           this.logger.log(
-            `✅ Node ${node.name} has working mounts. Setting hasSharedStorage=true (recovered)`,
+            `✅ Node ${node.name} has working mounts. Setting hasSharedStorage=true (recovered)`
           );
           await this.nodeRepository.updateData(nodeId, {
             hasSharedStorage: true,
@@ -141,11 +137,11 @@ export class SharedStorageVerifierService {
       }
 
       this.logger.log(
-        `Health check complete: ${availableCount} available, ${recoveredCount} recovered, ${unavailableCount} unavailable`,
+        `Health check complete: ${availableCount} available, ${recoveredCount} recovered, ${unavailableCount} unavailable`
       );
     } catch (error: unknown) {
       this.logger.error(
-        `Failed to perform shared storage health check: ${error instanceof Error ? error.message : 'unknown error'}`,
+        `Failed to perform shared storage health check: ${error instanceof Error ? error.message : 'unknown error'}`
       );
     }
   }
@@ -153,10 +149,7 @@ export class SharedStorageVerifierService {
   /**
    * Check if a mount point exists in the mount command output
    */
-  private checkMountPointInOutput(
-    mountPoint: string,
-    mountOutput: string,
-  ): boolean {
+  private checkMountPointInOutput(mountPoint: string, mountOutput: string): boolean {
     // Look for the mount point as a destination field in mount output
     // Format: "source on /mount/point type filesystem (options)"
     const lines = mountOutput.split('\n');
@@ -177,7 +170,7 @@ export class SharedStorageVerifierService {
   async verifyFileAccess(
     filePath: string,
     targetNode: Node,
-    sourceNode: Node,
+    sourceNode: Node
   ): Promise<StorageVerificationResult> {
     // If target node doesn't claim to have shared storage, skip verification
     if (!targetNode.hasSharedStorage) {
@@ -195,7 +188,7 @@ export class SharedStorageVerifierService {
 
       if (!mountCheck.isMounted) {
         this.logger.warn(
-          `Shared storage NOT mounted on node ${targetNode.name}: ${mountCheck.error}`,
+          `Shared storage NOT mounted on node ${targetNode.name}: ${mountCheck.error}`
         );
         return {
           isAccessible: false,
@@ -209,14 +202,11 @@ export class SharedStorageVerifierService {
       const translatedPath = this.translatePath(
         filePath,
         sourceNode.storageBasePath,
-        targetNode.storageBasePath,
+        targetNode.storageBasePath
       );
 
       // Verify file exists at the translated path on target node
-      const fileAccessible = await this.checkFileAccessibility(
-        translatedPath,
-        targetNode,
-      );
+      const fileAccessible = await this.checkFileAccessibility(translatedPath, targetNode);
 
       if (!fileAccessible) {
         return {
@@ -229,7 +219,7 @@ export class SharedStorageVerifierService {
       }
 
       this.logger.log(
-        `✅ File accessible via shared storage on ${targetNode.name}: ${translatedPath}`,
+        `✅ File accessible via shared storage on ${targetNode.name}: ${translatedPath}`
       );
 
       return {
@@ -240,11 +230,8 @@ export class SharedStorageVerifierService {
         translatedPath,
       };
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(
-        `Failed to verify shared storage access: ${errorMessage}`,
-      );
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to verify shared storage access: ${errorMessage}`);
 
       return {
         isAccessible: false,
@@ -277,15 +264,13 @@ export class SharedStorageVerifierService {
       const { stdout } = await execAsync('mount');
 
       // First, check StorageShare records for this node
-      const shares = await this.storageShareRepository.findMountedByNodeId(
-        node.id,
-      );
+      const shares = await this.storageShareRepository.findMountedByNodeId(node.id);
 
       // Check each share's mount point
       for (const share of shares) {
         if (this.checkMountPointInOutput(share.mountPoint, stdout)) {
           this.logger.debug(
-            `Storage share "${share.name}" mounted on ${node.name}: ${share.mountPoint}`,
+            `Storage share "${share.name}" mounted on ${node.name}: ${share.mountPoint}`
           );
           return {
             isMounted: true,
@@ -297,15 +282,10 @@ export class SharedStorageVerifierService {
 
       // Fallback: check node.storageBasePath for backward compatibility
       if (node.storageBasePath) {
-        const isMounted = this.checkMountPointInOutput(
-          node.storageBasePath,
-          stdout,
-        );
+        const isMounted = this.checkMountPointInOutput(node.storageBasePath, stdout);
 
         if (isMounted) {
-          this.logger.debug(
-            `Storage base path mounted on ${node.name}: ${node.storageBasePath}`,
-          );
+          this.logger.debug(`Storage base path mounted on ${node.name}: ${node.storageBasePath}`);
           return {
             isMounted: true,
             mountPoint: node.storageBasePath,
@@ -328,8 +308,7 @@ export class SharedStorageVerifierService {
         error: errorMsg,
       };
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         isMounted: false,
         mountPoint: node.storageBasePath,
@@ -345,10 +324,7 @@ export class SharedStorageVerifierService {
    * @param node - Node to check on (for logging)
    * @returns True if file is accessible
    */
-  private async checkFileAccessibility(
-    filePath: string,
-    node: Node,
-  ): Promise<boolean> {
+  private async checkFileAccessibility(filePath: string, node: Node): Promise<boolean> {
     try {
       // Check if file exists and is readable
       await fs.access(filePath, fs.constants.R_OK);
@@ -364,7 +340,7 @@ export class SharedStorageVerifierService {
       return true;
     } catch (error: unknown) {
       this.logger.warn(
-        `File not accessible on ${node.name}: ${filePath} - ${error instanceof Error ? error.message : 'unknown error'}`,
+        `File not accessible on ${node.name}: ${filePath} - ${error instanceof Error ? error.message : 'unknown error'}`
       );
       return false;
     }
@@ -385,14 +361,10 @@ export class SharedStorageVerifierService {
   private translatePath(
     filePath: string,
     sourceBasePath: string | null,
-    targetBasePath: string | null,
+    targetBasePath: string | null
   ): string {
     // If both base paths are the same or either is null, no translation needed
-    if (
-      !sourceBasePath ||
-      !targetBasePath ||
-      sourceBasePath === targetBasePath
-    ) {
+    if (!sourceBasePath || !targetBasePath || sourceBasePath === targetBasePath) {
       return filePath;
     }
 
@@ -403,7 +375,7 @@ export class SharedStorageVerifierService {
     // Check if file path starts with source base path
     if (!filePath.startsWith(normalizedSourceBase)) {
       this.logger.warn(
-        `File path ${filePath} does not start with source base path ${normalizedSourceBase}`,
+        `File path ${filePath} does not start with source base path ${normalizedSourceBase}`
       );
       return filePath; // Return unchanged if path doesn't match
     }
@@ -431,20 +403,16 @@ export class SharedStorageVerifierService {
   async batchVerifyAccess(
     filePaths: string[],
     targetNode: Node,
-    sourceNode: Node,
+    sourceNode: Node
   ): Promise<Map<string, StorageVerificationResult>> {
     const results = new Map<string, StorageVerificationResult>();
 
     // Verify in parallel for performance
     await Promise.all(
       filePaths.map(async (filePath) => {
-        const result = await this.verifyFileAccess(
-          filePath,
-          targetNode,
-          sourceNode,
-        );
+        const result = await this.verifyFileAccess(filePath, targetNode, sourceNode);
         results.set(filePath, result);
-      }),
+      })
     );
 
     return results;

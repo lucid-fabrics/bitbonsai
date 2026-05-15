@@ -91,9 +91,7 @@ export class DiscoveryComponent implements OnInit {
         next: (requests) => {
           // Find the first pending request for this node
           this.currentRequest =
-            requests.find(
-              (r) => r.status === RegistrationRequestStatus.PENDING,
-            ) || null;
+            requests.find((r) => r.status === RegistrationRequestStatus.PENDING) || null;
           this.isLoadingRequest = false;
           this.cdr.markForCheck();
         },
@@ -113,9 +111,7 @@ export class DiscoveryComponent implements OnInit {
         switchMap(() => {
           // If we have a current request, poll its specific status
           if (this.currentRequest) {
-            return this.nodesClient.getRegistrationRequest(
-              this.currentRequest.id,
-            );
+            return this.nodesClient.getRegistrationRequest(this.currentRequest.id);
           }
           // Otherwise, check for any pending requests
           return this.nodesClient
@@ -124,11 +120,11 @@ export class DiscoveryComponent implements OnInit {
               switchMap((requests) =>
                 requests.length > 0
                   ? this.nodesClient.getRegistrationRequest(requests[0].id)
-                  : Promise.resolve(null),
-              ),
+                  : Promise.resolve(null)
+              )
             );
         }),
-        takeUntilDestroyed(this.destroyRef),
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: (request) => {
@@ -203,7 +199,7 @@ export class DiscoveryComponent implements OnInit {
             sshPublicKey: keyResponse.publicKey,
           });
         }),
-        takeUntilDestroyed(this.destroyRef),
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: (request) => {
@@ -212,8 +208,7 @@ export class DiscoveryComponent implements OnInit {
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.error =
-            err.error?.message || 'Failed to send registration request';
+          this.error = err.error?.message || 'Failed to send registration request';
           this.isLoadingRequest = false;
           this.cdr.markForCheck();
         },

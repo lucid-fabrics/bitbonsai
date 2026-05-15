@@ -105,9 +105,7 @@ describe('EncodingStartupService', () => {
       jobRepository.findManyWithInclude
         .mockResolvedValueOnce([]) // orphaned jobs
         .mockResolvedValueOnce([]); // manually paused jobs
-      await expect(
-        service.autoHealOrphanedJobs(nodeId),
-      ).resolves.toBeUndefined();
+      await expect(service.autoHealOrphanedJobs(nodeId)).resolves.toBeUndefined();
     });
 
     it('resets orphaned ENCODING job to QUEUED when temp file exists', async () => {
@@ -128,15 +126,13 @@ describe('EncodingStartupService', () => {
 
       expect(queueService.update).toHaveBeenCalledWith(
         job.id,
-        expect.objectContaining({ stage: JobStage.QUEUED }),
+        expect.objectContaining({ stage: JobStage.QUEUED })
       );
     });
 
     it('resets progress to 0 when temp file does not exist', async () => {
       const job = makeOrphanedJob();
-      jobRepository.findManyWithInclude
-        .mockResolvedValueOnce([job])
-        .mockResolvedValueOnce([]);
+      jobRepository.findManyWithInclude.mockResolvedValueOnce([job]).mockResolvedValueOnce([]);
       jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
       encodingFileService.checkTempFileWithRetry.mockResolvedValue(false);
       queueService.update.mockResolvedValue(undefined as never);
@@ -145,15 +141,13 @@ describe('EncodingStartupService', () => {
 
       expect(queueService.update).toHaveBeenCalledWith(
         job.id,
-        expect.objectContaining({ stage: JobStage.QUEUED, progress: 0 }),
+        expect.objectContaining({ stage: JobStage.QUEUED, progress: 0 })
       );
     });
 
     it('skips job already claimed by another node', async () => {
       const job = makeOrphanedJob();
-      jobRepository.findManyWithInclude
-        .mockResolvedValueOnce([job])
-        .mockResolvedValueOnce([]);
+      jobRepository.findManyWithInclude.mockResolvedValueOnce([job]).mockResolvedValueOnce([]);
       jobRepository.atomicUpdateMany.mockResolvedValue({ count: 0 });
 
       await service.autoHealOrphanedJobs(nodeId);
@@ -166,9 +160,7 @@ describe('EncodingStartupService', () => {
         stage: JobStage.PAUSED,
         error: 'Outside scheduled encoding window',
       });
-      jobRepository.findManyWithInclude
-        .mockResolvedValueOnce([job])
-        .mockResolvedValueOnce([]);
+      jobRepository.findManyWithInclude.mockResolvedValueOnce([job]).mockResolvedValueOnce([]);
       jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
       encodingFileService.checkTempFileWithRetry.mockResolvedValue(false);
       queueService.update.mockResolvedValue(undefined as never);
@@ -177,30 +169,22 @@ describe('EncodingStartupService', () => {
 
       expect(queueService.update).toHaveBeenCalledWith(
         job.id,
-        expect.objectContaining({ stage: JobStage.QUEUED }),
+        expect.objectContaining({ stage: JobStage.QUEUED })
       );
     });
 
     it('handles errors during individual job reset gracefully', async () => {
       const job = makeOrphanedJob();
-      jobRepository.findManyWithInclude
-        .mockResolvedValueOnce([job])
-        .mockResolvedValueOnce([]);
+      jobRepository.findManyWithInclude.mockResolvedValueOnce([job]).mockResolvedValueOnce([]);
       jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
-      encodingFileService.checkTempFileWithRetry.mockRejectedValue(
-        new Error('fs error'),
-      );
+      encodingFileService.checkTempFileWithRetry.mockRejectedValue(new Error('fs error'));
 
-      await expect(
-        service.autoHealOrphanedJobs(nodeId),
-      ).resolves.toBeUndefined();
+      await expect(service.autoHealOrphanedJobs(nodeId)).resolves.toBeUndefined();
     });
 
     it('handles top-level repository errors gracefully', async () => {
       jobRepository.findManyWithInclude.mockRejectedValue(new Error('db down'));
-      await expect(
-        service.autoHealOrphanedJobs(nodeId),
-      ).resolves.toBeUndefined();
+      await expect(service.autoHealOrphanedJobs(nodeId)).resolves.toBeUndefined();
     });
 
     it('logs preserved manually paused jobs', async () => {

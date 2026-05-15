@@ -30,9 +30,7 @@ export class NodeFailureLogRepository extends BaseRepository {
     return this.count({ where: { nodeId, createdAt: { gte: since } } });
   }
 
-  async findLastForNode(
-    nodeId: string,
-  ): Promise<Pick<NodeFailureLog, 'createdAt'> | null> {
+  async findLastForNode(nodeId: string): Promise<Pick<NodeFailureLog, 'createdAt'> | null> {
     return this.findFirst<Pick<NodeFailureLog, 'createdAt'> | null>({
       where: { nodeId },
       orderBy: { createdAt: 'desc' },
@@ -42,7 +40,7 @@ export class NodeFailureLogRepository extends BaseRepository {
 
   async findRecentForNode(
     nodeId: string,
-    since: Date,
+    since: Date
   ): Promise<Pick<NodeFailureLog, 'reason' | 'createdAt'>[]> {
     return this.findMany<Pick<NodeFailureLog, 'reason' | 'createdAt'>>({
       where: { nodeId, createdAt: { gte: since } },

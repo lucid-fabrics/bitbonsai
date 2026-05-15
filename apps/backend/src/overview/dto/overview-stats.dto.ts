@@ -90,8 +90,7 @@ export class QueueStatsDto {
   failed!: number;
 
   @ApiProperty({
-    description:
-      'Total bytes saved across all completed jobs (can be negative)',
+    description: 'Total bytes saved across all completed jobs (can be negative)',
     example: '45097156608000',
     type: 'string',
   })
@@ -162,8 +161,7 @@ export class RecentActivityDto {
   afterSizeBytes!: string | null;
 
   @ApiProperty({
-    description:
-      'Bytes saved by encoding (can be negative if larger, null for encoding jobs)',
+    description: 'Bytes saved by encoding (can be negative if larger, null for encoding jobs)',
     example: '1342177280',
     type: 'string',
     nullable: true,

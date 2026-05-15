@@ -41,9 +41,7 @@ describe('SettingsEffects', () => {
 
     effects = TestBed.inject(SettingsEffects);
     _service = TestBed.inject(SettingsService) as jest.Mocked<SettingsService>;
-    licenseService = TestBed.inject(
-      LicenseService,
-    ) as jest.Mocked<LicenseService>;
+    licenseService = TestBed.inject(LicenseService) as jest.Mocked<LicenseService>;
   });
 
   it('should be created', () => {

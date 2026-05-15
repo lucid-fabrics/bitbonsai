@@ -28,9 +28,7 @@ describe('DiscordNotificationService', () => {
       ],
     }).compile();
 
-    service = module.get<DiscordNotificationService>(
-      DiscordNotificationService,
-    );
+    service = module.get<DiscordNotificationService>(DiscordNotificationService);
     prisma = module.get(SettingsRepository);
     httpService = module.get(HttpService);
   });
@@ -44,9 +42,7 @@ describe('DiscordNotificationService', () => {
       prisma.findFirst.mockResolvedValue({
         discordWebhookUrl: mockWebhookUrl,
       } as never);
-      httpService.post.mockReturnValue(
-        of({ data: 'ok', status: 204 } as never),
-      );
+      httpService.post.mockReturnValue(of({ data: 'ok', status: 204 } as never));
 
       await service.sendJobCompleted({
         fileLabel: 'movie.mkv',
@@ -65,7 +61,7 @@ describe('DiscordNotificationService', () => {
             }),
           ]),
         }),
-        expect.any(Object),
+        expect.any(Object)
       );
     });
 
@@ -91,9 +87,7 @@ describe('DiscordNotificationService', () => {
       const postedPayload = httpService.post.mock.calls[0][1] as {
         embeds: Array<{ fields?: Array<{ name: string; value: string }> }>;
       };
-      const durationField = postedPayload.embeds[0].fields?.find(
-        (f) => f.name === 'Duration',
-      );
+      const durationField = postedPayload.embeds[0].fields?.find((f) => f.name === 'Duration');
       expect(durationField?.value).toBe('3m 5s');
     });
   });
@@ -208,9 +202,7 @@ describe('DiscordNotificationService', () => {
 
   describe('testWebhook', () => {
     it('should return success:true when webhook responds successfully', async () => {
-      httpService.post.mockReturnValue(
-        of({ data: 'ok', status: 204 } as never),
-      );
+      httpService.post.mockReturnValue(of({ data: 'ok', status: 204 } as never));
 
       const result = await service.testWebhook(mockWebhookUrl);
 
@@ -219,9 +211,7 @@ describe('DiscordNotificationService', () => {
     });
 
     it('should return success:true even when webhook errors are swallowed by retry logic', async () => {
-      httpService.post.mockReturnValue(
-        throwError(() => new Error('Connection refused')),
-      );
+      httpService.post.mockReturnValue(throwError(() => new Error('Connection refused')));
 
       const result = await service.testWebhook(mockWebhookUrl);
 

@@ -52,10 +52,7 @@ describe('AutoHealingService', () => {
     jest.restoreAllMocks();
   });
 
-  const createFailedJob = (
-    id: string,
-    overrides: Record<string, unknown> = {},
-  ) => ({
+  const createFailedJob = (id: string, overrides: Record<string, unknown> = {}) => ({
     id,
     fileLabel: `test-${id}.mkv`,
     retryCount: 0,
@@ -77,7 +74,7 @@ describe('AutoHealingService', () => {
 
       expect(result).toBe(0);
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        'No failed jobs eligible for auto-healing',
+        'No failed jobs eligible for auto-healing'
       );
     });
 
@@ -112,7 +109,7 @@ describe('AutoHealingService', () => {
           autoHealedProgress: 30,
           resumeTimestamp: null,
           tempFilePath: null,
-        }),
+        })
       );
     });
 
@@ -143,7 +140,7 @@ describe('AutoHealingService', () => {
           resumeTimestamp: '00:45:30',
           tempFilePath: '/tmp/encode-job-1.mkv',
           autoHealedProgress: 65,
-        }),
+        })
       );
     });
 
@@ -172,7 +169,7 @@ describe('AutoHealingService', () => {
           progress: 0, // Reset since temp file gone
           resumeTimestamp: null,
           tempFilePath: null,
-        }),
+        })
       );
     });
 
@@ -198,9 +195,7 @@ describe('AutoHealingService', () => {
         tempFileExists: false,
         retryNumber: 1,
         triggeredBy: 'BACKEND_RESTART',
-        systemMessage: expect.stringContaining(
-          'starting encoding from scratch',
-        ),
+        systemMessage: expect.stringContaining('starting encoding from scratch'),
       });
     });
 
@@ -226,7 +221,7 @@ describe('AutoHealingService', () => {
       expect(result).toBe(2); // 2 out of 3 healed
       expect((service as any).logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to heal job job-2'),
-        expect.any(Error),
+        expect.any(Error)
       );
     });
 
@@ -236,34 +231,28 @@ describe('AutoHealingService', () => {
 
       await service.healFailedJobs();
 
-      expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Auto-heal max retry limit: 15',
-      );
+      expect((service as any).logger.log).toHaveBeenCalledWith('Auto-heal max retry limit: 15');
     });
 
     it('should handle database error gracefully', async () => {
       settingsRepository.findFirst.mockResolvedValue({
         maxAutoHealRetries: 15,
       });
-      jobRepository.findManySelect.mockRejectedValue(
-        new Error('DB connection lost'),
-      );
+      jobRepository.findManySelect.mockRejectedValue(new Error('DB connection lost'));
 
       const result = await service.healFailedJobs();
 
       expect(result).toBe(0);
       expect((service as any).logger.error).toHaveBeenCalledWith(
         'Failed to heal failed jobs',
-        expect.any(Error),
+        expect.any(Error)
       );
     });
   });
 
   describe('onModuleInit', () => {
     it('should call healFailedJobs on startup', async () => {
-      const healSpy = jest
-        .spyOn(service, 'healFailedJobs')
-        .mockResolvedValue(5);
+      const healSpy = jest.spyOn(service, 'healFailedJobs').mockResolvedValue(5);
 
       await service.onModuleInit();
 

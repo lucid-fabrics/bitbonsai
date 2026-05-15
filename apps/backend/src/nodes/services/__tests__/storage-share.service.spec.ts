@@ -112,7 +112,7 @@ describe('StorageShareService', () => {
         expect.objectContaining({
           exportPath: '192.168.1.100:/mnt/media',
           protocol: StorageProtocol.NFS,
-        }),
+        })
       );
       expect(result).toEqual(baseShare);
     });
@@ -139,7 +139,7 @@ describe('StorageShareService', () => {
         expect.objectContaining({
           exportPath: '\\\\192.168.1.100\\media',
           smbPassword: 'encrypted-password',
-        }),
+        })
       );
     });
 
@@ -152,7 +152,7 @@ describe('StorageShareService', () => {
           serverAddress: '192.168.1.100',
           sharePath: 'media',
           mountPoint: '/media',
-        }),
+        })
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -167,7 +167,7 @@ describe('StorageShareService', () => {
           serverAddress: '192.168.1.100',
           sharePath: '/mnt/media',
           mountPoint: '/media',
-        }),
+        })
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -191,7 +191,7 @@ describe('StorageShareService', () => {
           addToFstab: true,
           mountOnDetection: true,
           autoManaged: false,
-        }),
+        })
       );
     });
   });
@@ -207,9 +207,7 @@ describe('StorageShareService', () => {
     it('should throw NotFoundException when not found', async () => {
       mockRepository.findById.mockResolvedValue(null);
 
-      await expect(service.findOne('nonexistent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -231,7 +229,7 @@ describe('StorageShareService', () => {
         expect.objectContaining({
           name: 'Updated',
           smbPassword: 'encrypted-password',
-        }),
+        })
       );
     });
 
@@ -248,7 +246,7 @@ describe('StorageShareService', () => {
         'share-1',
         expect.objectContaining({
           smbPassword: undefined,
-        }),
+        })
       );
     });
   });
@@ -268,7 +266,7 @@ describe('StorageShareService', () => {
           isMounted: true,
           errorCount: 0,
           lastError: null,
-        }),
+        })
       );
     });
 
@@ -281,7 +279,7 @@ describe('StorageShareService', () => {
 
       expect(mockNodeRepository.updateData).toHaveBeenCalledWith(
         'node-1',
-        expect.objectContaining({ hasSharedStorage: true }),
+        expect.objectContaining({ hasSharedStorage: true })
       );
     });
 
@@ -295,18 +293,14 @@ describe('StorageShareService', () => {
         expect.objectContaining({
           status: StorageShareStatus.UNMOUNTED,
           isMounted: false,
-        }),
+        })
       );
     });
 
     it('should increment errorCount for ERROR status', async () => {
       mockRepository.update.mockResolvedValue({});
 
-      await service.updateStatus(
-        'share-1',
-        StorageShareStatus.ERROR,
-        'Connection lost',
-      );
+      await service.updateStatus('share-1', StorageShareStatus.ERROR, 'Connection lost');
 
       expect(mockRepository.update).toHaveBeenCalledWith(
         'share-1',
@@ -315,7 +309,7 @@ describe('StorageShareService', () => {
           isMounted: false,
           errorCount: { increment: 1 },
           lastError: 'Connection lost',
-        }),
+        })
       );
     });
 
@@ -349,9 +343,7 @@ describe('StorageShareService', () => {
         isMounted: true,
       });
 
-      await expect(service.delete('share-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.delete('share-1')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -417,9 +409,7 @@ describe('StorageShareService', () => {
         role: 'MAIN',
       });
       mockRepository.findByOwnerNodeId.mockResolvedValue([baseShare]);
-      mockRepository.findMountPointsByNodeId.mockResolvedValue([
-        { mountPoint: '/media' },
-      ]);
+      mockRepository.findMountPointsByNodeId.mockResolvedValue([{ mountPoint: '/media' }]);
 
       const result = await service.autoDetectShares('node-1');
 
@@ -441,9 +431,7 @@ describe('StorageShareService', () => {
     it('should throw NotFoundException for unknown node', async () => {
       mockNodeRepository.findById.mockResolvedValue(null);
 
-      await expect(service.autoDetectShares('bad-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.autoDetectShares('bad-id')).rejects.toThrow(NotFoundException);
     });
 
     it('should return empty and log error when HTTP request to LINKED node fails', async () => {
@@ -466,9 +454,7 @@ describe('StorageShareService', () => {
         role: 'LINKED',
         mainNodeUrl: 'http://main-node',
       });
-      mockHttpService.get.mockReturnValueOnce(
-        of({ data: [{ id: 'x', role: 'LINKED' }] }),
-      );
+      mockHttpService.get.mockReturnValueOnce(of({ data: [{ id: 'x', role: 'LINKED' }] }));
 
       const result = await service.autoDetectShares('node-2');
       expect(result).toEqual([]);
@@ -519,9 +505,7 @@ describe('StorageShareService', () => {
         .mockReturnValueOnce(of({ data: [{ id: 'main-1', role: 'MAIN' }] }))
         .mockReturnValueOnce(of({ data: [mainNodeShare] }));
 
-      mockRepository.findMountPointsByNodeId.mockResolvedValue([
-        { mountPoint: '/media' },
-      ]);
+      mockRepository.findMountPointsByNodeId.mockResolvedValue([{ mountPoint: '/media' }]);
 
       const result = await service.autoDetectShares('node-2');
       expect(result).toHaveLength(0);
@@ -589,7 +573,7 @@ describe('StorageShareService', () => {
 
       expect(mockRepository.update).toHaveBeenCalledWith(
         'share-1',
-        expect.objectContaining({ lastHealthCheckAt: expect.any(Date) }),
+        expect.objectContaining({ lastHealthCheckAt: expect.any(Date) })
       );
       expect(result).toEqual(updated);
     });
@@ -612,15 +596,11 @@ describe('StorageShareService', () => {
     it('should set lastError when ERROR status has error message', async () => {
       mockRepository.update.mockResolvedValue({});
 
-      await service.updateStatus(
-        'share-1',
-        StorageShareStatus.ERROR,
-        'Mount failed',
-      );
+      await service.updateStatus('share-1', StorageShareStatus.ERROR, 'Mount failed');
 
       expect(mockRepository.update).toHaveBeenCalledWith(
         'share-1',
-        expect.objectContaining({ lastError: 'Mount failed' }),
+        expect.objectContaining({ lastError: 'Mount failed' })
       );
     });
 
@@ -629,10 +609,7 @@ describe('StorageShareService', () => {
 
       await service.updateStatus('share-1', StorageShareStatus.ERROR);
 
-      const updateCall = mockRepository.update.mock.calls[0][1] as Record<
-        string,
-        unknown
-      >;
+      const updateCall = mockRepository.update.mock.calls[0][1] as Record<string, unknown>;
       expect(updateCall).not.toHaveProperty('lastError');
     });
   });
@@ -641,9 +618,7 @@ describe('StorageShareService', () => {
     it('should throw NotFoundException when share not found', async () => {
       mockRepository.findById.mockResolvedValue(null);
 
-      await expect(service.delete('nonexistent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.delete('nonexistent')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -651,9 +626,7 @@ describe('StorageShareService', () => {
     it('should throw NotFoundException when share to update not found', async () => {
       mockRepository.findById.mockResolvedValue(null);
 
-      await expect(
-        service.update('nonexistent', { name: 'X' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('nonexistent', { name: 'X' })).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -692,9 +665,7 @@ describe('StorageShareService', () => {
         id: 'main-1',
         role: 'MAIN',
       });
-      mockRepository.findAutoManagedByNodeId.mockRejectedValue(
-        new Error('DB error'),
-      );
+      mockRepository.findAutoManagedByNodeId.mockRejectedValue(new Error('DB error'));
 
       const result = await service.autoCreateSharesForLibraries('main-1');
       expect(result).toEqual([]);
@@ -743,9 +714,7 @@ describe('StorageShareService', () => {
 
       // Mock global fetch to return error response
       const origFetch = global.fetch;
-      global.fetch = jest
-        .fn()
-        .mockResolvedValue({ ok: false }) as unknown as typeof fetch;
+      global.fetch = jest.fn().mockResolvedValue({ ok: false }) as unknown as typeof fetch;
 
       const result = await service.autoDetectAndMount('node-2');
       expect(result.detected).toBe(0);
@@ -953,9 +922,7 @@ describe('StorageShareService', () => {
       const event = new StorageAutoDetectMountEvent('node-1');
 
       // Should not throw
-      await expect(
-        service.handleAutoDetectMount(event),
-      ).resolves.toBeUndefined();
+      await expect(service.handleAutoDetectMount(event)).resolves.toBeUndefined();
     });
 
     it('should handle errors in autoDetectAndMount gracefully', async () => {
@@ -964,9 +931,7 @@ describe('StorageShareService', () => {
       const event = new StorageAutoDetectMountEvent('node-1');
 
       // Should not throw, errors are caught internally
-      await expect(
-        service.handleAutoDetectMount(event),
-      ).resolves.toBeUndefined();
+      await expect(service.handleAutoDetectMount(event)).resolves.toBeUndefined();
     });
   });
 });

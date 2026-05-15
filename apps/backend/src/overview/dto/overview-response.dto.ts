@@ -288,8 +288,7 @@ export class NodeStatusModel {
   success_rate!: number;
 
   @ApiProperty({
-    description:
-      'Estimated time remaining for ALL queued jobs assigned to this node in seconds',
+    description: 'Estimated time remaining for ALL queued jobs assigned to this node in seconds',
     example: 14400,
     nullable: true,
   })

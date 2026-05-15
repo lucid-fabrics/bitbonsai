@@ -7,10 +7,7 @@ import { FileRelocatorService } from '../../../core/services/file-relocator.serv
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { NodesService } from '../../../nodes/nodes.service';
 import { QueueService } from '../../../queue/queue.service';
-import {
-  createMockJob,
-  createMockPolicy,
-} from '../../../testing/mock-factories';
+import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
 import { EncodingFileService } from '../../encoding-file.service';
 import { EncodingFileReplacementService } from '../../encoding-file-replacement.service';
 import { EncodingOutputVerificationService } from '../../encoding-output-verification.service';
@@ -86,27 +83,21 @@ describe('EncodingFileService', () => {
         {
           provide: SettingsRepository,
           useValue: {
-            findFirst: jest
-              .fn()
-              .mockResolvedValue({ qualityMetricsEnabled: false }),
+            findFirst: jest.fn().mockResolvedValue({ qualityMetricsEnabled: false }),
           },
         },
         {
           provide: FfmpegService,
           useValue: {
             encode: jest.fn().mockResolvedValue(undefined),
-            verifyFile: jest
-              .fn()
-              .mockResolvedValue({ isValid: true, error: undefined }),
+            verifyFile: jest.fn().mockResolvedValue({ isValid: true, error: undefined }),
             getVideoDuration: jest.fn().mockResolvedValue(3600),
           },
         },
         {
           provide: LibrariesService,
           useValue: {
-            findOne: jest
-              .fn()
-              .mockResolvedValue({ totalSizeBytes: BigInt(10 * 1024 ** 3) }),
+            findOne: jest.fn().mockResolvedValue({ totalSizeBytes: BigInt(10 * 1024 ** 3) }),
             update: jest.fn().mockResolvedValue(undefined),
           },
         },
@@ -276,21 +267,19 @@ describe('EncodingFileService', () => {
 
   describe('validateOutputDuration', () => {
     beforeEach(() => {
-      jest
-        .spyOn(service.outputVerification, 'sleep')
-        .mockResolvedValue(undefined);
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
     });
 
     it('resolves when output duration matches original within tolerance', async () => {
       ffmpegService.getVideoDuration.mockResolvedValue(3600.5);
       await expect(
-        service.validateOutputDuration('/tmp/out.mkv', 3600, '/media/orig.mkv'),
+        service.validateOutputDuration('/tmp/out.mkv', 3600, '/media/orig.mkv')
       ).resolves.toBeUndefined();
     });
 
     it('skips validation for sub-second clips', async () => {
       await expect(
-        service.validateOutputDuration('/tmp/out.mkv', 0.5, '/media/orig.mkv'),
+        service.validateOutputDuration('/tmp/out.mkv', 0.5, '/media/orig.mkv')
       ).resolves.toBeUndefined();
       expect(ffmpegService.getVideoDuration).not.toHaveBeenCalled();
     });
@@ -298,7 +287,7 @@ describe('EncodingFileService', () => {
     it('throws when output duration is 3600 fallback and original is not', async () => {
       ffmpegService.getVideoDuration.mockResolvedValue(3600);
       await expect(
-        service.validateOutputDuration('/tmp/out.mkv', 1200, '/media/orig.mkv'),
+        service.validateOutputDuration('/tmp/out.mkv', 1200, '/media/orig.mkv')
       ).rejects.toThrow('Cannot determine output file duration');
     });
 
@@ -306,7 +295,7 @@ describe('EncodingFileService', () => {
       // 30s clip, output is 28s — 2s diff exceeds ±1s absolute tolerance
       ffmpegService.getVideoDuration.mockResolvedValue(28);
       await expect(
-        service.validateOutputDuration('/tmp/out.mkv', 30, '/media/orig.mkv'),
+        service.validateOutputDuration('/tmp/out.mkv', 30, '/media/orig.mkv')
       ).rejects.toThrow('duration mismatch');
     });
 
@@ -314,7 +303,7 @@ describe('EncodingFileService', () => {
       // 3700s clip (>1hr), output is 3500s — diff ~5.4% exceeds 1.5% tolerance
       ffmpegService.getVideoDuration.mockResolvedValue(3500);
       await expect(
-        service.validateOutputDuration('/tmp/out.mkv', 3700, '/media/orig.mkv'),
+        service.validateOutputDuration('/tmp/out.mkv', 3700, '/media/orig.mkv')
       ).rejects.toThrow('duration mismatch');
     });
 
@@ -325,11 +314,9 @@ describe('EncodingFileService', () => {
       );
       ffmpegService.getVideoDuration.mockResolvedValue(3600.2);
       await expect(
-        service.validateOutputDuration('/tmp/out.mkv', 3600, '/media/orig.mkv'),
+        service.validateOutputDuration('/tmp/out.mkv', 3600, '/media/orig.mkv')
       ).resolves.toBeUndefined();
-      expect(logWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('3600s (ffprobe fallback'),
-      );
+      expect(logWarnSpy).toHaveBeenCalledWith(expect.stringContaining('3600s (ffprobe fallback'));
     });
   });
 
@@ -342,8 +329,8 @@ describe('EncodingFileService', () => {
           BigInt(2 * 1024 ** 3),
           BigInt(1 * 1024 ** 3),
           3600,
-          '/media/test.mkv',
-        ),
+          '/media/test.mkv'
+        )
       ).not.toThrow();
     });
 
@@ -354,8 +341,8 @@ describe('EncodingFileService', () => {
           BigInt(2 * 1024 ** 3),
           BigInt(1000), // 1 KB — way too small
           3600,
-          '/media/test.mkv',
-        ),
+          '/media/test.mkv'
+        )
       ).toThrow('suspiciously small');
     });
 
@@ -365,12 +352,7 @@ describe('EncodingFileService', () => {
       const originalSize = BigInt(4 * 1024 ** 3); // 4 GB
       const afterSize = BigInt(90 * 1024 * 1024); // 90 MB — 97.8% reduction (bigint: 97 > 95), above bitrate floor
       expect(() =>
-        service.validateOutputSize(
-          originalSize,
-          afterSize,
-          3600,
-          '/media/test.mkv',
-        ),
+        service.validateOutputSize(originalSize, afterSize, 3600, '/media/test.mkv')
       ).toThrow('Extreme compression');
     });
 
@@ -381,16 +363,9 @@ describe('EncodingFileService', () => {
       const originalSize = BigInt(1024 * 1024 * 1024); // exactly 1 GB (not > 1 GB)
       const afterSize = BigInt(92 * 1024 * 1024); // 92 MB — 91% reduction, above floor
       expect(() =>
-        service.validateOutputSize(
-          originalSize,
-          afterSize,
-          3600,
-          '/media/test.mkv',
-        ),
+        service.validateOutputSize(originalSize, afterSize, 3600, '/media/test.mkv')
       ).not.toThrow();
-      expect(logWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('High compression'),
-      );
+      expect(logWarnSpy).toHaveBeenCalledWith(expect.stringContaining('High compression'));
     });
   });
 
@@ -408,8 +383,8 @@ describe('EncodingFileService', () => {
           '/media/orig.mkv',
           '/tmp/out.mkv',
           BigInt(1 * 1024 ** 3),
-          BigInt(800 * 1024 ** 2),
-        ),
+          BigInt(800 * 1024 ** 2)
+        )
       ).resolves.toBeUndefined();
     });
 
@@ -424,8 +399,8 @@ describe('EncodingFileService', () => {
           '/media/orig.mkv',
           '/tmp/out.mkv',
           BigInt(5 * 1024 ** 3),
-          BigInt(3 * 1024 ** 3),
-        ),
+          BigInt(3 * 1024 ** 3)
+        )
       ).rejects.toThrow('Insufficient disk space');
     });
 
@@ -441,13 +416,11 @@ describe('EncodingFileService', () => {
           '/media/orig.mkv',
           '/tmp/out.mkv',
           BigInt(1 * 1024 ** 3),
-          BigInt(800 * 1024 ** 2),
-        ),
+          BigInt(800 * 1024 ** 2)
+        )
       ).resolves.toBeUndefined();
 
-      expect(logWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Could not check disk'),
-      );
+      expect(logWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Could not check disk'));
     });
   });
 
@@ -459,10 +432,7 @@ describe('EncodingFileService', () => {
 
       service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv');
 
-      expect(fs.renameSync).toHaveBeenCalledWith(
-        '/src/file.mkv',
-        '/dst/file.mkv',
-      );
+      expect(fs.renameSync).toHaveBeenCalledWith('/src/file.mkv', '/dst/file.mkv');
       expect(fs.copyFileSync).not.toHaveBeenCalled();
     });
 
@@ -479,10 +449,7 @@ describe('EncodingFileService', () => {
 
       service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv');
 
-      expect(fs.copyFileSync).toHaveBeenCalledWith(
-        '/src/file.mkv',
-        '/dst/file.mkv',
-      );
+      expect(fs.copyFileSync).toHaveBeenCalledWith('/src/file.mkv', '/dst/file.mkv');
       expect(fs.unlinkSync).toHaveBeenCalledWith('/src/file.mkv');
     });
 
@@ -496,9 +463,9 @@ describe('EncodingFileService', () => {
         .mockReturnValueOnce({ size: 500 }); // dest stats — size mismatch
       (fs.existsSync as jest.Mock).mockReturnValue(true);
 
-      expect(() =>
-        service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv'),
-      ).toThrow('Cross-filesystem move failed');
+      expect(() => service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv')).toThrow(
+        'Cross-filesystem move failed'
+      );
     });
 
     it('re-throws non-EXDEV rename errors', () => {
@@ -507,9 +474,9 @@ describe('EncodingFileService', () => {
         throw permError;
       });
 
-      expect(() =>
-        service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv'),
-      ).toThrow('EACCES');
+      expect(() => service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv')).toThrow(
+        'EACCES'
+      );
       expect(fs.copyFileSync).not.toHaveBeenCalled();
     });
   });
@@ -526,18 +493,14 @@ describe('EncodingFileService', () => {
 
       expect(librariesService.update).toHaveBeenCalledWith(
         'lib-1',
-        expect.objectContaining({ totalSizeBytes: expect.any(BigInt) }),
+        expect.objectContaining({ totalSizeBytes: expect.any(BigInt) })
       );
     });
 
     it('does not throw when librariesService.findOne fails', async () => {
-      librariesService.findOne.mockRejectedValue(
-        new Error('Library not found'),
-      );
+      librariesService.findOne.mockRejectedValue(new Error('Library not found'));
 
-      await expect(
-        service.updateLibraryStats('lib-missing', BigInt(100)),
-      ).resolves.toBeUndefined();
+      await expect(service.updateLibraryStats('lib-missing', BigInt(100))).resolves.toBeUndefined();
     });
   });
 
@@ -546,12 +509,7 @@ describe('EncodingFileService', () => {
   describe('performEncoding', () => {
     it('throws when policy is null', async () => {
       await expect(
-        service.performEncoding(
-          baseJob,
-          '/tmp/out.mkv',
-          null as never,
-          undefined,
-        ),
+        service.performEncoding(baseJob, '/tmp/out.mkv', null as never, undefined)
       ).rejects.toThrow('Policy is required');
     });
 
@@ -561,7 +519,7 @@ describe('EncodingFileService', () => {
 
       expect(ffmpegService.encode).toHaveBeenCalledWith(
         baseJob.id,
-        expect.objectContaining({ hwAccel: 'nvenc' }),
+        expect.objectContaining({ hwAccel: 'nvenc' })
       );
     });
 
@@ -571,7 +529,7 @@ describe('EncodingFileService', () => {
 
       expect(ffmpegService.encode).toHaveBeenCalledWith(
         baseJob.id,
-        expect.objectContaining({ hwAccel: 'auto' }),
+        expect.objectContaining({ hwAccel: 'auto' })
       );
     });
 
@@ -580,7 +538,7 @@ describe('EncodingFileService', () => {
 
       expect(ffmpegService.encode).toHaveBeenCalledWith(
         baseJob.id,
-        expect.objectContaining({ startedFromSeconds: 1800 }),
+        expect.objectContaining({ startedFromSeconds: 1800 })
       );
     });
   });
@@ -589,9 +547,7 @@ describe('EncodingFileService', () => {
 
   describe('verifyEncodedFile', () => {
     beforeEach(() => {
-      jest
-        .spyOn(service.outputVerification, 'sleep')
-        .mockResolvedValue(undefined);
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
     });
 
     it('resolves on first successful verification', async () => {
@@ -600,9 +556,7 @@ describe('EncodingFileService', () => {
         error: undefined,
       });
 
-      await expect(
-        service.verifyEncodedFile('/tmp/out.mkv'),
-      ).resolves.toBeUndefined();
+      await expect(service.verifyEncodedFile('/tmp/out.mkv')).resolves.toBeUndefined();
       expect(ffmpegService.verifyFile).toHaveBeenCalledTimes(1);
     });
 
@@ -611,9 +565,7 @@ describe('EncodingFileService', () => {
         .mockResolvedValueOnce({ isValid: false, error: 'not ready' })
         .mockResolvedValue({ isValid: true, error: undefined });
 
-      await expect(
-        service.verifyEncodedFile('/tmp/out.mkv'),
-      ).resolves.toBeUndefined();
+      await expect(service.verifyEncodedFile('/tmp/out.mkv')).resolves.toBeUndefined();
       expect(ffmpegService.verifyFile).toHaveBeenCalledTimes(2);
     });
 
@@ -624,7 +576,7 @@ describe('EncodingFileService', () => {
       });
 
       await expect(service.verifyEncodedFile('/tmp/out.mkv')).rejects.toThrow(
-        'Verification failed after 10 attempts',
+        'Verification failed after 10 attempts'
       );
     });
   });

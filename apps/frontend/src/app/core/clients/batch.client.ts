@@ -26,47 +26,28 @@ export class BatchClient {
   pauseAll(nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
     if (nodeId) params.nodeId = nodeId;
-    return this.http.post<BatchOperationResult>(
-      `${this.apiUrl}/pause`,
-      {},
-      { params },
-    );
+    return this.http.post<BatchOperationResult>(`${this.apiUrl}/pause`, {}, { params });
   }
 
   resumeAll(nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
     if (nodeId) params.nodeId = nodeId;
-    return this.http.post<BatchOperationResult>(
-      `${this.apiUrl}/resume`,
-      {},
-      { params },
-    );
+    return this.http.post<BatchOperationResult>(`${this.apiUrl}/resume`, {}, { params });
   }
 
   cancelAll(nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
     if (nodeId) params.nodeId = nodeId;
-    return this.http.post<BatchOperationResult>(
-      `${this.apiUrl}/cancel`,
-      {},
-      { params },
-    );
+    return this.http.post<BatchOperationResult>(`${this.apiUrl}/cancel`, {}, { params });
   }
 
   retryAllFailed(nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
     if (nodeId) params.nodeId = nodeId;
-    return this.http.post<BatchOperationResult>(
-      `${this.apiUrl}/retry`,
-      {},
-      { params },
-    );
+    return this.http.post<BatchOperationResult>(`${this.apiUrl}/retry`, {}, { params });
   }
 
-  deleteCompleted(
-    olderThanDays?: number,
-    nodeId?: string,
-  ): Observable<BatchOperationResult> {
+  deleteCompleted(olderThanDays?: number, nodeId?: string): Observable<BatchOperationResult> {
     const params: Record<string, string> = {};
     if (olderThanDays) params.olderThanDays = olderThanDays.toString();
     if (nodeId) params.nodeId = nodeId;

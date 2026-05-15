@@ -29,10 +29,7 @@ import type { OverviewModel } from './models/overview.model';
  * Replaces JSON.stringify comparison with shallow key comparison for better performance.
  * Only compares the numeric values that affect UI rendering.
  */
-function overviewDataEqual(
-  prev: OverviewModel | null,
-  curr: OverviewModel | null,
-): boolean {
+function overviewDataEqual(prev: OverviewModel | null, curr: OverviewModel | null): boolean {
   if (prev === curr) return true;
   if (!prev || !curr) return false;
 
@@ -67,11 +64,7 @@ function overviewDataEqual(
   if (prev.recent_activity.length > 0) {
     const pa = prev.recent_activity[0];
     const ca = curr.recent_activity[0];
-    if (
-      pa.id !== ca.id ||
-      pa.progress !== ca.progress ||
-      pa.stage !== ca.stage
-    ) {
+    if (pa.id !== ca.id || pa.progress !== ca.progress || pa.stage !== ca.stage) {
       return false;
     }
   }
@@ -155,20 +148,16 @@ export class OverviewComponent implements OnInit, OnDestroy {
     if (bytes === 0) return '0 B';
     if (bytes < 1024) return `${bytes.toFixed(0)} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    if (bytes < 1024 * 1024 * 1024)
-      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-    if (bytes < 1024 * 1024 * 1024 * 1024)
-      return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    if (bytes < 1024 * 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
     return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(2)} TB`;
   }
 
   formatSizeBytesCompact(bytes: number): string {
     if (bytes === 0) return '0';
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}K`;
-    if (bytes < 1024 * 1024 * 1024)
-      return `${(bytes / (1024 * 1024)).toFixed(0)}M`;
-    if (bytes < 1024 * 1024 * 1024 * 1024)
-      return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}G`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(0)}M`;
+    if (bytes < 1024 * 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}G`;
     return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(1)}T`;
   }
 
@@ -178,10 +167,8 @@ export class OverviewComponent implements OnInit, OnDestroy {
     if (bytes === 0) return '0 B';
     if (bytes < 1024) return `${bytes.toFixed(0)} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    if (bytes < 1024 * 1024 * 1024)
-      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-    if (bytes < 1024 * 1024 * 1024 * 1024)
-      return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    if (bytes < 1024 * 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 
     return `${tb.toFixed(2)} TB`;
   }

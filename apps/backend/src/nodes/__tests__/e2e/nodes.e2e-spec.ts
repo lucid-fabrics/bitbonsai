@@ -1,8 +1,4 @@
-import {
-  type INestApplication,
-  NotFoundException,
-  ValidationPipe,
-} from '@nestjs/common';
+import { type INestApplication, NotFoundException, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { type Node } from '@prisma/client';
 import request from 'supertest';
@@ -81,9 +77,7 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
     }).compile();
 
     app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true }),
-    );
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
   });
 
@@ -100,10 +94,7 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
   // -------------------------------------------------------------------------
   describe('GET /nodes', () => {
     it('returns 200 with array of all nodes', async () => {
-      const nodes = [
-        makeNode(),
-        makeNode({ id: 'node-2', name: 'Worker', role: 'LINKED' }),
-      ];
+      const nodes = [makeNode(), makeNode({ id: 'node-2', name: 'Worker', role: 'LINKED' })];
       mockNodesService.findAll.mockResolvedValue(nodes);
 
       const res = await request(app.getHttpServer()).get('/nodes').expect(200);
@@ -122,9 +113,7 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
     });
 
     it('returns 500 when service throws unexpected error', async () => {
-      mockNodesService.findAll.mockRejectedValue(
-        new Error('db connection failed'),
-      );
+      mockNodesService.findAll.mockRejectedValue(new Error('db connection failed'));
 
       await request(app.getHttpServer()).get('/nodes').expect(500);
     });
@@ -138,18 +127,14 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
       const node = makeNode();
       mockNodesService.getCurrentNode.mockResolvedValue(node);
 
-      const res = await request(app.getHttpServer())
-        .get('/nodes/current')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/nodes/current').expect(200);
 
       expect(res.body.id).toBe('node-1');
       expect(res.body.role).toBe('MAIN');
     });
 
     it('returns 404 when no nodes registered', async () => {
-      mockNodesService.getCurrentNode.mockRejectedValue(
-        new NotFoundException('No nodes found'),
-      );
+      mockNodesService.getCurrentNode.mockRejectedValue(new NotFoundException('No nodes found'));
 
       await request(app.getHttpServer()).get('/nodes/current').expect(404);
     });
@@ -163,9 +148,7 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
       const node = makeNode();
       mockNodesService.findOne.mockResolvedValue(node);
 
-      const res = await request(app.getHttpServer())
-        .get('/nodes/node-1')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/nodes/node-1').expect(200);
 
       expect(res.body.id).toBe('node-1');
       expect(res.body.name).toBe('Main Node');
@@ -173,9 +156,7 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
     });
 
     it('returns 404 when node does not exist', async () => {
-      mockNodesService.findOne.mockRejectedValue(
-        new NotFoundException('Node not found'),
-      );
+      mockNodesService.findOne.mockRejectedValue(new NotFoundException('Node not found'));
 
       await request(app.getHttpServer()).get('/nodes/missing-id').expect(404);
     });
@@ -195,16 +176,11 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
         .expect(200);
 
       expect(res.body.id).toBe('node-1');
-      expect(mockNodesService.update).toHaveBeenCalledWith(
-        'node-1',
-        expect.anything(),
-      );
+      expect(mockNodesService.update).toHaveBeenCalledWith('node-1', expect.anything());
     });
 
     it('returns 404 when node to update does not exist', async () => {
-      mockNodesService.update.mockRejectedValue(
-        new NotFoundException('Node not found'),
-      );
+      mockNodesService.update.mockRejectedValue(new NotFoundException('Node not found'));
 
       await request(app.getHttpServer())
         .patch('/nodes/missing-id')
@@ -228,10 +204,7 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
 
       expect(res.body.id).toBe('node-1');
       expect(res.body.status).toBe('ONLINE');
-      expect(mockNodesService.heartbeat).toHaveBeenCalledWith(
-        'node-1',
-        expect.anything(),
-      );
+      expect(mockNodesService.heartbeat).toHaveBeenCalledWith('node-1', expect.anything());
     });
 
     it('returns 200 with empty heartbeat body', async () => {
@@ -247,14 +220,9 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
     });
 
     it('returns 404 when node does not exist', async () => {
-      mockNodesService.heartbeat.mockRejectedValue(
-        new NotFoundException('Node not found'),
-      );
+      mockNodesService.heartbeat.mockRejectedValue(new NotFoundException('Node not found'));
 
-      await request(app.getHttpServer())
-        .post('/nodes/missing-id/heartbeat')
-        .send({})
-        .expect(404);
+      await request(app.getHttpServer()).post('/nodes/missing-id/heartbeat').send({}).expect(404);
     });
   });
 
@@ -271,13 +239,9 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
     });
 
     it('returns 404 when node to delete does not exist', async () => {
-      mockNodesService.remove.mockRejectedValue(
-        new NotFoundException('Node not found'),
-      );
+      mockNodesService.remove.mockRejectedValue(new NotFoundException('Node not found'));
 
-      await request(app.getHttpServer())
-        .delete('/nodes/missing-id')
-        .expect(404);
+      await request(app.getHttpServer()).delete('/nodes/missing-id').expect(404);
     });
   });
 
@@ -296,9 +260,7 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
       ];
       mockJobAttribution.getAllNodeScores.mockResolvedValue(scores);
 
-      const res = await request(app.getHttpServer())
-        .get('/nodes/scores')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/nodes/scores').expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body[0].nodeId).toBe('node-1');
@@ -306,9 +268,7 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
     });
 
     it('returns 500 when attribution service fails', async () => {
-      mockJobAttribution.getAllNodeScores.mockRejectedValue(
-        new Error('score calculation failed'),
-      );
+      mockJobAttribution.getAllNodeScores.mockRejectedValue(new Error('score calculation failed'));
 
       await request(app.getHttpServer()).get('/nodes/scores').expect(500);
     });
@@ -319,9 +279,7 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
   // -------------------------------------------------------------------------
   describe('POST /nodes/scores/clear-cache', () => {
     it('returns 200 with success message', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/nodes/scores/clear-cache')
-        .expect(200);
+      const res = await request(app.getHttpServer()).post('/nodes/scores/clear-cache').expect(200);
 
       expect(res.body.success).toBe(true);
       expect(res.body.message).toBe('Score cache cleared');
@@ -337,22 +295,16 @@ describe('Nodes HTTP endpoints (E2E — mocked services)', () => {
       const stats = { activeJobs: 2, uptimeSeconds: 86400, libraries: [] };
       mockNodesService.getNodeStats.mockResolvedValue(stats);
 
-      const res = await request(app.getHttpServer())
-        .get('/nodes/node-1/stats')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/nodes/node-1/stats').expect(200);
 
       expect(res.body.activeJobs).toBe(2);
       expect(mockNodesService.getNodeStats).toHaveBeenCalledWith('node-1');
     });
 
     it('returns 404 when node not found for stats', async () => {
-      mockNodesService.getNodeStats.mockRejectedValue(
-        new NotFoundException('Node not found'),
-      );
+      mockNodesService.getNodeStats.mockRejectedValue(new NotFoundException('Node not found'));
 
-      await request(app.getHttpServer())
-        .get('/nodes/missing-id/stats')
-        .expect(404);
+      await request(app.getHttpServer()).get('/nodes/missing-id/stats').expect(404);
     });
   });
 });

@@ -33,19 +33,11 @@
     },
     {
       "group": "Installation",
-      "pages": [
-        "installation/docker",
-        "installation/unraid",
-        "installation/requirements"
-      ]
+      "pages": ["installation/docker", "installation/unraid", "installation/requirements"]
     },
     {
       "group": "User Guide",
-      "pages": [
-        "guides/first-scan",
-        "guides/understanding-jobs",
-        "guides/monitoring"
-      ]
+      "pages": ["guides/first-scan", "guides/understanding-jobs", "guides/monitoring"]
     },
     {
       "group": "Advanced",

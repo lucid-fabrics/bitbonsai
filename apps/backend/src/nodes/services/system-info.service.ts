@@ -39,23 +39,16 @@ export class SystemInfoService {
    * Collect complete system information
    */
   async collectSystemInfo(): Promise<SystemInfo> {
-    const [
-      ipAddress,
-      hostname,
-      macAddress,
-      subnet,
-      containerType,
-      hardwareSpecs,
-      acceleration,
-    ] = await Promise.all([
-      this.getIpAddress(),
-      this.getHostname(),
-      this.getMacAddress(),
-      this.getSubnet(),
-      this.detectContainerType(),
-      this.getHardwareSpecs(),
-      this.detectAcceleration(),
-    ]);
+    const [ipAddress, hostname, macAddress, subnet, containerType, hardwareSpecs, acceleration] =
+      await Promise.all([
+        this.getIpAddress(),
+        this.getHostname(),
+        this.getMacAddress(),
+        this.getSubnet(),
+        this.detectContainerType(),
+        this.getHardwareSpecs(),
+        this.detectAcceleration(),
+      ]);
 
     return {
       ipAddress,
@@ -81,9 +74,7 @@ export class SystemInfoService {
 
         for (const addr of addrs) {
           if (addr.family === 'IPv4' && !addr.internal) {
-            this.logger.debug(
-              `Found IP address: ${addr.address} on interface ${name}`,
-            );
+            this.logger.debug(`Found IP address: ${addr.address} on interface ${name}`);
             return addr.address;
           }
         }
@@ -123,9 +114,7 @@ export class SystemInfoService {
 
         for (const addr of addrs) {
           if (!addr.internal && addr.mac && addr.mac !== '00:00:00:00:00:00') {
-            this.logger.debug(
-              `Found MAC address: ${addr.mac} on interface ${name}`,
-            );
+            this.logger.debug(`Found MAC address: ${addr.mac} on interface ${name}`);
             return addr.mac;
           }
         }
@@ -175,7 +164,7 @@ export class SystemInfoService {
     const subnetParts = ipParts.map((part, i) => part & maskParts[i]);
     const cidr = maskParts.reduce(
       (count, part) => count + part.toString(2).split('1').length - 1,
-      0,
+      0
     );
 
     return `${subnetParts.join('.')}/${cidr}`;
@@ -199,9 +188,7 @@ export class SystemInfoService {
 
       // Check for systemd-detect-virt (most reliable for VMs)
       try {
-        const { stdout } = await execAsync(
-          'systemd-detect-virt 2>/dev/null || echo none',
-        );
+        const { stdout } = await execAsync('systemd-detect-virt 2>/dev/null || echo none');
         const virt = stdout.trim().toLowerCase();
 
         if (virt !== 'none' && virt !== '' && virt !== 'container') {
@@ -213,9 +200,7 @@ export class SystemInfoService {
       }
 
       // Check for common VM indicators
-      const dmiProduct = await this.safeReadFile(
-        '/sys/devices/virtual/dmi/id/product_name',
-      );
+      const dmiProduct = await this.safeReadFile('/sys/devices/virtual/dmi/id/product_name');
       if (
         dmiProduct.includes('VirtualBox') ||
         dmiProduct.includes('VMware') ||
@@ -227,10 +212,7 @@ export class SystemInfoService {
       // Default to bare metal
       return ContainerType.BARE_METAL;
     } catch (error: unknown) {
-      this.logger.warn(
-        'Failed to detect container type, assuming bare metal',
-        error,
-      );
+      this.logger.warn('Failed to detect container type, assuming bare metal', error);
       return ContainerType.UNKNOWN;
     }
   }
@@ -270,9 +252,7 @@ export class SystemInfoService {
    */
   private async getDiskSpace(): Promise<number> {
     try {
-      const { stdout } = await execAsync(
-        "df -BG / | tail -1 | awk '{print $2}'",
-      );
+      const { stdout } = await execAsync("df -BG / | tail -1 | awk '{print $2}'");
       const diskGb = parseInt(stdout.replace('G', ''), 10);
       return Number.isNaN(diskGb) ? 0 : diskGb;
     } catch (error: unknown) {
@@ -289,7 +269,7 @@ export class SystemInfoService {
       // Try nvidia-smi first
       try {
         const { stdout } = await execAsync(
-          'nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null',
+          'nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null'
         );
         const gpu = stdout.trim();
         if (gpu && !gpu.includes('command not found')) {
@@ -356,10 +336,7 @@ export class SystemInfoService {
       // Default to CPU
       return AccelerationType.CPU;
     } catch (error: unknown) {
-      this.logger.warn(
-        'Failed to detect acceleration type, defaulting to CPU',
-        error,
-      );
+      this.logger.warn('Failed to detect acceleration type, defaulting to CPU', error);
       return AccelerationType.CPU;
     }
   }

@@ -1,7 +1,4 @@
-import {
-  HttpClientTestingModule,
-  HttpTestingController,
-} from '@angular/common/http/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { JobStatus } from '../../features/queue/models/job-status.enum';
 import type { QueueFilters } from '../../features/queue/models/queue-filters.model';
@@ -120,9 +117,7 @@ describe('QueueClient', () => {
       });
 
       const jobsReq = httpMock.expectOne(
-        (req) =>
-          req.url === '/api/v1/queue' &&
-          req.params.get('stage') === JobStatus.ENCODING,
+        (req) => req.url === '/api/v1/queue' && req.params.get('stage') === JobStatus.ENCODING
       );
       expect(jobsReq.request.method).toBe('GET');
       jobsReq.flush(paginatedResponse(mockJobs));
@@ -148,16 +143,13 @@ describe('QueueClient', () => {
       client.getQueue(filters).subscribe();
 
       const jobsReq = httpMock.expectOne(
-        (req) =>
-          req.url === '/api/v1/queue' && req.params.get('nodeId') === 'node-1',
+        (req) => req.url === '/api/v1/queue' && req.params.get('nodeId') === 'node-1'
       );
       expect(jobsReq.request.method).toBe('GET');
       jobsReq.flush(paginatedResponse([]));
 
       const statsReq = httpMock.expectOne(
-        (req) =>
-          req.url === '/api/v1/queue/stats' &&
-          req.params.get('nodeId') === 'node-1',
+        (req) => req.url === '/api/v1/queue/stats' && req.params.get('nodeId') === 'node-1'
       );
       statsReq.flush(mockStats);
     });
@@ -179,8 +171,7 @@ describe('QueueClient', () => {
       client.getQueue(filters).subscribe();
 
       const jobsReq = httpMock.expectOne(
-        (req) =>
-          req.url === '/api/v1/queue' && req.params.get('search') === 'movie',
+        (req) => req.url === '/api/v1/queue' && req.params.get('search') === 'movie'
       );
       expect(jobsReq.request.method).toBe('GET');
       jobsReq.flush(paginatedResponse([]));
@@ -218,9 +209,7 @@ describe('QueueClient', () => {
       jobsReq.flush(paginatedResponse([]));
 
       const statsReq = httpMock.expectOne(
-        (req) =>
-          req.url === '/api/v1/queue/stats' &&
-          req.params.get('nodeId') === 'node-2',
+        (req) => req.url === '/api/v1/queue/stats' && req.params.get('nodeId') === 'node-2'
       );
       statsReq.flush(mockStats);
     });

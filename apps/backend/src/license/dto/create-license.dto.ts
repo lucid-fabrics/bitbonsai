@@ -1,12 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { LicenseTier } from '@prisma/client';
-import {
-  IsDateString,
-  IsEmail,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-} from 'class-validator';
+import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
 
 /**
  * DTO for creating a new license

@@ -27,7 +27,7 @@ export class AutoHealingService implements OnModuleInit {
   constructor(
     private readonly jobHistoryRepository: JobHistoryRepository,
     private readonly jobRepository: JobRepository,
-    private readonly settingsRepository: SettingsRepository,
+    private readonly settingsRepository: SettingsRepository
   ) {}
 
   /**
@@ -47,10 +47,7 @@ export class AutoHealingService implements OnModuleInit {
     const now = Date.now();
 
     // Return cached value if still valid
-    if (
-      this.settingsCache &&
-      now - this.settingsCache.cachedAt < this.SETTINGS_CACHE_TTL_MS
-    ) {
+    if (this.settingsCache && now - this.settingsCache.cachedAt < this.SETTINGS_CACHE_TTL_MS) {
       return this.settingsCache.maxRetries;
     }
 
@@ -106,7 +103,7 @@ export class AutoHealingService implements OnModuleInit {
           progress: true, // AUTO-HEAL TRACKING: needed to record progress at healing point
           tempFilePath: true, // HEAL UX: needed to check if temp file exists
           resumeTimestamp: true, // HEAL UX: needed to preserve resume state if temp file exists
-        },
+        }
       );
 
       if (eligibleJobs.length === 0) {
@@ -114,9 +111,7 @@ export class AutoHealingService implements OnModuleInit {
         return 0;
       }
 
-      this.logger.log(
-        `Found ${eligibleJobs.length} failed job(s) eligible for retry`,
-      );
+      this.logger.log(`Found ${eligibleJobs.length} failed job(s) eligible for retry`);
 
       // Reset jobs back to QUEUED individually to capture progress at healing point
       let healedCount = 0;
@@ -135,17 +130,15 @@ export class AutoHealingService implements OnModuleInit {
             healingMessage = `will resume from ${(job.progress || 0).toFixed(1)}%`;
             systemMessage = `Auto-healed: Will resume encoding from ${(job.progress || 0).toFixed(1)}% (temp file preserved)`;
             this.logger.log(
-              `✅ Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/${maxRetries}, ${healingMessage})`,
+              `✅ Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/${maxRetries}, ${healingMessage})`
             );
           } else {
             // Temp file missing or invalid - must start fresh
-            const reason = job.tempFilePath
-              ? 'temp file deleted'
-              : 'no temp file';
+            const reason = job.tempFilePath ? 'temp file deleted' : 'no temp file';
             healingMessage = `starting fresh (${reason})`;
             systemMessage = `Auto-healed: Temp file not available, starting encoding from scratch (was at ${(job.progress || 0).toFixed(1)}%)`;
             this.logger.log(
-              `⚠️  Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/${maxRetries}, ${healingMessage})`,
+              `⚠️  Healed job: ${job.fileLabel} (retry ${job.retryCount + 1}/${maxRetries}, ${healingMessage})`
             );
           }
 
@@ -180,16 +173,11 @@ export class AutoHealingService implements OnModuleInit {
 
           healedCount++;
         } catch (error: unknown) {
-          this.logger.error(
-            `Failed to heal job ${job.id} (${job.fileLabel})`,
-            error,
-          );
+          this.logger.error(`Failed to heal job ${job.id} (${job.fileLabel})`, error);
         }
       }
 
-      this.logger.log(
-        `Auto-healing complete: ${healedCount} job(s) re-queued for retry`,
-      );
+      this.logger.log(`Auto-healing complete: ${healedCount} job(s) re-queued for retry`);
 
       return healedCount;
     } catch (error: unknown) {

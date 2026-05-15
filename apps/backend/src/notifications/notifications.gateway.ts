@@ -48,16 +48,12 @@ export class NotificationsGateway
 
   handleConnection(client: Socket): void {
     this.connectedClients++;
-    this.logger.log(
-      `👋 Client connected: ${client.id} (Total: ${this.connectedClients})`,
-    );
+    this.logger.log(`👋 Client connected: ${client.id} (Total: ${this.connectedClients})`);
   }
 
   handleDisconnect(client: Socket): void {
     this.connectedClients--;
-    this.logger.log(
-      `👋 Client disconnected: ${client.id} (Total: ${this.connectedClients})`,
-    );
+    this.logger.log(`👋 Client disconnected: ${client.id} (Total: ${this.connectedClients})`);
   }
 
   /**
@@ -66,7 +62,7 @@ export class NotificationsGateway
   @OnEvent('notification.created')
   handleNotificationCreated(notification: Notification): void {
     this.logger.log(
-      `📡 Broadcasting notification to ${this.connectedClients} client(s): [${notification.type}] ${notification.title}`,
+      `📡 Broadcasting notification to ${this.connectedClients} client(s): [${notification.type}] ${notification.title}`
     );
     this.server.emit('notification', notification);
   }
@@ -85,9 +81,7 @@ export class NotificationsGateway
    */
   @OnEvent('notification.dismissed')
   handleNotificationDismissed(notificationId: string): void {
-    this.logger.log(
-      `📡 Broadcasting notification dismissed: ${notificationId}`,
-    );
+    this.logger.log(`📡 Broadcasting notification dismissed: ${notificationId}`);
     this.server.emit('notification:dismissed', { id: notificationId });
   }
 

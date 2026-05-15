@@ -46,10 +46,7 @@ export class NodeSetupService {
 
   // ─── Pairing ─────────────────────────────────────────────────────────────────
 
-  initiatePairing(
-    request: PairingRequest,
-    mainNodeUrl: string,
-  ): Observable<PairingResponse> {
+  initiatePairing(request: PairingRequest, mainNodeUrl: string): Observable<PairingResponse> {
     return this.discoveryService.initiatePairing(request, mainNodeUrl);
   }
 
@@ -57,10 +54,7 @@ export class NodeSetupService {
     return this.discoveryService.pollPairingStatus(requestId);
   }
 
-  getRegistrationRequest(
-    mainNodeUrl: string,
-    requestId: string,
-  ): Observable<RegistrationRequest> {
+  getRegistrationRequest(mainNodeUrl: string, requestId: string): Observable<RegistrationRequest> {
     return this.discoveryService.getRegistrationRequest(mainNodeUrl, requestId);
   }
 
@@ -80,7 +74,7 @@ export class NodeSetupService {
    */
   completeSetup(
     connectionToken: string,
-    mainNodeInfo: { id: string; name: string },
+    mainNodeInfo: { id: string; name: string }
   ): Observable<void> {
     return this.discoveryService.completeSetup(connectionToken, mainNodeInfo);
   }
@@ -88,7 +82,7 @@ export class NodeSetupService {
   updateNodeConfig(
     mainNodeUrl: string,
     nodeId: string,
-    config: { maxWorkers: number; cpuLimit: number },
+    config: { maxWorkers: number; cpuLimit: number }
   ): Observable<unknown> {
     return this.discoveryService.updateNodeConfig(mainNodeUrl, nodeId, config);
   }
@@ -103,7 +97,7 @@ export class NodeSetupService {
   finalizeCapabilityConfig(
     mainNodeUrl: string,
     nodeId: string,
-    config: { maxWorkers: number; cpuLimit: number },
+    config: { maxWorkers: number; cpuLimit: number }
   ): Observable<HardwareDetection> {
     return this.discoveryService
       .updateNodeConfig(mainNodeUrl, nodeId, config)
@@ -112,11 +106,7 @@ export class NodeSetupService {
 
   // ─── localStorage Persistence ─────────────────────────────────────────────────
 
-  savePendingPairingState(
-    requestId: string,
-    pairingCode: string,
-    mainNodeUrl: string,
-  ): void {
+  savePendingPairingState(requestId: string, pairingCode: string, mainNodeUrl: string): void {
     localStorage.setItem(STORAGE_KEY_REQUEST_ID, requestId);
     localStorage.setItem(STORAGE_KEY_PAIRING_CODE, pairingCode);
     localStorage.setItem(STORAGE_KEY_MAIN_NODE_URL, mainNodeUrl);

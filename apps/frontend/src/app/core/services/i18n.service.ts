@@ -38,10 +38,7 @@ export class I18nService {
     return value;
   }
 
-  private interpolate(
-    template: string,
-    params: Record<string, string | number>,
-  ): string {
+  private interpolate(template: string, params: Record<string, string | number>): string {
     return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
       return params[key]?.toString() ?? match;
     });

@@ -20,8 +20,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
     const startTime = Date.now();
     const { method, originalUrl, ip, headers } = req;
     const userAgent = headers['user-agent'] || 'Unknown';
-    const correlationId =
-      headers['x-correlation-id'] || headers['x-request-id'];
+    const correlationId = headers['x-correlation-id'] || headers['x-request-id'];
 
     // Log incoming request
     this.logger.http('Incoming request', {
@@ -36,7 +35,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
     type EndCallback = (
       chunk?: unknown,
       encoding?: BufferEncoding | (() => void),
-      cb?: () => void,
+      cb?: () => void
     ) => Response;
     const originalEnd = res.end.bind(res) as EndCallback;
     const logger = this.logger;
@@ -45,14 +44,13 @@ export class HttpLoggerMiddleware implements NestMiddleware {
       this: Response,
       chunk?: unknown,
       encoding?: BufferEncoding | (() => void),
-      cb?: () => void,
+      cb?: () => void
     ): Response {
       const responseTime = Date.now() - startTime;
       const { statusCode } = res;
 
       // Determine log level based on status code
-      const level =
-        statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'http';
+      const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'http';
 
       logger.logWithData(level, 'Request completed', {
         method,

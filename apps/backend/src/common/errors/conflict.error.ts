@@ -14,17 +14,11 @@ export class ConflictError extends BaseError {
  */
 export class DuplicateResourceError extends BaseError {
   constructor(resource: string, field: string, value: string) {
-    super(
-      `${resource} with ${field} '${value}' already exists`,
-      409,
-      'DUPLICATE_RESOURCE',
-      true,
-      {
-        resource,
-        field,
-        value,
-      },
-    );
+    super(`${resource} with ${field} '${value}' already exists`, 409, 'DUPLICATE_RESOURCE', true, {
+      resource,
+      field,
+      value,
+    });
   }
 }
 
@@ -33,15 +27,9 @@ export class DuplicateResourceError extends BaseError {
  */
 export class LibraryPathConflictError extends BaseError {
   constructor(path: string) {
-    super(
-      `A library with path '${path}' already exists`,
-      409,
-      'LIBRARY_PATH_CONFLICT',
-      true,
-      {
-        path,
-      },
-    );
+    super(`A library with path '${path}' already exists`, 409, 'LIBRARY_PATH_CONFLICT', true, {
+      path,
+    });
   }
 }
 
@@ -50,12 +38,6 @@ export class LibraryPathConflictError extends BaseError {
  */
 export class NodeNameConflictError extends BaseError {
   constructor(name: string) {
-    super(
-      `A node with name '${name}' already exists`,
-      409,
-      'NODE_NAME_CONFLICT',
-      true,
-      { name },
-    );
+    super(`A node with name '${name}' already exists`, 409, 'NODE_NAME_CONFLICT', true, { name });
   }
 }

@@ -2,10 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faCheckCircle } from '@fortawesome/free-solid-svg-icons';
-import {
-  PricingApiService,
-  PricingTier,
-} from '../../services/pricing-api.service';
+import { PricingApiService, PricingTier } from '../../services/pricing-api.service';
 import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.directive';
 
 interface ViewPricingTier {

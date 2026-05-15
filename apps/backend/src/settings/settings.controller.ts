@@ -15,10 +15,7 @@ import { JellyfinIntegrationService } from '../integrations/jellyfin.service';
 import { AdvancedModeDto } from './dto/advanced-mode.dto';
 import { AutoHealRetryLimitDto } from './dto/auto-heal-retry-limit.dto';
 import { DefaultQueueViewDto } from './dto/default-queue-view.dto';
-import {
-  JellyfinSettingsDto,
-  JellyfinTestResultDto,
-} from './dto/jellyfin-settings.dto';
+import { JellyfinSettingsDto, JellyfinTestResultDto } from './dto/jellyfin-settings.dto';
 import { QualityMetricsDto } from './dto/quality-metrics.dto';
 import { ReadyFilesCacheTtlDto } from './dto/ready-files-cache-ttl.dto';
 import { SecuritySettingsDto } from './dto/security-settings.dto';
@@ -32,7 +29,7 @@ export class SettingsController {
   constructor(
     private readonly environmentService: EnvironmentService,
     private readonly settingsService: SettingsService,
-    private readonly jellyfinService: JellyfinIntegrationService,
+    private readonly jellyfinService: JellyfinIntegrationService
   ) {}
 
   @Get('environment')
@@ -95,7 +92,7 @@ export class SettingsController {
   })
   @ApiBadRequestResponse({ description: 'Invalid settings provided' })
   async updateSystemSettings(
-    @Body() updateDto: UpdateSystemSettingsDto,
+    @Body() updateDto: UpdateSystemSettingsDto
   ): Promise<SystemSettingsDto> {
     return {
       version: APP_VERSION, // Read from package.json
@@ -179,10 +176,7 @@ export class SettingsController {
     description: 'Invalid request or API key regeneration not allowed',
   })
   async regenerateApiKey(): Promise<{ apiKey: string }> {
-    const randomKey = require('crypto')
-      .randomBytes(16)
-      .toString('hex')
-      .substring(0, 16);
+    const randomKey = require('crypto').randomBytes(16).toString('hex').substring(0, 16);
     return { apiKey: `bb_${randomKey}` };
   }
 
@@ -216,7 +210,7 @@ export class SettingsController {
   })
   @ApiBadRequestResponse({ description: 'Invalid security settings' })
   async updateSecuritySettings(
-    @Body() updateDto: SecuritySettingsDto,
+    @Body() updateDto: SecuritySettingsDto
   ): Promise<SecuritySettingsDto> {
     return this.settingsService.updateSecuritySettings(updateDto);
   }
@@ -247,7 +241,7 @@ export class SettingsController {
   })
   @ApiBadRequestResponse({ description: 'Invalid queue view provided' })
   async updateDefaultQueueView(
-    @Body() updateDto: DefaultQueueViewDto,
+    @Body() updateDto: DefaultQueueViewDto
   ): Promise<DefaultQueueViewDto> {
     return this.settingsService.updateDefaultQueueView(updateDto);
   }
@@ -278,11 +272,9 @@ export class SettingsController {
   })
   @ApiBadRequestResponse({ description: 'Invalid TTL value' })
   async updateReadyFilesCacheTtl(
-    @Body() updateDto: ReadyFilesCacheTtlDto,
+    @Body() updateDto: ReadyFilesCacheTtlDto
   ): Promise<ReadyFilesCacheTtlDto> {
-    return this.settingsService.updateReadyFilesCacheTtl(
-      updateDto.readyFilesCacheTtlMinutes,
-    );
+    return this.settingsService.updateReadyFilesCacheTtl(updateDto.readyFilesCacheTtlMinutes);
   }
 
   @Get('auto-heal-retry-limit')
@@ -311,11 +303,9 @@ export class SettingsController {
   })
   @ApiBadRequestResponse({ description: 'Invalid retry limit' })
   async updateAutoHealRetryLimit(
-    @Body() updateDto: AutoHealRetryLimitDto,
+    @Body() updateDto: AutoHealRetryLimitDto
   ): Promise<AutoHealRetryLimitDto> {
-    return this.settingsService.updateAutoHealRetryLimit(
-      updateDto.maxAutoHealRetries,
-    );
+    return this.settingsService.updateAutoHealRetryLimit(updateDto.maxAutoHealRetries);
   }
 
   // ============================================================================
@@ -356,12 +346,8 @@ export class SettingsController {
       },
     },
   })
-  async updateAdvancedMode(
-    @Body() updateDto: AdvancedModeDto,
-  ): Promise<AdvancedModeDto> {
-    return this.settingsService.updateAdvancedMode(
-      updateDto.advancedModeEnabled,
-    );
+  async updateAdvancedMode(@Body() updateDto: AdvancedModeDto): Promise<AdvancedModeDto> {
+    return this.settingsService.updateAdvancedMode(updateDto.advancedModeEnabled);
   }
 
   // ============================================================================
@@ -392,12 +378,8 @@ export class SettingsController {
     description: 'Quality metrics setting updated',
     type: QualityMetricsDto,
   })
-  async updateQualityMetrics(
-    @Body() updateDto: QualityMetricsDto,
-  ): Promise<QualityMetricsDto> {
-    return this.settingsService.updateQualityMetrics(
-      updateDto.qualityMetricsEnabled,
-    );
+  async updateQualityMetrics(@Body() updateDto: QualityMetricsDto): Promise<QualityMetricsDto> {
+    return this.settingsService.updateQualityMetrics(updateDto.qualityMetricsEnabled);
   }
 
   // ============================================================================
@@ -407,8 +389,7 @@ export class SettingsController {
   @Get('jellyfin')
   @ApiOperation({
     summary: 'Get Jellyfin integration settings',
-    description:
-      'Retrieve Jellyfin server URL and configuration. API key is masked for security.',
+    description: 'Retrieve Jellyfin server URL and configuration. API key is masked for security.',
   })
   @ApiOkResponse({
     description: 'Jellyfin settings retrieved',
@@ -435,10 +416,9 @@ export class SettingsController {
   })
   @ApiBadRequestResponse({ description: 'Invalid Jellyfin settings' })
   async updateJellyfinSettings(
-    @Body() updateDto: JellyfinSettingsDto,
+    @Body() updateDto: JellyfinSettingsDto
   ): Promise<JellyfinSettingsDto> {
-    const settings =
-      await this.settingsService.updateJellyfinSettings(updateDto);
+    const settings = await this.settingsService.updateJellyfinSettings(updateDto);
     return {
       jellyfinUrl: settings.jellyfinUrl || undefined,
       jellyfinApiKey: settings.jellyfinApiKey || undefined,
@@ -458,7 +438,7 @@ export class SettingsController {
   })
   @ApiBadRequestResponse({ description: 'Missing URL or API key' })
   async testJellyfinConnection(
-    @Body() testDto: JellyfinSettingsDto,
+    @Body() testDto: JellyfinSettingsDto
   ): Promise<JellyfinTestResultDto> {
     // Use provided credentials or fall back to stored ones
     let url = testDto.jellyfinUrl;
@@ -469,8 +449,7 @@ export class SettingsController {
       url = url || stored.jellyfinUrl || undefined;
       // For test, we need the actual API key, not masked
       if (!apiKey && stored.jellyfinApiKey) {
-        apiKey =
-          (await this.settingsService.getUnmaskedJellyfinApiKey()) || undefined;
+        apiKey = (await this.settingsService.getUnmaskedJellyfinApiKey()) || undefined;
       }
     }
 

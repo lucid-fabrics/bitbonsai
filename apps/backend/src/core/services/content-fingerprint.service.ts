@@ -24,15 +24,12 @@ export class ContentFingerprintService {
   private readonly SAMPLE_SIZE = 4096; // 4KB per sample
   private readonly SMALL_FILE_THRESHOLD = 100 * 1024; // 100KB
 
-  private xxhash: { h64Raw(input: Uint8Array, seed?: bigint): bigint } | null =
-    null;
+  private xxhash: { h64Raw(input: Uint8Array, seed?: bigint): bigint } | null = null;
 
   private async getHasher() {
     if (!this.xxhash) {
       const xxhashWasm = await import('xxhash-wasm');
-      const hasher = await (
-        xxhashWasm.default as () => Promise<typeof this.xxhash>
-      )();
+      const hasher = await (xxhashWasm.default as () => Promise<typeof this.xxhash>)();
       this.xxhash = hasher;
     }
     return this.xxhash!;
@@ -92,7 +89,7 @@ export class ContentFingerprintService {
       return hash.toString(16).padStart(16, '0');
     } catch (error: unknown) {
       this.logger.warn(
-        `Failed to fingerprint ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to fingerprint ${filePath}: ${error instanceof Error ? error.message : String(error)}`
       );
       return null;
     }

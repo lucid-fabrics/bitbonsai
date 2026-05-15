@@ -43,10 +43,7 @@ describe('FileRelocatorService', () => {
       });
       (fs.existsSync as jest.Mock).mockReturnValue(true);
 
-      const result = await service.relocateFile(
-        '/media/movies/old-name.mkv',
-        1024,
-      );
+      const result = await service.relocateFile('/media/movies/old-name.mkv', 1024);
 
       expect(result.found).toBe(true);
       expect(result.matchType).toBe('jellyfin');
@@ -63,25 +60,17 @@ describe('FileRelocatorService', () => {
       // First call: jellyfin path check returns false; subsequent: dir checks
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
-      const result = await service.relocateFile(
-        '/media/movies/old-name.mkv',
-        1024,
-      );
+      const result = await service.relocateFile('/media/movies/old-name.mkv', 1024);
 
       expect(result.found).toBe(false);
       expect(result.source).toBe('filesystem');
     });
 
     it('should fall back to filesystem when jellyfin throws', async () => {
-      mockJellyfinService.findFileByNameAndSize.mockRejectedValue(
-        new Error('API error'),
-      );
+      mockJellyfinService.findFileByNameAndSize.mockRejectedValue(new Error('API error'));
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
-      const result = await service.relocateFile(
-        '/media/movies/old-name.mkv',
-        1024,
-      );
+      const result = await service.relocateFile('/media/movies/old-name.mkv', 1024);
 
       expect(result.found).toBe(false);
     });
@@ -95,30 +84,25 @@ describe('FileRelocatorService', () => {
         return p === '/media/movies';
       });
 
-      (fs.readdirSync as jest.Mock).mockImplementation(
-        (dir: string, opts?: any) => {
-          if (dir === '/media/movies' && opts?.withFileTypes) {
-            return [
-              {
-                name: 'renamed.mkv',
-                isFile: () => true,
-                isDirectory: () => false,
-              },
-            ];
-          }
-          if (opts?.withFileTypes) {
-            return []; // No sibling dirs
-          }
-          return [];
-        },
-      );
+      (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
+        if (dir === '/media/movies' && opts?.withFileTypes) {
+          return [
+            {
+              name: 'renamed.mkv',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ];
+        }
+        if (opts?.withFileTypes) {
+          return []; // No sibling dirs
+        }
+        return [];
+      });
 
       (fs.statSync as jest.Mock).mockReturnValue({ size: 2048 });
 
-      const result = await service.relocateFile(
-        '/media/movies/original.mkv',
-        2048,
-      );
+      const result = await service.relocateFile('/media/movies/original.mkv', 2048);
 
       expect(result.found).toBe(true);
       expect(result.matchType).toBe('exact_size');
@@ -144,31 +128,24 @@ describe('FileRelocatorService', () => {
       mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
         found: false,
       });
-      (fs.existsSync as jest.Mock).mockImplementation(
-        (p: string) => p === '/media/movies',
-      );
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
-      (fs.readdirSync as jest.Mock).mockImplementation(
-        (dir: string, opts?: any) => {
-          if (dir === '/media/movies' && opts?.withFileTypes) {
-            return [
-              {
-                name: 'original.mkv',
-                isFile: () => true,
-                isDirectory: () => false,
-              },
-            ];
-          }
-          return [];
-        },
-      );
+      (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
+        if (dir === '/media/movies' && opts?.withFileTypes) {
+          return [
+            {
+              name: 'original.mkv',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ];
+        }
+        return [];
+      });
 
       (fs.statSync as jest.Mock).mockReturnValue({ size: 1024 });
 
-      const result = await service.relocateFile(
-        '/media/movies/original.mkv',
-        1024,
-      );
+      const result = await service.relocateFile('/media/movies/original.mkv', 1024);
 
       expect(result.found).toBe(false);
     });
@@ -177,29 +154,25 @@ describe('FileRelocatorService', () => {
       mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
         found: false,
       });
-      (fs.existsSync as jest.Mock).mockImplementation(
-        (p: string) => p === '/media/movies',
-      );
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
-      (fs.readdirSync as jest.Mock).mockImplementation(
-        (dir: string, opts?: any) => {
-          if (dir === '/media/movies' && opts?.withFileTypes) {
-            return [
-              {
-                name: 'metadata.nfo',
-                isFile: () => true,
-                isDirectory: () => false,
-              },
-              {
-                name: 'poster.jpg',
-                isFile: () => true,
-                isDirectory: () => false,
-              },
-            ];
-          }
-          return [];
-        },
-      );
+      (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
+        if (dir === '/media/movies' && opts?.withFileTypes) {
+          return [
+            {
+              name: 'metadata.nfo',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+            {
+              name: 'poster.jpg',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ];
+        }
+        return [];
+      });
 
       const result = await service.relocateFile('/media/movies/test.mkv', 1024);
 
@@ -213,10 +186,7 @@ describe('FileRelocatorService', () => {
       });
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
-      const result = await service.relocateFile(
-        '/media/movies/test.mkv',
-        BigInt(1073741824),
-      );
+      const result = await service.relocateFile('/media/movies/test.mkv', BigInt(1073741824));
 
       expect(result.found).toBe(false);
     });
@@ -225,32 +195,25 @@ describe('FileRelocatorService', () => {
       mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
         found: false,
       });
-      (fs.existsSync as jest.Mock).mockImplementation(
-        (p: string) => p === '/media/movies',
-      );
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
-      (fs.readdirSync as jest.Mock).mockImplementation(
-        (dir: string, opts?: any) => {
-          if (dir === '/media/movies' && opts?.withFileTypes) {
-            return [
-              {
-                name: 'The.Matrix.1999.1080p.BluRay.x264.mkv',
-                isFile: () => true,
-                isDirectory: () => false,
-              },
-            ];
-          }
-          return [];
-        },
-      );
+      (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
+        if (dir === '/media/movies' && opts?.withFileTypes) {
+          return [
+            {
+              name: 'The.Matrix.1999.1080p.BluRay.x264.mkv',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ];
+        }
+        return [];
+      });
 
       // Different size to ensure fuzzy path
       (fs.statSync as jest.Mock).mockReturnValue({ size: 9999 });
 
-      const result = await service.relocateFile(
-        '/media/movies/The Matrix (1999).mkv',
-        1024,
-      );
+      const result = await service.relocateFile('/media/movies/The Matrix (1999).mkv', 1024);
 
       expect(result.found).toBe(true);
       expect(result.matchType).toBe('fuzzy_name');
@@ -262,31 +225,24 @@ describe('FileRelocatorService', () => {
       mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
         found: false,
       });
-      (fs.existsSync as jest.Mock).mockImplementation(
-        (p: string) => p === '/media/movies',
-      );
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
-      (fs.readdirSync as jest.Mock).mockImplementation(
-        (dir: string, opts?: any) => {
-          if (dir === '/media/movies' && opts?.withFileTypes) {
-            return [
-              {
-                name: 'The.Matrix.1999.1080p.mkv',
-                isFile: () => true,
-                isDirectory: () => false,
-              },
-            ];
-          }
-          return [];
-        },
-      );
+      (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
+        if (dir === '/media/movies' && opts?.withFileTypes) {
+          return [
+            {
+              name: 'The.Matrix.1999.1080p.mkv',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ];
+        }
+        return [];
+      });
 
       (fs.statSync as jest.Mock).mockReturnValue({ size: 2048 });
 
-      const result = await service.relocateFile(
-        '/media/movies/The Matrix (1999).mkv',
-        2048,
-      );
+      const result = await service.relocateFile('/media/movies/The Matrix (1999).mkv', 2048);
 
       expect(result.found).toBe(true);
       expect(result.matchType).toBe('both');
@@ -297,31 +253,24 @@ describe('FileRelocatorService', () => {
       mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
         found: false,
       });
-      (fs.existsSync as jest.Mock).mockImplementation(
-        (p: string) => p === '/media/movies',
-      );
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
-      (fs.readdirSync as jest.Mock).mockImplementation(
-        (dir: string, opts?: any) => {
-          if (dir === '/media/movies' && opts?.withFileTypes) {
-            return [
-              {
-                name: 'zzzzz_totally_different_name.mkv',
-                isFile: () => true,
-                isDirectory: () => false,
-              },
-            ];
-          }
-          return [];
-        },
-      );
+      (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
+        if (dir === '/media/movies' && opts?.withFileTypes) {
+          return [
+            {
+              name: 'zzzzz_totally_different_name.mkv',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ];
+        }
+        return [];
+      });
 
       (fs.statSync as jest.Mock).mockReturnValue({ size: 5000 });
 
-      const result = await service.relocateFile(
-        '/media/movies/original.mkv',
-        5000,
-      );
+      const result = await service.relocateFile('/media/movies/original.mkv', 5000);
 
       expect(result.found).toBe(true);
       expect(result.matchType).toBe('exact_size');
@@ -332,24 +281,20 @@ describe('FileRelocatorService', () => {
       mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
         found: false,
       });
-      (fs.existsSync as jest.Mock).mockImplementation(
-        (p: string) => p === '/media/movies',
-      );
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
-      (fs.readdirSync as jest.Mock).mockImplementation(
-        (dir: string, opts?: any) => {
-          if (dir === '/media/movies' && opts?.withFileTypes) {
-            return [
-              {
-                name: 'locked.mkv',
-                isFile: () => true,
-                isDirectory: () => false,
-              },
-            ];
-          }
-          return [];
-        },
-      );
+      (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
+        if (dir === '/media/movies' && opts?.withFileTypes) {
+          return [
+            {
+              name: 'locked.mkv',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ];
+        }
+        return [];
+      });
 
       (fs.statSync as jest.Mock).mockImplementation(() => {
         throw new Error('EACCES: permission denied');
@@ -365,9 +310,7 @@ describe('FileRelocatorService', () => {
       mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
         found: false,
       });
-      (fs.existsSync as jest.Mock).mockImplementation(
-        (p: string) => p === '/media/movies',
-      );
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
       (fs.readdirSync as jest.Mock).mockImplementation(() => {
         throw new Error('EACCES: permission denied');
@@ -382,46 +325,39 @@ describe('FileRelocatorService', () => {
       mockJellyfinService.findFileByNameAndSize.mockResolvedValue({
         found: false,
       });
-      (fs.existsSync as jest.Mock).mockImplementation(
-        (p: string) => p === '/media/movies',
-      );
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === '/media/movies');
 
-      (fs.readdirSync as jest.Mock).mockImplementation(
-        (dir: string, opts?: any) => {
-          if (dir === '/media/movies' && opts?.withFileTypes) {
-            return [
-              {
-                name: 'movie-a.mkv',
-                isFile: () => true,
-                isDirectory: () => false,
-              },
-              {
-                name: 'movie-b.mp4',
-                isFile: () => true,
-                isDirectory: () => false,
-              },
-              {
-                name: 'movie-c.avi',
-                isFile: () => true,
-                isDirectory: () => false,
-              },
-              {
-                name: 'subtitle.srt',
-                isFile: () => true,
-                isDirectory: () => false,
-              }, // non-video
-            ];
-          }
-          return [];
-        },
-      );
+      (fs.readdirSync as jest.Mock).mockImplementation((dir: string, opts?: any) => {
+        if (dir === '/media/movies' && opts?.withFileTypes) {
+          return [
+            {
+              name: 'movie-a.mkv',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+            {
+              name: 'movie-b.mp4',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+            {
+              name: 'movie-c.avi',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+            {
+              name: 'subtitle.srt',
+              isFile: () => true,
+              isDirectory: () => false,
+            }, // non-video
+          ];
+        }
+        return [];
+      });
 
       (fs.statSync as jest.Mock).mockReturnValue({ size: 999 }); // no size match
 
-      const result = await service.relocateFile(
-        '/media/movies/missing.mkv',
-        1024,
-      );
+      const result = await service.relocateFile('/media/movies/missing.mkv', 1024);
 
       // 3 video files searched (subtitle.srt excluded), none match
       expect(result.searchedPaths).toBe(3);
@@ -460,11 +396,8 @@ describe('FileRelocatorService', () => {
   });
 
   describe('calculateSimilarity (private)', () => {
-    const similarity = (
-      service: FileRelocatorService,
-      a: string,
-      b: string,
-    ): number => (service as any).calculateSimilarity(a, b);
+    const similarity = (service: FileRelocatorService, a: string, b: string): number =>
+      (service as any).calculateSimilarity(a, b);
 
     it('should return 1 for identical strings', () => {
       expect(similarity(service, 'the matrix', 'the matrix')).toBe(1);

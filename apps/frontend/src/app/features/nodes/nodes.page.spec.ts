@@ -34,9 +34,7 @@ describe('NodesComponent', () => {
       getPendingRequests: jest.fn().mockReturnValue(of([])),
       getNodeScores: jest.fn().mockReturnValue(of([])),
       register: jest.fn().mockReturnValue(of({ command: 'test command' })),
-      pair: jest
-        .fn()
-        .mockReturnValue(of({ success: true, node: mockNodes[0] })),
+      pair: jest.fn().mockReturnValue(of({ success: true, node: mockNodes[0] })),
       deleteNode: jest.fn().mockReturnValue(of(void 0)),
     } as unknown as jest.Mocked<NodesClient>;
 
@@ -120,12 +118,8 @@ describe('NodesComponent', () => {
     });
 
     it('should get acceleration label', () => {
-      expect(NodeBo.getAccelerationLabel(AccelerationType.NVIDIA)).toBe(
-        'NVIDIA GPU',
-      );
-      expect(NodeBo.getAccelerationLabel(AccelerationType.CPU)).toBe(
-        'CPU Only',
-      );
+      expect(NodeBo.getAccelerationLabel(AccelerationType.NVIDIA)).toBe('NVIDIA GPU');
+      expect(NodeBo.getAccelerationLabel(AccelerationType.CPU)).toBe('CPU Only');
     });
   });
 

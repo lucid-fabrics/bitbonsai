@@ -22,17 +22,11 @@ export class SettingsRepository {
     return this.prisma.settings.create({ data });
   }
 
-  async update(
-    where: { id: string },
-    data: Partial<Settings>,
-  ): Promise<Settings> {
+  async update(where: { id: string }, data: Partial<Settings>): Promise<Settings> {
     return this.prisma.settings.update({ where, data });
   }
 
-  async upsert(
-    where: { id: string },
-    data: Partial<Settings>,
-  ): Promise<Settings> {
+  async upsert(where: { id: string }, data: Partial<Settings>): Promise<Settings> {
     return this.prisma.settings.upsert({
       where,
       update: data,
@@ -71,9 +65,7 @@ export class SettingsRepository {
   /**
    * Atomically find-or-create with default data, without updating if already exists.
    */
-  async findOrCreateWithDefaults(
-    defaults: Record<string, unknown>,
-  ): Promise<Settings> {
+  async findOrCreateWithDefaults(defaults: Record<string, unknown>): Promise<Settings> {
     return this.prisma.$transaction(async (tx) => {
       let s = await tx.settings.findFirst();
 

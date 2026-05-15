@@ -33,21 +33,15 @@ export class MediaStatsBo {
   }
 
   get hevcPercentage(): number {
-    return this.totalFiles > 0
-      ? (this.codecDistribution.hevc / this.totalFiles) * 100
-      : 0;
+    return this.totalFiles > 0 ? (this.codecDistribution.hevc / this.totalFiles) * 100 : 0;
   }
 
   get h264Percentage(): number {
-    return this.totalFiles > 0
-      ? (this.codecDistribution.h264 / this.totalFiles) * 100
-      : 0;
+    return this.totalFiles > 0 ? (this.codecDistribution.h264 / this.totalFiles) * 100 : 0;
   }
 
   get av1Percentage(): number {
-    return this.totalFiles > 0
-      ? (this.codecDistribution.av1 / this.totalFiles) * 100
-      : 0;
+    return this.totalFiles > 0 ? (this.codecDistribution.av1 / this.totalFiles) * 100 : 0;
   }
 
   get scanTimestampFormatted(): string {

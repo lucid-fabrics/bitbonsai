@@ -54,9 +54,7 @@ describe('JobRouterService', () => {
       const result = await service.findBestNodeForJob('job-1', BigInt(1000000));
 
       expect(result).toBeNull();
-      expect((service as any).logger.warn).toHaveBeenCalledWith(
-        'No online nodes available',
-      );
+      expect((service as any).logger.warn).toHaveBeenCalledWith('No online nodes available');
     });
 
     it('should prefer LOCAL node with shared storage (highest score)', async () => {
@@ -183,9 +181,7 @@ describe('JobRouterService', () => {
       const result = await service.findBestNodeForJob('job-1', BigInt(1000000));
 
       expect(result).toBeNull();
-      expect((service as any).logger.warn).toHaveBeenCalledWith(
-        'No node can handle this job',
-      );
+      expect((service as any).logger.warn).toHaveBeenCalledWith('No node can handle this job');
     });
 
     it('should penalize large file + remote node combination', async () => {
@@ -236,11 +232,9 @@ describe('JobRouterService', () => {
 
       await service.findBestNodeForJob('job-1', BigInt(1000000));
 
+      expect((service as any).logger.log).toHaveBeenCalledWith('Node scoring results:');
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Node scoring results:',
-      );
-      expect((service as any).logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('node-node-a'),
+        expect.stringContaining('node-node-a')
       );
     });
 
@@ -273,7 +267,7 @@ describe('JobRouterService', () => {
 
       expect(result).toBe(0);
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Not enough nodes for rebalancing (need at least 2)',
+        'Not enough nodes for rebalancing (need at least 2)'
       );
     });
 
@@ -287,7 +281,7 @@ describe('JobRouterService', () => {
 
       expect(result).toBe(0);
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('No rebalancing needed'),
+        expect.stringContaining('No rebalancing needed')
       );
     });
 
@@ -386,7 +380,7 @@ describe('JobRouterService', () => {
           id: true,
           name: true,
           maxWorkers: true,
-        }),
+        })
       );
     });
 
@@ -402,7 +396,7 @@ describe('JobRouterService', () => {
 
       expect(jobRepository.findManySelect).toHaveBeenCalledWith(
         expect.objectContaining({ stage: 'QUEUED' }),
-        expect.anything(),
+        expect.anything()
       );
     });
 
@@ -411,18 +405,16 @@ describe('JobRouterService', () => {
         createNode('overloaded', { maxWorkers: 2, _count: { jobs: 10 } }),
         createNode('idle', { maxWorkers: 10, _count: { jobs: 0 } }),
       ]);
-      jobRepository.findManySelect.mockResolvedValue([
-        { id: 'j1', fileLabel: 'test.mkv' },
-      ]);
+      jobRepository.findManySelect.mockResolvedValue([{ id: 'j1', fileLabel: 'test.mkv' }]);
       jobRepository.updateById.mockResolvedValue({});
 
       await service.rebalanceJobs();
 
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('Rebalanced 1 job(s)'),
+        expect.stringContaining('Rebalanced 1 job(s)')
       );
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('Moved job test.mkv'),
+        expect.stringContaining('Moved job test.mkv')
       );
     });
 
@@ -445,9 +437,7 @@ describe('JobRouterService', () => {
 
       await service.findBestNodeForJob('job-1', BigInt(0));
 
-      expect((service as any).logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('0 Bytes'),
-      );
+      expect((service as any).logger.log).toHaveBeenCalledWith(expect.stringContaining('0 Bytes'));
     });
 
     it('should format GB sizes correctly', async () => {
@@ -456,9 +446,7 @@ describe('JobRouterService', () => {
 
       await service.findBestNodeForJob('job-1', twoGB);
 
-      expect((service as any).logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('2.00 GB'),
-      );
+      expect((service as any).logger.log).toHaveBeenCalledWith(expect.stringContaining('2.00 GB'));
     });
   });
 });

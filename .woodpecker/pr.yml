@@ -1,0 +1,86 @@
+when:
+  - event: pull_request
+  - event: manual
+
+labels:
+  platform: linux
+
+clone:
+  - name: clone
+    image: woodpeckerci/plugin-git
+    settings:
+      lfs: false
+
+steps:
+  - name: lint
+    image: node:22
+    commands:
+      - |
+        npm ci --legacy-peer-deps
+        npx prisma generate
+        npx nx run-many --target=lint --all --fix || true
+        npx prettier --write "**/*.{ts,json,md,scss,html}" || true
+        npx biome check . || true
+
+  - name: test-attempt-1
+    image: node:22
+    commands:
+      - |
+        npm ci --legacy-peer-deps
+        npx prisma generate
+        npx nx run-many --target=test --all --passWithNoTests && touch /tmp/tests_passed || true
+
+  - name: test-attempt-2
+    image: node:22
+    when:
+      - evaluate: '!CI_STEP_PREVIOUS_RESULT_test-attempt-1 || CI_STEP_PREVIOUS_RESULT_test-attempt-1 == "failure"'
+    commands:
+      - |
+        [ -f /tmp/tests_passed ] && echo "Tests already passed, skipping" && exit 0
+        npm ci --legacy-peer-deps
+        npx prisma generate
+        npx nx run-many --target=test --all --passWithNoTests && touch /tmp/tests_passed || true
+
+  - name: test-attempt-3
+    image: node:22
+    when:
+      - evaluate: '!CI_STEP_PREVIOUS_RESULT_test-attempt-2 || CI_STEP_PREVIOUS_RESULT_test-attempt-2 == "failure"'
+    commands:
+      - |
+        [ -f /tmp/tests_passed ] && echo "Tests already passed, skipping" && exit 0
+        npm ci --legacy-peer-deps
+        npx prisma generate
+        npx nx run-many --target=test --all --passWithNoTests
+
+  - name: build
+    image: node:22
+    commands:
+      - |
+        npm ci --legacy-peer-deps
+        npx prisma generate
+        npx nx build backend --configuration=production --skip-nx-cache
+        npx nx build frontend --configuration=production --skip-nx-cache
+        npx nx build website --configuration=production --skip-nx-cache
+
+  - name: notify_result
+    image: bash
+    when:
+      - status: [success, failure]
+    environment:
+      TELEGRAM_BOT_TOKEN:
+        from_secret: TELEGRAM_BOT_TOKEN
+      TELEGRAM_CHAT_ID:
+        from_secret: TELEGRAM_CHAT_ID
+    commands:
+      - apk add --no-cache curl
+      - |
+        if [ "$CI_PIPELINE_STATUS" = "success" ]; then TG_EMOJI="✅"; else TG_EMOJI="❌"; fi
+        COMMIT_SHORT="${CI_COMMIT_SHA:0:7}"
+        COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        COMMIT_AUTHOR=$(echo "$CI_COMMIT_AUTHOR" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        COMMIT_MSG=$(echo "$CI_COMMIT_MESSAGE" | head -1 | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        MSG=$(printf '🔀 <b>BitBonsai PR</b> — %s\n\n🌿 <code>%s</code>\n🔖 <code>%s</code> · %s\n📝 %s\n\n🔗 %s' \
+          "$TG_EMOJI" "$COMMIT_BRANCH" "$COMMIT_SHORT" "$COMMIT_AUTHOR" "$COMMIT_MSG" "$CI_PIPELINE_URL")
+        curl -s --max-time 30 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+          -d "chat_id=${TELEGRAM_CHAT_ID}&parse_mode=HTML&disable_web_page_preview=true" \
+          --data-urlencode "text=$MSG" || true

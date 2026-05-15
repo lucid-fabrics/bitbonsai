@@ -22,13 +22,11 @@ interface PrismaDelegate {
 export class BaseRepository {
   constructor(
     protected readonly prisma: PrismaService,
-    protected readonly modelName: string,
+    protected readonly modelName: string
   ) {}
 
   protected get model(): PrismaDelegate {
-    return (this.prisma as unknown as Record<string, PrismaDelegate>)[
-      this.modelName
-    ];
+    return (this.prisma as unknown as Record<string, PrismaDelegate>)[this.modelName];
   }
 
   async findUnique<T = unknown>(args: Record<string, unknown>): Promise<T> {
@@ -55,9 +53,7 @@ export class BaseRepository {
     return this.model.delete(args) as Promise<T>;
   }
 
-  async deleteMany(
-    args: Record<string, unknown>,
-  ): Promise<Prisma.BatchPayload> {
+  async deleteMany(args: Record<string, unknown>): Promise<Prisma.BatchPayload> {
     return this.model.deleteMany(args);
   }
 

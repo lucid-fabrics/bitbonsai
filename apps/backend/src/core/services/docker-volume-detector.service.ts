@@ -42,10 +42,7 @@ export class DockerVolumeDetectorService {
    */
   async detectVolumes(): Promise<DockerVolumeMount[]> {
     // Return cached result if still valid
-    if (
-      this.cachedVolumes &&
-      Date.now() - this.lastDetection < this.CACHE_TTL
-    ) {
+    if (this.cachedVolumes && Date.now() - this.lastDetection < this.CACHE_TTL) {
       return this.cachedVolumes;
     }
 
@@ -72,20 +69,16 @@ export class DockerVolumeDetectorService {
       this.cachedVolumes = filteredVolumes;
       this.lastDetection = Date.now();
 
-      this.logger.log(
-        `Detected ${filteredVolumes.length} Docker volume mounts`,
-      );
+      this.logger.log(`Detected ${filteredVolumes.length} Docker volume mounts`);
       filteredVolumes.forEach((v) => {
-        this.logger.debug(
-          `  ${v.source} → ${v.destination} (${v.readOnly ? 'ro' : 'rw'})`,
-        );
+        this.logger.debug(`  ${v.source} → ${v.destination} (${v.readOnly ? 'ro' : 'rw'})`);
       });
 
       return filteredVolumes;
     } catch (error: unknown) {
       this.logger.error(
         'Failed to detect Docker volumes',
-        error instanceof Error ? error.stack : error,
+        error instanceof Error ? error.stack : error
       );
       return [];
     }
@@ -97,25 +90,16 @@ export class DockerVolumeDetectorService {
   private async isRunningInDocker(): Promise<boolean> {
     try {
       // Check for .dockerenv file
-      const { stdout } = await execAsync(
-        '[ -f /.dockerenv ] && echo "true" || echo "false"',
-      );
+      const { stdout } = await execAsync('[ -f /.dockerenv ] && echo "true" || echo "false"');
       if (stdout.trim() === 'true') {
         return true;
       }
 
       // Check cgroup
-      const { stdout: cgroupOutput } = await execAsync(
-        'cat /proc/1/cgroup 2>/dev/null || echo ""',
-      );
-      return (
-        cgroupOutput.includes('docker') || cgroupOutput.includes('kubepods')
-      );
+      const { stdout: cgroupOutput } = await execAsync('cat /proc/1/cgroup 2>/dev/null || echo ""');
+      return cgroupOutput.includes('docker') || cgroupOutput.includes('kubepods');
     } catch (error: unknown) {
-      this.logger.debug(
-        'Docker detection check failed, assuming non-containerized',
-        error,
-      );
+      this.logger.debug('Docker detection check failed, assuming non-containerized', error);
       return false;
     }
   }
@@ -131,9 +115,7 @@ export class DockerVolumeDetectorService {
   /**
    * Inspect Docker container to get mount information
    */
-  private async inspectContainer(
-    containerIdOrName: string,
-  ): Promise<DockerInspectResponse> {
+  private async inspectContainer(containerIdOrName: string): Promise<DockerInspectResponse> {
     // Try multiple methods to find the container
     const candidateNames = [
       containerIdOrName, // Hostname
@@ -148,16 +130,11 @@ export class DockerVolumeDetectorService {
         const parsed = JSON.parse(stdout);
         // MEDIUM FIX: Validate array has elements before accessing [0]
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]) {
-          this.logger.debug(
-            `Successfully inspected container using name: ${name}`,
-          );
+          this.logger.debug(`Successfully inspected container using name: ${name}`);
           return parsed[0];
         }
       } catch (error: unknown) {
-        this.logger.debug(
-          `Failed to inspect container with name: ${name}`,
-          error,
-        );
+        this.logger.debug(`Failed to inspect container with name: ${name}`, error);
       }
     }
 
@@ -193,9 +170,7 @@ export class DockerVolumeDetectorService {
   /**
    * Parse mount information from Docker inspect output
    */
-  private parseVolumeMounts(
-    containerInfo: DockerInspectResponse,
-  ): DockerVolumeMount[] {
+  private parseVolumeMounts(containerInfo: DockerInspectResponse): DockerVolumeMount[] {
     const mounts = containerInfo.Mounts || [];
 
     return mounts
@@ -211,9 +186,7 @@ export class DockerVolumeDetectorService {
   /**
    * Filter out system/internal mounts that shouldn't be shared
    */
-  private filterSystemMounts(
-    volumes: DockerVolumeMount[],
-  ): DockerVolumeMount[] {
+  private filterSystemMounts(volumes: DockerVolumeMount[]): DockerVolumeMount[] {
     const systemPaths = [
       '/etc/resolv.conf',
       '/etc/hostname',
@@ -254,11 +227,7 @@ export class DockerVolumeDetectorService {
       }
 
       // Exclude application internal paths
-      if (
-        appInternalPaths.some(
-          (prefix) => dest === prefix || dest.startsWith(`${prefix}/`),
-        )
-      ) {
+      if (appInternalPaths.some((prefix) => dest === prefix || dest.startsWith(`${prefix}/`))) {
         return false;
       }
 
@@ -284,19 +253,17 @@ export class DockerVolumeDetectorService {
         '/photos',
       ];
       const destMatches = allowedDestPrefixes.some(
-        (prefix) => dest === prefix || dest.startsWith(`${prefix}/`),
+        (prefix) => dest === prefix || dest.startsWith(`${prefix}/`)
       );
 
       // Allowed source patterns (Unraid-specific)
       const allowedSourcePatterns = ['/mnt/user/', '/mnt/cache/', '/mnt/disk'];
-      const sourceMatches = allowedSourcePatterns.some((pattern) =>
-        source.includes(pattern),
-      );
+      const sourceMatches = allowedSourcePatterns.some((pattern) => source.includes(pattern));
 
       // Include if either destination OR source looks like media
       if (!destMatches && !sourceMatches) {
         this.logger.debug(
-          `Excluding volume: ${dest} (source: ${source}) - not a media/data directory`,
+          `Excluding volume: ${dest} (source: ${source}) - not a media/data directory`
         );
         return false;
       }
