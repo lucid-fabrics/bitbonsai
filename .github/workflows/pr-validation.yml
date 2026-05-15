@@ -10,13 +10,9 @@ on:
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macbook]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
       - run: npm ci --legacy-peer-deps
       - run: npx prisma generate
       - run: npx nx run-many --target=lint --all || true
@@ -24,67 +20,47 @@ jobs:
 
   test-backend:
     name: Test Backend
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macbook]
     needs: lint
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
       - run: npm ci --legacy-peer-deps
       - run: npx prisma generate
       - run: npx nx test backend --passWithNoTests
 
   test-frontend:
     name: Test Frontend
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macbook]
     needs: lint
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
       - run: npm ci --legacy-peer-deps
       - run: npx nx test frontend --passWithNoTests
 
   build-backend:
     name: Build Backend
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macbook]
     needs: test-backend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
       - run: npm ci --legacy-peer-deps
       - run: npx prisma generate
       - run: npx nx build backend --configuration=production
 
   build-frontend:
     name: Build Frontend
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macbook]
     needs: test-frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
       - run: npm ci --legacy-peer-deps
       - run: npx nx build frontend --configuration=production
 
   build-website:
     name: Build Website
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macbook]
     needs: lint
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
       - run: npm ci --legacy-peer-deps
       - run: npx nx build website --configuration=production
