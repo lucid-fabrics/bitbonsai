@@ -68,7 +68,7 @@ export class EnvironmentDetectorService {
     };
 
     this.logger.log(
-      `Environment detected: ${containerType}, Privileged: ${isPrivileged}, Can mount NFS: ${canMountNFS}`
+      `Environment detected: ${containerType}, Privileged: ${isPrivileged}, Can mount NFS: ${canMountNFS}`,
     );
 
     return this.cachedInfo;
@@ -104,7 +104,9 @@ export class EnvironmentDetectorService {
 
       // Check systemd-detect-virt (most reliable for LXC)
       try {
-        const { stdout } = await execAsync('systemd-detect-virt --container 2>/dev/null');
+        const { stdout } = await execAsync(
+          'systemd-detect-virt --container 2>/dev/null',
+        );
         const virt = stdout.trim().toLowerCase();
 
         if (virt === 'lxc' || virt === 'lxc-libvirt') {
@@ -124,7 +126,7 @@ export class EnvironmentDetectorService {
         }
       } catch (error: unknown) {
         this.logger.warn(
-          `[detectContainerType] systemd-detect-virt unavailable: ${error instanceof Error ? error.message : String(error)}`
+          `[detectContainerType] systemd-detect-virt unavailable: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
 
@@ -141,7 +143,7 @@ export class EnvironmentDetectorService {
     } catch (error: unknown) {
       this.logger.warn(
         'Error detecting container type',
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
       return ContainerType.UNKNOWN;
     }
@@ -168,7 +170,7 @@ export class EnvironmentDetectorService {
       return false;
     } catch (error: unknown) {
       this.logger.warn(
-        `[isPrivilegedContainer] Failed to read capabilities: ${error instanceof Error ? error.message : String(error)}`
+        `[isPrivilegedContainer] Failed to read capabilities: ${error instanceof Error ? error.message : String(error)}`,
       );
       return false;
     }
@@ -201,7 +203,7 @@ export class EnvironmentDetectorService {
   private async detectNetworkSubnet(): Promise<string | null> {
     try {
       const { stdout } = await execAsync(
-        "ip -4 addr show | grep 'inet ' | grep -v '127.0.0.1' | head -1 | awk '{print $2}'"
+        "ip -4 addr show | grep 'inet ' | grep -v '127.0.0.1' | head -1 | awk '{print $2}'",
       );
 
       const cidr = stdout.trim();
@@ -221,7 +223,7 @@ export class EnvironmentDetectorService {
       return cidr;
     } catch (error: unknown) {
       this.logger.warn(
-        `[detectNetworkSubnet] Failed to detect subnet: ${error instanceof Error ? error.message : String(error)}`
+        `[detectNetworkSubnet] Failed to detect subnet: ${error instanceof Error ? error.message : String(error)}`,
       );
       return null;
     }
@@ -236,7 +238,7 @@ export class EnvironmentDetectorService {
       return stdout.trim();
     } catch (error: unknown) {
       this.logger.warn(
-        `[getHostname] Failed to get hostname: ${error instanceof Error ? error.message : String(error)}`
+        `[getHostname] Failed to get hostname: ${error instanceof Error ? error.message : String(error)}`,
       );
       return 'unknown';
     }
@@ -255,11 +257,13 @@ export class EnvironmentDetectorService {
       subnet: string | null;
       containerType: ContainerType;
       canMountNFS: boolean;
-    }
+    },
   ): Promise<StorageMethodRecommendation> {
     // Check if nodes are on same network
     const sameNetwork =
-      sourceNode.subnet && targetNode.subnet && sourceNode.subnet === targetNode.subnet;
+      sourceNode.subnet &&
+      targetNode.subnet &&
+      sourceNode.subnet === targetNode.subnet;
 
     // Target node cannot mount NFS
     if (!targetNode.canMountNFS) {
@@ -319,7 +323,7 @@ export class EnvironmentDetectorService {
       return true;
     } catch (error: unknown) {
       this.logger.warn(
-        `[fileExists] Cannot access ${path}: ${error instanceof Error ? error.message : String(error)}`
+        `[fileExists] Cannot access ${path}: ${error instanceof Error ? error.message : String(error)}`,
       );
       return false;
     }
@@ -330,7 +334,7 @@ export class EnvironmentDetectorService {
       return await fs.readFile(path, 'utf-8');
     } catch (error: unknown) {
       this.logger.warn(
-        `[readFile] Cannot read ${path}: ${error instanceof Error ? error.message : String(error)}`
+        `[readFile] Cannot read ${path}: ${error instanceof Error ? error.message : String(error)}`,
       );
       return '';
     }

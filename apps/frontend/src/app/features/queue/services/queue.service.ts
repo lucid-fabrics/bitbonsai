@@ -18,7 +18,7 @@ export class QueueService {
       map((raw) => ({
         ...raw,
         jobs: raw.jobs.map((job) => new QueueJobBo(job)),
-      }))
+      })),
     );
   }
 
@@ -35,11 +35,15 @@ export class QueueService {
   }
 
   recheckJob(jobId: string): Observable<QueueJobBo> {
-    return this.queueClient.recheckJob(jobId).pipe(map((job) => new QueueJobBo(job)));
+    return this.queueClient
+      .recheckJob(jobId)
+      .pipe(map((job) => new QueueJobBo(job)));
   }
 
   detectAndRequeue(jobId: string): Observable<QueueJobBo> {
-    return this.queueClient.detectAndRequeue(jobId).pipe(map((job) => new QueueJobBo(job)));
+    return this.queueClient
+      .detectAndRequeue(jobId)
+      .pipe(map((job) => new QueueJobBo(job)));
   }
 
   retryAllCancelled(): Observable<{
@@ -88,7 +92,9 @@ export class QueueService {
   }
 
   keepOriginal(jobId: string): Observable<QueueJobBo> {
-    return this.queueClient.keepOriginal(jobId).pipe(map((job) => new QueueJobBo(job)));
+    return this.queueClient
+      .keepOriginal(jobId)
+      .pipe(map((job) => new QueueJobBo(job)));
   }
 
   deleteOriginal(jobId: string): Observable<{ freedSpace: string }> {
@@ -96,14 +102,19 @@ export class QueueService {
   }
 
   restoreOriginal(jobId: string): Observable<QueueJobBo> {
-    return this.queueClient.restoreOriginal(jobId).pipe(map((job) => new QueueJobBo(job)));
+    return this.queueClient
+      .restoreOriginal(jobId)
+      .pipe(map((job) => new QueueJobBo(job)));
   }
 
   deleteJob(jobId: string): Observable<void> {
     return this.queueClient.deleteJob(jobId);
   }
 
-  resolveDecision(jobId: string, actionConfig: Record<string, unknown>): Observable<QueueJobBo> {
+  resolveDecision(
+    jobId: string,
+    actionConfig: Record<string, unknown>,
+  ): Observable<QueueJobBo> {
     return this.queueClient
       .resolveDecision(jobId, actionConfig)
       .pipe(map((job) => new QueueJobBo(job)));
@@ -144,7 +155,9 @@ export class QueueService {
   }
 
   capturePreview(jobId: string): Observable<QueueJobBo> {
-    return this.queueClient.capturePreview(jobId).pipe(map((job) => new QueueJobBo(job)));
+    return this.queueClient
+      .capturePreview(jobId)
+      .pipe(map((job) => new QueueJobBo(job)));
   }
 
   getActiveTransfers(): Observable<QueueJobApiModel[]> {

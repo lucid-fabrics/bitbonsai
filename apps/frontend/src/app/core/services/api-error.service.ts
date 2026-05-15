@@ -5,7 +5,9 @@ import { BehaviorSubject } from 'rxjs';
   providedIn: 'root',
 })
 export class ApiErrorService {
-  private readonly showConnectionErrorSubject = new BehaviorSubject<boolean>(false);
+  private readonly showConnectionErrorSubject = new BehaviorSubject<boolean>(
+    false,
+  );
   private errorCount = 0;
   private readonly ERROR_THRESHOLD = 2; // Show modal after 2 consecutive errors
 

@@ -1,4 +1,8 @@
-import { type Node, type StorageShare, type StorageShareStatus } from '@prisma/client';
+import {
+  type Node,
+  type StorageShare,
+  type StorageShareStatus,
+} from '@prisma/client';
 
 export type StorageShareWithNode = StorageShare & { node: Node | null };
 
@@ -20,7 +24,10 @@ export interface IStorageShareRepository {
   /**
    * Find a storage share by mount point and node
    */
-  findByMountPoint(nodeId: string, mountPoint: string): Promise<StorageShare | null>;
+  findByMountPoint(
+    nodeId: string,
+    mountPoint: string,
+  ): Promise<StorageShare | null>;
 
   /**
    * Find all storage shares for a node
@@ -53,7 +60,7 @@ export interface IStorageShareRepository {
   updateStatus(
     id: string,
     status: StorageShareStatus,
-    errorMessage?: string
+    errorMessage?: string,
   ): Promise<StorageShare>;
 
   /**
@@ -89,12 +96,17 @@ export interface IStorageShareRepository {
   /**
    * Find all mount points for a specific node
    */
-  findMountPointsByNodeId(nodeId: string): Promise<Array<{ mountPoint: string }>>;
+  findMountPointsByNodeId(
+    nodeId: string,
+  ): Promise<Array<{ mountPoint: string }>>;
 
   /**
    * Find a storage share by share path and node
    */
-  findBySharePath(nodeId: string, sharePath: string): Promise<StorageShare | null>;
+  findBySharePath(
+    nodeId: string,
+    sharePath: string,
+  ): Promise<StorageShare | null>;
 
   /**
    * Find all mounted shares including their associated node

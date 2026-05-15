@@ -29,8 +29,12 @@ import { AuthService } from './auth.service';
  */
 export const authGuard: CanActivateFn = (
   _route: ActivatedRouteSnapshot,
-  state: RouterStateSnapshot
-): Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree => {
+  state: RouterStateSnapshot,
+):
+  | Observable<boolean | UrlTree>
+  | Promise<boolean | UrlTree>
+  | boolean
+  | UrlTree => {
   const authService = inject(AuthService);
   const router = inject(Router);
   const http = inject(HttpClient);
@@ -67,10 +71,10 @@ export const authGuard: CanActivateFn = (
             return of(
               router.createUrlTree(['/login'], {
                 queryParams: { returnUrl: state.url },
-              })
+              }),
             );
-          })
+          }),
         );
-    })
+    }),
   );
 };

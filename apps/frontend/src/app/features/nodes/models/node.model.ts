@@ -115,7 +115,12 @@ export interface NodeCapabilities {
 /**
  * Test status for capability tests
  */
-export type CapabilityTestStatus = 'pending' | 'running' | 'success' | 'warning' | 'error';
+export type CapabilityTestStatus =
+  | 'pending'
+  | 'running'
+  | 'success'
+  | 'warning'
+  | 'error';
 
 /**
  * Individual capability test result

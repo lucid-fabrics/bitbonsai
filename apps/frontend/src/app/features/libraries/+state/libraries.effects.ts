@@ -15,11 +15,15 @@ export class LibrariesEffects {
       ofType(LibrariesActions.loadLibraries),
       switchMap(() =>
         this.librariesService.getLibraries().pipe(
-          map((libraries) => LibrariesActions.loadLibrariesSuccess({ libraries })),
-          catchError((error) => of(LibrariesActions.loadLibrariesFailure({ error: error.message })))
-        )
-      )
-    )
+          map((libraries) =>
+            LibrariesActions.loadLibrariesSuccess({ libraries }),
+          ),
+          catchError((error) =>
+            of(LibrariesActions.loadLibrariesFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   createLibrary$ = createEffect(() =>
@@ -28,10 +32,12 @@ export class LibrariesEffects {
       switchMap(({ library }) =>
         this.librariesService.createLibrary(library).pipe(
           map((library) => LibrariesActions.createLibrarySuccess({ library })),
-          catchError((error) => of(LibrariesActions.createLibraryFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(LibrariesActions.createLibraryFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   updateLibrary$ = createEffect(() =>
@@ -40,10 +46,12 @@ export class LibrariesEffects {
       switchMap(({ id, library }) =>
         this.librariesService.updateLibrary(id, library).pipe(
           map((library) => LibrariesActions.updateLibrarySuccess({ library })),
-          catchError((error) => of(LibrariesActions.updateLibraryFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(LibrariesActions.updateLibraryFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   deleteLibrary$ = createEffect(() =>
@@ -52,10 +60,12 @@ export class LibrariesEffects {
       switchMap(({ id }) =>
         this.librariesService.deleteLibrary(id).pipe(
           map(() => LibrariesActions.deleteLibrarySuccess({ id })),
-          catchError((error) => of(LibrariesActions.deleteLibraryFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(LibrariesActions.deleteLibraryFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   scanLibrary$ = createEffect(() =>
@@ -63,10 +73,14 @@ export class LibrariesEffects {
       ofType(LibrariesActions.scanLibrary),
       switchMap(({ id }) =>
         this.librariesService.scanLibrary(id).pipe(
-          map((library) => LibrariesActions.scanLibrarySuccess({ id, library })),
-          catchError((error) => of(LibrariesActions.scanLibraryFailure({ error: error.message })))
-        )
-      )
-    )
+          map((library) =>
+            LibrariesActions.scanLibrarySuccess({ id, library }),
+          ),
+          catchError((error) =>
+            of(LibrariesActions.scanLibraryFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 }

@@ -17,7 +17,7 @@ export class EncodingProgressUpdateEvent {
       fps: number;
       resumeTimestamp?: string;
       tempFilePath?: string;
-    }
+    },
   ) {}
 }
 
@@ -27,7 +27,7 @@ export class EncodingPreviewUpdateEvent {
 
   constructor(
     public readonly jobId: string,
-    public readonly previewPaths: string[]
+    public readonly previewPaths: string[],
   ) {}
 }
 
@@ -37,7 +37,7 @@ export class EncodingFailedEvent {
 
   constructor(
     public readonly jobId: string,
-    public readonly errorMessage: string
+    public readonly errorMessage: string,
   ) {}
 }
 
@@ -54,6 +54,6 @@ export class EncodingProcessMarkedEvent {
 
   constructor(
     public readonly jobId: string,
-    public readonly updates: Record<string, Date>
+    public readonly updates: Record<string, Date>,
   ) {}
 }

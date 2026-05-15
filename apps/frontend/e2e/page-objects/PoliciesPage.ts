@@ -93,7 +93,9 @@ export class PoliciesPage extends BasePage {
    * Get CRF quality value
    */
   async getCRFQualityValue(): Promise<string> {
-    const crfInput = this.page.locator('input[type="range"], input[name="targetQuality"]');
+    const crfInput = this.page.locator(
+      'input[type="range"], input[name="targetQuality"]',
+    );
     return (await crfInput.inputValue()) || '';
   }
 

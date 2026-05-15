@@ -40,7 +40,9 @@ describe('QueueComponent', () => {
       retryJob: jest.fn().mockReturnValue(of(void 0)),
     } as unknown as jest.Mocked<QueueClient>;
 
-    TestBed.overrideComponent(QueueComponent, { set: { template: '<div></div>' } });
+    TestBed.overrideComponent(QueueComponent, {
+      set: { template: '<div></div>' },
+    });
 
     await TestBed.configureTestingModule({
       imports: [TranslocoTestingModule.forRoot({})],

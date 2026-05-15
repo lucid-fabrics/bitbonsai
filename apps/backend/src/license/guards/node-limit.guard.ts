@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { NodeRepository } from '../../common/repositories/node.repository';
 import { LicenseClientService } from '../license-client.service';
 
@@ -6,7 +11,7 @@ import { LicenseClientService } from '../license-client.service';
 export class NodeLimitGuard implements CanActivate {
   constructor(
     private readonly licenseClient: LicenseClientService,
-    private readonly nodeRepository: NodeRepository
+    private readonly nodeRepository: NodeRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -20,7 +25,7 @@ export class NodeLimitGuard implements CanActivate {
 
     if (activeNodeCount >= maxNodes) {
       throw new ForbiddenException(
-        `Node limit reached (${activeNodeCount}/${maxNodes}). Upgrade your license to add more nodes.`
+        `Node limit reached (${activeNodeCount}/${maxNodes}). Upgrade your license to add more nodes.`,
       );
     }
 

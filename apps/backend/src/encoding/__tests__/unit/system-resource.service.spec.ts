@@ -32,13 +32,18 @@ describe('SystemResourceService', () => {
     jest.clearAllMocks();
 
     // Default OS mocks
-    (os.cpus as jest.Mock).mockReturnValue(new Array(8).fill({ model: 'Intel' }));
+    (os.cpus as jest.Mock).mockReturnValue(
+      new Array(8).fill({ model: 'Intel' }),
+    );
     (os.loadavg as jest.Mock).mockReturnValue([1.0, 1.0, 1.0]);
     (os.freemem as jest.Mock).mockReturnValue(16 * 1024 ** 3);
     (os.totalmem as jest.Mock).mockReturnValue(32 * 1024 ** 3);
 
     module = await Test.createTestingModule({
-      providers: [SystemResourceService, { provide: NodesService, useValue: mockNodesService }],
+      providers: [
+        SystemResourceService,
+        { provide: NodesService, useValue: mockNodesService },
+      ],
     }).compile();
 
     service = module.get(SystemResourceService);
@@ -191,7 +196,7 @@ describe('SystemResourceService', () => {
 
     it('completes without error when all resources are sufficient', async () => {
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1'),
       ).resolves.toBeUndefined();
     });
 
@@ -199,7 +204,7 @@ describe('SystemResourceService', () => {
       (fs.promises.access as jest.Mock).mockRejectedValue(new Error('EACCES'));
 
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1'),
       ).rejects.toThrow('Cannot read source file');
     });
 
@@ -211,7 +216,7 @@ describe('SystemResourceService', () => {
       });
 
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1'),
       ).rejects.toThrow('Insufficient disk space');
     });
 
@@ -219,7 +224,7 @@ describe('SystemResourceService', () => {
       (fs.promises.statfs as jest.Mock).mockRejectedValue(new Error('ENOSYS'));
 
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1'),
       ).resolves.toBeUndefined();
     });
 
@@ -231,7 +236,9 @@ describe('SystemResourceService', () => {
 
       await service.performResourcePreflightChecks('/media/video.mkv', 'job-1');
 
-      expect(logWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Low memory warning'));
+      expect(logWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Low memory warning'),
+      );
     });
   });
 
@@ -295,7 +302,9 @@ describe('SystemResourceService', () => {
 
     it('uses defaults and sets encodingTempPath from ENV when getCurrentNode throws', async () => {
       process.env.ENCODING_TEMP_PATH = '/fallback';
-      nodesService.getCurrentNode.mockRejectedValueOnce(new Error('DB connection error'));
+      nodesService.getCurrentNode.mockRejectedValueOnce(
+        new Error('DB connection error'),
+      );
 
       await service.reloadLoadThreshold();
 

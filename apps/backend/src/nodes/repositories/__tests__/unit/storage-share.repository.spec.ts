@@ -47,7 +47,10 @@ describe('StorageShareRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [StorageShareRepository, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [
+        StorageShareRepository,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
     }).compile();
 
     repository = module.get<StorageShareRepository>(StorageShareRepository);
@@ -109,7 +112,10 @@ describe('StorageShareRepository', () => {
     it('should return null when not found', async () => {
       mockPrismaStorageShare.findFirst.mockResolvedValue(null);
 
-      const result = await repository.findByMountPoint('node-1', '/mnt/unknown');
+      const result = await repository.findByMountPoint(
+        'node-1',
+        '/mnt/unknown',
+      );
 
       expect(result).toBeNull();
     });
@@ -195,7 +201,10 @@ describe('StorageShareRepository', () => {
         status: StorageShareStatus.MOUNTED,
       });
 
-      const result = await repository.updateStatus('share-1', StorageShareStatus.MOUNTED);
+      const result = await repository.updateStatus(
+        'share-1',
+        StorageShareStatus.MOUNTED,
+      );
 
       expect(result.status).toBe(StorageShareStatus.MOUNTED);
       expect(mockPrismaNode.update).toHaveBeenCalledWith({
@@ -209,7 +218,7 @@ describe('StorageShareRepository', () => {
             isMounted: true,
             status: StorageShareStatus.MOUNTED,
           }),
-        })
+        }),
       );
     });
 
@@ -220,7 +229,10 @@ describe('StorageShareRepository', () => {
         isMounted: false,
       });
 
-      const result = await repository.updateStatus('share-1', StorageShareStatus.UNMOUNTED);
+      const result = await repository.updateStatus(
+        'share-1',
+        StorageShareStatus.UNMOUNTED,
+      );
 
       expect(result.isMounted).toBe(false);
       expect(mockPrismaStorageShare.update).toHaveBeenCalledWith(
@@ -230,7 +242,7 @@ describe('StorageShareRepository', () => {
             isMounted: false,
             status: StorageShareStatus.UNMOUNTED,
           }),
-        })
+        }),
       );
     });
 
@@ -240,7 +252,11 @@ describe('StorageShareRepository', () => {
         status: StorageShareStatus.ERROR,
       });
 
-      await repository.updateStatus('share-1', StorageShareStatus.ERROR, 'mount failed');
+      await repository.updateStatus(
+        'share-1',
+        StorageShareStatus.ERROR,
+        'mount failed',
+      );
 
       expect(mockPrismaStorageShare.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -251,7 +267,7 @@ describe('StorageShareRepository', () => {
             lastError: 'mount failed',
             status: StorageShareStatus.ERROR,
           }),
-        })
+        }),
       );
     });
   });
@@ -326,7 +342,9 @@ describe('StorageShareRepository', () => {
 
   describe('findMountPointsByNodeId', () => {
     it('should return only mountPoint field', async () => {
-      mockPrismaStorageShare.findMany.mockResolvedValue([{ mountPoint: '/mnt/nfs' }]);
+      mockPrismaStorageShare.findMany.mockResolvedValue([
+        { mountPoint: '/mnt/nfs' },
+      ]);
 
       const result = await repository.findMountPointsByNodeId('node-1');
 
@@ -342,7 +360,10 @@ describe('StorageShareRepository', () => {
     it('should find share by nodeId and sharePath', async () => {
       mockPrismaStorageShare.findFirst.mockResolvedValue(mockShare);
 
-      const result = await repository.findBySharePath('node-1', '/exports/videos');
+      const result = await repository.findBySharePath(
+        'node-1',
+        '/exports/videos',
+      );
 
       expect(result).toEqual(mockShare);
       expect(mockPrismaStorageShare.findFirst).toHaveBeenCalledWith({

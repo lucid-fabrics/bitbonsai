@@ -113,7 +113,9 @@ describe('QueueProcessingService', () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue(null);
       mockNodeRepository.findUnique.mockResolvedValue(null);
 
-      await expect(service.getNextJob('missing-node')).rejects.toThrow(NotFoundException);
+      await expect(service.getNextJob('missing-node')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should return null when node is at capacity', async () => {
@@ -300,7 +302,7 @@ describe('QueueProcessingService', () => {
       });
 
       expect(mockJobCrudService.create).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'REMUX' })
+        expect.objectContaining({ type: 'REMUX' }),
       );
     });
 
@@ -341,7 +343,7 @@ describe('QueueProcessingService', () => {
       });
 
       expect(mockJobCrudService.create).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'ENCODE' })
+        expect.objectContaining({ type: 'ENCODE' }),
       );
     });
 
@@ -380,7 +382,7 @@ describe('QueueProcessingService', () => {
       });
 
       expect(mockJobCrudService.create).toHaveBeenCalledWith(
-        expect.objectContaining({ ffmpegThreads: 8, resourceThrottled: true })
+        expect.objectContaining({ ffmpegThreads: 8, resourceThrottled: true }),
       );
     });
 
@@ -412,7 +414,7 @@ describe('QueueProcessingService', () => {
         hasSharedStorage: false,
       });
       mockJobCrudService.create.mockRejectedValue(
-        new BadRequestException('Job already exists for this file')
+        new BadRequestException('Job already exists for this file'),
       );
 
       // Should not throw
@@ -421,19 +423,21 @@ describe('QueueProcessingService', () => {
           libraryId: 'lib-1',
           filePath: '/media/movie.mkv',
           fileName: 'movie.mkv',
-        })
+        }),
       ).resolves.not.toThrow();
     });
 
     it('should handle unexpected errors gracefully', async () => {
-      mockPrisma.library.findUnique.mockRejectedValue(new Error('DB connection lost'));
+      mockPrisma.library.findUnique.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
       await expect(
         service.handleFileDetected({
           libraryId: 'lib-1',
           filePath: '/media/movie.mkv',
           fileName: 'movie.mkv',
-        })
+        }),
       ).resolves.not.toThrow();
     });
 
@@ -537,12 +541,16 @@ describe('QueueProcessingService', () => {
     it('should fallback to local DB when linked node proxy fails', async () => {
       const { throwError } = await import('rxjs');
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3000/api/v1');
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('network error')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('network error')),
+      );
 
       // After fallback, node not found
       mockNodeRepository.findUnique.mockResolvedValue(null);
 
-      await expect(service.getNextJob('node-1')).rejects.toThrow(NotFoundException);
+      await expect(service.getNextJob('node-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -583,15 +591,18 @@ describe('QueueProcessingService', () => {
               useValue: mockPrisma,
             },
             {
-              provide: require('../../common/repositories/job.repository').JobRepository,
+              provide: require('../../common/repositories/job.repository')
+                .JobRepository,
               useValue: mockJobRepoFull,
             },
             {
-              provide: require('../../common/repositories/node.repository').NodeRepository,
+              provide: require('../../common/repositories/node.repository')
+                .NodeRepository,
               useValue: mockNodeRepository,
             },
             {
-              provide: require('../../media/media-analysis.service').MediaAnalysisService,
+              provide: require('../../media/media-analysis.service')
+                .MediaAnalysisService,
               useValue: mockMediaAnalysis,
             },
             {
@@ -607,7 +618,8 @@ describe('QueueProcessingService', () => {
               useValue: mockFileTransferService,
             },
             {
-              provide: require('../../core/services/node-config.service').NodeConfigService,
+              provide: require('../../core/services/node-config.service')
+                .NodeConfigService,
               useValue: mockNodeConfig,
             },
             {
@@ -623,14 +635,14 @@ describe('QueueProcessingService', () => {
         .compile();
 
       const newService = newModule.get(
-        (await import('./queue-processing.service')).QueueProcessingService
+        (await import('./queue-processing.service')).QueueProcessingService,
       );
 
       await newService.onModuleInit();
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-mismatch',
-        expect.objectContaining({ targetCodec: 'hevc' })
+        expect.objectContaining({ targetCodec: 'hevc' }),
       );
     });
 
@@ -667,15 +679,18 @@ describe('QueueProcessingService', () => {
               useValue: mockPrisma,
             },
             {
-              provide: require('../../common/repositories/job.repository').JobRepository,
+              provide: require('../../common/repositories/job.repository')
+                .JobRepository,
               useValue: mockJobRepoOrphan,
             },
             {
-              provide: require('../../common/repositories/node.repository').NodeRepository,
+              provide: require('../../common/repositories/node.repository')
+                .NodeRepository,
               useValue: mockNodeRepository,
             },
             {
-              provide: require('../../media/media-analysis.service').MediaAnalysisService,
+              provide: require('../../media/media-analysis.service')
+                .MediaAnalysisService,
               useValue: mockMediaAnalysis,
             },
             {
@@ -691,7 +706,8 @@ describe('QueueProcessingService', () => {
               useValue: mockFileTransferService,
             },
             {
-              provide: require('../../core/services/node-config.service').NodeConfigService,
+              provide: require('../../core/services/node-config.service')
+                .NodeConfigService,
               useValue: mockNodeConfig,
             },
             {
@@ -707,14 +723,14 @@ describe('QueueProcessingService', () => {
         .compile();
 
       const newService2 = newModule2.get(
-        (await import('./queue-processing.service')).QueueProcessingService
+        (await import('./queue-processing.service')).QueueProcessingService,
       );
 
       await newService2.onModuleInit();
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-orphan',
-        expect.objectContaining({ policyId: 'p1' })
+        expect.objectContaining({ policyId: 'p1' }),
       );
     });
 
@@ -736,15 +752,18 @@ describe('QueueProcessingService', () => {
               useValue: mockPrisma,
             },
             {
-              provide: require('../../common/repositories/job.repository').JobRepository,
+              provide: require('../../common/repositories/job.repository')
+                .JobRepository,
               useValue: mockJobRepoEmpty,
             },
             {
-              provide: require('../../common/repositories/node.repository').NodeRepository,
+              provide: require('../../common/repositories/node.repository')
+                .NodeRepository,
               useValue: mockNodeRepository,
             },
             {
-              provide: require('../../media/media-analysis.service').MediaAnalysisService,
+              provide: require('../../media/media-analysis.service')
+                .MediaAnalysisService,
               useValue: mockMediaAnalysis,
             },
             {
@@ -760,7 +779,8 @@ describe('QueueProcessingService', () => {
               useValue: mockFileTransferService,
             },
             {
-              provide: require('../../core/services/node-config.service').NodeConfigService,
+              provide: require('../../core/services/node-config.service')
+                .NodeConfigService,
               useValue: mockNodeConfig,
             },
             {
@@ -776,7 +796,7 @@ describe('QueueProcessingService', () => {
         .compile();
 
       const newService3 = newModule3.get(
-        (await import('./queue-processing.service')).QueueProcessingService
+        (await import('./queue-processing.service')).QueueProcessingService,
       );
 
       await newService3.onModuleInit();
@@ -815,15 +835,18 @@ describe('QueueProcessingService', () => {
               useValue: mockPrisma,
             },
             {
-              provide: require('../../common/repositories/job.repository').JobRepository,
+              provide: require('../../common/repositories/job.repository')
+                .JobRepository,
               useValue: mockJobRepoFallback,
             },
             {
-              provide: require('../../common/repositories/node.repository').NodeRepository,
+              provide: require('../../common/repositories/node.repository')
+                .NodeRepository,
               useValue: mockNodeRepository,
             },
             {
-              provide: require('../../media/media-analysis.service').MediaAnalysisService,
+              provide: require('../../media/media-analysis.service')
+                .MediaAnalysisService,
               useValue: mockMediaAnalysis,
             },
             {
@@ -839,7 +862,8 @@ describe('QueueProcessingService', () => {
               useValue: mockFileTransferService,
             },
             {
-              provide: require('../../core/services/node-config.service').NodeConfigService,
+              provide: require('../../core/services/node-config.service')
+                .NodeConfigService,
               useValue: mockNodeConfig,
             },
             {
@@ -855,14 +879,14 @@ describe('QueueProcessingService', () => {
         .compile();
 
       const newServiceFallback = newModuleFallback.get(
-        (await import('./queue-processing.service')).QueueProcessingService
+        (await import('./queue-processing.service')).QueueProcessingService,
       );
 
       await newServiceFallback.onModuleInit();
 
       expect(mockJobRepoFallback.updateById).toHaveBeenCalledWith(
         'job-no-library',
-        expect.objectContaining({ policyId: 'p-fallback' })
+        expect.objectContaining({ policyId: 'p-fallback' }),
       );
     });
 
@@ -904,15 +928,18 @@ describe('QueueProcessingService', () => {
               useValue: mockPrisma,
             },
             {
-              provide: require('../../common/repositories/job.repository').JobRepository,
+              provide: require('../../common/repositories/job.repository')
+                .JobRepository,
               useValue: mockJobRepoErrors,
             },
             {
-              provide: require('../../common/repositories/node.repository').NodeRepository,
+              provide: require('../../common/repositories/node.repository')
+                .NodeRepository,
               useValue: mockNodeRepository,
             },
             {
-              provide: require('../../media/media-analysis.service').MediaAnalysisService,
+              provide: require('../../media/media-analysis.service')
+                .MediaAnalysisService,
               useValue: mockMediaAnalysis,
             },
             {
@@ -928,7 +955,8 @@ describe('QueueProcessingService', () => {
               useValue: mockFileTransferService,
             },
             {
-              provide: require('../../core/services/node-config.service').NodeConfigService,
+              provide: require('../../core/services/node-config.service')
+                .NodeConfigService,
               useValue: mockNodeConfig,
             },
             {
@@ -944,7 +972,7 @@ describe('QueueProcessingService', () => {
         .compile();
 
       const newServiceErr = newModuleErr.get(
-        (await import('./queue-processing.service')).QueueProcessingService
+        (await import('./queue-processing.service')).QueueProcessingService,
       );
 
       await expect(newServiceErr.onModuleInit()).resolves.not.toThrow();
@@ -1035,7 +1063,7 @@ describe('QueueProcessingService', () => {
       });
 
       expect(mockJobCrudService.create).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'ENCODE' })
+        expect.objectContaining({ type: 'ENCODE' }),
       );
     });
 
@@ -1148,14 +1176,16 @@ describe('QueueProcessingService', () => {
       mockJobCrudService.create.mockResolvedValue({
         id: 'job-transfer-fail',
       } as any);
-      mockFileTransferService.transferFile.mockRejectedValue(new Error('transfer failed'));
+      mockFileTransferService.transferFile.mockRejectedValue(
+        new Error('transfer failed'),
+      );
 
       await expect(
         service.handleFileDetected({
           libraryId: 'lib-1',
           filePath: '/media/movie.mkv',
           fileName: 'movie.mkv',
-        })
+        }),
       ).resolves.not.toThrow();
     });
 
@@ -1197,7 +1227,7 @@ describe('QueueProcessingService', () => {
       });
 
       expect(mockJobCrudService.create).toHaveBeenCalledWith(
-        expect.objectContaining({ nodeId: 'node-fallback' })
+        expect.objectContaining({ nodeId: 'node-fallback' }),
       );
     });
 
@@ -1238,7 +1268,7 @@ describe('QueueProcessingService', () => {
       });
 
       expect(mockJobCrudService.create).toHaveBeenCalledWith(
-        expect.objectContaining({ targetContainer: 'mkv' })
+        expect.objectContaining({ targetContainer: 'mkv' }),
       );
     });
   });

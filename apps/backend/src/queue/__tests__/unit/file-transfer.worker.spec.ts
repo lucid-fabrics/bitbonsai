@@ -69,7 +69,7 @@ describe('FileTransferWorker', () => {
         'job-1',
         '/media/video.mkv',
         mockJob.library.node,
-        mockJob.node
+        mockJob.node,
       );
     });
 
@@ -86,7 +86,10 @@ describe('FileTransferWorker', () => {
         library: { node: { id: 'src-1' } },
         node: null,
       };
-      jobRepository.findManyWithInclude.mockResolvedValue([jobNoLibraryNode, jobNoTargetNode]);
+      jobRepository.findManyWithInclude.mockResolvedValue([
+        jobNoLibraryNode,
+        jobNoTargetNode,
+      ]);
 
       await worker.processTransfers();
 
@@ -111,7 +114,9 @@ describe('FileTransferWorker', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      jobRepository.findManyWithInclude.mockRejectedValue(new Error('DB connection lost'));
+      jobRepository.findManyWithInclude.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
       // Should not throw
       await worker.processTransfers();
@@ -143,7 +148,9 @@ describe('FileTransferWorker', () => {
         node: { id: 'tgt-1' },
       };
       jobRepository.findManyWithInclude.mockResolvedValue([mockJob]);
-      fileTransferService.transferFile.mockRejectedValue(new Error('rsync failed'));
+      fileTransferService.transferFile.mockRejectedValue(
+        new Error('rsync failed'),
+      );
 
       await worker.processTransfers();
 
@@ -178,7 +185,9 @@ describe('FileTransferWorker', () => {
       (worker as any).timeoutCount = 2; // Already at threshold - 1
 
       jobRepository.findManyWithInclude.mockResolvedValue([mockJob]);
-      fileTransferService.transferFile.mockRejectedValue(new Error('Transfer timeout (30min)'));
+      fileTransferService.transferFile.mockRejectedValue(
+        new Error('Transfer timeout (30min)'),
+      );
 
       await worker.processTransfers();
 

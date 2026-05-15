@@ -43,7 +43,7 @@ export class DistributionOrchestratorService {
     private readonly scorer: JobScorerService,
     readonly _loadMonitor: LoadMonitorService,
     private readonly etaCalculator: EtaCalculatorService,
-    private readonly reliabilityTracker: ReliabilityTrackerService
+    private readonly reliabilityTracker: ReliabilityTrackerService,
   ) {}
 
   /**
@@ -69,8 +69,11 @@ export class DistributionOrchestratorService {
     // Score all nodes in parallel for better performance
     const scores = await Promise.all(
       nodes.map((node) =>
-        this.scorer.calculateScore(node as NodeWithCounts, job as JobWithRelations)
-      )
+        this.scorer.calculateScore(
+          node as NodeWithCounts,
+          job as JobWithRelations,
+        ),
+      ),
     );
 
     // Sort by score descending
@@ -99,7 +102,10 @@ export class DistributionOrchestratorService {
   /**
    * Assign a job to a node (or migrate if already assigned)
    */
-  async assignJob(jobId: string, nodeId?: string): Promise<JobAssignmentResult | null> {
+  async assignJob(
+    jobId: string,
+    nodeId?: string,
+  ): Promise<JobAssignmentResult | null> {
     // If nodeId not specified, find optimal
     if (!nodeId) {
       const optimal = await this.findOptimalNode(jobId);
@@ -114,7 +120,10 @@ export class DistributionOrchestratorService {
     if (!node) return null;
 
     // Calculate score for the assignment
-    const score = await this.scorer.calculateScore(node as NodeWithCounts, job as JobWithRelations);
+    const score = await this.scorer.calculateScore(
+      node as NodeWithCounts,
+      job as JobWithRelations,
+    );
 
     const wasMigrated = job.nodeId !== null && job.nodeId !== nodeId;
     const now = new Date();
@@ -139,13 +148,15 @@ export class DistributionOrchestratorService {
         estimatedDuration: durationEstimate.estimatedSeconds,
         lastScoreBreakdown: score.factors as object,
         assignmentReason: this.generateAssignmentReason(score),
-      }
+      },
     );
 
     // Check if update succeeded (count === 1 means we won the race)
     if (updateResult.count === 0) {
       // Another distribution run claimed this job between findUnique and update
-      this.logger.debug(`Job ${jobId} was reassigned by another distribution process, skipping`);
+      this.logger.debug(
+        `Job ${jobId} was reassigned by another distribution process, skipping`,
+      );
       return null;
     }
 
@@ -162,7 +173,7 @@ export class DistributionOrchestratorService {
     }
 
     this.logger.log(
-      `Assigned job ${jobId} to node ${node.name} (score: ${score.totalScore.toFixed(1)}, migrated: ${wasMigrated})`
+      `Assigned job ${jobId} to node ${node.name} (score: ${score.totalScore.toFixed(1)}, migrated: ${wasMigrated})`,
     );
 
     return {
@@ -189,8 +200,11 @@ export class DistributionOrchestratorService {
     // Score all nodes in parallel for better performance
     const scores = await Promise.all(
       nodes.map((node) =>
-        this.scorer.calculateScore(node as NodeWithCounts, job as JobWithRelations)
-      )
+        this.scorer.calculateScore(
+          node as NodeWithCounts,
+          job as JobWithRelations,
+        ),
+      ),
     );
 
     return scores.sort((a, b) => b.totalScore - a.totalScore);
@@ -271,7 +285,10 @@ export class DistributionOrchestratorService {
         label: 'Stickiness',
         value: factors.stickiness,
         maxValue: 0,
-        percentage: factors.stickiness === 0 ? 100 : ((20 + factors.stickiness) / 20) * 100,
+        percentage:
+          factors.stickiness === 0
+            ? 100
+            : ((20 + factors.stickiness) / 20) * 100,
         description: 'Migration penalty',
       },
       {
@@ -279,7 +296,10 @@ export class DistributionOrchestratorService {
         label: 'Transfer Cost',
         value: factors.transferCost,
         maxValue: 0,
-        percentage: factors.transferCost === 0 ? 100 : ((25 + factors.transferCost) / 25) * 100,
+        percentage:
+          factors.transferCost === 0
+            ? 100
+            : ((25 + factors.transferCost) / 25) * 100,
         description: 'File transfer penalty',
       },
       {
@@ -287,7 +307,10 @@ export class DistributionOrchestratorService {
         label: 'Reliability',
         value: factors.reliability,
         maxValue: 0,
-        percentage: factors.reliability === 0 ? 100 : ((15 + factors.reliability) / 15) * 100,
+        percentage:
+          factors.reliability === 0
+            ? 100
+            : ((15 + factors.reliability) / 15) * 100,
         description: 'Recent failure penalty',
       },
     ];
@@ -321,24 +344,27 @@ export class DistributionOrchestratorService {
       }
 
       // Get current node score
-      const currentNode = await this.nodeRepository.findByIdWithActiveJobCount(job.nodeId);
+      const currentNode = await this.nodeRepository.findByIdWithActiveJobCount(
+        job.nodeId,
+      );
       if (!currentNode) continue;
 
-      const candidateNode = await this.nodeRepository.findByIdWithActiveJobCount(optimal.nodeId);
+      const candidateNode =
+        await this.nodeRepository.findByIdWithActiveJobCount(optimal.nodeId);
       if (!candidateNode) continue;
 
       // Check migration decision
       const decision = await this.scorer.shouldMigrate(
         job as JobWithRelations,
         currentNode as NodeWithCounts,
-        candidateNode as NodeWithCounts
+        candidateNode as NodeWithCounts,
       );
 
       if (decision.shouldMigrate) {
         await this.assignJob(job.id, optimal.nodeId);
         migratedCount++;
         reasons.push(
-          `Migrated ${job.fileLabel} from ${currentNode.name} to ${optimal.nodeName} (+${decision.scoreDelta.toFixed(1)} pts)`
+          `Migrated ${job.fileLabel} from ${currentNode.name} to ${optimal.nodeName} (+${decision.scoreDelta.toFixed(1)} pts)`,
         );
       }
     }
@@ -382,7 +408,7 @@ export class DistributionOrchestratorService {
         // Prioritize moving from overloaded nodes
         const jobsToMove = await this.jobRepository.findQueuedExcludingNode(
           targetNode.id,
-          availableSlots
+          availableSlots,
         );
 
         if (jobsToMove.length === 0) continue;
@@ -391,7 +417,7 @@ export class DistributionOrchestratorService {
         // Re-validate schedule immediately before assignment to avoid TOCTOU
         if (!scheduleChecker.isNodeInAllowedWindow(targetNode)) {
           this.logger.debug(
-            `Node ${targetNode.name} left schedule window during distribution, skipping`
+            `Node ${targetNode.name} left schedule window during distribution, skipping`,
           );
           continue;
         }
@@ -409,16 +435,18 @@ export class DistributionOrchestratorService {
               nodeId: targetNode.id,
               assignedAt: new Date(),
               stickyUntil: new Date(Date.now() + 5 * 60 * 1000), // 5 min sticky
-            }
+            },
           );
 
           if (result.count === 0) {
-            this.logger.debug(`Job ${job.id} already reassigned by another process, skipping`);
+            this.logger.debug(
+              `Job ${job.id} already reassigned by another process, skipping`,
+            );
             continue;
           }
 
           this.logger.log(
-            `⚡ Auto-distributed: ${job.fileLabel} → ${targetNode.name} (filling empty slot)`
+            `⚡ Auto-distributed: ${job.fileLabel} → ${targetNode.name} (filling empty slot)`,
           );
         }
 
@@ -433,10 +461,19 @@ export class DistributionOrchestratorService {
   /**
    * Record a job failure and update reliability
    */
-  async recordJobFailure(job: Job, reason: string, errorCode?: string): Promise<void> {
+  async recordJobFailure(
+    job: Job,
+    reason: string,
+    errorCode?: string,
+  ): Promise<void> {
     if (!job.nodeId) return;
 
-    await this.reliabilityTracker.recordFailure(job.nodeId, job, reason, errorCode);
+    await this.reliabilityTracker.recordFailure(
+      job.nodeId,
+      job,
+      reason,
+      errorCode,
+    );
   }
 
   /**
@@ -526,7 +563,10 @@ export class DistributionOrchestratorService {
       nodes.map(async (node) => {
         const [queued, encoding] = await Promise.all([
           this.jobRepository.countForNode(node.id, 'QUEUED'),
-          this.jobRepository.countForNodeStages(node.id, ['ENCODING', 'VERIFYING']),
+          this.jobRepository.countForNodeStages(node.id, [
+            'ENCODING',
+            'VERIFYING',
+          ]),
         ]);
 
         return {
@@ -535,7 +575,7 @@ export class DistributionOrchestratorService {
           queued,
           encoding,
         };
-      })
+      }),
     );
 
     return {
@@ -556,7 +596,7 @@ export class DistributionOrchestratorService {
    */
   async findBestNodeForNewJob(
     libraryNodeId: string,
-    hasSharedStoragePreference = true
+    hasSharedStoragePreference = true,
   ): Promise<string> {
     // Get all online nodes with schedule check
     const nodes = await this.nodeRepository.findOnlineWithAllJobCount();
@@ -617,13 +657,15 @@ export class DistributionOrchestratorService {
     const best = scored[0];
     if (best.score > 0) {
       this.logger.debug(
-        `Distribution: Best node for new job: ${best.node.name} (score: ${best.score.toFixed(1)}, ${best.reason})`
+        `Distribution: Best node for new job: ${best.node.name} (score: ${best.score.toFixed(1)}, ${best.reason})`,
       );
       return best.node.id;
     }
 
     // Fallback to library node if all nodes are unavailable
-    this.logger.debug(`Distribution: All nodes busy/unavailable, using library node`);
+    this.logger.debug(
+      `Distribution: All nodes busy/unavailable, using library node`,
+    );
     return libraryNodeId;
   }
 }

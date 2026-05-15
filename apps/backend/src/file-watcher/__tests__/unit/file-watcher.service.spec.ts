@@ -57,15 +57,20 @@ describe('FileWatcherService', () => {
 
   describe('onModuleInit', () => {
     it('should initialize watchers for enabled libraries', async () => {
-      jest.spyOn(libraryRepository, 'findAllLibraries').mockResolvedValue([mockLibrary]);
+      jest
+        .spyOn(libraryRepository, 'findAllLibraries')
+        .mockResolvedValue([mockLibrary]);
       const startWatcherSpy = jest.spyOn(service, 'startWatcher');
 
       await service.onModuleInit();
 
       expect(libraryRepository.findAllLibraries).toHaveBeenCalledWith(
-        expect.objectContaining({ enabled: true, watchEnabled: true })
+        expect.objectContaining({ enabled: true, watchEnabled: true }),
       );
-      expect(startWatcherSpy).toHaveBeenCalledWith(mockLibrary.id, mockLibrary.path);
+      expect(startWatcherSpy).toHaveBeenCalledWith(
+        mockLibrary.id,
+        mockLibrary.path,
+      );
     });
 
     it('should start 0 watchers when no libraries have watchEnabled=true', async () => {
@@ -78,7 +83,9 @@ describe('FileWatcherService', () => {
     });
 
     it('should not fail if findAllLibraries throws error', async () => {
-      jest.spyOn(libraryRepository, 'findAllLibraries').mockRejectedValue(new Error('DB error'));
+      jest
+        .spyOn(libraryRepository, 'findAllLibraries')
+        .mockRejectedValue(new Error('DB error'));
 
       await expect(service.onModuleInit()).resolves.not.toThrow();
     });
@@ -87,46 +94,59 @@ describe('FileWatcherService', () => {
   describe('enableWatcher', () => {
     it('should enable watcher and update database', async () => {
       jest.spyOn(libraryRepository, 'findById').mockResolvedValue(mockLibrary);
-      jest.spyOn(libraryRepository, 'updateLibrary').mockResolvedValue(mockLibrary);
-      const startWatcherSpy = jest.spyOn(service, 'startWatcher').mockResolvedValue();
+      jest
+        .spyOn(libraryRepository, 'updateLibrary')
+        .mockResolvedValue(mockLibrary);
+      const startWatcherSpy = jest
+        .spyOn(service, 'startWatcher')
+        .mockResolvedValue();
 
       await service.enableWatcher(mockLibrary.id);
 
       expect(libraryRepository.updateLibrary).toHaveBeenCalledWith(
         { id: mockLibrary.id },
-        { watchEnabled: true }
+        { watchEnabled: true },
       );
-      expect(startWatcherSpy).toHaveBeenCalledWith(mockLibrary.id, mockLibrary.path);
+      expect(startWatcherSpy).toHaveBeenCalledWith(
+        mockLibrary.id,
+        mockLibrary.path,
+      );
     });
 
     it('should throw error if library not found', async () => {
       jest.spyOn(libraryRepository, 'findById').mockResolvedValue(null);
 
       await expect(service.enableWatcher('invalid-id')).rejects.toThrow(
-        'Library invalid-id not found'
+        'Library invalid-id not found',
       );
     });
 
     it('should throw error if library is disabled', async () => {
       const disabledLibrary = { ...mockLibrary, enabled: false };
-      jest.spyOn(libraryRepository, 'findById').mockResolvedValue(disabledLibrary);
+      jest
+        .spyOn(libraryRepository, 'findById')
+        .mockResolvedValue(disabledLibrary);
 
       await expect(service.enableWatcher(mockLibrary.id)).rejects.toThrow(
-        `Library ${mockLibrary.id} is disabled`
+        `Library ${mockLibrary.id} is disabled`,
       );
     });
   });
 
   describe('disableWatcher', () => {
     it('should disable watcher and update database', async () => {
-      jest.spyOn(libraryRepository, 'updateLibrary').mockResolvedValue(mockLibrary);
-      const stopWatcherSpy = jest.spyOn(service, 'stopWatcher').mockResolvedValue();
+      jest
+        .spyOn(libraryRepository, 'updateLibrary')
+        .mockResolvedValue(mockLibrary);
+      const stopWatcherSpy = jest
+        .spyOn(service, 'stopWatcher')
+        .mockResolvedValue();
 
       await service.disableWatcher(mockLibrary.id);
 
       expect(libraryRepository.updateLibrary).toHaveBeenCalledWith(
         { id: mockLibrary.id },
-        { watchEnabled: false }
+        { watchEnabled: false },
       );
       expect(stopWatcherSpy).toHaveBeenCalledWith(mockLibrary.id);
     });
@@ -171,8 +191,9 @@ describe('FileWatcherService', () => {
       // This test verifies that the service's videoExtensions Set includes all expected formats
       // Access private property for testing (this is a white-box test)
       const service = new FileWatcherService(libraryRepository, eventEmitter);
-      const videoExtensions = (service as unknown as { videoExtensions: Set<string> })
-        .videoExtensions;
+      const videoExtensions = (
+        service as unknown as { videoExtensions: Set<string> }
+      ).videoExtensions;
 
       supportedExtensions.forEach((ext) => {
         expect(videoExtensions.has(ext)).toBe(true);
@@ -182,18 +203,22 @@ describe('FileWatcherService', () => {
 
   describe('startWatcher', () => {
     it('should warn and return early when watcher already exists for library', async () => {
-      jest.spyOn(libraryRepository, 'findAllLibraries').mockResolvedValue([mockLibrary]);
+      jest
+        .spyOn(libraryRepository, 'findAllLibraries')
+        .mockResolvedValue([mockLibrary]);
       await service.onModuleInit();
 
       // Calling startWatcher again for the same libraryId should early-return
       const loggerWarnSpy = jest.spyOn(
         (service as unknown as { logger: { warn: jest.Mock } }).logger,
-        'warn'
+        'warn',
       );
 
       await service.startWatcher(mockLibrary.id, mockLibrary.path);
 
-      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringContaining(mockLibrary.id));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(mockLibrary.id),
+      );
     });
   });
 
@@ -201,18 +226,22 @@ describe('FileWatcherService', () => {
     it('should warn and return early when no watcher exists', async () => {
       const loggerWarnSpy = jest.spyOn(
         (service as unknown as { logger: { warn: jest.Mock } }).logger,
-        'warn'
+        'warn',
       );
 
       await service.stopWatcher('non-existent-lib');
 
-      expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringContaining('non-existent-lib'));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('non-existent-lib'),
+      );
     });
   });
 
   describe('getWatcherStatus', () => {
     it('should return active=true with path when watcher exists', async () => {
-      jest.spyOn(libraryRepository, 'findAllLibraries').mockResolvedValue([mockLibrary]);
+      jest
+        .spyOn(libraryRepository, 'findAllLibraries')
+        .mockResolvedValue([mockLibrary]);
       await service.onModuleInit();
 
       const status = service.getWatcherStatus(mockLibrary.id);
@@ -224,7 +253,9 @@ describe('FileWatcherService', () => {
 
   describe('getAllWatcherStatuses', () => {
     it('should return all active watcher entries', async () => {
-      jest.spyOn(libraryRepository, 'findAllLibraries').mockResolvedValue([mockLibrary]);
+      jest
+        .spyOn(libraryRepository, 'findAllLibraries')
+        .mockResolvedValue([mockLibrary]);
       await service.onModuleInit();
 
       const statuses = service.getAllWatcherStatuses();
@@ -240,11 +271,14 @@ describe('FileWatcherService', () => {
 
   describe('onModuleDestroy', () => {
     it('should clear all debounce timers and stop watchers', async () => {
-      jest.spyOn(libraryRepository, 'findAllLibraries').mockResolvedValue([mockLibrary]);
+      jest
+        .spyOn(libraryRepository, 'findAllLibraries')
+        .mockResolvedValue([mockLibrary]);
       await service.onModuleInit();
 
-      const debounceTimers = (service as unknown as { debounceTimers: Map<string, NodeJS.Timeout> })
-        .debounceTimers;
+      const debounceTimers = (
+        service as unknown as { debounceTimers: Map<string, NodeJS.Timeout> }
+      ).debounceTimers;
 
       // Inject a fake timer to confirm it gets cleared
       const fakeTimer = setTimeout(() => {
@@ -262,29 +296,40 @@ describe('FileWatcherService', () => {
   describe('enableWatcher', () => {
     it('should update watchEnabled and start watcher when library is valid', async () => {
       jest.spyOn(libraryRepository, 'findById').mockResolvedValue(mockLibrary);
-      jest.spyOn(libraryRepository, 'updateLibrary').mockResolvedValue(mockLibrary);
-      const startWatcherSpy = jest.spyOn(service, 'startWatcher').mockResolvedValue();
+      jest
+        .spyOn(libraryRepository, 'updateLibrary')
+        .mockResolvedValue(mockLibrary);
+      const startWatcherSpy = jest
+        .spyOn(service, 'startWatcher')
+        .mockResolvedValue();
 
       await service.enableWatcher(mockLibrary.id);
 
       expect(libraryRepository.updateLibrary).toHaveBeenCalledWith(
         { id: mockLibrary.id },
-        { watchEnabled: true }
+        { watchEnabled: true },
       );
-      expect(startWatcherSpy).toHaveBeenCalledWith(mockLibrary.id, mockLibrary.path);
+      expect(startWatcherSpy).toHaveBeenCalledWith(
+        mockLibrary.id,
+        mockLibrary.path,
+      );
     });
   });
 
   describe('disableWatcher', () => {
     it('should update watchEnabled=false and stop watcher', async () => {
-      jest.spyOn(libraryRepository, 'updateLibrary').mockResolvedValue(mockLibrary);
-      const stopWatcherSpy = jest.spyOn(service, 'stopWatcher').mockResolvedValue();
+      jest
+        .spyOn(libraryRepository, 'updateLibrary')
+        .mockResolvedValue(mockLibrary);
+      const stopWatcherSpy = jest
+        .spyOn(service, 'stopWatcher')
+        .mockResolvedValue();
 
       await service.disableWatcher(mockLibrary.id);
 
       expect(libraryRepository.updateLibrary).toHaveBeenCalledWith(
         { id: mockLibrary.id },
-        { watchEnabled: false }
+        { watchEnabled: false },
       );
       expect(stopWatcherSpy).toHaveBeenCalledWith(mockLibrary.id);
     });
@@ -292,7 +337,9 @@ describe('FileWatcherService', () => {
 
   describe('handleWatcherEnable / handleWatcherDisable / handleWatcherStop events', () => {
     it('should call enableWatcher when LibraryWatcherEnableEvent fires', async () => {
-      const enableSpy = jest.spyOn(service, 'enableWatcher').mockResolvedValue();
+      const enableSpy = jest
+        .spyOn(service, 'enableWatcher')
+        .mockResolvedValue();
 
       await service.handleWatcherEnable({ libraryId: mockLibrary.id } as any);
 
@@ -300,7 +347,9 @@ describe('FileWatcherService', () => {
     });
 
     it('should call disableWatcher when LibraryWatcherDisableEvent fires', async () => {
-      const disableSpy = jest.spyOn(service, 'disableWatcher').mockResolvedValue();
+      const disableSpy = jest
+        .spyOn(service, 'disableWatcher')
+        .mockResolvedValue();
 
       await service.handleWatcherDisable({ libraryId: mockLibrary.id } as any);
 
@@ -318,7 +367,9 @@ describe('FileWatcherService', () => {
 
   describe('file.detected event emission', () => {
     it('should emit file.detected event with correct payload for video files', async () => {
-      jest.spyOn(libraryRepository, 'findAllLibraries').mockResolvedValue([mockLibrary]);
+      jest
+        .spyOn(libraryRepository, 'findAllLibraries')
+        .mockResolvedValue([mockLibrary]);
       await service.onModuleInit();
 
       // Invoke the private handleFileAdded via the watcher "add" callback
@@ -364,8 +415,9 @@ describe('FileWatcherService', () => {
           handleFileAdded: (libraryId: string, filePath: string) => void;
         }
       ).handleFileAdded.bind(service);
-      const debounceTimers = (service as unknown as { debounceTimers: Map<string, NodeJS.Timeout> })
-        .debounceTimers;
+      const debounceTimers = (
+        service as unknown as { debounceTimers: Map<string, NodeJS.Timeout> }
+      ).debounceTimers;
 
       handleFileAdded(mockLibrary.id, '/media/test/movie.mkv');
       handleFileAdded(mockLibrary.id, '/media/test/movie.mkv');

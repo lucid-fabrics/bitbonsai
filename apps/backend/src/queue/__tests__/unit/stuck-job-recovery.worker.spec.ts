@@ -51,7 +51,10 @@ describe('StuckJobRecoveryWorker', () => {
 
   describe('onModuleInit', () => {
     it('should start the worker on module init', async () => {
-      const startSpy = jest.spyOn(worker as unknown as { start: () => void }, 'start');
+      const startSpy = jest.spyOn(
+        worker as unknown as { start: () => void },
+        'start',
+      );
 
       await worker.onModuleInit();
 
@@ -68,7 +71,9 @@ describe('StuckJobRecoveryWorker', () => {
 
       await worker.stop();
 
-      expect((worker as unknown as { isRunning: boolean }).isRunning).toBe(false);
+      expect((worker as unknown as { isRunning: boolean }).isRunning).toBe(
+        false,
+      );
     });
 
     it('should await loop promise if set', async () => {
@@ -76,14 +81,17 @@ describe('StuckJobRecoveryWorker', () => {
       const loopPromise = new Promise<void>((resolve) => {
         resolveLoop = resolve;
       });
-      (worker as unknown as { loopPromise?: Promise<void> }).loopPromise = loopPromise;
+      (worker as unknown as { loopPromise?: Promise<void> }).loopPromise =
+        loopPromise;
       (worker as unknown as { isRunning: boolean }).isRunning = true;
 
       const stopPromise = worker.stop();
       resolveLoop();
       await stopPromise;
 
-      expect((worker as unknown as { isRunning: boolean }).isRunning).toBe(false);
+      expect((worker as unknown as { isRunning: boolean }).isRunning).toBe(
+        false,
+      );
     });
   });
 
@@ -103,7 +111,9 @@ describe('StuckJobRecoveryWorker', () => {
         .mockResolvedValueOnce([]); // TRANSFERRING
       mockJobRepository.updateById.mockResolvedValue({});
 
-      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+      await (
+        worker as unknown as { recoverStuckJobs: () => Promise<void> }
+      ).recoverStuckJobs();
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith('job-1', {
         stage: JobStage.DETECTED,
@@ -114,7 +124,9 @@ describe('StuckJobRecoveryWorker', () => {
     it('should not update jobs when no HEALTH_CHECK jobs are stuck', async () => {
       mockJobRepository.findManySelect.mockResolvedValue([]);
 
-      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+      await (
+        worker as unknown as { recoverStuckJobs: () => Promise<void> }
+      ).recoverStuckJobs();
 
       expect(mockJobRepository.updateById).not.toHaveBeenCalled();
     });
@@ -143,14 +155,16 @@ describe('StuckJobRecoveryWorker', () => {
       mockFfmpegService.hasActiveProcess.mockReturnValue(false);
       mockJobRepository.updateById.mockResolvedValue({});
 
-      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+      await (
+        worker as unknown as { recoverStuckJobs: () => Promise<void> }
+      ).recoverStuckJobs();
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-2',
         expect.objectContaining({
           stage: JobStage.QUEUED,
           stuckRecoveryCount: { increment: 1 },
-        })
+        }),
       );
     });
 
@@ -177,20 +191,22 @@ describe('StuckJobRecoveryWorker', () => {
       mockJobRepository.updateById.mockResolvedValue({});
       mockFileFailureTracking.recordFailure.mockResolvedValue(undefined);
 
-      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+      await (
+        worker as unknown as { recoverStuckJobs: () => Promise<void> }
+      ).recoverStuckJobs();
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-3',
         expect.objectContaining({
           stage: JobStage.FAILED,
           failedAt: expect.any(Date),
-        })
+        }),
       );
       expect(mockFileFailureTracking.recordFailure).toHaveBeenCalledWith(
         '/mnt/bad.mkv',
         'lib-1',
         expect.any(String),
-        undefined
+        undefined,
       );
     });
 
@@ -218,14 +234,16 @@ describe('StuckJobRecoveryWorker', () => {
       mockFfmpegService.killProcess.mockResolvedValue(true);
       mockJobRepository.updateById.mockResolvedValue({});
 
-      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+      await (
+        worker as unknown as { recoverStuckJobs: () => Promise<void> }
+      ).recoverStuckJobs();
 
       expect(mockFfmpegService.killProcess).toHaveBeenCalledWith('job-4');
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-4',
         expect.objectContaining({
           stage: JobStage.QUEUED,
-        })
+        }),
       );
     });
 
@@ -252,7 +270,9 @@ describe('StuckJobRecoveryWorker', () => {
       mockFfmpegService.isProcessTrulyStuck.mockReturnValue(false);
       mockFfmpegService.getLastOutputTime.mockReturnValue(new Date());
 
-      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+      await (
+        worker as unknown as { recoverStuckJobs: () => Promise<void> }
+      ).recoverStuckJobs();
 
       expect(mockJobRepository.updateById).not.toHaveBeenCalled();
     });
@@ -280,7 +300,9 @@ describe('StuckJobRecoveryWorker', () => {
       mockFfmpegService.isProcessTrulyStuck.mockReturnValue(true);
       mockFfmpegService.killProcess.mockResolvedValue(false);
 
-      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+      await (
+        worker as unknown as { recoverStuckJobs: () => Promise<void> }
+      ).recoverStuckJobs();
 
       expect(mockJobRepository.updateById).not.toHaveBeenCalled();
     });
@@ -302,7 +324,9 @@ describe('StuckJobRecoveryWorker', () => {
 
       mockJobRepository.updateById.mockResolvedValue({});
 
-      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+      await (
+        worker as unknown as { recoverStuckJobs: () => Promise<void> }
+      ).recoverStuckJobs();
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith('job-7', {
         stage: JobStage.QUEUED,
@@ -332,7 +356,9 @@ describe('StuckJobRecoveryWorker', () => {
 
       mockJobRepository.updateById.mockResolvedValue({});
 
-      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+      await (
+        worker as unknown as { recoverStuckJobs: () => Promise<void> }
+      ).recoverStuckJobs();
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-8',
@@ -342,7 +368,7 @@ describe('StuckJobRecoveryWorker', () => {
           transferProgress: 0,
           transferStartedAt: null,
           transferLastProgressAt: null,
-        })
+        }),
       );
     });
 
@@ -364,14 +390,16 @@ describe('StuckJobRecoveryWorker', () => {
 
       mockJobRepository.updateById.mockResolvedValue({});
 
-      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+      await (
+        worker as unknown as { recoverStuckJobs: () => Promise<void> }
+      ).recoverStuckJobs();
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-9',
         expect.objectContaining({
           stage: JobStage.FAILED,
           failedAt: expect.any(Date),
-        })
+        }),
       );
     });
   });
@@ -398,17 +426,21 @@ describe('StuckJobRecoveryWorker', () => {
 
       mockFfmpegService.hasActiveProcess.mockReturnValue(false);
       mockJobRepository.updateById.mockResolvedValue({});
-      mockFileFailureTracking.recordFailure.mockRejectedValue(new Error('Tracking error'));
+      mockFileFailureTracking.recordFailure.mockRejectedValue(
+        new Error('Tracking error'),
+      );
 
       await expect(
-        (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs()
+        (
+          worker as unknown as { recoverStuckJobs: () => Promise<void> }
+        ).recoverStuckJobs(),
       ).resolves.not.toThrow();
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-10',
         expect.objectContaining({
           stage: JobStage.FAILED,
-        })
+        }),
       );
     });
   });

@@ -47,7 +47,9 @@ export class LibraryFilesModalComponent {
   protected readonly isLoading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly searchTerm = signal('');
-  protected readonly sortBy = signal<'name' | 'size' | 'codec' | 'resolution'>('name');
+  protected readonly sortBy = signal<'name' | 'size' | 'codec' | 'resolution'>(
+    'name',
+  );
   protected readonly sortDirection = signal<'asc' | 'desc'>('asc');
 
   // Derived: filtered and sorted files
@@ -57,7 +59,9 @@ export class LibraryFilesModalComponent {
     const sortBy = this.sortBy();
     const dir = this.sortDirection();
 
-    const filtered = term ? files.filter((f) => f.fileName.toLowerCase().includes(term)) : files;
+    const filtered = term
+      ? files.filter((f) => f.fileName.toLowerCase().includes(term))
+      : files;
 
     return [...filtered].sort((a, b) => {
       let cmp = 0;
@@ -90,9 +94,11 @@ export class LibraryFilesModalComponent {
         takeUntilDestroyed(this.destroyRef),
         catchError((err) => {
           this.isLoading.set(false);
-          this.error.set(err?.message || 'Failed to load library files. Please try again.');
+          this.error.set(
+            err?.message || 'Failed to load library files. Please try again.',
+          );
           return of(null);
-        })
+        }),
       )
       .subscribe((files) => {
         if (files) {
@@ -112,7 +118,9 @@ export class LibraryFilesModalComponent {
     }
   }
 
-  protected getSortIcon(field: 'name' | 'size' | 'codec' | 'resolution'): string {
+  protected getSortIcon(
+    field: 'name' | 'size' | 'codec' | 'resolution',
+  ): string {
     if (this.sortBy() !== field) return 'fa-sort';
     return this.sortDirection() === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
   }
@@ -146,9 +154,11 @@ export class LibraryFilesModalComponent {
   // Helper methods for file details
   protected getFileCodecBadgeClass(codec: string): string {
     const codecLower = codec.toLowerCase();
-    if (codecLower.includes('hevc') || codecLower.includes('h.265')) return 'codec-hevc';
+    if (codecLower.includes('hevc') || codecLower.includes('h.265'))
+      return 'codec-hevc';
     if (codecLower.includes('av1')) return 'codec-av1';
-    if (codecLower.includes('h.264') || codecLower.includes('avc')) return 'codec-h264';
+    if (codecLower.includes('h.264') || codecLower.includes('avc'))
+      return 'codec-h264';
     if (codecLower.includes('vp9')) return 'codec-vp9';
     return 'codec-other';
   }

@@ -174,7 +174,7 @@ export class PoliciesController {
   })
   async update(
     @Param('id') id: string,
-    @Body() updatePolicyDto: UpdatePolicyDto
+    @Body() updatePolicyDto: UpdatePolicyDto,
   ): Promise<PolicyDto> {
     return this.policiesService.update(id, updatePolicyDto);
   }

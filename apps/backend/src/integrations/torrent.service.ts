@@ -98,7 +98,7 @@ export class TorrentIntegrationService {
 
   constructor(
     private readonly settingsRepository: SettingsRepository,
-    private readonly httpService: HttpService
+    private readonly httpService: HttpService,
   ) {}
 
   /**
@@ -127,7 +127,9 @@ export class TorrentIntegrationService {
           const fullPath = `${torrent.savePath}/${file}`.replace(/\/+/g, '/');
 
           if (fullPath === filePath || filePath.includes(file)) {
-            this.logger.debug(`File ${filePath} is being seeded (torrent: ${torrent.name})`);
+            this.logger.debug(
+              `File ${filePath} is being seeded (torrent: ${torrent.name})`,
+            );
             return true;
           }
         }
@@ -174,7 +176,13 @@ export class TorrentIntegrationService {
    */
   private isTorrentSeeding(torrent: TorrentInfo): boolean {
     // States that indicate active seeding (lowercase for comparison)
-    const seedingStates = ['seeding', 'uploading', 'stalledup', 'forcedup', 'queuedup'];
+    const seedingStates = [
+      'seeding',
+      'uploading',
+      'stalledup',
+      'forcedup',
+      'queuedup',
+    ];
 
     return seedingStates.includes(torrent.state.toLowerCase());
   }
@@ -182,7 +190,9 @@ export class TorrentIntegrationService {
   /**
    * Get active torrents from configured client
    */
-  private async getActiveTorrents(config: TorrentConfig): Promise<TorrentInfo[]> {
+  private async getActiveTorrents(
+    config: TorrentConfig,
+  ): Promise<TorrentInfo[]> {
     switch (config.client) {
       case TorrentClient.QBITTORRENT:
         return this.getQbittorrentTorrents(config);
@@ -198,7 +208,10 @@ export class TorrentIntegrationService {
   /**
    * Get torrent files from configured client
    */
-  private async getTorrentFiles(config: TorrentConfig, hash: string): Promise<string[]> {
+  private async getTorrentFiles(
+    config: TorrentConfig,
+    hash: string,
+  ): Promise<string[]> {
     switch (config.client) {
       case TorrentClient.QBITTORRENT:
         return this.getQbittorrentFiles(config, hash);
@@ -223,8 +236,8 @@ export class TorrentIntegrationService {
         {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           timeout: 5000,
-        }
-      )
+        },
+      ),
     );
 
     const cookie = response.headers['set-cookie']?.[0];
@@ -233,14 +246,16 @@ export class TorrentIntegrationService {
     }
   }
 
-  private async getQbittorrentTorrents(config: TorrentConfig): Promise<TorrentInfo[]> {
+  private async getQbittorrentTorrents(
+    config: TorrentConfig,
+  ): Promise<TorrentInfo[]> {
     await this.qbLogin(config);
 
     const response = await firstValueFrom(
       this.httpService.get(`${config.url}/api/v2/torrents/info`, {
         headers: { Cookie: this.qbCookie || '' },
         timeout: 10000,
-      })
+      }),
     );
 
     return ((response.data as QBittorrentTorrentResponse[]) || []).map((t) => ({
@@ -254,22 +269,29 @@ export class TorrentIntegrationService {
     }));
   }
 
-  private async getQbittorrentFiles(config: TorrentConfig, hash: string): Promise<string[]> {
+  private async getQbittorrentFiles(
+    config: TorrentConfig,
+    hash: string,
+  ): Promise<string[]> {
     await this.qbLogin(config);
 
     const response = await firstValueFrom(
       this.httpService.get(`${config.url}/api/v2/torrents/files?hash=${hash}`, {
         headers: { Cookie: this.qbCookie || '' },
         timeout: 10000,
-      })
+      }),
     );
 
-    return ((response.data as QBittorrentFileResponse[]) || []).map((f) => f.name);
+    return ((response.data as QBittorrentFileResponse[]) || []).map(
+      (f) => f.name,
+    );
   }
 
   // ========== Transmission Implementation ==========
 
-  private async getTransmissionTorrents(config: TorrentConfig): Promise<TorrentInfo[]> {
+  private async getTransmissionTorrents(
+    config: TorrentConfig,
+  ): Promise<TorrentInfo[]> {
     const auth = config.username
       ? { username: config.username, password: config.password || '' }
       : undefined;
@@ -278,14 +300,19 @@ export class TorrentIntegrationService {
     let sessionId = '';
     try {
       await firstValueFrom(
-        this.httpService.post(`${config.url}/transmission/rpc`, {}, { auth, timeout: 5000 })
+        this.httpService.post(
+          `${config.url}/transmission/rpc`,
+          {},
+          { auth, timeout: 5000 },
+        ),
       );
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as {
           response?: { headers?: Record<string, string> };
         };
-        sessionId = axiosError.response?.headers?.['x-transmission-session-id'] || '';
+        sessionId =
+          axiosError.response?.headers?.['x-transmission-session-id'] || '';
       }
     }
 
@@ -295,15 +322,22 @@ export class TorrentIntegrationService {
         {
           method: 'torrent-get',
           arguments: {
-            fields: ['hashString', 'name', 'status', 'percentDone', 'uploadRatio', 'downloadDir'],
+            fields: [
+              'hashString',
+              'name',
+              'status',
+              'percentDone',
+              'uploadRatio',
+              'downloadDir',
+            ],
           },
         },
         {
           auth,
           headers: { 'X-Transmission-Session-Id': sessionId },
           timeout: 10000,
-        }
-      )
+        },
+      ),
     );
 
     const statusMap: Record<number, string> = {
@@ -316,20 +350,24 @@ export class TorrentIntegrationService {
       6: 'seeding',
     };
 
-    return ((response.data?.arguments?.torrents as TransmissionTorrentResponse[]) || []).map(
-      (t) => ({
-        hash: t.hashString,
-        name: t.name,
-        state: statusMap[t.status] || 'unknown',
-        progress: t.percentDone,
-        ratio: t.uploadRatio,
-        savePath: t.downloadDir,
-        files: [],
-      })
-    );
+    return (
+      (response.data?.arguments?.torrents as TransmissionTorrentResponse[]) ||
+      []
+    ).map((t) => ({
+      hash: t.hashString,
+      name: t.name,
+      state: statusMap[t.status] || 'unknown',
+      progress: t.percentDone,
+      ratio: t.uploadRatio,
+      savePath: t.downloadDir,
+      files: [],
+    }));
   }
 
-  private async getTransmissionFiles(config: TorrentConfig, hash: string): Promise<string[]> {
+  private async getTransmissionFiles(
+    config: TorrentConfig,
+    hash: string,
+  ): Promise<string[]> {
     const auth = config.username
       ? { username: config.username, password: config.password || '' }
       : undefined;
@@ -337,14 +375,19 @@ export class TorrentIntegrationService {
     let sessionId = '';
     try {
       await firstValueFrom(
-        this.httpService.post(`${config.url}/transmission/rpc`, {}, { auth, timeout: 5000 })
+        this.httpService.post(
+          `${config.url}/transmission/rpc`,
+          {},
+          { auth, timeout: 5000 },
+        ),
       );
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as {
           response?: { headers?: Record<string, string> };
         };
-        sessionId = axiosError.response?.headers?.['x-transmission-session-id'] || '';
+        sessionId =
+          axiosError.response?.headers?.['x-transmission-session-id'] || '';
       }
     }
 
@@ -359,24 +402,28 @@ export class TorrentIntegrationService {
           auth,
           headers: { 'X-Transmission-Session-Id': sessionId },
           timeout: 10000,
-        }
-      )
+        },
+      ),
     );
 
     const torrent = response.data?.arguments?.torrents?.[0];
-    return ((torrent?.files as TransmissionFileResponse[]) || []).map((f) => f.name);
+    return ((torrent?.files as TransmissionFileResponse[]) || []).map(
+      (f) => f.name,
+    );
   }
 
   // ========== Deluge Implementation ==========
 
-  private async getDelugeTorrents(config: TorrentConfig): Promise<TorrentInfo[]> {
+  private async getDelugeTorrents(
+    config: TorrentConfig,
+  ): Promise<TorrentInfo[]> {
     // Deluge Web API login
     const loginResponse = await firstValueFrom(
       this.httpService.post(
         `${config.url}/json`,
         { method: 'auth.login', params: [config.password || ''], id: 1 },
-        { timeout: 5000 }
-      )
+        { timeout: 5000 },
+      ),
     );
 
     const cookie = loginResponse.headers['set-cookie']?.[0]?.split(';')[0];
@@ -392,11 +439,13 @@ export class TorrentIntegrationService {
         {
           headers: { Cookie: cookie || '' },
           timeout: 10000,
-        }
-      )
+        },
+      ),
     );
 
-    const torrents = (response.data?.result?.torrents as Record<string, DelugeTorrentInfo>) || {};
+    const torrents =
+      (response.data?.result?.torrents as Record<string, DelugeTorrentInfo>) ||
+      {};
 
     return Object.entries(torrents).map(([hash, t]) => ({
       hash,
@@ -409,13 +458,16 @@ export class TorrentIntegrationService {
     }));
   }
 
-  private async getDelugeFiles(config: TorrentConfig, hash: string): Promise<string[]> {
+  private async getDelugeFiles(
+    config: TorrentConfig,
+    hash: string,
+  ): Promise<string[]> {
     const loginResponse = await firstValueFrom(
       this.httpService.post(
         `${config.url}/json`,
         { method: 'auth.login', params: [config.password || ''], id: 1 },
-        { timeout: 5000 }
-      )
+        { timeout: 5000 },
+      ),
     );
 
     const cookie = loginResponse.headers['set-cookie']?.[0]?.split(';')[0];
@@ -431,8 +483,8 @@ export class TorrentIntegrationService {
         {
           headers: { Cookie: cookie || '' },
           timeout: 10000,
-        }
-      )
+        },
+      ),
     );
 
     const extractFiles = (node: DelugeNodeContent, prefix = ''): string[] => {
@@ -480,7 +532,7 @@ export class TorrentIntegrationService {
     client: TorrentClient,
     url: string,
     username?: string,
-    password?: string
+    password?: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const config: TorrentConfig = {

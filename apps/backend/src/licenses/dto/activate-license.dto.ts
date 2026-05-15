@@ -1,10 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class ActivateLicenseDto {
   @ApiProperty({
-    description: 'License key from licensing-service (BITBONSAI-XXX-... format)',
+    description:
+      'License key from licensing-service (BITBONSAI-XXX-... format)',
     example: 'BITBONSAI-SUP-eyJlbWFpbCI6InVz...',
   })
   @IsNotEmpty({ message: 'License key is required' })

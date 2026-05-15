@@ -53,8 +53,12 @@ describe('LicenseController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLicenseService.createLicense.mockRejectedValue(new Error('create failed'));
-      await expect(controller.create({} as never)).rejects.toThrow('create failed');
+      mockLicenseService.createLicense.mockRejectedValue(
+        new Error('create failed'),
+      );
+      await expect(controller.create({} as never)).rejects.toThrow(
+        'create failed',
+      );
     });
   });
 
@@ -66,15 +70,19 @@ describe('LicenseController', () => {
 
       const result = await controller.validate(dto);
 
-      expect(mockLicenseService.validateLicense).toHaveBeenCalledWith('BITBONSAI-FREE-ABC123');
+      expect(mockLicenseService.validateLicense).toHaveBeenCalledWith(
+        'BITBONSAI-FREE-ABC123',
+      );
       expect(result).toEqual(licenseInfo);
     });
 
     it('should propagate service errors', async () => {
-      mockLicenseService.validateLicense.mockRejectedValue(new Error('invalid license'));
-      await expect(controller.validate({ key: 'bad-key' } as never)).rejects.toThrow(
-        'invalid license'
+      mockLicenseService.validateLicense.mockRejectedValue(
+        new Error('invalid license'),
       );
+      await expect(
+        controller.validate({ key: 'bad-key' } as never),
+      ).rejects.toThrow('invalid license');
     });
   });
 
@@ -97,8 +105,12 @@ describe('LicenseController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLicenseService.checkCanAddNode.mockRejectedValue(new Error('not found'));
-      await expect(controller.canAddNode('missing')).rejects.toThrow('not found');
+      mockLicenseService.checkCanAddNode.mockRejectedValue(
+        new Error('not found'),
+      );
+      await expect(controller.canAddNode('missing')).rejects.toThrow(
+        'not found',
+      );
     });
   });
 
@@ -114,8 +126,12 @@ describe('LicenseController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLicenseClientService.verifyLicense.mockRejectedValue(new Error('verify failed'));
-      await expect(controller.getCurrentLicense()).rejects.toThrow('verify failed');
+      mockLicenseClientService.verifyLicense.mockRejectedValue(
+        new Error('verify failed'),
+      );
+      await expect(controller.getCurrentLicense()).rejects.toThrow(
+        'verify failed',
+      );
     });
   });
 
@@ -126,13 +142,19 @@ describe('LicenseController', () => {
 
       const result = await controller.getCurrentLimits();
 
-      expect(mockLicenseClientService.getCurrentLimits).toHaveBeenCalledTimes(1);
+      expect(mockLicenseClientService.getCurrentLimits).toHaveBeenCalledTimes(
+        1,
+      );
       expect(result).toEqual(limits);
     });
 
     it('should propagate service errors', async () => {
-      mockLicenseClientService.getCurrentLimits.mockRejectedValue(new Error('limits error'));
-      await expect(controller.getCurrentLimits()).rejects.toThrow('limits error');
+      mockLicenseClientService.getCurrentLimits.mockRejectedValue(
+        new Error('limits error'),
+      );
+      await expect(controller.getCurrentLimits()).rejects.toThrow(
+        'limits error',
+      );
     });
   });
 
@@ -143,7 +165,9 @@ describe('LicenseController', () => {
 
       const result = await controller.setLicenseKey(dto);
 
-      expect(mockLicenseClientService.setLicenseKey).toHaveBeenCalledWith('BITBONSAI-PRO-XYZ789');
+      expect(mockLicenseClientService.setLicenseKey).toHaveBeenCalledWith(
+        'BITBONSAI-PRO-XYZ789',
+      );
       expect(result).toEqual({
         success: true,
         message: 'License key updated and verified',
@@ -151,10 +175,12 @@ describe('LicenseController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLicenseClientService.setLicenseKey.mockRejectedValue(new Error('invalid key'));
-      await expect(controller.setLicenseKey({ key: 'bad' } as never)).rejects.toThrow(
-        'invalid key'
+      mockLicenseClientService.setLicenseKey.mockRejectedValue(
+        new Error('invalid key'),
       );
+      await expect(
+        controller.setLicenseKey({ key: 'bad' } as never),
+      ).rejects.toThrow('invalid key');
     });
   });
 
@@ -171,15 +197,17 @@ describe('LicenseController', () => {
 
       expect(mockLicenseClientService.activateLicense).toHaveBeenCalledWith(
         'BITBONSAI-PRO-XYZ789',
-        'user@example.com'
+        'user@example.com',
       );
       expect(result).toEqual(activation);
     });
 
     it('should propagate service errors', async () => {
-      mockLicenseClientService.activateLicense.mockRejectedValue(new Error('activation failed'));
+      mockLicenseClientService.activateLicense.mockRejectedValue(
+        new Error('activation failed'),
+      );
       await expect(
-        controller.activateLicense({ key: 'bad', email: 'x@y.com' } as never)
+        controller.activateLicense({ key: 'bad', email: 'x@y.com' } as never),
       ).rejects.toThrow('activation failed');
     });
   });
@@ -188,21 +216,25 @@ describe('LicenseController', () => {
     it('should call licenseClient.lookupLicenseByEmail with email from dto', async () => {
       const dto = { email: 'user@example.com' } as never;
       const lookupResult = { found: true, licenseKey: 'BITBONSAI-PRO-XYZ789' };
-      mockLicenseClientService.lookupLicenseByEmail.mockResolvedValue(lookupResult);
+      mockLicenseClientService.lookupLicenseByEmail.mockResolvedValue(
+        lookupResult,
+      );
 
       const result = await controller.lookupLicense(dto);
 
-      expect(mockLicenseClientService.lookupLicenseByEmail).toHaveBeenCalledWith(
-        'user@example.com'
-      );
+      expect(
+        mockLicenseClientService.lookupLicenseByEmail,
+      ).toHaveBeenCalledWith('user@example.com');
       expect(result).toEqual(lookupResult);
     });
 
     it('should propagate service errors', async () => {
-      mockLicenseClientService.lookupLicenseByEmail.mockRejectedValue(new Error('lookup error'));
-      await expect(controller.lookupLicense({ email: 'x@y.com' } as never)).rejects.toThrow(
-        'lookup error'
+      mockLicenseClientService.lookupLicenseByEmail.mockRejectedValue(
+        new Error('lookup error'),
       );
+      await expect(
+        controller.lookupLicense({ email: 'x@y.com' } as never),
+      ).rejects.toThrow('lookup error');
     });
   });
 });

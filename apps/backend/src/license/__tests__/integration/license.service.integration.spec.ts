@@ -15,7 +15,10 @@ describe('LicenseService Integration Tests', () => {
 
   beforeEach(async () => {
     module = await Test.createTestingModule({
-      providers: [LicenseService, { provide: LicenseRepository, useValue: mockLicenseRepository }],
+      providers: [
+        LicenseService,
+        { provide: LicenseRepository, useValue: mockLicenseRepository },
+      ],
     }).compile();
 
     service = module.get<LicenseService>(LicenseService);
@@ -88,8 +91,12 @@ describe('LicenseService Integration Tests', () => {
     it('should throw NotFoundException for unknown key', async () => {
       mockLicenseRepository.findUnique.mockResolvedValue(null);
 
-      await expect(service.validateLicense('UNKNOWN-KEY')).rejects.toThrow(NotFoundException);
-      await expect(service.validateLicense('UNKNOWN-KEY')).rejects.toThrow('License not found');
+      await expect(service.validateLicense('UNKNOWN-KEY')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.validateLicense('UNKNOWN-KEY')).rejects.toThrow(
+        'License not found',
+      );
     });
 
     it('should throw BadRequestException for revoked license', async () => {
@@ -103,8 +110,12 @@ describe('LicenseService Integration Tests', () => {
         _count: { nodes: 0 },
       });
 
-      await expect(service.validateLicense('REV-key')).rejects.toThrow(BadRequestException);
-      await expect(service.validateLicense('REV-key')).rejects.toThrow('License is not active');
+      await expect(service.validateLicense('REV-key')).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.validateLicense('REV-key')).rejects.toThrow(
+        'License is not active',
+      );
     });
 
     it('should throw BadRequestException for expired license', async () => {
@@ -118,8 +129,12 @@ describe('LicenseService Integration Tests', () => {
         _count: { nodes: 0 },
       });
 
-      await expect(service.validateLicense('EXP-key')).rejects.toThrow(BadRequestException);
-      await expect(service.validateLicense('EXP-key')).rejects.toThrow('License has expired');
+      await expect(service.validateLicense('EXP-key')).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.validateLicense('EXP-key')).rejects.toThrow(
+        'License has expired',
+      );
     });
   });
 
@@ -157,7 +172,7 @@ describe('LicenseService Integration Tests', () => {
             multiNode: false,
             cloudStorage: false,
           }),
-        })
+        }),
       );
     });
 
@@ -193,7 +208,7 @@ describe('LicenseService Integration Tests', () => {
             webhooks: true,
             cloudStorage: false,
           }),
-        })
+        }),
       );
     });
 
@@ -223,7 +238,7 @@ describe('LicenseService Integration Tests', () => {
           maxNodes: 999,
           maxConcurrentJobs: 999,
           features: expect.objectContaining({ cloudStorage: true, api: true }),
-        })
+        }),
       );
     });
 
@@ -272,7 +287,7 @@ describe('LicenseService Integration Tests', () => {
       expect(mockLicenseRepository.createLicense).toHaveBeenCalledWith(
         expect.objectContaining({
           validUntil: new Date('2027-01-01T00:00:00.000Z'),
-        })
+        }),
       );
     });
   });
@@ -288,7 +303,7 @@ describe('LicenseService Integration Tests', () => {
 
       expect(result).toBe(true);
       expect(mockLicenseRepository.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'lic-123' } })
+        expect.objectContaining({ where: { id: 'lic-123' } }),
       );
     });
 
@@ -304,8 +319,12 @@ describe('LicenseService Integration Tests', () => {
     it('should throw NotFoundException when license does not exist', async () => {
       mockLicenseRepository.findUnique.mockResolvedValue(null);
 
-      await expect(service.checkCanAddNode('missing-id')).rejects.toThrow(NotFoundException);
-      await expect(service.checkCanAddNode('missing-id')).rejects.toThrow('License not found');
+      await expect(service.checkCanAddNode('missing-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.checkCanAddNode('missing-id')).rejects.toThrow(
+        'License not found',
+      );
     });
   });
 });

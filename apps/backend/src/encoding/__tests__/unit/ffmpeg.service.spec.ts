@@ -2,10 +2,16 @@ import type { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { EncodingCancelledEvent, EncodingFailedEvent } from '../../../common/events';
+import {
+  EncodingCancelledEvent,
+  EncodingFailedEvent,
+} from '../../../common/events';
 import { JobRepository } from '../../../common/repositories/job.repository';
 import { EncodingPreviewService } from '../../../encoding/encoding-preview.service';
-import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
+import {
+  createMockJob,
+  createMockPolicy,
+} from '../../../testing/mock-factories';
 import { FfmpegService } from '../../ffmpeg.service';
 import { FfmpegFileVerificationService } from '../../ffmpeg-file-verification.service';
 import { FfmpegFlagBuilderService } from '../../ffmpeg-flag-builder.service';
@@ -145,9 +151,13 @@ describe('FfmpegService', () => {
           provide: FfmpegFlagBuilderService,
           useValue: {
             ALLOWED_FFMPEG_FLAGS: new Set<string>(),
-            validateFfmpegFlags: jest.fn().mockImplementation((f: string[]) => f),
+            validateFfmpegFlags: jest
+              .fn()
+              .mockImplementation((f: string[]) => f),
             selectCodecForPolicy: jest.fn().mockReturnValue('libx265'),
-            buildFfmpegCommand: jest.fn().mockReturnValue(['-i', 'input', 'output']),
+            buildFfmpegCommand: jest
+              .fn()
+              .mockReturnValue(['-i', 'input', 'output']),
           },
         },
         FfmpegProgressParserService,
@@ -155,7 +165,9 @@ describe('FfmpegService', () => {
           provide: FfmpegProcessCleanupService,
           useValue: {
             findSystemFfmpegProcesses: jest.fn().mockResolvedValue([]),
-            killFfmpegByPid: jest.fn().mockResolvedValue({ success: true, message: 'ok' }),
+            killFfmpegByPid: jest
+              .fn()
+              .mockResolvedValue({ success: true, message: 'ok' }),
             cleanupOrphanedTempFiles: jest.fn().mockResolvedValue(undefined),
           },
         },
@@ -164,14 +176,18 @@ describe('FfmpegService', () => {
           useValue: {
             sleep: jest.fn().mockResolvedValue(undefined),
             waitForFileExists: jest.fn().mockResolvedValue(true),
-            verifyFileWithRetries: jest.fn().mockResolvedValue({ isValid: true, attempts: 1 }),
+            verifyFileWithRetries: jest
+              .fn()
+              .mockResolvedValue({ isValid: true, attempts: 1 }),
           },
         },
         {
           provide: FfprobeService,
           useValue: {
             getVideoDuration: jest.fn().mockResolvedValue(3600),
-            getVideoInfo: jest.fn().mockResolvedValue({ codec: 'hevc', container: 'matroska' }),
+            getVideoInfo: jest
+              .fn()
+              .mockResolvedValue({ codec: 'hevc', container: 'matroska' }),
             getVideoInfoCached: jest
               .fn()
               .mockResolvedValue({ codec: 'hevc', container: 'matroska' }),
@@ -197,7 +213,9 @@ describe('FfmpegService', () => {
     let hardwareAccelerationService: { detectHardwareAcceleration: jest.Mock };
 
     beforeEach(() => {
-      hardwareAccelerationService = module.get(HardwareAccelerationService) as any;
+      hardwareAccelerationService = module.get(
+        HardwareAccelerationService,
+      ) as any;
     });
 
     it('should detect NVIDIA GPU', async () => {
@@ -270,7 +288,12 @@ describe('FfmpegService', () => {
         '/media/video.mp4.tmp',
       ]);
 
-      const args = service.buildFfmpegCommand(mockJob, mockPolicy, hwaccel, '/media/video.mp4.tmp');
+      const args = service.buildFfmpegCommand(
+        mockJob,
+        mockPolicy,
+        hwaccel,
+        '/media/video.mp4.tmp',
+      );
 
       expect(flagBuilderService.buildFfmpegCommand).toHaveBeenCalled();
       expect(args).toContain('-hwaccel');
@@ -293,7 +316,12 @@ describe('FfmpegService', () => {
         '/media/video.mp4.tmp',
       ]);
 
-      const args = service.buildFfmpegCommand(mockJob, mockPolicy, hwaccel, '/media/video.mp4.tmp');
+      const args = service.buildFfmpegCommand(
+        mockJob,
+        mockPolicy,
+        hwaccel,
+        '/media/video.mp4.tmp',
+      );
 
       expect(args).toContain('-c:a');
       expect(args).toContain('aac');
@@ -369,7 +397,9 @@ describe('FfmpegService', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      expect((ffmpegProc.stderr as EventEmitter).listenerCount('data')).toBeGreaterThan(0);
+      expect(
+        (ffmpegProc.stderr as EventEmitter).listenerCount('data'),
+      ).toBeGreaterThan(0);
 
       // Clean up
       setTimeout(() => ffmpegProc.emit('close', 1), 10);
@@ -397,7 +427,7 @@ describe('FfmpegService', () => {
       await expect(encodePromise).rejects.toThrow();
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         EncodingFailedEvent.event,
-        expect.any(EncodingFailedEvent)
+        expect.any(EncodingFailedEvent),
       );
     });
 
@@ -405,7 +435,7 @@ describe('FfmpegService', () => {
       mockExistsSync.mockReturnValue(false);
 
       await expect(service.encodeFile(mockJob, mockPolicy)).rejects.toThrow(
-        'File not found: /media/video.mp4'
+        'File not found: /media/video.mp4',
       );
     });
 
@@ -430,7 +460,7 @@ describe('FfmpegService', () => {
       await expect(encodePromise).rejects.toThrow('spawn ffmpeg ENOENT');
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         EncodingFailedEvent.event,
-        expect.any(EncodingFailedEvent)
+        expect.any(EncodingFailedEvent),
       );
     });
   });
@@ -466,7 +496,7 @@ describe('FfmpegService', () => {
       expect((ffmpegProc as any).kill).toHaveBeenCalledWith('SIGTERM');
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         EncodingCancelledEvent.event,
-        expect.any(EncodingCancelledEvent)
+        expect.any(EncodingCancelledEvent),
       );
 
       // Clean up the encoding promise

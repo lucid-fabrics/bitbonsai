@@ -24,7 +24,9 @@ describe('BatchController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [BatchController],
-      providers: [{ provide: BatchOperationsService, useValue: mockBatchOperations }],
+      providers: [
+        { provide: BatchOperationsService, useValue: mockBatchOperations },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: () => true })
@@ -57,7 +59,9 @@ describe('BatchController', () => {
 
     it('should propagate service errors', async () => {
       mockBatchOperations.pauseAll.mockRejectedValue(new Error('pause failed'));
-      await expect(controller.pauseAll(undefined)).rejects.toThrow('pause failed');
+      await expect(controller.pauseAll(undefined)).rejects.toThrow(
+        'pause failed',
+      );
     });
   });
 
@@ -80,8 +84,12 @@ describe('BatchController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockBatchOperations.resumeAll.mockRejectedValue(new Error('resume failed'));
-      await expect(controller.resumeAll(undefined)).rejects.toThrow('resume failed');
+      mockBatchOperations.resumeAll.mockRejectedValue(
+        new Error('resume failed'),
+      );
+      await expect(controller.resumeAll(undefined)).rejects.toThrow(
+        'resume failed',
+      );
     });
   });
 
@@ -104,8 +112,12 @@ describe('BatchController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockBatchOperations.cancelAll.mockRejectedValue(new Error('cancel failed'));
-      await expect(controller.cancelAll(undefined)).rejects.toThrow('cancel failed');
+      mockBatchOperations.cancelAll.mockRejectedValue(
+        new Error('cancel failed'),
+      );
+      await expect(controller.cancelAll(undefined)).rejects.toThrow(
+        'cancel failed',
+      );
     });
   });
 
@@ -116,7 +128,10 @@ describe('BatchController', () => {
 
       const result = await controller.retryAllFailed(dto);
 
-      expect(mockBatchOperations.retryAllFailed).toHaveBeenCalledWith('node-1', 5);
+      expect(mockBatchOperations.retryAllFailed).toHaveBeenCalledWith(
+        'node-1',
+        5,
+      );
       expect(result).toEqual(batchResult);
     });
 
@@ -125,37 +140,58 @@ describe('BatchController', () => {
 
       await controller.retryAllFailed({});
 
-      expect(mockBatchOperations.retryAllFailed).toHaveBeenCalledWith(undefined, undefined);
+      expect(mockBatchOperations.retryAllFailed).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+      );
     });
 
     it('should propagate service errors', async () => {
-      mockBatchOperations.retryAllFailed.mockRejectedValue(new Error('retry failed'));
-      await expect(controller.retryAllFailed({})).rejects.toThrow('retry failed');
+      mockBatchOperations.retryAllFailed.mockRejectedValue(
+        new Error('retry failed'),
+      );
+      await expect(controller.retryAllFailed({})).rejects.toThrow(
+        'retry failed',
+      );
     });
   });
 
   describe('deleteCompleted', () => {
     it('should call deleteCompletedOlderThan with default 30 days when dto is empty', async () => {
-      mockBatchOperations.deleteCompletedOlderThan.mockResolvedValue(batchResult);
+      mockBatchOperations.deleteCompletedOlderThan.mockResolvedValue(
+        batchResult,
+      );
 
       const result = await controller.deleteCompleted({});
 
-      expect(mockBatchOperations.deleteCompletedOlderThan).toHaveBeenCalledWith(30, undefined);
+      expect(mockBatchOperations.deleteCompletedOlderThan).toHaveBeenCalledWith(
+        30,
+        undefined,
+      );
       expect(result).toEqual(batchResult);
     });
 
     it('should call deleteCompletedOlderThan with custom days and nodeId from dto', async () => {
       const dto = { olderThanDays: 7, nodeId: 'node-1' };
-      mockBatchOperations.deleteCompletedOlderThan.mockResolvedValue(batchResult);
+      mockBatchOperations.deleteCompletedOlderThan.mockResolvedValue(
+        batchResult,
+      );
 
       await controller.deleteCompleted(dto);
 
-      expect(mockBatchOperations.deleteCompletedOlderThan).toHaveBeenCalledWith(7, 'node-1');
+      expect(mockBatchOperations.deleteCompletedOlderThan).toHaveBeenCalledWith(
+        7,
+        'node-1',
+      );
     });
 
     it('should propagate service errors', async () => {
-      mockBatchOperations.deleteCompletedOlderThan.mockRejectedValue(new Error('delete failed'));
-      await expect(controller.deleteCompleted({})).rejects.toThrow('delete failed');
+      mockBatchOperations.deleteCompletedOlderThan.mockRejectedValue(
+        new Error('delete failed'),
+      );
+      await expect(controller.deleteCompleted({})).rejects.toThrow(
+        'delete failed',
+      );
     });
   });
 
@@ -165,7 +201,9 @@ describe('BatchController', () => {
 
       const result = await controller.deleteFailed(undefined);
 
-      expect(mockBatchOperations.deleteAllFailed).toHaveBeenCalledWith(undefined);
+      expect(mockBatchOperations.deleteAllFailed).toHaveBeenCalledWith(
+        undefined,
+      );
       expect(result).toEqual(batchResult);
     });
 
@@ -174,12 +212,18 @@ describe('BatchController', () => {
 
       await controller.deleteFailed('node-1');
 
-      expect(mockBatchOperations.deleteAllFailed).toHaveBeenCalledWith('node-1');
+      expect(mockBatchOperations.deleteAllFailed).toHaveBeenCalledWith(
+        'node-1',
+      );
     });
 
     it('should propagate service errors', async () => {
-      mockBatchOperations.deleteAllFailed.mockRejectedValue(new Error('delete failed'));
-      await expect(controller.deleteFailed(undefined)).rejects.toThrow('delete failed');
+      mockBatchOperations.deleteAllFailed.mockRejectedValue(
+        new Error('delete failed'),
+      );
+      await expect(controller.deleteFailed(undefined)).rejects.toThrow(
+        'delete failed',
+      );
     });
   });
 
@@ -204,7 +248,9 @@ describe('BatchController', () => {
 
     it('should propagate service errors', async () => {
       mockBatchOperations.getStats.mockRejectedValue(new Error('stats error'));
-      await expect(controller.getStats(undefined)).rejects.toThrow('stats error');
+      await expect(controller.getStats(undefined)).rejects.toThrow(
+        'stats error',
+      );
     });
   });
 
@@ -215,16 +261,20 @@ describe('BatchController', () => {
 
       const result = await controller.clearAll(dto);
 
-      expect(mockBatchOperations.clearAll).toHaveBeenCalledWith('CLEAR_ALL_JOBS');
+      expect(mockBatchOperations.clearAll).toHaveBeenCalledWith(
+        'CLEAR_ALL_JOBS',
+      );
       expect(result).toEqual(batchResult);
     });
 
     it('should propagate service errors (e.g. invalid token)', async () => {
-      mockBatchOperations.clearAll.mockRejectedValue(new Error('invalid confirmation token'));
-
-      await expect(controller.clearAll({ confirmationToken: 'WRONG' })).rejects.toThrow(
-        'invalid confirmation token'
+      mockBatchOperations.clearAll.mockRejectedValue(
+        new Error('invalid confirmation token'),
       );
+
+      await expect(
+        controller.clearAll({ confirmationToken: 'WRONG' }),
+      ).rejects.toThrow('invalid confirmation token');
     });
   });
 });

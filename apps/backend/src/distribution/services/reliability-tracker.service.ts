@@ -18,13 +18,18 @@ export class ReliabilityTrackerService {
   constructor(
     private readonly nodeFailureLogRepository: NodeFailureLogRepository,
     private readonly nodeRepository: NodeRepository,
-    private readonly jobRepository: JobRepository
+    private readonly jobRepository: JobRepository,
   ) {}
 
   /**
    * Record a job failure for a node
    */
-  async recordFailure(nodeId: string, job: Job, reason: string, errorCode?: string): Promise<void> {
+  async recordFailure(
+    nodeId: string,
+    job: Job,
+    reason: string,
+    errorCode?: string,
+  ): Promise<void> {
     try {
       // Create failure log entry
       await this.nodeFailureLogRepository.createLog({
@@ -41,7 +46,9 @@ export class ReliabilityTrackerService {
       // Update node's failure count
       await this.updateNodeFailureStats(nodeId);
 
-      this.logger.warn(`Recorded failure for node ${nodeId}: ${reason} (job: ${job.id})`);
+      this.logger.warn(
+        `Recorded failure for node ${nodeId}: ${reason} (job: ${job.id})`,
+      );
     } catch (error: unknown) {
       this.logger.error(`Failed to record failure for node ${nodeId}`, error);
     }
@@ -56,20 +63,23 @@ export class ReliabilityTrackerService {
     // Count failures in last 24 hours
     const failureCount = await this.nodeFailureLogRepository.countForNodeSince(
       nodeId,
-      twentyFourHoursAgo
+      twentyFourHoursAgo,
     );
 
     // Get last failure
-    const lastFailure = await this.nodeFailureLogRepository.findLastForNode(nodeId);
+    const lastFailure =
+      await this.nodeFailureLogRepository.findLastForNode(nodeId);
 
     // Calculate failure rate (failures per 100 jobs)
-    const jobsCompleted24h = await this.jobRepository.countCompletedForNodeSince(
-      nodeId,
-      twentyFourHoursAgo
-    );
+    const jobsCompleted24h =
+      await this.jobRepository.countCompletedForNodeSince(
+        nodeId,
+        twentyFourHoursAgo,
+      );
 
     const totalJobs24h = jobsCompleted24h + failureCount;
-    const failureRate = totalJobs24h > 0 ? (failureCount / totalJobs24h) * 100 : 0;
+    const failureRate =
+      totalJobs24h > 0 ? (failureCount / totalJobs24h) * 100 : 0;
 
     // Update node
     await this.nodeRepository.updateById(nodeId, {
@@ -79,7 +89,7 @@ export class ReliabilityTrackerService {
     });
 
     this.logger.debug(
-      `Updated failure stats for node ${nodeId}: count=${failureCount}, rate=${failureRate.toFixed(1)}%`
+      `Updated failure stats for node ${nodeId}: count=${failureCount}, rate=${failureRate.toFixed(1)}%`,
     );
   }
 
@@ -97,7 +107,7 @@ export class ReliabilityTrackerService {
     // Get failures in last 24h
     const failures = await this.nodeFailureLogRepository.findRecentForNode(
       nodeId,
-      twentyFourHoursAgo
+      twentyFourHoursAgo,
     );
 
     // Count by reason
@@ -141,7 +151,8 @@ export class ReliabilityTrackerService {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     try {
-      const result = await this.nodeFailureLogRepository.deleteOlderThan(sevenDaysAgo);
+      const result =
+        await this.nodeFailureLogRepository.deleteOlderThan(sevenDaysAgo);
 
       if (result.count > 0) {
         this.logger.log(`Cleaned up ${result.count} old failure logs`);

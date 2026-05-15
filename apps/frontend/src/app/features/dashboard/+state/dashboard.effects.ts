@@ -17,11 +17,13 @@ export class MediaStatsEffects {
         this.mediaStatsService.getMediaStats().pipe(
           map((stats) => MediaStatsActions.loadMediaStatsSuccess({ stats })),
           catchError((error) =>
-            of(MediaStatsActions.loadMediaStatsFailure({ error: error.message }))
-          )
-        )
-      )
-    )
+            of(
+              MediaStatsActions.loadMediaStatsFailure({ error: error.message }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   triggerScan$ = createEffect(() =>
@@ -30,16 +32,18 @@ export class MediaStatsEffects {
       switchMap(() =>
         this.mediaStatsService.triggerScan().pipe(
           map(() => MediaStatsActions.triggerScanSuccess()),
-          catchError((error) => of(MediaStatsActions.triggerScanFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(MediaStatsActions.triggerScanFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   reloadAfterScan$ = createEffect(() =>
     this.actions$.pipe(
       ofType(MediaStatsActions.triggerScanSuccess),
-      map(() => MediaStatsActions.loadMediaStats())
-    )
+      map(() => MediaStatsActions.loadMediaStats()),
+    ),
   );
 }

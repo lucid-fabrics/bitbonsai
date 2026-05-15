@@ -67,7 +67,9 @@ describe('SystemController', () => {
         throw new Error('failed to read resources');
       });
 
-      expect(() => controller.getSystemResources()).toThrow('failed to read resources');
+      expect(() => controller.getSystemResources()).toThrow(
+        'failed to read resources',
+      );
     });
   });
 });

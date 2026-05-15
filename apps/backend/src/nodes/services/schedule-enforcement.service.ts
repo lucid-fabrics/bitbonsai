@@ -27,12 +27,14 @@ export class ScheduleEnforcementService {
     private readonly nodeRepository: NodeRepository,
     private readonly jobAttribution: JobAttributionService,
     @Optional()
-    private readonly distributionOrchestrator?: DistributionOrchestratorService
+    private readonly distributionOrchestrator?: DistributionOrchestratorService,
   ) {
     // Enable Distribution v2 if the service is available
     this.useDistributionV2 = !!this.distributionOrchestrator;
     if (this.useDistributionV2) {
-      this.logger.log('Using Distribution v2 for job assignment (12-factor scoring)');
+      this.logger.log(
+        'Using Distribution v2 for job assignment (12-factor scoring)',
+      );
     }
   }
 
@@ -61,7 +63,7 @@ export class ScheduleEnforcementService {
         // Check if node is still in allowed window
         if (!isNodeInAllowedWindow(job.node)) {
           this.logger.log(
-            `Pausing job ${job.id} - node ${job.node.name} is outside schedule window`
+            `Pausing job ${job.id} - node ${job.node.name} is outside schedule window`,
           );
           jobIdsToPause.push(job.id);
         }
@@ -71,10 +73,12 @@ export class ScheduleEnforcementService {
       if (jobIdsToPause.length > 0) {
         await this.jobRepository.atomicUpdateMany(
           { id: { in: jobIdsToPause } },
-          { stage: 'PAUSED' }
+          { stage: 'PAUSED' },
         );
 
-        this.logger.log(`Paused ${jobIdsToPause.length} job(s) due to schedule constraints`);
+        this.logger.log(
+          `Paused ${jobIdsToPause.length} job(s) due to schedule constraints`,
+        );
       }
     } catch (error: unknown) {
       this.logger.error('Error enforcing schedules:', error);
@@ -99,7 +103,9 @@ export class ScheduleEnforcementService {
       if (this.useDistributionV2 && this.distributionOrchestrator) {
         const result = await this.distributionOrchestrator.rebalanceJobs();
         if (result.migratedCount > 0) {
-          this.logger.log(`Distribution v2: Rebalanced ${result.migratedCount} job(s)`);
+          this.logger.log(
+            `Distribution v2: Rebalanced ${result.migratedCount} job(s)`,
+          );
           for (const reason of result.reasons.slice(0, 5)) {
             this.logger.debug(`  - ${reason}`);
           }
@@ -120,7 +126,9 @@ export class ScheduleEnforcementService {
    */
   private async autoAssignQueuedJobsLegacy(): Promise<void> {
     // Get unassigned queued jobs (not manually assigned)
-    const queuedJobs = await this.jobRepository.findManyWithInclude<import('@prisma/client').Job>({
+    const queuedJobs = await this.jobRepository.findManyWithInclude<
+      import('@prisma/client').Job
+    >({
       where: { stage: 'QUEUED', manualAssignment: false },
       take: 50,
       orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
@@ -140,11 +148,13 @@ export class ScheduleEnforcementService {
 
     // OPTIMIZATION: Calculate scores for all nodes ONCE
     const nodeScores = await Promise.all(
-      nodes.map((node) => this.jobAttribution.calculateNodeScore(node))
+      nodes.map((node) => this.jobAttribution.calculateNodeScore(node)),
     );
 
     // Create lookup map for quick access
-    const nodeScoreMap = new Map(nodeScores.map((score) => [score.nodeId, score]));
+    const nodeScoreMap = new Map(
+      nodeScores.map((score) => [score.nodeId, score]),
+    );
 
     // Find optimal node for each job based on pre-calculated scores
     const jobUpdates: Array<{
@@ -173,7 +183,7 @@ export class ScheduleEnforcementService {
       // Check if job needs to be moved to a different node
       if (bestNode.id !== job.nodeId) {
         this.logger.log(
-          `Moving job ${job.id} from node ${job.nodeId || 'unassigned'} to optimal node ${bestNode.id} (score: ${bestScore.toFixed(1)})`
+          `Moving job ${job.id} from node ${job.nodeId || 'unassigned'} to optimal node ${bestNode.id} (score: ${bestScore.toFixed(1)})`,
         );
 
         jobUpdates.push({
@@ -190,12 +200,12 @@ export class ScheduleEnforcementService {
           this.jobRepository.updateById(update.id, {
             nodeId: update.nodeId,
             originalNodeId: update.originalNodeId,
-          })
-        )
+          }),
+        ),
       );
 
       this.logger.log(
-        `Auto-assigned ${queuedJobs.length} job(s), moved ${jobUpdates.length} to optimal nodes`
+        `Auto-assigned ${queuedJobs.length} job(s), moved ${jobUpdates.length} to optimal nodes`,
       );
     }
   }
@@ -225,7 +235,7 @@ export class ScheduleEnforcementService {
         // Check if node is back in allowed window
         if (isNodeInAllowedWindow(job.node)) {
           this.logger.log(
-            `Resuming job ${job.id} - node ${job.node.name} is back in schedule window`
+            `Resuming job ${job.id} - node ${job.node.name} is back in schedule window`,
           );
           jobIdsToResume.push(job.id);
         }
@@ -235,10 +245,12 @@ export class ScheduleEnforcementService {
       if (jobIdsToResume.length > 0) {
         await this.jobRepository.atomicUpdateMany(
           { id: { in: jobIdsToResume } },
-          { stage: 'QUEUED' }
+          { stage: 'QUEUED' },
         );
 
-        this.logger.log(`Resumed ${jobIdsToResume.length} job(s) - nodes back in schedule`);
+        this.logger.log(
+          `Resumed ${jobIdsToResume.length} job(s) - nodes back in schedule`,
+        );
       }
     } catch (error: unknown) {
       this.logger.error('Error resuming jobs:', error);

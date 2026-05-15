@@ -27,7 +27,7 @@ export class ClipboardBo {
   static async copyWithMessage(
     text: string,
     label: string,
-    duration = 3000
+    duration = 3000,
   ): Promise<{ message: string | null; clear: () => void }> {
     const success = await ClipboardBo.copyToClipboard(text);
 

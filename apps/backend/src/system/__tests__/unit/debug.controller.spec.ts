@@ -77,9 +77,13 @@ describe('DebugController', () => {
     });
 
     it('should propagate errors for invalid PID', async () => {
-      mockDebugService.killProcessByPid.mockRejectedValue(new Error('Process not found'));
+      mockDebugService.killProcessByPid.mockRejectedValue(
+        new Error('Process not found'),
+      );
 
-      await expect(controller.killFfmpegProcess(9999)).rejects.toThrow('Process not found');
+      await expect(controller.killFfmpegProcess(9999)).rejects.toThrow(
+        'Process not found',
+      );
     });
   });
 

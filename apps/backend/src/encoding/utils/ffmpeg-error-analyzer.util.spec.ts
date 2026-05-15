@@ -30,7 +30,12 @@ describe('analyzeFfmpegError', () => {
     }
 
     it('is case-insensitive for corruption patterns', () => {
-      const result = analyzeFfmpegError(255, 'INVALID DATA FOUND in stream', 0, 0);
+      const result = analyzeFfmpegError(
+        255,
+        'INVALID DATA FOUND in stream',
+        0,
+        0,
+      );
       expect(result.category).toBe(ErrorCategory.SOURCE_CORRUPTED);
     });
 
@@ -143,7 +148,12 @@ describe('analyzeFfmpegError', () => {
 
   describe('CODEC_INCOMPATIBILITY', () => {
     it('detects "encoder X not found"', () => {
-      const result = analyzeFfmpegError(1, "encoder 'libx265' not found", 50, 0);
+      const result = analyzeFfmpegError(
+        1,
+        "encoder 'libx265' not found",
+        50,
+        0,
+      );
       expect(result.category).toBe(ErrorCategory.CODEC_INCOMPATIBILITY);
       expect(result.isRetriable).toBe(false);
       expect(result.shouldBlacklist).toBe(false);
@@ -160,7 +170,12 @@ describe('analyzeFfmpegError', () => {
     });
 
     it('includes encoder name in technicalDetails when matched', () => {
-      const result = analyzeFfmpegError(1, "encoder 'libx265' not found", 50, 0);
+      const result = analyzeFfmpegError(
+        1,
+        "encoder 'libx265' not found",
+        50,
+        0,
+      );
       expect(result.technicalDetails).toContain('libx265');
     });
   });
@@ -169,7 +184,12 @@ describe('analyzeFfmpegError', () => {
 
   describe('UNKNOWN fallback', () => {
     it('returns UNKNOWN for unrecognized errors', () => {
-      const result = analyzeFfmpegError(1, 'something went terribly wrong', 50, 0);
+      const result = analyzeFfmpegError(
+        1,
+        'something went terribly wrong',
+        50,
+        0,
+      );
       expect(result.category).toBe(ErrorCategory.UNKNOWN);
     });
 
@@ -222,7 +242,12 @@ describe('extractCorruptionDetails branches', () => {
   });
 
   it('returns generic fallback for "error submitting packet to decoder"', () => {
-    const result = analyzeFfmpegError(255, 'error submitting packet to decoder', 1, 0);
+    const result = analyzeFfmpegError(
+      255,
+      'error submitting packet to decoder',
+      1,
+      0,
+    );
     expect(result.technicalDetails).toContain('corrupted data');
   });
 
@@ -266,7 +291,12 @@ describe('extractResourceError branches', () => {
 
 describe('extractCodecError branches', () => {
   it('returns encoder name in message when matched by regex', () => {
-    const result = analyzeFfmpegError(1, "encoder 'libsvtav1' not found", 50, 0);
+    const result = analyzeFfmpegError(
+      1,
+      "encoder 'libsvtav1' not found",
+      50,
+      0,
+    );
     expect(result.technicalDetails).toContain('libsvtav1');
     expect(result.technicalDetails).toContain('not available');
   });

@@ -90,7 +90,7 @@ describe('JobMetricsController', () => {
         undefined,
         undefined,
         undefined,
-        undefined
+        undefined,
       );
       expect(result).toEqual(paginated);
     });
@@ -106,14 +106,21 @@ describe('JobMetricsController', () => {
         undefined,
         undefined,
         undefined,
-        undefined
+        undefined,
       );
     });
 
     it('passes all query params including pagination', async () => {
       mockQueueService.findAll.mockResolvedValue(makePaginatedResponse());
 
-      await controller.findAll(JobStage.COMPLETED, 'node-2', 'movie', 'lib-1', 2, 50);
+      await controller.findAll(
+        JobStage.COMPLETED,
+        'node-2',
+        'movie',
+        'lib-1',
+        2,
+        50,
+      );
 
       expect(mockQueueService.findAll).toHaveBeenCalledWith(
         JobStage.COMPLETED,
@@ -121,7 +128,7 @@ describe('JobMetricsController', () => {
         'movie',
         'lib-1',
         2,
-        50
+        50,
       );
     });
 
@@ -137,14 +144,16 @@ describe('JobMetricsController', () => {
         'http://main:3100/api/v1/queue',
         expect.objectContaining({
           params: expect.objectContaining({ stage: JobStage.QUEUED }),
-        })
+        }),
       );
       expect(result).toEqual(proxyData);
     });
 
     it('does not include undefined params in proxy request', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3100');
-      mockHttpService.get.mockReturnValue(of({ data: makePaginatedResponse() }));
+      mockHttpService.get.mockReturnValue(
+        of({ data: makePaginatedResponse() }),
+      );
 
       await controller.findAll();
 
@@ -155,16 +164,27 @@ describe('JobMetricsController', () => {
 
     it('throws BadRequestException when proxy to MAIN fails', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3100');
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('connection refused')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('connection refused')),
+      );
 
       await expect(controller.findAll()).rejects.toThrow(BadRequestException);
     });
 
     it('converts page and limit to numbers in proxy params', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3100');
-      mockHttpService.get.mockReturnValue(of({ data: makePaginatedResponse() }));
+      mockHttpService.get.mockReturnValue(
+        of({ data: makePaginatedResponse() }),
+      );
 
-      await controller.findAll(undefined, undefined, undefined, undefined, 3, 25);
+      await controller.findAll(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        3,
+        25,
+      );
 
       const params = mockHttpService.get.mock.calls[0][1].params;
       expect(params.page).toBe('3');

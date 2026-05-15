@@ -4,7 +4,10 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { NotificationsClient } from '../clients/notifications.client';
 import type { Notification } from '../models/notification.model';
-import { NotificationPriority, NotificationType } from '../models/notification.model';
+import {
+  NotificationPriority,
+  NotificationType,
+} from '../models/notification.model';
 import { NotificationService } from './notification.service';
 
 describe('NotificationService', () => {
@@ -118,7 +121,9 @@ describe('NotificationService', () => {
         title: 'Encoding Failed',
         read: true,
       };
-      clientMock.getNotifications.mockReturnValue(of([mockNotification, secondNotification]));
+      clientMock.getNotifications.mockReturnValue(
+        of([mockNotification, secondNotification]),
+      );
 
       service.getNotifications().subscribe((notifications) => {
         expect(notifications).toHaveLength(2);

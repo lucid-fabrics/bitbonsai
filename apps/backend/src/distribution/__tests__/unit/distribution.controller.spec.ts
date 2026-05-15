@@ -81,7 +81,9 @@ describe('DistributionController', () => {
     it('should throw 404 when no scores found', async () => {
       orchestrator.getAllNodeScores.mockResolvedValue([]);
 
-      await expect(controller.getNodeScores('job-1')).rejects.toThrow(HttpException);
+      await expect(controller.getNodeScores('job-1')).rejects.toThrow(
+        HttpException,
+      );
     });
   });
 
@@ -99,7 +101,10 @@ describe('DistributionController', () => {
       orchestrator.getAllNodeScores.mockResolvedValue(mockScores);
       orchestrator.getScoreBreakdown.mockReturnValue({});
 
-      const result = (await controller.getNodeScoreDetail('job-1', 'node-1')) as any;
+      const result = (await controller.getNodeScoreDetail(
+        'job-1',
+        'node-1',
+      )) as any;
 
       expect(result.nodeId).toBe('node-1');
       expect(result.totalScore).toBe(90);
@@ -108,9 +113,9 @@ describe('DistributionController', () => {
     it('should throw 404 when node score not found', async () => {
       orchestrator.getAllNodeScores.mockResolvedValue([]);
 
-      await expect(controller.getNodeScoreDetail('job-1', 'node-999')).rejects.toThrow(
-        HttpException
-      );
+      await expect(
+        controller.getNodeScoreDetail('job-1', 'node-999'),
+      ).rejects.toThrow(HttpException);
     });
   });
 
@@ -132,9 +137,9 @@ describe('DistributionController', () => {
     it('should throw 404 when assignment fails', async () => {
       orchestrator.assignJob.mockResolvedValue(null);
 
-      await expect(controller.assignJob('job-1', { nodeId: 'node-1' })).rejects.toThrow(
-        HttpException
-      );
+      await expect(
+        controller.assignJob('job-1', { nodeId: 'node-1' }),
+      ).rejects.toThrow(HttpException);
     });
   });
 
@@ -257,7 +262,9 @@ describe('DistributionController', () => {
     it('should throw 404 when no eligible nodes', async () => {
       orchestrator.findOptimalNode.mockResolvedValue(null);
 
-      await expect(controller.simulateAssignment('job-1')).rejects.toThrow(HttpException);
+      await expect(controller.simulateAssignment('job-1')).rejects.toThrow(
+        HttpException,
+      );
     });
   });
 });

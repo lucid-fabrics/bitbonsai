@@ -25,7 +25,10 @@ describe('NodeDiscoveryService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [NodeDiscoveryService, { provide: NodeRepository, useValue: mockNodeRepository }],
+      providers: [
+        NodeDiscoveryService,
+        { provide: NodeRepository, useValue: mockNodeRepository },
+      ],
     }).compile();
 
     service = module.get<NodeDiscoveryService>(NodeDiscoveryService);
@@ -65,7 +68,9 @@ describe('NodeDiscoveryService', () => {
 
   describe('startBroadcasting', () => {
     it('should initialize bonjour and publish service', async () => {
-      await expect(service.startBroadcasting('node-1', 'Test Node')).resolves.not.toThrow();
+      await expect(
+        service.startBroadcasting('node-1', 'Test Node'),
+      ).resolves.not.toThrow();
     });
   });
 

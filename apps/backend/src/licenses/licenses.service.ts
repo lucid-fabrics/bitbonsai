@@ -46,10 +46,11 @@ export class LicensesService {
   constructor(
     private readonly licenseRepository: LicenseRepository,
     private readonly httpService: HttpService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {
     this.licenseApiUrl =
-      this.configService.get<string>('LICENSE_API_URL') || 'https://api.bitbonsai.app';
+      this.configService.get<string>('LICENSE_API_URL') ||
+      'https://api.bitbonsai.app';
   }
 
   /**
@@ -76,8 +77,8 @@ export class LicensesService {
         this.httpService.post<VerifyLicenseResponse>(
           `${this.licenseApiUrl}/api/licenses/verify`,
           { licenseKey: dto.licenseKey },
-          { timeout: 10000 }
-        )
+          { timeout: 10000 },
+        ),
       );
       verifyResponse = response.data;
     } catch (error: unknown) {
@@ -87,10 +88,13 @@ export class LicensesService {
         response?: { status?: number };
       };
 
-      if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
+      if (
+        axiosError.code === 'ECONNABORTED' ||
+        axiosError.code === 'ETIMEDOUT'
+      ) {
         this.logger.error('License verification timed out', error);
         throw new ServiceUnavailableException(
-          'License server is slow to respond. Please try again.'
+          'License server is slow to respond. Please try again.',
         );
       }
 
@@ -98,19 +102,27 @@ export class LicensesService {
         this.logger.warn('Rate limited by licensing service');
         throw new HttpException(
           'Too many license verification attempts. Please wait a moment.',
-          HttpStatus.TOO_MANY_REQUESTS
+          HttpStatus.TOO_MANY_REQUESTS,
         );
       }
 
-      if (axiosError.code === 'ECONNREFUSED' || axiosError.code === 'ENOTFOUND') {
+      if (
+        axiosError.code === 'ECONNREFUSED' ||
+        axiosError.code === 'ENOTFOUND'
+      ) {
         this.logger.error('Cannot connect to licensing service', error);
         throw new ServiceUnavailableException(
-          'License server is unavailable. Please try again later.'
+          'License server is unavailable. Please try again later.',
         );
       }
 
-      this.logger.error('Failed to verify license with licensing-service', error);
-      throw new ServiceUnavailableException('Unable to verify license. Please try again later.');
+      this.logger.error(
+        'Failed to verify license with licensing-service',
+        error,
+      );
+      throw new ServiceUnavailableException(
+        'Unable to verify license. Please try again later.',
+      );
     }
 
     if (!verifyResponse.valid || !verifyResponse.license) {
@@ -135,7 +147,9 @@ export class LicensesService {
         maxNodes: externalLicense.maxNodes,
         maxConcurrentJobs: externalLicense.maxConcurrentJobs,
         features: features as unknown as Prisma.InputJsonValue,
-        validUntil: externalLicense.expiresAt ? new Date(externalLicense.expiresAt) : null,
+        validUntil: externalLicense.expiresAt
+          ? new Date(externalLicense.expiresAt)
+          : null,
       },
       {
         key: dto.licenseKey,
@@ -145,17 +159,23 @@ export class LicensesService {
         maxNodes: externalLicense.maxNodes,
         maxConcurrentJobs: externalLicense.maxConcurrentJobs,
         features: features as unknown as Prisma.InputJsonValue,
-        validUntil: externalLicense.expiresAt ? new Date(externalLicense.expiresAt) : null,
-      }
+        validUntil: externalLicense.expiresAt
+          ? new Date(externalLicense.expiresAt)
+          : null,
+      },
     );
-    this.logger.log(`Upserted license for ${dto.email} with tier ${internalTier}`);
+    this.logger.log(
+      `Upserted license for ${dto.email} with tier ${internalTier}`,
+    );
 
     return {
       tier: internalTier,
       email: dto.email,
       maxNodes: externalLicense.maxNodes,
       maxConcurrentJobs: externalLicense.maxConcurrentJobs,
-      expiresAt: externalLicense.expiresAt ? new Date(externalLicense.expiresAt) : null,
+      expiresAt: externalLicense.expiresAt
+        ? new Date(externalLicense.expiresAt)
+        : null,
     };
   }
 
@@ -168,8 +188,8 @@ export class LicensesService {
         this.httpService.post<LookupLicenseResponse>(
           `${this.licenseApiUrl}/api/licenses/lookup`,
           { email },
-          { timeout: 10000 }
-        )
+          { timeout: 10000 },
+        ),
       );
       return response.data;
     } catch (error: unknown) {
@@ -179,10 +199,13 @@ export class LicensesService {
         response?: { status?: number };
       };
 
-      if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
+      if (
+        axiosError.code === 'ECONNABORTED' ||
+        axiosError.code === 'ETIMEDOUT'
+      ) {
         this.logger.error('License lookup timed out', error);
         throw new ServiceUnavailableException(
-          'License server is slow to respond. Please try again.'
+          'License server is slow to respond. Please try again.',
         );
       }
 
@@ -190,19 +213,24 @@ export class LicensesService {
         this.logger.warn('Rate limited by licensing service');
         throw new HttpException(
           'Too many license lookup attempts. Please wait a moment.',
-          HttpStatus.TOO_MANY_REQUESTS
+          HttpStatus.TOO_MANY_REQUESTS,
         );
       }
 
-      if (axiosError.code === 'ECONNREFUSED' || axiosError.code === 'ENOTFOUND') {
+      if (
+        axiosError.code === 'ECONNREFUSED' ||
+        axiosError.code === 'ENOTFOUND'
+      ) {
         this.logger.error('Cannot connect to licensing service', error);
         throw new ServiceUnavailableException(
-          'License server is unavailable. Please try again later.'
+          'License server is unavailable. Please try again later.',
         );
       }
 
       this.logger.error('Failed to lookup license', error);
-      throw new ServiceUnavailableException('Unable to lookup license. Please try again later.');
+      throw new ServiceUnavailableException(
+        'Unable to lookup license. Please try again later.',
+      );
     }
   }
 

@@ -19,7 +19,10 @@ describe('FileTransferService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [FileTransferService, { provide: JobRepository, useValue: jobRepository }],
+      providers: [
+        FileTransferService,
+        { provide: JobRepository, useValue: jobRepository },
+      ],
     }).compile();
 
     service = module.get<FileTransferService>(FileTransferService);
@@ -36,22 +39,31 @@ describe('FileTransferService', () => {
     it('should attempt to kill orphaned SSH/rsync processes', async () => {
       const { exec } = require('node:child_process');
       exec.mockImplementation(
-        (_cmd: string, cb: (err: null, stdout: string, stderr: string) => void) => {
+        (
+          _cmd: string,
+          cb: (err: null, stdout: string, stderr: string) => void,
+        ) => {
           cb(null, '', '');
-        }
+        },
       );
 
       await service.onModuleInit();
 
-      expect(exec).toHaveBeenCalledWith('pkill -f "^(ssh|rsync).*bitbonsai"', expect.any(Function));
+      expect(exec).toHaveBeenCalledWith(
+        'pkill -f "^(ssh|rsync).*bitbonsai"',
+        expect.any(Function),
+      );
     });
 
     it('should handle no processes found (exit code 1)', async () => {
       const { exec } = require('node:child_process');
       exec.mockImplementation(
-        (_cmd: string, cb: (err: { code: number }, stdout: string, stderr: string) => void) => {
+        (
+          _cmd: string,
+          cb: (err: { code: number }, stdout: string, stderr: string) => void,
+        ) => {
           cb({ code: 1 }, '', '');
-        }
+        },
       );
 
       // Should not throw
@@ -92,8 +104,8 @@ describe('FileTransferService', () => {
           'job-1',
           '/path/with\x00null',
           validSourceNode as any,
-          validTargetNode as any
-        )
+          validTargetNode as any,
+        ),
       ).rejects.toThrow('Path contains control characters or newlines');
     });
 
@@ -103,15 +115,20 @@ describe('FileTransferService', () => {
           'job-1',
           '/path/with\nnewline',
           validSourceNode as any,
-          validTargetNode as any
-        )
+          validTargetNode as any,
+        ),
       ).rejects.toThrow('Path contains control characters or newlines');
     });
 
     it('should reject paths exceeding 4096 characters', async () => {
       const longPath = `/media/${'a'.repeat(4100)}`;
       await expect(
-        service.transferFile('job-1', longPath, validSourceNode as any, validTargetNode as any)
+        service.transferFile(
+          'job-1',
+          longPath,
+          validSourceNode as any,
+          validTargetNode as any,
+        ),
       ).rejects.toThrow('Path exceeds maximum length');
     });
 
@@ -121,8 +138,8 @@ describe('FileTransferService', () => {
           'job-1',
           '/path/with spaces/file.mkv',
           validSourceNode as any,
-          validTargetNode as any
-        )
+          validTargetNode as any,
+        ),
       ).rejects.toThrow('Invalid path characters detected');
     });
 
@@ -132,8 +149,8 @@ describe('FileTransferService', () => {
           'job-1',
           '/media/../etc/passwd',
           validSourceNode as any,
-          validTargetNode as any
-        )
+          validTargetNode as any,
+        ),
       ).rejects.toThrow('Path traversal attempt detected');
     });
 
@@ -143,22 +160,32 @@ describe('FileTransferService', () => {
           'job-1',
           '/media::module/file.mkv',
           validSourceNode as any,
-          validTargetNode as any
-        )
+          validTargetNode as any,
+        ),
       ).rejects.toThrow('Invalid path characters detected');
     });
 
     it('should reject invalid IP addresses on target node', async () => {
       const badTarget = { ...validTargetNode, ipAddress: '999.999.999.999' };
       await expect(
-        service.transferFile('job-1', '/media/file.mkv', validSourceNode as any, badTarget as any)
+        service.transferFile(
+          'job-1',
+          '/media/file.mkv',
+          validSourceNode as any,
+          badTarget as any,
+        ),
       ).rejects.toThrow('Invalid IP address format');
     });
 
     it('should reject target node with no IP address', async () => {
       const noIpTarget = { ...validTargetNode, ipAddress: null };
       await expect(
-        service.transferFile('job-1', '/media/file.mkv', validSourceNode as any, noIpTarget as any)
+        service.transferFile(
+          'job-1',
+          '/media/file.mkv',
+          validSourceNode as any,
+          noIpTarget as any,
+        ),
       ).rejects.toThrow('has no IP address');
     });
   });
@@ -175,7 +202,12 @@ describe('FileTransferService', () => {
         hasSharedStorage: true,
       } as any;
 
-      await service.transferFile('job-1', '/media/file.mkv', sourceNode, targetNode);
+      await service.transferFile(
+        'job-1',
+        '/media/file.mkv',
+        sourceNode,
+        targetNode,
+      );
 
       expect(jobRepository.updateById).not.toHaveBeenCalled();
     });
@@ -259,7 +291,7 @@ describe('FileTransferService', () => {
       jobRepository.findUniqueSelect.mockResolvedValue(null);
 
       await expect(service.getTransferProgress('nonexistent')).rejects.toThrow(
-        'Job nonexistent not found'
+        'Job nonexistent not found',
       );
     });
 
@@ -354,14 +386,18 @@ describe('FileTransferService', () => {
       jobRepository.updateById.mockResolvedValue({});
 
       // Trigger close with code 0 to simulate success
-      mockSsh.on.mockImplementation((event: string, cb: (code: number) => void) => {
-        if (event === 'close') {
-          setImmediate(() => cb(0));
-        }
-      });
-      mockStdout.on.mockImplementation((event: string, cb: (data: Buffer) => void) => {
-        if (event === 'data') cb(Buffer.from(''));
-      });
+      mockSsh.on.mockImplementation(
+        (event: string, cb: (code: number) => void) => {
+          if (event === 'close') {
+            setImmediate(() => cb(0));
+          }
+        },
+      );
+      mockStdout.on.mockImplementation(
+        (event: string, cb: (data: Buffer) => void) => {
+          if (event === 'data') cb(Buffer.from(''));
+        },
+      );
       mockStderr.on.mockImplementation(() => {
         /* noop */
       });
@@ -393,17 +429,21 @@ describe('FileTransferService', () => {
         node: { id: 'node-1', name: 'Child', ipAddress: '192.168.1.170' },
       });
 
-      mockSsh.on.mockImplementation((event: string, cb: (code: number) => void) => {
-        if (event === 'close') {
-          setImmediate(() => cb(1)); // non-zero exit
-        }
-      });
+      mockSsh.on.mockImplementation(
+        (event: string, cb: (code: number) => void) => {
+          if (event === 'close') {
+            setImmediate(() => cb(1)); // non-zero exit
+          }
+        },
+      );
       mockStdout.on.mockImplementation(() => {
         /* noop */
       });
-      mockStderr.on.mockImplementation((event: string, cb: (data: Buffer) => void) => {
-        if (event === 'data') cb(Buffer.from('rm: cannot remove'));
-      });
+      mockStderr.on.mockImplementation(
+        (event: string, cb: (data: Buffer) => void) => {
+          if (event === 'data') cb(Buffer.from('rm: cannot remove'));
+        },
+      );
 
       // Should not throw
       await service.cleanupRemoteTempFile('job-1');
@@ -420,10 +460,9 @@ describe('FileTransferService', () => {
       // Inject an active AbortController into the service's private map
       const abortController = new AbortController();
       const abortSpy = jest.spyOn(abortController, 'abort');
-      (service as unknown as { activeTransfers: Map<string, AbortController> }).activeTransfers.set(
-        'job-cancel',
-        abortController
-      );
+      (
+        service as unknown as { activeTransfers: Map<string, AbortController> }
+      ).activeTransfers.set('job-cancel', abortController);
 
       jobRepository.updateById.mockResolvedValue({});
 
@@ -435,7 +474,7 @@ describe('FileTransferService', () => {
         expect.objectContaining({
           stage: 'CANCELLED',
           transferError: 'Transfer cancelled by user',
-        })
+        }),
       );
 
       // Should be removed from map
@@ -444,7 +483,7 @@ describe('FileTransferService', () => {
           service as unknown as {
             activeTransfers: Map<string, AbortController>;
           }
-        ).activeTransfers.has('job-cancel')
+        ).activeTransfers.has('job-cancel'),
       ).toBe(false);
     });
   });
@@ -533,17 +572,21 @@ describe('FileTransferService', () => {
           kill: jest.fn(),
           killed: false,
         };
-        proc.on.mockImplementation((event: string, cb: (code: number | Error) => void) => {
-          if (event === 'close') {
-            setImmediate(() => cb(spawnCallCount === 1 ? 0 : 1)); // mkdir ok, rsync fail
-          }
-        });
+        proc.on.mockImplementation(
+          (event: string, cb: (code: number | Error) => void) => {
+            if (event === 'close') {
+              setImmediate(() => cb(spawnCallCount === 1 ? 0 : 1)); // mkdir ok, rsync fail
+            }
+          },
+        );
         proc.stdout.on.mockImplementation(() => {
           /* noop */
         });
-        proc.stderr.on.mockImplementation((evt: string, cb: (d: Buffer) => void) => {
-          if (evt === 'data') cb(Buffer.from('connection refused'));
-        });
+        proc.stderr.on.mockImplementation(
+          (evt: string, cb: (d: Buffer) => void) => {
+            if (evt === 'data') cb(Buffer.from('connection refused'));
+          },
+        );
         return proc;
       });
 
@@ -552,8 +595,8 @@ describe('FileTransferService', () => {
           'job-max-retry',
           '/media/file.mkv',
           sourceNode as unknown as import('@prisma/client').Node,
-          targetNode as unknown as import('@prisma/client').Node
-        )
+          targetNode as unknown as import('@prisma/client').Node,
+        ),
       ).rejects.toThrow();
 
       // Last updateById call should mark as FAILED
@@ -583,17 +626,21 @@ describe('FileTransferService', () => {
           kill: jest.fn(),
           killed: false,
         };
-        proc.on.mockImplementation((event: string, cb: (code: number) => void) => {
-          if (event === 'close') {
-            setImmediate(() => cb(spawnCallCount === 1 ? 0 : 1));
-          }
-        });
+        proc.on.mockImplementation(
+          (event: string, cb: (code: number) => void) => {
+            if (event === 'close') {
+              setImmediate(() => cb(spawnCallCount === 1 ? 0 : 1));
+            }
+          },
+        );
         proc.stdout.on.mockImplementation(() => {
           /* noop */
         });
-        proc.stderr.on.mockImplementation((evt: string, cb: (d: Buffer) => void) => {
-          if (evt === 'data') cb(Buffer.from('rsync error'));
-        });
+        proc.stderr.on.mockImplementation(
+          (evt: string, cb: (d: Buffer) => void) => {
+            if (evt === 'data') cb(Buffer.from('rsync error'));
+          },
+        );
         return proc;
       });
 
@@ -602,8 +649,8 @@ describe('FileTransferService', () => {
           'job-retry',
           '/media/file.mkv',
           sourceNode as unknown as import('@prisma/client').Node,
-          targetNode as unknown as import('@prisma/client').Node
-        )
+          targetNode as unknown as import('@prisma/client').Node,
+        ),
       ).rejects.toThrow();
 
       const calls = jobRepository.updateById.mock.calls;
@@ -622,9 +669,12 @@ describe('FileTransferService', () => {
     it('should warn when exec errors with code other than 1', async () => {
       const { exec } = require('node:child_process');
       exec.mockImplementation(
-        (_cmd: string, cb: (err: { code: number }, stdout: string, stderr: string) => void) => {
+        (
+          _cmd: string,
+          cb: (err: { code: number }, stdout: string, stderr: string) => void,
+        ) => {
           cb({ code: 2 }, '', 'permission denied');
-        }
+        },
       );
 
       await service.onModuleInit();
@@ -651,27 +701,47 @@ describe('FileTransferService', () => {
 
     it('should reject paths with double slashes', async () => {
       await expect(
-        service.transferFile('job-1', '/media//file.mkv', sourceNode as any, targetNode as any)
+        service.transferFile(
+          'job-1',
+          '/media//file.mkv',
+          sourceNode as any,
+          targetNode as any,
+        ),
       ).rejects.toThrow('Path traversal attempt detected');
     });
 
     it('should reject paths with rsync daemon syntax (::)', async () => {
       await expect(
-        service.transferFile('job-1', '/media/host::module', sourceNode as any, targetNode as any)
+        service.transferFile(
+          'job-1',
+          '/media/host::module',
+          sourceNode as any,
+          targetNode as any,
+        ),
       ).rejects.toThrow('Invalid path characters detected');
     });
 
     it('should reject empty IP address on target node', async () => {
       const emptyIpTarget = { ...targetNode, ipAddress: '' };
       await expect(
-        service.transferFile('job-1', '/media/file.mkv', sourceNode as any, emptyIpTarget as any)
+        service.transferFile(
+          'job-1',
+          '/media/file.mkv',
+          sourceNode as any,
+          emptyIpTarget as any,
+        ),
       ).rejects.toThrow('has no IP address');
     });
 
     it('should reject target node with IP containing letters', async () => {
       const badTarget = { ...targetNode, ipAddress: 'hostname.local' };
       await expect(
-        service.transferFile('job-1', '/media/file.mkv', sourceNode as any, badTarget as any)
+        service.transferFile(
+          'job-1',
+          '/media/file.mkv',
+          sourceNode as any,
+          badTarget as any,
+        ),
       ).rejects.toThrow('Invalid IP address format');
     });
   });
@@ -766,17 +836,21 @@ describe('FileTransferService', () => {
           kill: jest.fn(),
           killed: false,
         };
-        proc.on.mockImplementation((event: string, cb: (code: number) => void) => {
-          if (event === 'close') {
-            setImmediate(() => cb(spawnCallCount === 1 ? 0 : 1));
-          }
-        });
+        proc.on.mockImplementation(
+          (event: string, cb: (code: number) => void) => {
+            if (event === 'close') {
+              setImmediate(() => cb(spawnCallCount === 1 ? 0 : 1));
+            }
+          },
+        );
         proc.stdout.on.mockImplementation(() => {
           /* noop */
         });
-        proc.stderr.on.mockImplementation((evt: string, cb: (d: Buffer) => void) => {
-          if (evt === 'data') cb(Buffer.from('connection refused'));
-        });
+        proc.stderr.on.mockImplementation(
+          (evt: string, cb: (d: Buffer) => void) => {
+            if (evt === 'data') cb(Buffer.from('connection refused'));
+          },
+        );
         return proc;
       });
 
@@ -785,8 +859,8 @@ describe('FileTransferService', () => {
           'job-null-retry',
           '/media/file.mkv',
           sourceNode as unknown as import('@prisma/client').Node,
-          targetNode as unknown as import('@prisma/client').Node
-        )
+          targetNode as unknown as import('@prisma/client').Node,
+        ),
       ).rejects.toThrow();
 
       // retryCount should be 1 (0 + 1), so stage should be DETECTED (not FAILED)
@@ -805,10 +879,9 @@ describe('FileTransferService', () => {
   describe('cancelTransfer - double cancel', () => {
     it('should not throw on second cancel of same job', async () => {
       const abortController = new AbortController();
-      (service as unknown as { activeTransfers: Map<string, AbortController> }).activeTransfers.set(
-        'job-double-cancel',
-        abortController
-      );
+      (
+        service as unknown as { activeTransfers: Map<string, AbortController> }
+      ).activeTransfers.set('job-double-cancel', abortController);
       jobRepository.updateById.mockResolvedValue({});
 
       await service.cancelTransfer('job-double-cancel');
@@ -847,7 +920,8 @@ describe('FileTransferService', () => {
           destroy: jest.fn(),
         },
         on: jest.fn((event: string, cb: (arg: number | Error) => void) => {
-          if (event === 'close') closeHandlers.push(cb as (code: number) => void);
+          if (event === 'close')
+            closeHandlers.push(cb as (code: number) => void);
           if (event === 'error') errorHandlers.push(cb as (err: Error) => void);
         }),
         kill: jest.fn(),
@@ -927,7 +1001,7 @@ describe('FileTransferService', () => {
           setImmediate(() =>
             closeCbs.forEach((cb) => {
               cb(0);
-            })
+            }),
           );
         });
         return rsyncProc;
@@ -937,13 +1011,13 @@ describe('FileTransferService', () => {
         'job-kbps',
         '/media/file.mkv',
         '/tmp/file.mkv',
-        targetNode
+        targetNode,
       );
 
       // Should have called updateById with transferSpeedMBps = 512/1024 ≈ 0.5
-      const progressCalls = (jobRepository.updateById.mock.calls as any[]).filter(
-        (c) => c[1].transferProgress !== undefined
-      );
+      const progressCalls = (
+        jobRepository.updateById.mock.calls as any[]
+      ).filter((c) => c[1].transferProgress !== undefined);
       if (progressCalls.length > 0) {
         expect(progressCalls[0][1].transferSpeedMBps).toBeCloseTo(0.5, 1);
       }
@@ -994,7 +1068,7 @@ describe('FileTransferService', () => {
           setImmediate(() =>
             closeCbs.forEach((cb) => {
               cb(0);
-            })
+            }),
           );
         });
         return rsyncProc;
@@ -1004,12 +1078,12 @@ describe('FileTransferService', () => {
         'job-gbps',
         '/media/file.mkv',
         '/tmp/file.mkv',
-        targetNode
+        targetNode,
       );
 
-      const progressCalls = (jobRepository.updateById.mock.calls as any[]).filter(
-        (c) => c[1].transferProgress !== undefined
-      );
+      const progressCalls = (
+        jobRepository.updateById.mock.calls as any[]
+      ).filter((c) => c[1].transferProgress !== undefined);
       if (progressCalls.length > 0) {
         expect(progressCalls[0][1].transferSpeedMBps).toBeCloseTo(2048, 0);
       }
@@ -1039,7 +1113,12 @@ describe('FileTransferService', () => {
       });
 
       await expect(
-        (service as any).rsyncTransfer('job-err', '/media/file.mkv', '/tmp/file.mkv', targetNode)
+        (service as any).rsyncTransfer(
+          'job-err',
+          '/media/file.mkv',
+          '/tmp/file.mkv',
+          targetNode,
+        ),
       ).rejects.toThrow('spawn rsync ENOENT');
     });
 
@@ -1072,12 +1151,17 @@ describe('FileTransferService', () => {
         setImmediate(() =>
           closeCbs.forEach((cb) => {
             cb(23);
-          })
+          }),
         );
       });
 
       await expect(
-        (service as any).rsyncTransfer('job-stderr', '/media/file.mkv', '/tmp/file.mkv', targetNode)
+        (service as any).rsyncTransfer(
+          'job-stderr',
+          '/media/file.mkv',
+          '/tmp/file.mkv',
+          targetNode,
+        ),
       ).rejects.toThrow('rsync: connection refused');
     });
   });
@@ -1105,7 +1189,7 @@ describe('FileTransferService', () => {
       setImmediate(() =>
         errorCbs.forEach((cb) => {
           cb(new Error('ssh ENOENT'));
-        })
+        }),
       );
 
       const targetNode = {
@@ -1114,9 +1198,9 @@ describe('FileTransferService', () => {
         ipAddress: '192.168.1.170',
       } as any;
 
-      await expect((service as any).executeRemoteCommand(targetNode, 'ls /tmp')).rejects.toThrow(
-        'ssh ENOENT'
-      );
+      await expect(
+        (service as any).executeRemoteCommand(targetNode, 'ls /tmp'),
+      ).rejects.toThrow('ssh ENOENT');
     });
 
     it('should reject with timeout error when SSH hangs', async () => {
@@ -1140,7 +1224,7 @@ describe('FileTransferService', () => {
 
       // Use very short timeout to trigger quickly
       await expect(
-        (service as any).executeRemoteCommand(targetNode, 'sleep 100', 10)
+        (service as any).executeRemoteCommand(targetNode, 'sleep 100', 10),
       ).rejects.toThrow('SSH command timed out');
     });
 
@@ -1178,12 +1262,12 @@ describe('FileTransferService', () => {
         setImmediate(() =>
           closeCbs.forEach((cb) => {
             cb(1);
-          })
+          }),
         );
       });
 
       await expect(
-        (service as any).executeRemoteCommand(targetNode, 'rm /protected')
+        (service as any).executeRemoteCommand(targetNode, 'rm /protected'),
       ).rejects.toThrow('SSH command failed with code 1');
     });
 
@@ -1221,11 +1305,14 @@ describe('FileTransferService', () => {
         setImmediate(() =>
           closeCbs.forEach((cb) => {
             cb(0);
-          })
+          }),
         );
       });
 
-      const result = await (service as any).executeRemoteCommand(targetNode, 'echo hello');
+      const result = await (service as any).executeRemoteCommand(
+        targetNode,
+        'echo hello',
+      );
       expect(result).toBe('hello');
     });
   });
@@ -1235,13 +1322,15 @@ describe('FileTransferService', () => {
   // ==========================================================================
   describe('validateRsyncPath - rsync daemon syntax (::)', () => {
     it('should throw when path contains :: directly', () => {
-      expect(() => (service as any).validateRsyncPath('/media/host::module')).toThrow(
-        'Invalid path characters detected'
-      );
+      expect(() =>
+        (service as any).validateRsyncPath('/media/host::module'),
+      ).toThrow('Invalid path characters detected');
     });
 
     it('should accept valid safe path without throwing', () => {
-      expect(() => (service as any).validateRsyncPath('/media/movies/film.mkv')).not.toThrow();
+      expect(() =>
+        (service as any).validateRsyncPath('/media/movies/film.mkv'),
+      ).not.toThrow();
     });
   });
 });
