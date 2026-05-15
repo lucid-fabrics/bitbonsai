@@ -18,9 +18,12 @@ export class JobCleanupService implements OnModuleInit {
   // Configuration (can be overridden via environment variables)
   private readonly STUCK_THRESHOLD_MINUTES = parseInt(
     process.env.JOB_STUCK_THRESHOLD_MINUTES || '5',
-    10
+    10,
   );
-  private readonly TIMEOUT_HOURS = parseInt(process.env.JOB_ENCODING_TIMEOUT_HOURS || '2', 10);
+  private readonly TIMEOUT_HOURS = parseInt(
+    process.env.JOB_ENCODING_TIMEOUT_HOURS || '2',
+    10,
+  );
 
   constructor(private readonly jobRepository: JobRepository) {}
 
@@ -50,7 +53,9 @@ export class JobCleanupService implements OnModuleInit {
    */
   async cleanupStuckJobs(): Promise<number> {
     const thresholdDate = new Date();
-    thresholdDate.setMinutes(thresholdDate.getMinutes() - this.STUCK_THRESHOLD_MINUTES);
+    thresholdDate.setMinutes(
+      thresholdDate.getMinutes() - this.STUCK_THRESHOLD_MINUTES,
+    );
 
     try {
       const stuckJobs = await this.jobRepository.findManySelect<{
@@ -72,7 +77,7 @@ export class JobCleanupService implements OnModuleInit {
           updatedAt: true,
           progress: true,
           retryCount: true,
-        }
+        },
       );
 
       if (stuckJobs.length === 0) {
@@ -80,13 +85,17 @@ export class JobCleanupService implements OnModuleInit {
         return 0;
       }
 
-      this.logger.warn(`Found ${stuckJobs.length} stuck ENCODING job(s) - resetting to QUEUED`);
+      this.logger.warn(
+        `Found ${stuckJobs.length} stuck ENCODING job(s) - resetting to QUEUED`,
+      );
 
       // Reset stuck jobs individually to capture progress at healing point
       let resetCount = 0;
       for (const job of stuckJobs) {
         try {
-          const minutesStuck = Math.floor((Date.now() - job.updatedAt.getTime()) / 1000 / 60);
+          const minutesStuck = Math.floor(
+            (Date.now() - job.updatedAt.getTime()) / 1000 / 60,
+          );
 
           await this.jobRepository.updateById(job.id, {
             stage: JobStage.QUEUED,
@@ -100,14 +109,19 @@ export class JobCleanupService implements OnModuleInit {
 
           resetCount++;
           this.logger.debug(
-            `Reset job ${job.id} (${job.fileLabel}) - stuck for ${minutesStuck} minutes on node ${job.nodeId}, was at ${(job.progress || 0).toFixed(1)}%`
+            `Reset job ${job.id} (${job.fileLabel}) - stuck for ${minutesStuck} minutes on node ${job.nodeId}, was at ${(job.progress || 0).toFixed(1)}%`,
           );
         } catch (error: unknown) {
-          this.logger.error(`Failed to reset stuck job ${job.id} (${job.fileLabel})`, error);
+          this.logger.error(
+            `Failed to reset stuck job ${job.id} (${job.fileLabel})`,
+            error,
+          );
         }
       }
 
-      this.logger.log(`Successfully reset ${resetCount} stuck job(s) to QUEUED stage`);
+      this.logger.log(
+        `Successfully reset ${resetCount} stuck job(s) to QUEUED stage`,
+      );
 
       return resetCount;
     } catch (error: unknown) {
@@ -152,7 +166,7 @@ export class JobCleanupService implements OnModuleInit {
           nodeId: true,
           updatedAt: true,
           startedAt: true,
-        }
+        },
       );
 
       if (timedOutJobs.length === 0) {
@@ -161,14 +175,16 @@ export class JobCleanupService implements OnModuleInit {
       }
 
       this.logger.warn(
-        `Found ${timedOutJobs.length} timed-out ENCODING job(s) - marking as FAILED`
+        `Found ${timedOutJobs.length} timed-out ENCODING job(s) - marking as FAILED`,
       );
 
       let failedCount = 0;
 
       // Process each job individually to log details
       for (const job of timedOutJobs) {
-        const hoursEncoding = Math.floor((Date.now() - job.updatedAt.getTime()) / 1000 / 60 / 60);
+        const hoursEncoding = Math.floor(
+          (Date.now() - job.updatedAt.getTime()) / 1000 / 60 / 60,
+        );
 
         try {
           await this.jobRepository.updateById(job.id, {
@@ -180,14 +196,16 @@ export class JobCleanupService implements OnModuleInit {
           failedCount++;
 
           this.logger.warn(
-            `Marked job ${job.id} (${job.fileLabel}) as FAILED - encoding for ${hoursEncoding} hours on node ${job.nodeId}`
+            `Marked job ${job.id} (${job.fileLabel}) as FAILED - encoding for ${hoursEncoding} hours on node ${job.nodeId}`,
           );
         } catch (error: unknown) {
           this.logger.error(`Failed to mark job ${job.id} as timed out`, error);
         }
       }
 
-      this.logger.log(`Successfully marked ${failedCount} timed-out job(s) as FAILED`);
+      this.logger.log(
+        `Successfully marked ${failedCount} timed-out job(s) as FAILED`,
+      );
 
       return failedCount;
     } catch (error: unknown) {

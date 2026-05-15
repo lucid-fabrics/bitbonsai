@@ -40,7 +40,7 @@ export function analyzeFfmpegError(
   exitCode: number,
   stderr: string,
   progress: number,
-  retryCount: number
+  retryCount: number,
 ): FFmpegErrorAnalysis {
   const stderrLower = stderr.toLowerCase();
 
@@ -65,7 +65,10 @@ export function analyzeFfmpegError(
   }
 
   // PATTERN 2: File was deleted/moved
-  if (stderrLower.includes('no such file') || stderrLower.includes('file not found')) {
+  if (
+    stderrLower.includes('no such file') ||
+    stderrLower.includes('file not found')
+  ) {
     return {
       category: ErrorCategory.SOURCE_MISSING,
       title: '📁 Source File Not Found',
@@ -196,7 +199,11 @@ export function analyzeFfmpegError(
 /**
  * Check if error indicates source file corruption
  */
-function isSourceCorrupted(exitCode: number, stderrLower: string, progress: number): boolean {
+function isSourceCorrupted(
+  exitCode: number,
+  stderrLower: string,
+  progress: number,
+): boolean {
   // Exit code 255 with early failure (<5%) and corruption patterns
   if ((exitCode === 255 || exitCode === -1 || exitCode === 1) && progress < 5) {
     const corruptionPatterns = [
@@ -243,7 +250,10 @@ function extractResourceError(stderrLower: string): string {
   if (stderrLower.includes('no space left')) {
     return 'Disk full: No space left on device for temporary encoding files';
   }
-  if (stderrLower.includes('cannot allocate memory') || stderrLower.includes('out of memory')) {
+  if (
+    stderrLower.includes('cannot allocate memory') ||
+    stderrLower.includes('out of memory')
+  ) {
     return 'Memory exhausted: System ran out of available RAM during encoding';
   }
   return 'System resource limitation reached';
@@ -269,10 +279,12 @@ function extractLastErrors(stderr: string): string {
     (line) =>
       line.toLowerCase().includes('error') ||
       line.toLowerCase().includes('failed') ||
-      line.toLowerCase().includes('invalid')
+      line.toLowerCase().includes('invalid'),
   );
 
-  return errorLines.length > 0 ? errorLines.slice(-5).join('\n') : lines.slice(-10).join('\n');
+  return errorLines.length > 0
+    ? errorLines.slice(-5).join('\n')
+    : lines.slice(-10).join('\n');
 }
 
 /**

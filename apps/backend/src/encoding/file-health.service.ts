@@ -74,9 +74,12 @@ export class FileHealthService {
 
       // For files with WARNING status (70-89 score), perform test decode
       // This catches deep corruption that ffprobe misses (like Men in Black)
-      if (healthResult.status === FileHealthStatus.WARNING && healthResult.score >= 70) {
+      if (
+        healthResult.status === FileHealthStatus.WARNING &&
+        healthResult.score >= 70
+      ) {
         this.logger.debug(
-          `File has WARNING status (score ${healthResult.score}), performing test decode`
+          `File has WARNING status (score ${healthResult.score}), performing test decode`,
         );
         const decodeResult = await this.testDecode(filePath);
 
@@ -86,10 +89,12 @@ export class FileHealthService {
           healthResult.score = 35; // Below threshold
           healthResult.canEncode = false;
           healthResult.issues.push(
-            'Test decode failed - file contains corrupted frames that cannot be processed'
+            'Test decode failed - file contains corrupted frames that cannot be processed',
           );
           healthResult.warnings.push(`Decode error: ${decodeResult.error}`);
-          this.logger.warn(`Test decode failed for ${filePath}: ${decodeResult.error}`);
+          this.logger.warn(
+            `Test decode failed for ${filePath}: ${decodeResult.error}`,
+          );
         } else {
           this.logger.debug(`Test decode successful for ${filePath}`);
         }
@@ -97,7 +102,8 @@ export class FileHealthService {
 
       return healthResult;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(`File health analysis failed: ${errorMessage}`);
       return {
         status: FileHealthStatus.CORRUPTED,
@@ -169,8 +175,8 @@ export class FileHealthService {
             } catch (parseError: unknown) {
               reject(
                 new Error(
-                  `Failed to parse FFprobe JSON: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
-                )
+                  `Failed to parse FFprobe JSON: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`,
+                ),
               );
               return;
             }
@@ -193,7 +199,8 @@ export class FileHealthService {
 
           resolve(result);
         } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           reject(new Error(`Failed to parse ffprobe output: ${errorMessage}`));
         }
       });

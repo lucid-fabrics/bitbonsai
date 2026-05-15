@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import type { CreateNotificationDto } from './dto/notification.dto';
 import type { Notification } from './types/notification.types';
 
@@ -37,7 +42,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     }, cleanupIntervalMs);
 
     this.logger.log(
-      `✅ CRITICAL #4 FIX: Notification cleanup interval started (every ${cleanupIntervalMs / 1000}s)`
+      `✅ CRITICAL #4 FIX: Notification cleanup interval started (every ${cleanupIntervalMs / 1000}s)`,
     );
   }
 
@@ -63,7 +68,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     this.notifications.set(notification.id, notification);
 
     this.logger.log(
-      `📬 Notification created: [${notification.type}] ${notification.title} (${notification.id})`
+      `📬 Notification created: [${notification.type}] ${notification.title} (${notification.id})`,
     );
 
     return notification;
@@ -148,8 +153,9 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
    */
   async getUnreadCount(): Promise<number> {
     const now = new Date();
-    return Array.from(this.notifications.values()).filter((n) => !n.read && n.expiresAt > now)
-      .length;
+    return Array.from(this.notifications.values()).filter(
+      (n) => !n.read && n.expiresAt > now,
+    ).length;
   }
 
   /**
@@ -191,10 +197,14 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     if (this.cleanupIntervalId) {
       clearInterval(this.cleanupIntervalId);
       this.cleanupIntervalId = undefined;
-      this.logger.log('✓ CRITICAL #4 FIX: Notification cleanup interval cleared');
+      this.logger.log(
+        '✓ CRITICAL #4 FIX: Notification cleanup interval cleared',
+      );
     }
 
     this.notifications.clear();
-    this.logger.log('Notifications service destroyed - cleared all notifications');
+    this.logger.log(
+      'Notifications service destroyed - cleared all notifications',
+    );
   }
 }

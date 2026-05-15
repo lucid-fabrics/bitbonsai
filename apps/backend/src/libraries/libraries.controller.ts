@@ -283,7 +283,7 @@ export class LibrariesController {
   })
   async update(
     @Param('id') id: string,
-    @Body() updateLibraryDto: UpdateLibraryDto
+    @Body() updateLibraryDto: UpdateLibraryDto,
   ): Promise<Library> {
     return this.librariesService.update(id, updateLibraryDto);
   }
@@ -449,9 +449,13 @@ export class LibrariesController {
   })
   async createJobsFromScan(
     @Param('id') id: string,
-    @Body() dto: CreateJobsFromScanDto
+    @Body() dto: CreateJobsFromScanDto,
   ): Promise<ScanJobsResponseDto> {
-    return this.librariesService.createJobsFromScan(id, dto.policyId, dto.filePaths);
+    return this.librariesService.createJobsFromScan(
+      id,
+      dto.policyId,
+      dto.filePaths,
+    );
   }
 
   /**
@@ -493,7 +497,7 @@ export class LibrariesController {
   })
   async createAllJobs(
     @Param('id') id: string,
-    @Body() dto: CreateAllJobsDto
+    @Body() dto: CreateAllJobsDto,
   ): Promise<BulkJobCreationResultDto> {
     return this.librariesService.createAllJobs(id, dto.policyId);
   }

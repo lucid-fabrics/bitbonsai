@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export enum NodeType {
   Main = 'main',
@@ -8,7 +14,8 @@ export enum NodeType {
 
 export class InitializeSetupDto {
   @ApiProperty({
-    description: 'Username for the first admin user (required for main nodes only)',
+    description:
+      'Username for the first admin user (required for main nodes only)',
     example: 'admin',
     minLength: 3,
     required: false,
@@ -19,7 +26,8 @@ export class InitializeSetupDto {
   username?: string;
 
   @ApiProperty({
-    description: 'Password for the first admin user (required for main nodes only)',
+    description:
+      'Password for the first admin user (required for main nodes only)',
     example: 'securePassword123',
     minLength: 8,
     required: false,
@@ -37,7 +45,8 @@ export class InitializeSetupDto {
   allowLocalNetworkWithoutAuth!: boolean;
 
   @ApiProperty({
-    description: 'Node type: main (create admin account) or child (generate pairing token)',
+    description:
+      'Node type: main (create admin account) or child (generate pairing token)',
     example: NodeType.Main,
     enum: NodeType,
     required: false,

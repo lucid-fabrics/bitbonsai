@@ -30,7 +30,9 @@ describe('EnvironmentDetectorService', () => {
       providers: [EnvironmentDetectorService],
     }).compile();
 
-    service = module.get<EnvironmentDetectorService>(EnvironmentDetectorService);
+    service = module.get<EnvironmentDetectorService>(
+      EnvironmentDetectorService,
+    );
 
     jest.spyOn((service as any).logger, 'log').mockImplementation();
     jest.spyOn((service as any).logger, 'warn').mockImplementation();
@@ -43,10 +45,13 @@ describe('EnvironmentDetectorService', () => {
     mockExec.mockImplementation(
       (
         _cmd: string,
-        callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+        callback: (
+          error: Error | null,
+          result: { stdout: string; stderr: string },
+        ) => void,
       ) => {
         callback(new Error('command not found'), { stdout: '', stderr: '' });
-      }
+      },
     );
   });
 
@@ -63,7 +68,10 @@ describe('EnvironmentDetectorService', () => {
       mockExec.mockImplementation(
         (
           cmd: string,
-          callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+          callback: (
+            error: Error | null,
+            result: { stdout: string; stderr: string },
+          ) => void,
         ) => {
           if (cmd.includes('systemd-detect-virt')) {
             callback(null, { stdout: 'none\n', stderr: '' });
@@ -71,7 +79,8 @@ describe('EnvironmentDetectorService', () => {
             callback(null, { stdout: 'my-server\n', stderr: '' });
           } else if (cmd.includes('ip -4 addr')) {
             callback(null, {
-              stdout: 'inet 192.168.1.100/24 brd 192.168.1.255 scope global eth0\n',
+              stdout:
+                'inet 192.168.1.100/24 brd 192.168.1.255 scope global eth0\n',
               stderr: '',
             });
           } else if (cmd.includes('/proc/self/status')) {
@@ -79,7 +88,7 @@ describe('EnvironmentDetectorService', () => {
           } else {
             callback(new Error('not found'), { stdout: '', stderr: '' });
           }
-        }
+        },
       );
 
       const info = await service.detectEnvironment();
@@ -94,13 +103,17 @@ describe('EnvironmentDetectorService', () => {
         return Promise.reject(new Error('ENOENT'));
       });
       mockReadFile.mockImplementation((path: string) => {
-        if (path === '/proc/self/status') return Promise.resolve('CapEff:\t0000000000000000\n');
+        if (path === '/proc/self/status')
+          return Promise.resolve('CapEff:\t0000000000000000\n');
         return Promise.resolve('');
       });
       mockExec.mockImplementation(
         (
           cmd: string,
-          callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+          callback: (
+            error: Error | null,
+            result: { stdout: string; stderr: string },
+          ) => void,
         ) => {
           if (cmd.includes('hostname')) {
             callback(null, { stdout: 'abc123\n', stderr: '' });
@@ -109,7 +122,7 @@ describe('EnvironmentDetectorService', () => {
           } else {
             callback(new Error('not found'), { stdout: '', stderr: '' });
           }
-        }
+        },
       );
 
       const info = await service.detectEnvironment();
@@ -123,7 +136,10 @@ describe('EnvironmentDetectorService', () => {
       mockExec.mockImplementation(
         (
           cmd: string,
-          callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+          callback: (
+            error: Error | null,
+            result: { stdout: string; stderr: string },
+          ) => void,
         ) => {
           if (cmd.includes('systemd-detect-virt')) {
             callback(null, { stdout: 'none\n', stderr: '' });
@@ -132,7 +148,7 @@ describe('EnvironmentDetectorService', () => {
           } else {
             callback(new Error('not found'), { stdout: '', stderr: '' });
           }
-        }
+        },
       );
 
       const first = await service.detectEnvironment();
@@ -148,7 +164,10 @@ describe('EnvironmentDetectorService', () => {
       mockExec.mockImplementation(
         (
           cmd: string,
-          callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+          callback: (
+            error: Error | null,
+            result: { stdout: string; stderr: string },
+          ) => void,
         ) => {
           if (cmd.includes('systemd-detect-virt')) {
             callback(null, { stdout: 'none\n', stderr: '' });
@@ -157,7 +176,7 @@ describe('EnvironmentDetectorService', () => {
           } else {
             callback(new Error('not found'), { stdout: '', stderr: '' });
           }
-        }
+        },
       );
 
       const first = await service.detectEnvironment();
@@ -180,7 +199,7 @@ describe('EnvironmentDetectorService', () => {
           subnet: '192.168.1.0/24',
           containerType: ContainerType.BARE_METAL,
           canMountNFS: true,
-        }
+        },
       );
 
       expect(result.recommended).toBe(StorageRecommendation.NFS);
@@ -197,13 +216,13 @@ describe('EnvironmentDetectorService', () => {
           subnet: '192.168.1.0/24',
           containerType: ContainerType.LXC,
           canMountNFS: false,
-        }
+        },
       );
 
       expect(result.recommended).toBe(StorageRecommendation.RSYNC);
       expect(result.warning).toContain('LXC');
       expect(result.actionRequired).toBe(
-        'Enable privileged mode on LXC container for NFS support (see documentation), or use rsync file transfer'
+        'Enable privileged mode on LXC container for NFS support (see documentation), or use rsync file transfer',
       );
     });
 
@@ -218,7 +237,7 @@ describe('EnvironmentDetectorService', () => {
           subnet: '192.168.1.0/24',
           containerType: ContainerType.DOCKER,
           canMountNFS: false,
-        }
+        },
       );
 
       expect(result.recommended).toBe(StorageRecommendation.RSYNC);
@@ -235,7 +254,7 @@ describe('EnvironmentDetectorService', () => {
           subnet: '10.0.0.0/24',
           containerType: ContainerType.BARE_METAL,
           canMountNFS: true,
-        }
+        },
       );
 
       expect(result.recommended).toBe(StorageRecommendation.EITHER);
@@ -253,7 +272,7 @@ describe('EnvironmentDetectorService', () => {
           subnet: null,
           containerType: ContainerType.UNKNOWN,
           canMountNFS: true,
-        }
+        },
       );
 
       expect(result.recommended).toBe(StorageRecommendation.RSYNC);

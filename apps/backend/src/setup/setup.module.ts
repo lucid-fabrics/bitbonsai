@@ -10,7 +10,13 @@ import { SetupService } from './setup.service';
 @Module({
   imports: [PrismaModule],
   controllers: [SetupController],
-  providers: [SetupService, LicenseRepository, NodeRepository, SettingsRepository, UserRepository],
+  providers: [
+    SetupService,
+    LicenseRepository,
+    NodeRepository,
+    SettingsRepository,
+    UserRepository,
+  ],
   exports: [SetupService],
 })
 export class SetupModule {}

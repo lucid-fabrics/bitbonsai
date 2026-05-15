@@ -30,7 +30,9 @@ test.describe('Policies Page', () => {
 
   test('should display policies page', async () => {
     await expect(policiesPage.page).toHaveTitle(/BitBonsai/i);
-    await expect(policiesPage.page.getByRole('heading', { name: /policies/i })).toBeVisible();
+    await expect(
+      policiesPage.page.getByRole('heading', { name: /policies/i }),
+    ).toBeVisible();
   });
 
   test('should display policy cards when policies exist', async () => {
@@ -48,7 +50,9 @@ test.describe('Policies Page', () => {
     await policiesPage.clickEditPolicy('Quality AV1 for Anime');
 
     // Wait for form modal to open
-    await expect(policiesPage.page.locator('.modal-overlay, [role="dialog"]')).toBeVisible();
+    await expect(
+      policiesPage.page.locator('.modal-overlay, [role="dialog"]'),
+    ).toBeVisible();
 
     // Verify Policy Name
     const policyName = await policiesPage.getFormInputValue(/policy name/i);
@@ -90,10 +94,14 @@ test.describe('Policies Page', () => {
 
   test('should populate all fields correctly for Default policy', async () => {
     // Click edit button on the second policy (Default - Universal H.265)
-    await policiesPage.clickEditPolicy('Default - Universal H.265 (Recommended)');
+    await policiesPage.clickEditPolicy(
+      'Default - Universal H.265 (Recommended)',
+    );
 
     // Wait for form modal to open
-    await expect(policiesPage.page.locator('.modal-overlay, [role="dialog"]')).toBeVisible();
+    await expect(
+      policiesPage.page.locator('.modal-overlay, [role="dialog"]'),
+    ).toBeVisible();
 
     // Verify Policy Name
     const policyName = await policiesPage.getFormInputValue(/policy name/i);
@@ -137,13 +145,15 @@ test.describe('Policies Page', () => {
 
     // Check if form modal is visible
     await expect(
-      policiesPage.page.getByRole('heading', { name: /add|create.*policy/i })
+      policiesPage.page.getByRole('heading', { name: /add|create.*policy/i }),
     ).toBeVisible();
   });
 
   test('should display preset cards for quick policy creation', async () => {
     // Check if preset selection cards are visible
-    const presetCards = policiesPage.page.locator('[data-testid="preset-card"]');
+    const presetCards = policiesPage.page.locator(
+      '[data-testid="preset-card"]',
+    );
     const count = await presetCards.count();
 
     if (count > 0) {
@@ -159,26 +169,36 @@ test.describe('Policies Page', () => {
     await policiesPage.clickEditPolicy('Quality AV1 for Anime');
 
     // Verify form is open
-    await expect(policiesPage.page.locator('.modal-overlay, [role="dialog"]')).toBeVisible();
+    await expect(
+      policiesPage.page.locator('.modal-overlay, [role="dialog"]'),
+    ).toBeVisible();
 
     // Click cancel/close button
     await policiesPage.closeForm();
 
     // Verify form is closed
-    await expect(policiesPage.page.locator('.modal-overlay, [role="dialog"]')).not.toBeVisible();
+    await expect(
+      policiesPage.page.locator('.modal-overlay, [role="dialog"]'),
+    ).not.toBeVisible();
   });
 
   test('should display improved CRF quality labels', async () => {
-    await policiesPage.clickEditPolicy('Default - Universal H.265 (Recommended)');
+    await policiesPage.clickEditPolicy(
+      'Default - Universal H.265 (Recommended)',
+    );
 
     // Wait for form to open
-    await expect(policiesPage.page.locator('.modal-overlay, [role="dialog"]')).toBeVisible();
+    await expect(
+      policiesPage.page.locator('.modal-overlay, [role="dialog"]'),
+    ).toBeVisible();
 
     // Check that CRF label includes helpful descriptive text
     const crfLabel = await policiesPage.getCRFQualityLabel();
 
     // Should contain quality descriptor AND file size hint
-    expect(crfLabel).toMatch(/Excellent.*Large|Visually Lossless.*Huge|High.*Recommended/i);
+    expect(crfLabel).toMatch(
+      /Excellent.*Large|Visually Lossless.*Huge|High.*Recommended/i,
+    );
   });
 
   test('should validate required fields in policy form', async ({ page }) => {
@@ -232,10 +252,14 @@ test.describe('Policies Page', () => {
     await policiesPage.clickEditPolicy('Quality AV1 for Anime');
 
     // Wait for form to open
-    await expect(policiesPage.page.locator('.modal-overlay, [role="dialog"]')).toBeVisible();
+    await expect(
+      policiesPage.page.locator('.modal-overlay, [role="dialog"]'),
+    ).toBeVisible();
 
     // Find the WEB device profile checkbox or its parent container
-    const webProfileSection = policiesPage.page.locator('text=/WEB|Web/i').first();
+    const webProfileSection = policiesPage.page
+      .locator('text=/WEB|Web/i')
+      .first();
     await expect(webProfileSection).toBeVisible();
 
     // Hover over or click to reveal tooltip/explanation

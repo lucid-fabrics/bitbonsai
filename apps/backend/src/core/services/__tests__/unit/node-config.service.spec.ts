@@ -43,7 +43,10 @@ describe('NodeConfigService', () => {
     mockNodeRepository.findFirst.mockResolvedValue(null);
 
     module = await Test.createTestingModule({
-      providers: [NodeConfigService, { provide: NodeRepository, useValue: mockNodeRepository }],
+      providers: [
+        NodeConfigService,
+        { provide: NodeRepository, useValue: mockNodeRepository },
+      ],
     }).compile();
 
     service = module.get<NodeConfigService>(NodeConfigService);
@@ -194,10 +197,12 @@ describe('NodeConfigService', () => {
       };
       // findWithSelect must return the node so loadConfig() doesn't retry infinitely
       mockNodeRepository.findWithSelect.mockResolvedValue(mockNode);
-      mockNodeRepository.findFirstByRole.mockImplementation((role: NodeRole) => {
-        if (role === NodeRole.MAIN) return Promise.resolve(mockNode);
-        return Promise.resolve(null);
-      });
+      mockNodeRepository.findFirstByRole.mockImplementation(
+        (role: NodeRole) => {
+          if (role === NodeRole.MAIN) return Promise.resolve(mockNode);
+          return Promise.resolve(null);
+        },
+      );
 
       await service.loadConfig();
 
@@ -216,7 +221,11 @@ describe('NodeConfigService', () => {
 
       await service.loadConfig();
 
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith(expect.any(String), 'node-1', 'utf-8');
+      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+        expect.any(String),
+        'node-1',
+        'utf-8',
+      );
     });
 
     it('should detect node by IP address', async () => {

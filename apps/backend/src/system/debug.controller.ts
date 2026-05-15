@@ -59,7 +59,8 @@ export class DebugController {
   @Get('ffmpeg-processes')
   @ApiOperation({
     summary: 'List FFmpeg processes',
-    description: 'Returns all FFmpeg processes running on the system with zombie detection.',
+    description:
+      'Returns all FFmpeg processes running on the system with zombie detection.',
   })
   @ApiOkResponse({ description: 'List of FFmpeg processes' })
   @ApiInternalServerErrorResponse({ description: 'Failed to list processes' })
@@ -78,7 +79,9 @@ export class DebugController {
   @ApiParam({ name: 'pid', type: 'number', description: 'Process ID to kill' })
   @ApiOkResponse({ description: 'Process killed' })
   @ApiNotFoundResponse({ description: 'Process not found' })
-  async killFfmpegProcess(@Param('pid', ParseIntPipe) pid: number): Promise<unknown> {
+  async killFfmpegProcess(
+    @Param('pid', ParseIntPipe) pid: number,
+  ): Promise<unknown> {
     return this.debugService.killProcessByPid(pid);
   }
 
@@ -108,7 +111,9 @@ export class DebugController {
   })
   @ApiOkResponse({ description: 'Load threshold updated' })
   @ApiInternalServerErrorResponse({ description: 'Failed to update threshold' })
-  async updateLoadThreshold(@Body() body: { loadThresholdMultiplier: number }): Promise<unknown> {
+  async updateLoadThreshold(
+    @Body() body: { loadThresholdMultiplier: number },
+  ): Promise<unknown> {
     return this.debugService.updateLoadThreshold(body.loadThresholdMultiplier);
   }
 }

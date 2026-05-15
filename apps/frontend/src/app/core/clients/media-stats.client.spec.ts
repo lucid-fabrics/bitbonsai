@@ -1,4 +1,7 @@
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import {
+  HttpClientTestingModule,
+  HttpTestingController,
+} from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import type { FolderFilesModel } from '../../features/dashboard/models/file-info.model';
 import type { MediaStatsModel } from '../../features/dashboard/models/media-stats.model';
@@ -120,7 +123,9 @@ describe('MediaStatsClient', () => {
         expect(data.files[0].codec).toBe('h264');
       });
 
-      const req = httpMock.expectOne('/api/v1/media-stats/folders/Movies/files');
+      const req = httpMock.expectOne(
+        '/api/v1/media-stats/folders/Movies/files',
+      );
       expect(req.request.method).toBe('GET');
       expect(req.request.params.has('codec')).toBe(false);
       req.flush(mockResponse);
@@ -146,7 +151,9 @@ describe('MediaStatsClient', () => {
         expect(data.files.every((f) => f.codec === 'h264')).toBe(true);
       });
 
-      const req = httpMock.expectOne('/api/v1/media-stats/folders/Movies/files?codec=h264');
+      const req = httpMock.expectOne(
+        '/api/v1/media-stats/folders/Movies/files?codec=h264',
+      );
       expect(req.request.method).toBe('GET');
       expect(req.request.params.get('codec')).toBe('h264');
       req.flush(mockResponse);
@@ -160,14 +167,18 @@ describe('MediaStatsClient', () => {
         },
       });
 
-      const req = httpMock.expectOne('/api/v1/media-stats/folders/Movies/files');
+      const req = httpMock.expectOne(
+        '/api/v1/media-stats/folders/Movies/files',
+      );
       req.flush('Not Found', { status: 404, statusText: 'Not Found' });
     });
 
     it('should properly encode folder name with special characters', () => {
       client.getFolderFiles('Movies & TV').subscribe();
 
-      const req = httpMock.expectOne('/api/v1/media-stats/folders/Movies & TV/files');
+      const req = httpMock.expectOne(
+        '/api/v1/media-stats/folders/Movies & TV/files',
+      );
       expect(req.request.method).toBe('GET');
       req.flush({ folderName: 'Movies & TV', files: [] });
     });

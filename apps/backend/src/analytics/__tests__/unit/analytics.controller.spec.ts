@@ -36,26 +36,34 @@ describe('AnalyticsController', () => {
   describe('getSpaceSavings', () => {
     it('should return space savings with default period', async () => {
       const result = await controller.getSpaceSavings();
-      expect(analyticsService.getSpaceSavingsOverTime).toHaveBeenCalledWith('30d');
+      expect(analyticsService.getSpaceSavingsOverTime).toHaveBeenCalledWith(
+        '30d',
+      );
       expect(result).toEqual({ saved: '100GB' });
     });
 
     it('should use provided period', async () => {
       await controller.getSpaceSavings('7d');
-      expect(analyticsService.getSpaceSavingsOverTime).toHaveBeenCalledWith('7d');
+      expect(analyticsService.getSpaceSavingsOverTime).toHaveBeenCalledWith(
+        '7d',
+      );
     });
   });
 
   describe('getEncodingSpeed', () => {
     it('should return encoding speed with default period', async () => {
       const result = await controller.getEncodingSpeed();
-      expect(analyticsService.getEncodingSpeedTrends).toHaveBeenCalledWith('30d');
+      expect(analyticsService.getEncodingSpeedTrends).toHaveBeenCalledWith(
+        '30d',
+      );
       expect(result).toEqual({ speed: '2x' });
     });
 
     it('should use provided period', async () => {
       await controller.getEncodingSpeed('24h');
-      expect(analyticsService.getEncodingSpeedTrends).toHaveBeenCalledWith('24h');
+      expect(analyticsService.getEncodingSpeedTrends).toHaveBeenCalledWith(
+        '24h',
+      );
     });
   });
 
@@ -68,7 +76,9 @@ describe('AnalyticsController', () => {
 
     it('should use provided provider', async () => {
       await controller.getCostSavings('Backblaze B2');
-      expect(analyticsService.getCostSavings).toHaveBeenCalledWith('Backblaze B2');
+      expect(analyticsService.getCostSavings).toHaveBeenCalledWith(
+        'Backblaze B2',
+      );
     });
   });
 
@@ -101,8 +111,12 @@ describe('AnalyticsController', () => {
     it('should use provided period for all queries', async () => {
       await controller.getSummary('90d');
 
-      expect(analyticsService.getSpaceSavingsOverTime).toHaveBeenCalledWith('90d');
-      expect(analyticsService.getEncodingSpeedTrends).toHaveBeenCalledWith('90d');
+      expect(analyticsService.getSpaceSavingsOverTime).toHaveBeenCalledWith(
+        '90d',
+      );
+      expect(analyticsService.getEncodingSpeedTrends).toHaveBeenCalledWith(
+        '90d',
+      );
       expect(analyticsService.getNodePerformance).toHaveBeenCalledWith('90d');
       expect(analyticsService.getCodecPerformance).toHaveBeenCalledWith('90d');
       // Cost savings always uses AWS S3

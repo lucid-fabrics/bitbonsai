@@ -32,7 +32,9 @@ export class StorageRecommendationBannerComponent {
       return 'warning';
     }
 
-    return this.recommendation.recommended === StorageMethod.NFS ? 'success' : 'info';
+    return this.recommendation.recommended === StorageMethod.NFS
+      ? 'success'
+      : 'info';
   }
 
   get icon(): string {
@@ -42,7 +44,9 @@ export class StorageRecommendationBannerComponent {
       return 'exclamation-triangle';
     }
 
-    return this.recommendation.recommended === StorageMethod.NFS ? 'check-circle' : 'info-circle';
+    return this.recommendation.recommended === StorageMethod.NFS
+      ? 'check-circle'
+      : 'info-circle';
   }
 
   get methodBadgeClass(): string {

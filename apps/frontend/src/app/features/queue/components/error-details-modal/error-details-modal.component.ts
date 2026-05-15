@@ -38,13 +38,22 @@ export class ErrorDetailsModalComponent {
       errorLower.includes('exit code 139')
     ) {
       return 'FFmpeg crashed while processing this file. The file may be corrupted.';
-    } else if (errorLower.includes('file not found') || errorLower.includes('does not exist')) {
+    } else if (
+      errorLower.includes('file not found') ||
+      errorLower.includes('does not exist')
+    ) {
       return 'The source file could not be found. It may have been moved or deleted.';
     } else if (errorLower.includes('permission')) {
       return 'Permission denied. Check file and directory permissions.';
-    } else if (errorLower.includes('job stuck') || errorLower.includes('no progress')) {
+    } else if (
+      errorLower.includes('job stuck') ||
+      errorLower.includes('no progress')
+    ) {
       return 'The encoding process stopped responding and was terminated.';
-    } else if (errorLower.includes('verification failed') || errorLower.includes('not playable')) {
+    } else if (
+      errorLower.includes('verification failed') ||
+      errorLower.includes('not playable')
+    ) {
       return 'The encoded file failed verification. The output file is not valid.';
     }
 
@@ -67,11 +76,17 @@ export class ErrorDetailsModalComponent {
   getContextualHelp(): string {
     const errorLower = (this.error || '').toLowerCase();
 
-    if (errorLower.includes('file not found') || errorLower.includes('does not exist')) {
+    if (
+      errorLower.includes('file not found') ||
+      errorLower.includes('does not exist')
+    ) {
       return 'Verify the file still exists in the library. Check if the storage is mounted correctly.';
     } else if (errorLower.includes('permission')) {
       return 'Ensure the BitBonsai service has read/write access to the library and output directories.';
-    } else if (errorLower.includes('job stuck') || errorLower.includes('no progress')) {
+    } else if (
+      errorLower.includes('job stuck') ||
+      errorLower.includes('no progress')
+    ) {
       return 'FFmpeg stopped producing output, likely due to a crash or corrupted file. Check the technical details for specific errors, or try re-queueing the job.';
     } else if (
       errorLower.includes('segmentation fault') ||
@@ -106,17 +121,26 @@ export class ErrorDetailsModalComponent {
         icon: 'fa-share',
         text: 'Try retrying on a different node',
       });
-    } else if (errorLower.includes('stuck') || errorLower.includes('no progress')) {
+    } else if (
+      errorLower.includes('stuck') ||
+      errorLower.includes('no progress')
+    ) {
       steps.push({
         icon: 'fa-cog',
         text: 'File may be problematic — try a different encoding policy',
       });
-    } else if (errorLower.includes('verification failed') || errorLower.includes('not playable')) {
+    } else if (
+      errorLower.includes('verification failed') ||
+      errorLower.includes('not playable')
+    ) {
       steps.push({
         icon: 'fa-sliders-h',
         text: 'Try with different quality settings',
       });
-    } else if (errorLower.includes('permission') || errorLower.includes('eacces')) {
+    } else if (
+      errorLower.includes('permission') ||
+      errorLower.includes('eacces')
+    ) {
       steps.push({
         icon: 'fa-lock',
         text: 'Check file permissions on the storage volume',

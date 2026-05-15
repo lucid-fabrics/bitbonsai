@@ -96,7 +96,9 @@ export class FfmpegFlagBuilderService {
     '-qcomp', // LOW PRIORITY FIX #18: Quantizer compression
   ]);
 
-  constructor(private readonly hardwareAccelerationService: HardwareAccelerationService) {}
+  constructor(
+    private readonly hardwareAccelerationService: HardwareAccelerationService,
+  ) {}
 
   /**
    * SECURITY: Validate and filter FFmpeg flags
@@ -115,7 +117,9 @@ export class FfmpegFlagBuilderService {
       // Check if flag is in whitelist
       if (!this.ALLOWED_FFMPEG_FLAGS.has(flag)) {
         this.logger.warn(`Blocked disallowed FFmpeg flag: ${flag}`);
-        throw new Error(`FFmpeg flag '${flag}' is not allowed for security reasons`);
+        throw new Error(
+          `FFmpeg flag '${flag}' is not allowed for security reasons`,
+        );
       }
 
       validatedFlags.push(flag);
@@ -132,14 +136,16 @@ export class FfmpegFlagBuilderService {
           // Reject file paths like "file:/etc/passwd" or "../sensitive/file"
           if (!/^[0-9]+:[vascdt]:[0-9]+$/.test(value) && value !== '0') {
             throw new Error(
-              `FFmpeg -map flag value '${value}' is invalid. Must match pattern [input]:[type]:[index] (e.g., "0:v:0")`
+              `FFmpeg -map flag value '${value}' is invalid. Must match pattern [input]:[type]:[index] (e.g., "0:v:0")`,
             );
           }
         } else {
           // SECURITY: Sanitize value to prevent command injection
           // Only allow alphanumeric, dash, underscore, colon, dot, and comma
           if (!/^[a-zA-Z0-9\-_:.,=]+$/.test(value)) {
-            throw new Error(`FFmpeg flag value '${value}' contains invalid characters`);
+            throw new Error(
+              `FFmpeg flag value '${value}' contains invalid characters`,
+            );
           }
         }
 
@@ -162,7 +168,10 @@ export class FfmpegFlagBuilderService {
    * @returns FFmpeg codec name (e.g., hevc_nvenc, libx265, av1_nvenc, etc.)
    */
   selectCodecForPolicy(targetCodec: string, hwType: string): string {
-    return this.hardwareAccelerationService.selectCodecForPolicy(targetCodec, hwType);
+    return this.hardwareAccelerationService.selectCodecForPolicy(
+      targetCodec,
+      hwType,
+    );
   }
 
   /**
@@ -187,7 +196,7 @@ export class FfmpegFlagBuilderService {
     policy: Policy,
     hwaccel: HardwareAccelConfig,
     outputPath: string,
-    resumeFromTimestamp?: string
+    resumeFromTimestamp?: string,
   ): string[] {
     const args: string[] = [];
 
@@ -198,7 +207,7 @@ export class FfmpegFlagBuilderService {
     if (isRemux) {
       // REMUX MODE: Fast stream copy (no re-encoding)
       this.logger.log(
-        `REMUX MODE: Container change only (${jobWithType.sourceContainer} → ${jobWithType.targetContainer})`
+        `REMUX MODE: Container change only (${jobWithType.sourceContainer} → ${jobWithType.targetContainer})`,
       );
 
       // Input file
@@ -212,13 +221,17 @@ export class FfmpegFlagBuilderService {
       args.push('-map', '0');
     } else {
       // ENCODE MODE: Full transcode with quality settings
-      this.logger.log(`ENCODE MODE: Full transcode (${job.sourceCodec} → ${job.targetCodec})`);
+      this.logger.log(
+        `ENCODE MODE: Full transcode (${job.sourceCodec} → ${job.targetCodec})`,
+      );
 
       // TRUE RESUME: Add input seeking BEFORE -i for accurate frame seeking
       // This skips the already-encoded portion of the input file
       if (resumeFromTimestamp) {
         args.push('-ss', resumeFromTimestamp);
-        this.logger.log(`TRUE RESUME: Using FFmpeg input seeking: -ss ${resumeFromTimestamp}`);
+        this.logger.log(
+          `TRUE RESUME: Using FFmpeg input seeking: -ss ${resumeFromTimestamp}`,
+        );
       }
 
       // Hardware acceleration flags (if available)
@@ -229,7 +242,10 @@ export class FfmpegFlagBuilderService {
 
       // Video codec and quality
       // Select codec based on policy target and available hardware acceleration
-      const selectedCodec = this.selectCodecForPolicy(policy.targetCodec, hwaccel.type);
+      const selectedCodec = this.selectCodecForPolicy(
+        policy.targetCodec,
+        hwaccel.type,
+      );
       args.push('-c:v', selectedCodec);
       args.push('-crf', policy.targetQuality.toString());
 
@@ -247,7 +263,9 @@ export class FfmpegFlagBuilderService {
           }
           if (decisionData?.actionConfig?.audioBitrate) {
             audioBitrate = decisionData.actionConfig.audioBitrate;
-            this.logger.log(`Using audio bitrate from decision: ${audioBitrate}`);
+            this.logger.log(
+              `Using audio bitrate from decision: ${audioBitrate}`,
+            );
           }
         } catch {
           // Ignore JSON parse errors
@@ -255,7 +273,10 @@ export class FfmpegFlagBuilderService {
       }
 
       // Fall back to policy settings if not overridden by decision
-      const advancedSettings = policy.advancedSettings as Record<string, unknown>;
+      const advancedSettings = policy.advancedSettings as Record<
+        string,
+        unknown
+      >;
       if (audioCodec === 'copy' && advancedSettings.audioCodec) {
         audioCodec = advancedSettings.audioCodec as string;
       }
@@ -272,7 +293,7 @@ export class FfmpegFlagBuilderService {
       if (jobWithThreads.ffmpegThreads) {
         args.push('-threads', jobWithThreads.ffmpegThreads.toString());
         this.logger.warn(
-          `[${job.id}] Using ${jobWithThreads.ffmpegThreads} threads (resource throttled: ${jobWithThreads.resourceThrottleReason || 'unknown reason'})`
+          `[${job.id}] Using ${jobWithThreads.ffmpegThreads} threads (resource throttled: ${jobWithThreads.resourceThrottleReason || 'unknown reason'})`,
         );
       }
 
@@ -284,7 +305,7 @@ export class FfmpegFlagBuilderService {
           args.push(...validatedFlags);
         } catch (error: unknown) {
           this.logger.error(
-            `Invalid FFmpeg flags in policy: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Invalid FFmpeg flags in policy: ${error instanceof Error ? error.message : 'Unknown error'}`,
           );
           throw error;
         }
@@ -295,10 +316,13 @@ export class FfmpegFlagBuilderService {
         try {
           const decisionData = JSON.parse(job.decisionData as string);
           if (decisionData?.actionConfig?.ffmpegFlags) {
-            const decisionFlags = decisionData.actionConfig.ffmpegFlags as string[];
+            const decisionFlags = decisionData.actionConfig
+              .ffmpegFlags as string[];
             const validatedFlags = this.validateFfmpegFlags(decisionFlags);
             args.push(...validatedFlags);
-            this.logger.log(`Applied decision FFmpeg flags: ${validatedFlags.join(' ')}`);
+            this.logger.log(
+              `Applied decision FFmpeg flags: ${validatedFlags.join(' ')}`,
+            );
           }
         } catch {
           // Ignore JSON parse errors
@@ -320,13 +344,23 @@ export class FfmpegFlagBuilderService {
       // MP4 format with fragmentation for streaming compatibility
       // Use fragmented MP4 for instant readability (moov atom at start)
       // This allows preview captures to work at any encoding progress
-      args.push('-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4');
-    } else if (targetContainer === 'mkv' || targetContainer.includes('matroska')) {
+      args.push(
+        '-movflags',
+        '+frag_keyframe+empty_moov+default_base_moof',
+        '-f',
+        'mp4',
+      );
+    } else if (
+      targetContainer === 'mkv' ||
+      targetContainer.includes('matroska')
+    ) {
       // MKV format (no special flags needed)
       args.push('-f', 'matroska');
     } else {
       // Default to MKV for unknown containers
-      this.logger.warn(`Unknown target container '${targetContainer}', defaulting to MKV`);
+      this.logger.warn(
+        `Unknown target container '${targetContainer}', defaulting to MKV`,
+      );
       args.push('-f', 'matroska');
     }
 

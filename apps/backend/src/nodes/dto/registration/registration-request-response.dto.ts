@@ -1,5 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { AccelerationType, ContainerType, RegistrationRequestStatus } from '@prisma/client';
+import type {
+  AccelerationType,
+  ContainerType,
+  RegistrationRequestStatus,
+} from '@prisma/client';
 
 /**
  * DTO for registration request response
@@ -121,7 +125,8 @@ export class RegistrationRequestResponseDto {
   childNodeId?: string;
 
   @ApiProperty({
-    description: 'API key for child node authentication (only returned when approved)',
+    description:
+      'API key for child node authentication (only returned when approved)',
     example: 'bb_1234567890abcdef',
     required: false,
   })

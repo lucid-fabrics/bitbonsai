@@ -135,7 +135,9 @@ export class CheckoutComponent implements OnInit {
       }
     } catch (err: unknown) {
       this.error =
-        err instanceof Error ? err.message : 'Failed to create checkout session. Please try again.';
+        err instanceof Error
+          ? err.message
+          : 'Failed to create checkout session. Please try again.';
       this.submitting = false;
     }
   }

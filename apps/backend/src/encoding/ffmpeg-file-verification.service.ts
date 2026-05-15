@@ -36,26 +36,32 @@ export class FfmpegFileVerificationService {
    * @param delayMs - Delay between retries in milliseconds (default: 2000)
    * @returns true if file exists, false if all retries exhausted
    */
-  async waitForFileExists(filePath: string, maxRetries = 10, delayMs = 2000): Promise<boolean> {
+  async waitForFileExists(
+    filePath: string,
+    maxRetries = 10,
+    delayMs = 2000,
+  ): Promise<boolean> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         if (existsSync(filePath)) {
           if (attempt > 1) {
-            this.logger.log(`✓ File exists after ${attempt} attempt(s): ${filePath}`);
+            this.logger.log(
+              `✓ File exists after ${attempt} attempt(s): ${filePath}`,
+            );
           }
           return true;
         }
 
         if (attempt < maxRetries) {
           this.logger.warn(
-            `File not found (attempt ${attempt}/${maxRetries}), waiting ${delayMs}ms before retry: ${filePath}`
+            `File not found (attempt ${attempt}/${maxRetries}), waiting ${delayMs}ms before retry: ${filePath}`,
           );
           await this.sleep(delayMs);
         }
       } catch (error: unknown) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         this.logger.error(
-          `Error checking file existence (attempt ${attempt}/${maxRetries}): ${errorMsg}`
+          `Error checking file existence (attempt ${attempt}/${maxRetries}): ${errorMsg}`,
         );
         if (attempt < maxRetries) {
           await this.sleep(delayMs);
@@ -64,7 +70,7 @@ export class FfmpegFileVerificationService {
     }
 
     this.logger.error(
-      `File does not exist after ${maxRetries} attempts (${(maxRetries * delayMs) / 1000}s total): ${filePath}`
+      `File does not exist after ${maxRetries} attempts (${(maxRetries * delayMs) / 1000}s total): ${filePath}`,
     );
     return false;
   }
@@ -78,7 +84,7 @@ export class FfmpegFileVerificationService {
    */
   async verifyFileWithRetries(
     filePath: string,
-    maxRetries = 10
+    maxRetries = 10,
   ): Promise<{ isValid: boolean; error?: string; attempts: number }> {
     let lastError = '';
 
@@ -89,7 +95,7 @@ export class FfmpegFileVerificationService {
           lastError = `File does not exist`;
           if (attempt < maxRetries) {
             this.logger.warn(
-              `Verification attempt ${attempt}/${maxRetries}: File missing, waiting 2s before retry`
+              `Verification attempt ${attempt}/${maxRetries}: File missing, waiting 2s before retry`,
             );
             await this.sleep(2000);
             continue;
@@ -114,14 +120,17 @@ export class FfmpegFileVerificationService {
           const backoffMs = Math.min(2000 * 2 ** (attempt - 1), 32000);
           this.logger.warn(
             `Verification attempt ${attempt}/${maxRetries} failed: ${lastError}\n` +
-              `Waiting ${backoffMs}ms before retry...`
+              `Waiting ${backoffMs}ms before retry...`,
           );
           await this.sleep(backoffMs);
         }
       } catch (error: unknown) {
-        lastError = error instanceof Error ? error.message : 'Exception during verification';
+        lastError =
+          error instanceof Error
+            ? error.message
+            : 'Exception during verification';
         this.logger.error(
-          `Exception in verification attempt ${attempt}/${maxRetries}: ${lastError}`
+          `Exception in verification attempt ${attempt}/${maxRetries}: ${lastError}`,
         );
 
         if (attempt < maxRetries) {

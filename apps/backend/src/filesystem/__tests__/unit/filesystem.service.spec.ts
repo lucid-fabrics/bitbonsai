@@ -55,7 +55,11 @@ describe('FilesystemService', () => {
 
       const result = await service.listDirectories('/test');
 
-      expect(result.directories.map((d) => d.name)).toEqual(['alpha', 'middle', 'zebra']);
+      expect(result.directories.map((d) => d.name)).toEqual([
+        'alpha',
+        'middle',
+        'zebra',
+      ]);
     });
 
     it('should mark inaccessible directories', async () => {
@@ -118,15 +122,23 @@ describe('FilesystemService', () => {
     it('should reject null bytes', async () => {
       (fs.readdir as jest.Mock).mockResolvedValue([]);
 
-      await expect(service.listDirectories('/test\0path')).rejects.toThrow(BadRequestException);
+      await expect(service.listDirectories('/test\0path')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should block sensitive system directories', async () => {
       (fs.readdir as jest.Mock).mockResolvedValue([]);
 
-      await expect(service.listDirectories('/etc/shadow')).rejects.toThrow(BadRequestException);
-      await expect(service.listDirectories('/etc/passwd')).rejects.toThrow(BadRequestException);
-      await expect(service.listDirectories('/root/.ssh')).rejects.toThrow(BadRequestException);
+      await expect(service.listDirectories('/etc/shadow')).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.listDirectories('/etc/passwd')).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.listDirectories('/root/.ssh')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should normalize path with double slashes', async () => {

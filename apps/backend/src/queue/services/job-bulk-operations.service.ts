@@ -17,7 +17,7 @@ export class JobBulkOperationsService {
 
   constructor(
     private readonly jobRepository: JobRepository,
-    private readonly ffmpegService: FfmpegService
+    private readonly ffmpegService: FfmpegService,
   ) {}
 
   /**
@@ -33,19 +33,25 @@ export class JobBulkOperationsService {
       }>({ stage: JobStage.ENCODING }, { id: true, fileLabel: true });
 
       if (encodingJobs.length > 0) {
-        this.logger.log(`Killing ${encodingJobs.length} FFmpeg process(es) in parallel...`);
+        this.logger.log(
+          `Killing ${encodingJobs.length} FFmpeg process(es) in parallel...`,
+        );
 
         const killPromises = encodingJobs.map(async (job) => {
           try {
             await this.ffmpegService.killProcess(job.id);
             this.logger.log(`  ✓ Killed FFmpeg for: ${job.fileLabel}`);
           } catch (error: unknown) {
-            this.logger.warn(`  ✗ Failed to kill FFmpeg for ${job.id}: ${error}`);
+            this.logger.warn(
+              `  ✗ Failed to kill FFmpeg for ${job.id}: ${error}`,
+            );
           }
         });
 
         await Promise.allSettled(killPromises);
-        this.logger.log(`Finished killing ${encodingJobs.length} FFmpeg process(es)`);
+        this.logger.log(
+          `Finished killing ${encodingJobs.length} FFmpeg process(es)`,
+        );
       }
 
       const result = await this.jobRepository.updateManyWhere(
@@ -63,10 +69,12 @@ export class JobBulkOperationsService {
         {
           stage: JobStage.CANCELLED,
           completedAt: new Date(),
-        }
+        },
       );
 
-      this.logger.log(`Cancelled ${result.count} job(s) (all stages including encoding)`);
+      this.logger.log(
+        `Cancelled ${result.count} job(s) (all stages including encoding)`,
+      );
       return { cancelledCount: result.count };
     } catch (error: unknown) {
       this.logger.error('Failed to cancel all jobs', error);
@@ -89,11 +97,14 @@ export class JobBulkOperationsService {
         id: string;
         fileLabel: string;
         beforeSizeBytes: bigint;
-      }>({ stage: JobStage.CANCELLED }, { id: true, fileLabel: true, beforeSizeBytes: true });
+      }>(
+        { stage: JobStage.CANCELLED },
+        { id: true, fileLabel: true, beforeSizeBytes: true },
+      );
 
       const totalSize = cancelledJobs.reduce(
         (sum, job) => sum + BigInt(job.beforeSizeBytes),
-        BigInt(0)
+        BigInt(0),
       );
 
       const result = await this.jobRepository.updateManyWhere(
@@ -104,7 +115,7 @@ export class JobBulkOperationsService {
           error: null,
           completedAt: null,
           startedAt: null,
-        }
+        },
       );
 
       this.logger.log(`Retried ${result.count} cancelled job(s)`);
@@ -203,7 +214,7 @@ export class JobBulkOperationsService {
     jobs: Array<{ id: string; fileLabel: string; error: string }>;
   }> {
     this.logger.log(
-      `Retrying all failed jobs${errorFilter ? ` with category: ${errorFilter}` : ''}`
+      `Retrying all failed jobs${errorFilter ? ` with category: ${errorFilter}` : ''}`,
     );
 
     try {
@@ -211,7 +222,10 @@ export class JobBulkOperationsService {
         id: string;
         fileLabel: string;
         error: string | null;
-      }>({ stage: JobStage.FAILED }, { id: true, fileLabel: true, error: true });
+      }>(
+        { stage: JobStage.FAILED },
+        { id: true, fileLabel: true, error: true },
+      );
 
       let jobsToRetry = allFailedJobs;
       if (errorFilter) {
@@ -233,7 +247,7 @@ export class JobBulkOperationsService {
       });
 
       this.logger.log(
-        `Retried ${result.count} failed job(s)${errorFilter ? ` with category: ${errorFilter}` : ''}`
+        `Retried ${result.count} failed job(s)${errorFilter ? ` with category: ${errorFilter}` : ''}`,
       );
 
       return {
@@ -281,7 +295,7 @@ export class JobBulkOperationsService {
           targetCodec: true,
           beforeSizeBytes: true,
           decisionIssues: true,
-        }
+        },
       );
 
       const jobsToSkip = allNeedsDecisionJobs.filter((job) => {
@@ -312,16 +326,17 @@ export class JobBulkOperationsService {
           }),
           completedAt: now,
           progress: 100,
-          healthMessage: '✅ Skipped - file already in target codec (bulk action)',
-        }
+          healthMessage:
+            '✅ Skipped - file already in target codec (bulk action)',
+        },
       );
 
       await Promise.all(
         jobsToSkip.map((job) =>
           this.jobRepository.updateById(job.id, {
             afterSizeBytes: job.beforeSizeBytes,
-          })
-        )
+          }),
+        ),
       );
 
       this.logger.log(`Skipped ${result.count} codec-match job(s)`);
@@ -353,7 +368,9 @@ export class JobBulkOperationsService {
       targetCodec: string;
     }>;
   }> {
-    this.logger.log('Force encoding all jobs where codec already matches target');
+    this.logger.log(
+      'Force encoding all jobs where codec already matches target',
+    );
 
     try {
       const allNeedsDecisionJobs = await this.jobRepository.findManySelect<{
@@ -370,7 +387,7 @@ export class JobBulkOperationsService {
           sourceCodec: true,
           targetCodec: true,
           decisionIssues: true,
-        }
+        },
       );
 
       const jobsToEncode = allNeedsDecisionJobs.filter((job) => {
@@ -400,10 +417,12 @@ export class JobBulkOperationsService {
             },
           }),
           healthMessage: '⚡ Force re-encoding - user requested (bulk action)',
-        }
+        },
       );
 
-      this.logger.log(`Queued ${result.count} codec-match job(s) for force encoding`);
+      this.logger.log(
+        `Queued ${result.count} codec-match job(s) for force encoding`,
+      );
 
       return {
         queuedCount: result.count,

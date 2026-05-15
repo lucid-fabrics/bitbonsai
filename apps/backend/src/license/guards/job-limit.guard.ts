@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../common/repositories/job.repository';
 import { LicenseClientService } from '../license-client.service';
@@ -7,7 +12,7 @@ import { LicenseClientService } from '../license-client.service';
 export class JobLimitGuard implements CanActivate {
   constructor(
     private readonly licenseClient: LicenseClientService,
-    private readonly jobRepository: JobRepository
+    private readonly jobRepository: JobRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -19,7 +24,7 @@ export class JobLimitGuard implements CanActivate {
 
     if (currentEncodingJobCount >= maxConcurrentJobs) {
       throw new ForbiddenException(
-        `Concurrent job limit reached (${currentEncodingJobCount}/${maxConcurrentJobs}). Upgrade your license for higher concurrency.`
+        `Concurrent job limit reached (${currentEncodingJobCount}/${maxConcurrentJobs}). Upgrade your license for higher concurrency.`,
       );
     }
 

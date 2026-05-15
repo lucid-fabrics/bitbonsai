@@ -52,7 +52,7 @@ export const queueReducer = createReducer(
   on(QueueActions.cancelJobSuccess, (state, { jobId }) => ({
     ...state,
     jobs: state.jobs.map((job) =>
-      job.id === jobId ? { ...job, status: JobStatus.CANCELLED } : job
+      job.id === jobId ? { ...job, status: JobStatus.CANCELLED } : job,
     ),
     isLoading: false,
   })),
@@ -70,7 +70,9 @@ export const queueReducer = createReducer(
   })),
   on(QueueActions.retryJobSuccess, (state, { jobId }) => ({
     ...state,
-    jobs: state.jobs.map((job) => (job.id === jobId ? { ...job, status: JobStatus.QUEUED } : job)),
+    jobs: state.jobs.map((job) =>
+      job.id === jobId ? { ...job, status: JobStatus.QUEUED } : job,
+    ),
     isLoading: false,
   })),
   on(QueueActions.retryJobFailure, (state, { error }) => ({
@@ -83,5 +85,5 @@ export const queueReducer = createReducer(
   on(QueueActions.updateFilters, (state, { filters }) => ({
     ...state,
     filters,
-  }))
+  })),
 );

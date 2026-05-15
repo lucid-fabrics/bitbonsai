@@ -1,4 +1,12 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiNoContentResponse,
@@ -28,7 +36,8 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({
     summary: 'User login',
-    description: 'Authenticate with username and password to receive JWT access and refresh tokens',
+    description:
+      'Authenticate with username and password to receive JWT access and refresh tokens',
   })
   @ApiOkResponse({ description: 'Login successful', type: AuthResponseDto })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
@@ -42,11 +51,14 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Refresh access token',
-    description: 'Use refresh token to obtain a new access token and refresh token',
+    description:
+      'Use refresh token to obtain a new access token and refresh token',
   })
   @ApiOkResponse({ description: 'Token refreshed', type: AuthResponseDto })
   @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
-  async refreshToken(@Body() refreshTokenDto: RefreshTokenDto): Promise<AuthResponseDto> {
+  async refreshToken(
+    @Body() refreshTokenDto: RefreshTokenDto,
+  ): Promise<AuthResponseDto> {
     return this.authService.refreshToken(refreshTokenDto);
   }
 

@@ -1,4 +1,12 @@
-import { Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiAcceptedResponse,
   ApiBadRequestResponse,
@@ -98,7 +106,7 @@ export class MediaStatsController {
   })
   async getFolderFiles(
     @Param('folderName') folderName: string,
-    @Query('codec') codec?: string
+    @Query('codec') codec?: string,
   ): Promise<FolderFilesDto> {
     return this.mediaStatsService.getFolderFiles(folderName, codec);
   }

@@ -15,7 +15,12 @@ import { OverviewService } from './overview.service';
 @Module({
   imports: [PrismaModule],
   controllers: [OverviewController],
-  providers: [OverviewService, JobRepository, NodeRepository, LibraryRepository],
+  providers: [
+    OverviewService,
+    JobRepository,
+    NodeRepository,
+    LibraryRepository,
+  ],
   exports: [OverviewService],
 })
 export class OverviewModule {}

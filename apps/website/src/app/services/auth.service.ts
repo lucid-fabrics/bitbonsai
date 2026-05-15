@@ -58,7 +58,7 @@ export class AuthService {
         this.setToken(response.accessToken);
         this.currentUser.set(response.user);
         this.isAuthenticated.set(true);
-      })
+      }),
     );
   }
 
@@ -78,7 +78,7 @@ export class AuthService {
       tap((user) => {
         this.currentUser.set(user);
         this.isAuthenticated.set(true);
-      })
+      }),
     );
   }
 
@@ -87,7 +87,10 @@ export class AuthService {
   }
 
   toggleAdminStatus(id: string): Observable<AdminUser> {
-    return this.http.patch<AdminUser>(`${this.authUrl}/admins/${id}/toggle`, {});
+    return this.http.patch<AdminUser>(
+      `${this.authUrl}/admins/${id}/toggle`,
+      {},
+    );
   }
 
   getToken(): string | null {

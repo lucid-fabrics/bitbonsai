@@ -1,7 +1,14 @@
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import {
+  HttpClientTestingModule,
+  HttpTestingController,
+} from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import type { Node } from '../../features/nodes/models/node.model';
-import { AccelerationType, NodeRole, NodeStatus } from '../../features/nodes/models/node.model';
+import {
+  AccelerationType,
+  NodeRole,
+  NodeStatus,
+} from '../../features/nodes/models/node.model';
 import {
   type NodeStats,
   NodesClient,

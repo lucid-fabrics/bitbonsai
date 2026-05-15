@@ -10,7 +10,8 @@ import type { EncodingProgressDto } from './dto/encoding-progress.dto';
 @Injectable()
 export class FfmpegProgressParserService {
   // Example: frame= 2450 fps= 87 q=28.0 size=   12288kB time=00:01:42.50 bitrate=1234.5kbits/s speed=3.62x
-  private readonly progressRegex = /frame=\s*(\d+).*fps=\s*([\d.]+).*time=\s*([\d:.]+)/;
+  private readonly progressRegex =
+    /frame=\s*(\d+).*fps=\s*([\d.]+).*time=\s*([\d:.]+)/;
 
   /**
    * Parse ffmpeg progress line
@@ -23,7 +24,9 @@ export class FfmpegProgressParserService {
    * @param line - Single line from ffmpeg stderr
    * @returns Parsed progress data or null if not a progress line
    */
-  parseProgress(line: string): Pick<EncodingProgressDto, 'frame' | 'fps' | 'currentTime'> | null {
+  parseProgress(
+    line: string,
+  ): Pick<EncodingProgressDto, 'frame' | 'fps' | 'currentTime'> | null {
     const match = this.progressRegex.exec(line);
     if (!match) {
       return null;
@@ -45,7 +48,10 @@ export class FfmpegProgressParserService {
    * @param totalDurationSeconds - Total video duration in seconds
    * @returns Progress percentage (0-100)
    */
-  calculateProgressPercentage(currentTime: string, totalDurationSeconds: number): number {
+  calculateProgressPercentage(
+    currentTime: string,
+    totalDurationSeconds: number,
+  ): number {
     // Handle N/A or invalid time - FFmpeg outputs N/A during initial decoding phase
     if (!currentTime || currentTime === 'N/A' || currentTime === 'n/a') {
       return 0;

@@ -38,7 +38,10 @@ describe('MetricsRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [MetricsRepository, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [
+        MetricsRepository,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
     }).compile();
 
     repository = module.get<MetricsRepository>(MetricsRepository);

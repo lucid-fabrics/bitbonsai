@@ -39,7 +39,7 @@ export class NodeService {
           throw new Error('No MAIN node found');
         }
         return main;
-      })
+      }),
     );
   }
 }

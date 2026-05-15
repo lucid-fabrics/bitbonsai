@@ -1,7 +1,11 @@
 import { DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AdminRole, AdminUser, AuthService } from '../../../services/auth.service';
+import {
+  AdminRole,
+  AdminUser,
+  AuthService,
+} from '../../../services/auth.service';
 
 @Component({
   selector: 'app-admin-dashboard',

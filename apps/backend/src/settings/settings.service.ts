@@ -65,7 +65,9 @@ export class SettingsService {
    * Updates the security settings and returns the updated values
    * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
-  async updateSecuritySettings(dto: SecuritySettingsDto): Promise<SecuritySettingsDto> {
+  async updateSecuritySettings(
+    dto: SecuritySettingsDto,
+  ): Promise<SecuritySettingsDto> {
     const settings = await this.settingsRepository.upsertSettings({
       allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
     });
@@ -97,7 +99,9 @@ export class SettingsService {
    * Updates the user's preferred default queue filter view
    * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
-  async updateDefaultQueueView(dto: DefaultQueueViewDto): Promise<DefaultQueueViewDto> {
+  async updateDefaultQueueView(
+    dto: DefaultQueueViewDto,
+  ): Promise<DefaultQueueViewDto> {
     const settings = await this.settingsRepository.upsertSettings({
       defaultQueueView: dto.defaultQueueView,
     });
@@ -130,7 +134,9 @@ export class SettingsService {
    * Minimum value is 5 minutes to prevent excessive file system scans
    * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
-  async updateReadyFilesCacheTtl(ttlMinutes: number): Promise<ReadyFilesCacheTtlDto> {
+  async updateReadyFilesCacheTtl(
+    ttlMinutes: number,
+  ): Promise<ReadyFilesCacheTtlDto> {
     // Validate minimum TTL
     if (ttlMinutes < 5) {
       throw new BadRequestException('Cache TTL must be at least 5 minutes');
@@ -169,7 +175,9 @@ export class SettingsService {
    * Minimum value is 3 to prevent overly aggressive auto-healing.
    * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
-  async updateAutoHealRetryLimit(maxRetries: number): Promise<AutoHealRetryLimitDto> {
+  async updateAutoHealRetryLimit(
+    maxRetries: number,
+  ): Promise<AutoHealRetryLimitDto> {
     // Validate minimum retry limit
     if (maxRetries < 3) {
       throw new BadRequestException('Auto-heal retry limit must be at least 3');
@@ -210,7 +218,9 @@ export class SettingsService {
    * Toggles visibility of advanced UI controls in the queue and other pages
    * RACE CONDITION FIX: Uses transaction to atomically check and create/update
    */
-  async updateAdvancedMode(enabled: boolean): Promise<{ advancedModeEnabled: boolean }> {
+  async updateAdvancedMode(
+    enabled: boolean,
+  ): Promise<{ advancedModeEnabled: boolean }> {
     const settings = await this.settingsRepository.upsertSettings({
       advancedModeEnabled: enabled,
     });
@@ -231,7 +241,9 @@ export class SettingsService {
     return { qualityMetricsEnabled: settings.qualityMetricsEnabled };
   }
 
-  async updateQualityMetrics(enabled: boolean): Promise<{ qualityMetricsEnabled: boolean }> {
+  async updateQualityMetrics(
+    enabled: boolean,
+  ): Promise<{ qualityMetricsEnabled: boolean }> {
     const settings = await this.settingsRepository.upsertSettings({
       qualityMetricsEnabled: enabled,
     });
@@ -325,18 +337,21 @@ export class SettingsService {
       jobStuckThresholdMinutes: s.jobStuckThresholdMinutes ?? 5,
       jobEncodingTimeoutHours: s.jobEncodingTimeoutHours ?? 2,
       // Stuck job recovery
-      recoveryIntervalMs: s.recoveryIntervalMs ?? SettingsService.DEFAULT_RECOVERY_INTERVAL_MS,
+      recoveryIntervalMs:
+        s.recoveryIntervalMs ?? SettingsService.DEFAULT_RECOVERY_INTERVAL_MS,
       healthCheckTimeoutMin: s.healthCheckTimeoutMin ?? 5,
       encodingTimeoutMin: s.encodingTimeoutMin ?? 10,
       verifyingTimeoutMin: s.verifyingTimeoutMin ?? 30,
       // Health check worker
       healthCheckConcurrency: s.healthCheckConcurrency ?? 10,
       healthCheckIntervalMs:
-        s.healthCheckIntervalMs ?? SettingsService.DEFAULT_HEALTH_CHECK_INTERVAL_MS,
+        s.healthCheckIntervalMs ??
+        SettingsService.DEFAULT_HEALTH_CHECK_INTERVAL_MS,
       maxRetryAttempts: s.maxRetryAttempts ?? 3,
       // Backup cleanup
       backupCleanupIntervalMs:
-        s.backupCleanupIntervalMs ?? SettingsService.DEFAULT_BACKUP_CLEANUP_INTERVAL_MS,
+        s.backupCleanupIntervalMs ??
+        SettingsService.DEFAULT_BACKUP_CLEANUP_INTERVAL_MS,
       backupRetentionHours: s.backupRetentionHours ?? 24,
     };
   }

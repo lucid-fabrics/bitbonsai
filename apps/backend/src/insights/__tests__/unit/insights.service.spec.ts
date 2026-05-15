@@ -139,13 +139,15 @@ describe('InsightsService', () => {
     });
 
     it('should propagate errors from repository', async () => {
-      mockMetricsRepository.findByDateRange.mockRejectedValue(new Error('Query timeout'));
+      mockMetricsRepository.findByDateRange.mockRejectedValue(
+        new Error('Query timeout'),
+      );
 
       await expect(
         service.getTimeSeriesMetrics({
           startDate: new Date('2024-09-01'),
           endDate: new Date('2024-09-30'),
-        })
+        }),
       ).rejects.toThrow('Query timeout');
     });
   });
@@ -215,19 +217,27 @@ describe('InsightsService', () => {
 
       await service.getAggregatedStats('license1');
 
-      expect(mockMetricsRepository.aggregateByLicense).toHaveBeenCalledWith('license1');
+      expect(mockMetricsRepository.aggregateByLicense).toHaveBeenCalledWith(
+        'license1',
+      );
     });
 
     it('should propagate errors from repository', async () => {
-      mockMetricsRepository.aggregateByLicense.mockRejectedValue(new Error('Prisma error'));
+      mockMetricsRepository.aggregateByLicense.mockRejectedValue(
+        new Error('Prisma error'),
+      );
 
-      await expect(service.getAggregatedStats()).rejects.toThrow('Prisma error');
+      await expect(service.getAggregatedStats()).rejects.toThrow(
+        'Prisma error',
+      );
     });
   });
 
   describe('getCodecDistribution', () => {
     it('should calculate codec distribution from metrics', async () => {
-      mockMetricsRepository.findCodecDistributions.mockResolvedValue(mockMetrics);
+      mockMetricsRepository.findCodecDistributions.mockResolvedValue(
+        mockMetrics,
+      );
 
       const result = await service.getCodecDistribution();
 
@@ -248,25 +258,37 @@ describe('InsightsService', () => {
     });
 
     it('should sort by count descending', async () => {
-      mockMetricsRepository.findCodecDistributions.mockResolvedValue(mockMetrics);
+      mockMetricsRepository.findCodecDistributions.mockResolvedValue(
+        mockMetrics,
+      );
 
       const result = await service.getCodecDistribution();
 
       // Should be sorted: H.264 (47), HEVC (29), AV1 (4)
-      expect(result.distribution[0].count).toBeGreaterThanOrEqual(result.distribution[1].count);
-      expect(result.distribution[1].count).toBeGreaterThanOrEqual(result.distribution[2].count);
+      expect(result.distribution[0].count).toBeGreaterThanOrEqual(
+        result.distribution[1].count,
+      );
+      expect(result.distribution[1].count).toBeGreaterThanOrEqual(
+        result.distribution[2].count,
+      );
     });
 
     it('should propagate errors from repository', async () => {
-      mockMetricsRepository.findCodecDistributions.mockRejectedValue(new Error('Query timeout'));
+      mockMetricsRepository.findCodecDistributions.mockRejectedValue(
+        new Error('Query timeout'),
+      );
 
-      await expect(service.getCodecDistribution()).rejects.toThrow('Query timeout');
+      await expect(service.getCodecDistribution()).rejects.toThrow(
+        'Query timeout',
+      );
     });
   });
 
   describe('getSavingsTrend', () => {
     it('should calculate savings trend for specified days', async () => {
-      mockMetricsRepository.findByDateRangeOrdered.mockResolvedValue(mockMetrics);
+      mockMetricsRepository.findByDateRangeOrdered.mockResolvedValue(
+        mockMetrics,
+      );
 
       const result = await service.getSavingsTrend(7);
 
@@ -283,7 +305,9 @@ describe('InsightsService', () => {
         { ...mockMetrics[1], date: sameDay },
       ];
 
-      mockMetricsRepository.findByDateRangeOrdered.mockResolvedValue(metricsOnSameDay);
+      mockMetricsRepository.findByDateRangeOrdered.mockResolvedValue(
+        metricsOnSameDay,
+      );
 
       const result = await service.getSavingsTrend(7);
 
@@ -303,9 +327,13 @@ describe('InsightsService', () => {
     });
 
     it('should propagate errors from repository', async () => {
-      mockMetricsRepository.findByDateRangeOrdered.mockRejectedValue(new Error('DB unavailable'));
+      mockMetricsRepository.findByDateRangeOrdered.mockRejectedValue(
+        new Error('DB unavailable'),
+      );
 
-      await expect(service.getSavingsTrend(7)).rejects.toThrow('DB unavailable');
+      await expect(service.getSavingsTrend(7)).rejects.toThrow(
+        'DB unavailable',
+      );
     });
   });
 
@@ -372,14 +400,18 @@ describe('InsightsService', () => {
 
       // node1 should be first (more savings)
       expect(BigInt(result.nodes[0].totalSavedBytes)).toBeGreaterThan(
-        BigInt(result.nodes[1].totalSavedBytes)
+        BigInt(result.nodes[1].totalSavedBytes),
       );
     });
 
     it('should propagate errors from repository', async () => {
-      mockNodeRepository.findAllWithMetrics.mockRejectedValue(new Error('DB connection lost'));
+      mockNodeRepository.findAllWithMetrics.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
-      await expect(service.getNodeComparison()).rejects.toThrow('DB connection lost');
+      await expect(service.getNodeComparison()).rejects.toThrow(
+        'DB connection lost',
+      );
     });
   });
 });

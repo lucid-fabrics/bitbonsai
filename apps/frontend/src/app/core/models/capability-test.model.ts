@@ -10,7 +10,12 @@ export enum NetworkLocation {
 /**
  * Test Result Status
  */
-export type TestStatus = 'pending' | 'running' | 'success' | 'warning' | 'error';
+export type TestStatus =
+  | 'pending'
+  | 'running'
+  | 'success'
+  | 'warning'
+  | 'error';
 
 /**
  * Individual Test Result

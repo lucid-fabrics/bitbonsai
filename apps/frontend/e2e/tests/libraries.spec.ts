@@ -30,7 +30,9 @@ test.describe('Libraries Page', () => {
 
   test('should display libraries page', async () => {
     await expect(librariesPage.page).toHaveTitle(/BitBonsai/i);
-    await expect(librariesPage.page.getByRole('heading', { name: /libraries/i })).toBeVisible();
+    await expect(
+      librariesPage.page.getByRole('heading', { name: /libraries/i }),
+    ).toBeVisible();
   });
 
   test('should display library cards when libraries exist', async () => {
@@ -53,7 +55,7 @@ test.describe('Libraries Page', () => {
 
     // Check if form modal is visible
     await expect(
-      librariesPage.page.getByRole('heading', { name: /add new library/i })
+      librariesPage.page.getByRole('heading', { name: /add new library/i }),
     ).toBeVisible();
     await expect(librariesPage.page.getByLabel(/library name/i)).toBeVisible();
   });
@@ -65,7 +67,9 @@ test.describe('Libraries Page', () => {
     await librariesPage.clickButton(/create library/i);
 
     // Check for validation errors
-    await expect(librariesPage.page.getByText(/library name is required/i)).toBeVisible();
+    await expect(
+      librariesPage.page.getByText(/library name is required/i),
+    ).toBeVisible();
   });
 
   test('should create new library with valid data', async ({ page }) => {

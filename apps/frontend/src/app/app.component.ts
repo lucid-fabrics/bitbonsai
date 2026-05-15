@@ -141,8 +141,10 @@ export class AppComponent implements OnInit {
     // Update showLayout signal on route changes
     this.router.events
       .pipe(
-        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-        takeUntilDestroyed(this.destroyRef)
+        filter(
+          (event): event is NavigationEnd => event instanceof NavigationEnd,
+        ),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((event: NavigationEnd) => {
         const url = event.urlAfterRedirects;
@@ -159,11 +161,12 @@ export class AppComponent implements OnInit {
       .pipe(
         filter((isAuthenticated) => {
           const currentUrl = this.router.url;
-          const isSetupRoute = currentUrl === '/setup' || currentUrl === '/node-setup';
+          const isSetupRoute =
+            currentUrl === '/setup' || currentUrl === '/node-setup';
           return isAuthenticated && !isSetupRoute;
         }),
         switchMap(() => this.nodeService.getCurrentNode()),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (node) => {
@@ -174,7 +177,10 @@ export class AppComponent implements OnInit {
           }
         },
         error: (err) => {
-          this.errorLogger.error('Failed to fetch current node information', err);
+          this.errorLogger.error(
+            'Failed to fetch current node information',
+            err,
+          );
           // If no nodes are registered, the app will still work
           // The user will need to register a node first
         },

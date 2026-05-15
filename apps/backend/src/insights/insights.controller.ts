@@ -133,7 +133,9 @@ export class InsightsController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while calculating statistics',
   })
-  async getStats(@Query('licenseId') licenseId?: string): Promise<InsightsStatsDto> {
+  async getStats(
+    @Query('licenseId') licenseId?: string,
+  ): Promise<InsightsStatsDto> {
     return this.insightsService.getAggregatedStats(licenseId);
   }
 
@@ -172,10 +174,11 @@ export class InsightsController {
     type: CodecDistributionDto,
   })
   @ApiInternalServerErrorResponse({
-    description: 'Internal server error occurred while calculating codec distribution',
+    description:
+      'Internal server error occurred while calculating codec distribution',
   })
   async getCodecDistribution(
-    @Query('licenseId') licenseId?: string
+    @Query('licenseId') licenseId?: string,
   ): Promise<CodecDistributionDto> {
     return this.insightsService.getCodecDistribution(licenseId);
   }
@@ -230,11 +233,12 @@ export class InsightsController {
     type: SavingsTrendDto,
   })
   @ApiInternalServerErrorResponse({
-    description: 'Internal server error occurred while calculating savings trend',
+    description:
+      'Internal server error occurred while calculating savings trend',
   })
   async getSavingsTrend(
     @Query('days') days = 30,
-    @Query('licenseId') licenseId?: string
+    @Query('licenseId') licenseId?: string,
   ): Promise<SavingsTrendDto> {
     const numDays = Number(days);
     return this.insightsService.getSavingsTrend(numDays, licenseId);
@@ -281,7 +285,9 @@ export class InsightsController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while comparing nodes',
   })
-  async getNodeComparison(@Query('licenseId') licenseId?: string): Promise<NodeComparisonDto> {
+  async getNodeComparison(
+    @Query('licenseId') licenseId?: string,
+  ): Promise<NodeComparisonDto> {
     return this.insightsService.getNodeComparison(licenseId);
   }
 }

@@ -66,7 +66,7 @@ export class FfprobeService {
             const duration = Number.parseFloat(output.trim());
             if (!Number.isNaN(duration) && duration > 0) {
               this.logger.debug(
-                `[${filePath}] FFprobe detected stream duration: ${duration.toFixed(2)}s`
+                `[${filePath}] FFprobe detected stream duration: ${duration.toFixed(2)}s`,
               );
               resolve(duration);
               return;
@@ -77,7 +77,7 @@ export class FfprobeService {
         }
 
         this.logger.debug(
-          `[${filePath}] Stream duration not available (code: ${code}), trying format duration`
+          `[${filePath}] Stream duration not available (code: ${code}), trying format duration`,
         );
         this.getFormatDuration(filePath).then(resolve);
       });
@@ -86,7 +86,9 @@ export class FfprobeService {
         clearTimeout(timeoutId);
         ffprobe.stdout?.destroy();
         ffprobe.stderr?.destroy();
-        this.logger.warn(`[${filePath}] FFprobe error: ${err.message}, using fallback 3600s`);
+        this.logger.warn(
+          `[${filePath}] FFprobe error: ${err.message}, using fallback 3600s`,
+        );
         resolve(3600);
       });
     });
@@ -119,7 +121,9 @@ export class FfprobeService {
 
       const timeoutId = setTimeout(() => {
         ffprobe.kill();
-        this.logger.warn(`[${filePath}] FFprobe format duration timeout, using fallback 3600s`);
+        this.logger.warn(
+          `[${filePath}] FFprobe format duration timeout, using fallback 3600s`,
+        );
         resolve(3600);
       }, 10000);
 
@@ -133,7 +137,7 @@ export class FfprobeService {
             const duration = Number.parseFloat(output.trim());
             if (!Number.isNaN(duration) && duration > 0) {
               this.logger.debug(
-                `[${filePath}] FFprobe detected format duration: ${duration.toFixed(2)}s`
+                `[${filePath}] FFprobe detected format duration: ${duration.toFixed(2)}s`,
               );
               resolve(duration);
               return;
@@ -144,7 +148,7 @@ export class FfprobeService {
         }
 
         this.logger.warn(
-          `[${filePath}] Failed to get format duration from ffprobe (code: ${code}), using fallback 3600s`
+          `[${filePath}] Failed to get format duration from ffprobe (code: ${code}), using fallback 3600s`,
         );
         resolve(3600);
       });
@@ -154,7 +158,7 @@ export class FfprobeService {
         ffprobe.stdout?.destroy();
         ffprobe.stderr?.destroy();
         this.logger.warn(
-          `[${filePath}] FFprobe format duration error: ${err.message}, using fallback 3600s`
+          `[${filePath}] FFprobe format duration error: ${err.message}, using fallback 3600s`,
         );
         resolve(3600);
       });
@@ -167,7 +171,9 @@ export class FfprobeService {
    * @param filePath - Path to video file
    * @returns Object with codec name and container format
    */
-  async getVideoInfo(filePath: string): Promise<{ codec: string; container: string }> {
+  async getVideoInfo(
+    filePath: string,
+  ): Promise<{ codec: string; container: string }> {
     return new Promise((resolve, reject) => {
       const ffprobe = spawn('ffprobe', [
         '-v',
@@ -201,7 +207,8 @@ export class FfprobeService {
           try {
             const data = JSON.parse(output);
             const codec = data.streams?.[0]?.codec_name || 'unknown';
-            const container = data.format?.format_name?.split(',')[0] || 'unknown';
+            const container =
+              data.format?.format_name?.split(',')[0] || 'unknown';
 
             resolve({ codec, container });
             return;
@@ -229,18 +236,24 @@ export class FfprobeService {
    * @param filePath - Path to video file
    * @returns Object with codec name and container format
    */
-  async getVideoInfoCached(filePath: string): Promise<{ codec: string; container: string }> {
+  async getVideoInfoCached(
+    filePath: string,
+  ): Promise<{ codec: string; container: string }> {
     const cached = this.codecCache.get(filePath);
     if (cached) {
       const age = Date.now() - cached.timestamp.getTime();
       if (age < this.CODEC_CACHE_TTL_MS) {
-        this.logger.debug(`[CACHE HIT] Using cached codec info for: ${filePath}`);
+        this.logger.debug(
+          `[CACHE HIT] Using cached codec info for: ${filePath}`,
+        );
         return { codec: cached.codec, container: cached.container };
       }
       this.codecCache.delete(filePath);
     }
 
-    this.logger.debug(`[CACHE MISS] Fetching codec info via FFprobe: ${filePath}`);
+    this.logger.debug(
+      `[CACHE MISS] Fetching codec info via FFprobe: ${filePath}`,
+    );
     const result = await this.getVideoInfo(filePath);
 
     // Enforce max cache size with LRU eviction (remove oldest entry)
@@ -274,7 +287,9 @@ export class FfprobeService {
    * @param filePath - Path to file to verify
    * @returns Object with isValid flag and optional error details
    */
-  async verifyFile(filePath: string): Promise<{ isValid: boolean; error?: string }> {
+  async verifyFile(
+    filePath: string,
+  ): Promise<{ isValid: boolean; error?: string }> {
     return new Promise((resolve) => {
       const ffprobe = spawn('ffprobe', [
         '-v',
@@ -318,7 +333,8 @@ export class FfprobeService {
           if (stderrOutput.trim()) {
             errorMessage += `\n\nffprobe error output:\n${stderrOutput.trim()}`;
           } else {
-            errorMessage += '\n\nNo duration metadata found - file may be corrupted or incomplete';
+            errorMessage +=
+              '\n\nNo duration metadata found - file may be corrupted or incomplete';
           }
 
           resolve({ isValid: false, error: errorMessage });
@@ -355,7 +371,9 @@ export class FfprobeService {
 
     if (this.codecCache.size > this.CODEC_CACHE_MAX_SIZE) {
       const entries = Array.from(this.codecCache.entries());
-      entries.sort((a, b) => a[1].timestamp.getTime() - b[1].timestamp.getTime());
+      entries.sort(
+        (a, b) => a[1].timestamp.getTime() - b[1].timestamp.getTime(),
+      );
 
       const toRemove = this.codecCache.size - this.CODEC_CACHE_MAX_SIZE;
       for (let i = 0; i < toRemove; i++) {
@@ -366,7 +384,7 @@ export class FfprobeService {
 
     if (removed > 0) {
       this.logger.debug(
-        `Cleaned ${removed} codec cache entries (size: ${this.codecCache.size}/${this.CODEC_CACHE_MAX_SIZE})`
+        `Cleaned ${removed} codec cache entries (size: ${this.codecCache.size}/${this.CODEC_CACHE_MAX_SIZE})`,
       );
     }
   }
