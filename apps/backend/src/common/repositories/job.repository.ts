@@ -5,7 +5,10 @@ import { BaseRepository } from './base.repository';
 
 export type JobStatusFields = Pick<
   Job,
-  'pauseRequestedAt' | 'pauseProcessedAt' | 'cancelRequestedAt' | 'cancelProcessedAt'
+  | 'pauseRequestedAt'
+  | 'pauseProcessedAt'
+  | 'cancelRequestedAt'
+  | 'cancelProcessedAt'
 >;
 
 export type JobWithLibrary = Job & { library: { nodeId: string } };
@@ -45,7 +48,11 @@ export class JobRepository extends BaseRepository {
 
   async findActiveForNode(
     nodeId: string,
-    stages: JobStage[] = ['ENCODING' as JobStage, 'QUEUED' as JobStage, 'VERIFYING' as JobStage]
+    stages: JobStage[] = [
+      'ENCODING' as JobStage,
+      'QUEUED' as JobStage,
+      'VERIFYING' as JobStage,
+    ],
   ): Promise<Job[]> {
     return this.findMany<Job>({
       where: { nodeId, stage: { in: stages } },
@@ -63,7 +70,10 @@ export class JobRepository extends BaseRepository {
     });
   }
 
-  async findQueuedExcludingNode(excludeNodeId: string, limit: number): Promise<Job[]> {
+  async findQueuedExcludingNode(
+    excludeNodeId: string,
+    limit: number,
+  ): Promise<Job[]> {
     return this.findMany<Job>({
       where: {
         stage: 'QUEUED' as JobStage,
@@ -123,17 +133,30 @@ export class JobRepository extends BaseRepository {
     return this.count({ where: { nodeId, stage } });
   }
 
-  async countForNodeStages(nodeId: string, stages: JobStage[]): Promise<number> {
+  async countForNodeStages(
+    nodeId: string,
+    stages: JobStage[],
+  ): Promise<number> {
     return this.count({ where: { nodeId, stage: { in: stages } } });
   }
 
-  async countCompletedForNodeSince(nodeId: string, since: Date): Promise<number> {
+  async countCompletedForNodeSince(
+    nodeId: string,
+    since: Date,
+  ): Promise<number> {
     return this.count({
-      where: { nodeId, stage: 'COMPLETED' as JobStage, completedAt: { gte: since } },
+      where: {
+        nodeId,
+        stage: 'COMPLETED' as JobStage,
+        completedAt: { gte: since },
+      },
     });
   }
 
-  async countLargeFilesForNode(nodeId: string, minSizeBytes: bigint): Promise<number> {
+  async countLargeFilesForNode(
+    nodeId: string,
+    minSizeBytes: bigint,
+  ): Promise<number> {
     return this.count({
       where: {
         nodeId,
@@ -143,7 +166,10 @@ export class JobRepository extends BaseRepository {
     });
   }
 
-  async countByLibraryAndNode(nodeId: string, libraryId: string): Promise<number> {
+  async countByLibraryAndNode(
+    nodeId: string,
+    libraryId: string,
+  ): Promise<number> {
     return this.count({
       where: {
         nodeId,
@@ -155,12 +181,15 @@ export class JobRepository extends BaseRepository {
 
   async atomicUpdateMany(
     where: Prisma.JobWhereInput,
-    data: Prisma.JobUncheckedUpdateInput
+    data: Prisma.JobUncheckedUpdateInput,
   ): Promise<Prisma.BatchPayload> {
     return this.prisma.job.updateMany({ where, data });
   }
 
-  async updateById(id: string, data: Prisma.JobUncheckedUpdateInput): Promise<Job> {
+  async updateById(
+    id: string,
+    data: Prisma.JobUncheckedUpdateInput,
+  ): Promise<Job> {
     return this.update<Job>({ where: { id }, data });
   }
 
@@ -189,20 +218,26 @@ export class JobRepository extends BaseRepository {
 
   async findFirstSelect<T>(
     where: Prisma.JobWhereInput,
-    select: Prisma.JobSelect
+    select: Prisma.JobSelect,
   ): Promise<T | null> {
     return this.prisma.job.findFirst({ where, select }) as Promise<T | null>;
   }
 
   async findUniqueSelect<T>(
     where: Prisma.JobWhereUniqueInput,
-    select: Prisma.JobSelect
+    select: Prisma.JobSelect,
   ): Promise<T | null> {
     return this.prisma.job.findUnique({ where, select }) as Promise<T | null>;
   }
 
-  async findUniqueWithInclude<T>(id: string, include: Prisma.JobInclude): Promise<T | null> {
-    return this.prisma.job.findUnique({ where: { id }, include }) as Promise<T | null>;
+  async findUniqueWithInclude<T>(
+    id: string,
+    include: Prisma.JobInclude,
+  ): Promise<T | null> {
+    return this.prisma.job.findUnique({
+      where: { id },
+      include,
+    }) as Promise<T | null>;
   }
 
   async findManyWithInclude<T>(args: Prisma.JobFindManyArgs): Promise<T[]> {
@@ -215,7 +250,7 @@ export class JobRepository extends BaseRepository {
 
   async aggregateSumWhere(
     where: Prisma.JobWhereInput,
-    _sum: Prisma.JobSumAggregateInputType
+    _sum: Prisma.JobSumAggregateInputType,
   ): Promise<{ _sum: Record<string, bigint | null> }> {
     return this.prisma.job.aggregate({ where, _sum }) as Promise<{
       _sum: Record<string, bigint | null>;
@@ -235,7 +270,9 @@ export class JobRepository extends BaseRepository {
     return this.prisma.job.create({ data });
   }
 
-  async deleteManyWhere(where: Prisma.JobWhereInput): Promise<Prisma.BatchPayload> {
+  async deleteManyWhere(
+    where: Prisma.JobWhereInput,
+  ): Promise<Prisma.BatchPayload> {
     return this.prisma.job.deleteMany({ where });
   }
 
@@ -259,34 +296,41 @@ export class JobRepository extends BaseRepository {
     return this.prisma.job.update({ where: { id }, data }) as Promise<Job>;
   }
 
-  async findManySelect<T>(where: Prisma.JobWhereInput, select: Prisma.JobSelect): Promise<T[]> {
+  async findManySelect<T>(
+    where: Prisma.JobWhereInput,
+    select: Prisma.JobSelect,
+  ): Promise<T[]> {
     return this.prisma.job.findMany({ where, select }) as Promise<T[]>;
   }
 
   async updateByIdWithInclude<T>(
     id: string,
     data: Prisma.JobUncheckedUpdateInput,
-    include: Prisma.JobInclude
+    include: Prisma.JobInclude,
   ): Promise<T> {
-    return this.prisma.job.update({ where: { id }, data, include }) as unknown as Promise<T>;
+    return this.prisma.job.update({
+      where: { id },
+      data,
+      include,
+    }) as unknown as Promise<T>;
   }
 
   async updateManyByIds(
     ids: string[],
-    data: Prisma.JobUncheckedUpdateInput
+    data: Prisma.JobUncheckedUpdateInput,
   ): Promise<Prisma.BatchPayload> {
     return this.prisma.job.updateMany({ where: { id: { in: ids } }, data });
   }
 
   async updateManyWhere(
     where: Prisma.JobWhereInput,
-    data: Prisma.JobUncheckedUpdateInput
+    data: Prisma.JobUncheckedUpdateInput,
   ): Promise<Prisma.BatchPayload> {
     return this.prisma.job.updateMany({ where, data });
   }
 
   async groupByStageCount(
-    where: Prisma.JobWhereInput
+    where: Prisma.JobWhereInput,
   ): Promise<Array<{ stage: string; _count: number }>> {
     const result = await this.prisma.job.groupBy({
       by: ['stage'],
@@ -297,21 +341,28 @@ export class JobRepository extends BaseRepository {
   }
 
   async groupByNodeIdCount(
-    where: Prisma.JobWhereInput
+    where: Prisma.JobWhereInput,
   ): Promise<Array<{ nodeId: string; _count: number }>> {
     const result = await this.prisma.job.groupBy({
       by: ['nodeId'],
       where,
       _count: { id: true },
     });
-    return result.map((r) => ({ nodeId: r.nodeId, _count: (r._count as { id: number }).id ?? 0 }));
+    return result.map((r) => ({
+      nodeId: r.nodeId,
+      _count: (r._count as { id: number }).id ?? 0,
+    }));
   }
 
   async groupByNodeIdSum(
     where: Prisma.JobWhereInput,
-    _sum: Record<string, boolean>
+    _sum: Record<string, boolean>,
   ): Promise<
-    Array<{ nodeId: string; _count: { id: number }; _sum: Record<string, bigint | null> }>
+    Array<{
+      nodeId: string;
+      _count: { id: number };
+      _sum: Record<string, bigint | null>;
+    }>
   > {
     // Prisma groupBy requires type cast: strict return type not inferrable when _sum keys are dynamic
     return this.prisma.job.groupBy({
@@ -319,38 +370,58 @@ export class JobRepository extends BaseRepository {
       where,
       _count: { id: true },
       _sum,
-    } as unknown as Parameters<typeof this.prisma.job.groupBy>[0]) as unknown as Promise<
-      Array<{ nodeId: string; _count: { id: number }; _sum: Record<string, bigint | null> }>
+    } as unknown as Parameters<
+      typeof this.prisma.job.groupBy
+    >[0]) as unknown as Promise<
+      Array<{
+        nodeId: string;
+        _count: { id: number };
+        _sum: Record<string, bigint | null>;
+      }>
     >;
   }
 
   async groupByLibraryIdCount(
-    where: Prisma.JobWhereInput
+    where: Prisma.JobWhereInput,
   ): Promise<Array<{ libraryId: string; _count: { id: number } }>> {
     // Prisma groupBy requires type cast: strict return type not inferrable for object-form _count
     return this.prisma.job.groupBy({
       by: ['libraryId'],
       where,
       _count: { id: true },
-    } as unknown as Parameters<typeof this.prisma.job.groupBy>[0]) as unknown as Promise<
+    } as unknown as Parameters<
+      typeof this.prisma.job.groupBy
+    >[0]) as unknown as Promise<
       Array<{ libraryId: string; _count: { id: number } }>
     >;
   }
 
   async groupByLibraryIdSum(
     where: Prisma.JobWhereInput,
-    _sum: Record<string, boolean>
-  ): Promise<Array<{ libraryId: string; _sum: Record<string, bigint | null> }>> {
+    _sum: Record<string, boolean>,
+  ): Promise<
+    Array<{ libraryId: string; _sum: Record<string, bigint | null> }>
+  > {
     // Prisma groupBy requires type cast: strict return type not inferrable when _sum keys are dynamic
-    return this.prisma.job.groupBy({ by: ['libraryId'], where, _sum } as unknown as Parameters<
+    return this.prisma.job.groupBy({
+      by: ['libraryId'],
+      where,
+      _sum,
+    } as unknown as Parameters<
       typeof this.prisma.job.groupBy
-    >[0]) as unknown as Promise<Array<{ libraryId: string; _sum: Record<string, bigint | null> }>>;
+    >[0]) as unknown as Promise<
+      Array<{ libraryId: string; _sum: Record<string, bigint | null> }>
+    >;
   }
 
   async groupByTargetCodecAvg(
-    where: Prisma.JobWhereInput
+    where: Prisma.JobWhereInput,
   ): Promise<
-    Array<{ targetCodec: string; _avg: { savedPercent: number | null }; _count: number }>
+    Array<{
+      targetCodec: string;
+      _avg: { savedPercent: number | null };
+      _count: number;
+    }>
   > {
     // Prisma groupBy requires type cast: strict return type not inferrable when mixing _avg and scalar _count
     return this.prisma.job.groupBy({
@@ -358,23 +429,40 @@ export class JobRepository extends BaseRepository {
       where,
       _avg: { savedPercent: true },
       _count: true,
-    } as unknown as Parameters<typeof this.prisma.job.groupBy>[0]) as unknown as Promise<
-      Array<{ targetCodec: string; _avg: { savedPercent: number | null }; _count: number }>
+    } as unknown as Parameters<
+      typeof this.prisma.job.groupBy
+    >[0]) as unknown as Promise<
+      Array<{
+        targetCodec: string;
+        _avg: { savedPercent: number | null };
+        _count: number;
+      }>
     >;
   }
 
   async aggregateWithAvgCount(
-    where: Prisma.JobWhereInput
-  ): Promise<{ _sum: { savedBytes: bigint | null }; _avg: { savedPercent: number | null } }> {
+    where: Prisma.JobWhereInput,
+  ): Promise<{
+    _sum: { savedBytes: bigint | null };
+    _avg: { savedPercent: number | null };
+  }> {
     return this.prisma.job.aggregate({
       where,
       _sum: { savedBytes: true },
       _avg: { savedPercent: true },
-    }) as Promise<{ _sum: { savedBytes: bigint | null }; _avg: { savedPercent: number | null } }>;
+    }) as Promise<{
+      _sum: { savedBytes: bigint | null };
+      _avg: { savedPercent: number | null };
+    }>;
   }
 
-  async aggregateCount(where: Prisma.JobWhereInput): Promise<{ _count: { id: number } }> {
-    return this.prisma.job.aggregate({ where, _count: { id: true } }) as Promise<{
+  async aggregateCount(
+    where: Prisma.JobWhereInput,
+  ): Promise<{ _count: { id: number } }> {
+    return this.prisma.job.aggregate({
+      where,
+      _count: { id: true },
+    }) as Promise<{
       _count: { id: number };
     }>;
   }
@@ -382,8 +470,13 @@ export class JobRepository extends BaseRepository {
   async findManyForNode(
     where: Prisma.JobWhereInput,
     select: Prisma.JobSelect,
-    take: number
+    take: number,
   ): Promise<Record<string, unknown>[]> {
-    return this.prisma.job.findMany({ where, select, take, orderBy: { completedAt: 'desc' } });
+    return this.prisma.job.findMany({
+      where,
+      select,
+      take,
+      orderBy: { completedAt: 'desc' },
+    });
   }
 }

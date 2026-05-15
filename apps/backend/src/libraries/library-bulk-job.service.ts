@@ -14,7 +14,10 @@ import { JobRepository } from '../common/repositories/job.repository';
 import { LibraryRepository } from '../common/repositories/library.repository';
 import { PolicyRepository } from '../common/repositories/policy.repository';
 import { DistributionOrchestratorService } from '../distribution/services/distribution-orchestrator.service';
-import { FileHealthStatus, MediaAnalysisService } from '../media/media-analysis.service';
+import {
+  FileHealthStatus,
+  MediaAnalysisService,
+} from '../media/media-analysis.service';
 import { QueueService } from '../queue/queue.service';
 import { FileFailureTrackingService } from '../queue/services/file-failure-tracking.service';
 import type { LibraryFilesDto } from './dto/library-files.dto';
@@ -87,7 +90,7 @@ export class LibraryBulkJobService {
     private fileFailureTracking: FileFailureTrackingService,
     private readonly libraryRepository: LibraryRepository,
     private readonly jobRepository: JobRepository,
-    private readonly policyRepository: PolicyRepository
+    private readonly policyRepository: PolicyRepository,
   ) {}
 
   /**
@@ -98,7 +101,9 @@ export class LibraryBulkJobService {
     const lowerFileName = fileName.toLowerCase();
 
     // Skip temporary files
-    if (this.TEMP_FILE_PATTERNS.some((pattern) => lowerFileName.includes(pattern))) {
+    if (
+      this.TEMP_FILE_PATTERNS.some((pattern) => lowerFileName.includes(pattern))
+    ) {
       return false;
     }
 
@@ -145,16 +150,18 @@ export class LibraryBulkJobService {
   async createJobsFromScan(
     libraryId: string,
     policyId?: string,
-    filePaths?: string[]
+    filePaths?: string[],
   ): Promise<{ jobsCreated: number; jobs: Job[] }> {
     this.logger.log(
-      `Creating jobs for library: ${libraryId} with policy: ${policyId || 'default'}`
+      `Creating jobs for library: ${libraryId} with policy: ${policyId || 'default'}`,
     );
 
     const library = (await this.libraryRepository.findUniqueWithInclude(
       { id: libraryId },
-      { node: true, defaultPolicy: true }
-    )) as (Library & { node: Node | null; defaultPolicy: Policy | null }) | null;
+      { node: true, defaultPolicy: true },
+    )) as
+      | (Library & { node: Node | null; defaultPolicy: Policy | null })
+      | null;
 
     if (!library) {
       throw new NotFoundException(`Library with ID "${libraryId}" not found`);
@@ -166,14 +173,16 @@ export class LibraryBulkJobService {
     if (!effectivePolicyId) {
       throw new BadRequestException(
         `No policy specified and library "${library.name}" has no default policy configured. ` +
-          `Please either specify a policy ID or set a default policy for this library.`
+          `Please either specify a policy ID or set a default policy for this library.`,
       );
     }
 
     const policy = await this.policyRepository.findById(effectivePolicyId);
 
     if (!policy) {
-      throw new NotFoundException(`Policy with ID "${effectivePolicyId}" not found`);
+      throw new NotFoundException(
+        `Policy with ID "${effectivePolicyId}" not found`,
+      );
     }
 
     // If no specific files provided, get all files that need encoding
@@ -196,18 +205,20 @@ export class LibraryBulkJobService {
     }
 
     // Get blacklisted file paths for this library to skip them
-    const blacklistedJobs = await this.jobRepository.findManySelect<{ filePath: string }>(
-      { libraryId: library.id, isBlacklisted: true },
-      { filePath: true }
-    );
+    const blacklistedJobs = await this.jobRepository.findManySelect<{
+      filePath: string;
+    }>({ libraryId: library.id, isBlacklisted: true }, { filePath: true });
 
-    const blacklistedPaths = new Set(blacklistedJobs.map((job) => job.filePath));
+    const blacklistedPaths = new Set(
+      blacklistedJobs.map((job) => job.filePath),
+    );
 
     // Cross-job failure tracking: batch check auto-blacklisted files
-    const autoBlacklistedPaths = await this.fileFailureTracking.getBlacklistedPaths(
-      filesToEncode,
-      library.id
-    );
+    const autoBlacklistedPaths =
+      await this.fileFailureTracking.getBlacklistedPaths(
+        filesToEncode,
+        library.id,
+      );
 
     // PERFORMANCE OPTIMIZATION: Parallelize job creation with batching
     // Process 100 files at a time to avoid overwhelming the database
@@ -242,9 +253,10 @@ export class LibraryBulkJobService {
           const fileLabel = filePath.split('/').pop() || filePath;
 
           // Find the best node for this job (distributes across available nodes)
-          const targetNodeId = await this.distributionOrchestrator.findBestNodeForNewJob(
-            library.nodeId
-          );
+          const targetNodeId =
+            await this.distributionOrchestrator.findBestNodeForNewJob(
+              library.nodeId,
+            );
 
           // Create job using queue service
           return await this.queueService.create({
@@ -257,12 +269,13 @@ export class LibraryBulkJobService {
             libraryId: library.id,
             policyId: policy.id,
           });
-        })
+        }),
       );
 
       // Collect successful job creations
       const successful = results.filter(
-        (r): r is PromiseFulfilledResult<Job> => r.status === 'fulfilled' && r.value !== null
+        (r): r is PromiseFulfilledResult<Job> =>
+          r.status === 'fulfilled' && r.value !== null,
       );
 
       jobs.push(...successful.map((r) => r.value));
@@ -271,7 +284,7 @@ export class LibraryBulkJobService {
       const batchNum = Math.floor(i / batchSize) + 1;
       const totalBatches = Math.ceil(filesToEncode.length / batchSize);
       this.logger.log(
-        `Batch ${batchNum}/${totalBatches}: Created ${successful.length}/${batch.length} jobs`
+        `Batch ${batchNum}/${totalBatches}: Created ${successful.length}/${batch.length} jobs`,
       );
     }
 
@@ -296,14 +309,17 @@ export class LibraryBulkJobService {
    * @param policyId - Policy to use for encoding
    * @returns Summary of job creation results
    */
-  async createAllJobs(libraryId: string, policyId: string): Promise<BulkJobCreationResultDto> {
+  async createAllJobs(
+    libraryId: string,
+    policyId: string,
+  ): Promise<BulkJobCreationResultDto> {
     this.logger.log(
-      `Creating jobs for all files in library: ${libraryId} with policy: ${policyId}`
+      `Creating jobs for all files in library: ${libraryId} with policy: ${policyId}`,
     );
 
     const library = await this.libraryRepository.findUniqueWithInclude(
       { id: libraryId },
-      { node: true }
+      { node: true },
     );
 
     if (!library) {
@@ -348,19 +364,22 @@ export class LibraryBulkJobService {
           { isBlacklisted: true },
         ],
       },
-      { filePath: true, isBlacklisted: true }
+      { filePath: true, isBlacklisted: true },
     );
 
     const existingPaths = new Set(existingJobs.map((job) => job.filePath));
     const blacklistedPaths = new Set(
-      existingJobs.filter((job) => job.isBlacklisted).map((job) => job.filePath)
+      existingJobs
+        .filter((job) => job.isBlacklisted)
+        .map((job) => job.filePath),
     );
 
     // Cross-job failure tracking: batch check auto-blacklisted files
-    const autoBlacklistedPaths = await this.fileFailureTracking.getBlacklistedPaths(
-      videoFiles,
-      library.id
-    );
+    const autoBlacklistedPaths =
+      await this.fileFailureTracking.getBlacklistedPaths(
+        videoFiles,
+        library.id,
+      );
 
     const result: BulkJobCreationResultDto = {
       jobsCreated: 0,
@@ -383,7 +402,9 @@ export class LibraryBulkJobService {
 
         // Skip if already in queue or blacklisted
         if (existingPaths.has(filePath)) {
-          const reason = blacklistedPaths.has(filePath) ? 'Blacklisted' : 'Already in queue';
+          const reason = blacklistedPaths.has(filePath)
+            ? 'Blacklisted'
+            : 'Already in queue';
           result.filesSkipped++;
           result.skippedFiles.push({ path: filePath, reason });
           continue;
@@ -394,7 +415,10 @@ export class LibraryBulkJobService {
 
         if (!videoInfo) {
           result.filesSkipped++;
-          result.skippedFiles.push({ path: filePath, reason: 'Failed to probe file' });
+          result.skippedFiles.push({
+            path: filePath,
+            reason: 'Failed to probe file',
+          });
           continue;
         }
 
@@ -403,9 +427,10 @@ export class LibraryBulkJobService {
 
         // Create job with distribution to best available node
         const fileLabel = filePath.split('/').pop() || filePath;
-        const targetNodeId = await this.distributionOrchestrator.findBestNodeForNewJob(
-          library.nodeId
-        );
+        const targetNodeId =
+          await this.distributionOrchestrator.findBestNodeForNewJob(
+            library.nodeId,
+          );
 
         await this.queueService.create({
           filePath,
@@ -430,7 +455,7 @@ export class LibraryBulkJobService {
     }
 
     this.logger.log(
-      `Bulk job creation complete: ${result.jobsCreated} jobs created, ${result.filesSkipped} files skipped`
+      `Bulk job creation complete: ${result.jobsCreated} jobs created, ${result.filesSkipped} files skipped`,
     );
 
     return result;
@@ -461,7 +486,9 @@ export class LibraryBulkJobService {
       videoFiles.push(filePath);
     }
 
-    this.logger.log(`Found ${videoFiles.length} video files, analyzing with FFprobe...`);
+    this.logger.log(
+      `Found ${videoFiles.length} video files, analyzing with FFprobe...`,
+    );
 
     // Analyze files in batches to avoid overwhelming FFprobe
     const analyzedFiles: AnalyzedFileInfo[] = [];
@@ -494,7 +521,8 @@ export class LibraryBulkJobService {
               duration: videoInfo.duration,
               healthStatus: videoInfo.healthStatus,
               healthMessage: videoInfo.healthMessage,
-              canAddToQueue: videoInfo.healthStatus === FileHealthStatus.HEALTHY,
+              canAddToQueue:
+                videoInfo.healthStatus === FileHealthStatus.HEALTHY,
               blockedReason:
                 videoInfo.healthStatus !== FileHealthStatus.HEALTHY
                   ? videoInfo.healthMessage
@@ -504,7 +532,7 @@ export class LibraryBulkJobService {
             this.logger.error(`Failed to analyze file ${filePath}`, error);
             return null;
           }
-        })
+        }),
       );
 
       // Filter out null results (failed probes)
@@ -524,7 +552,7 @@ export class LibraryBulkJobService {
     };
 
     this.logger.log(
-      `Retrieved ${result.totalFiles} files (${result.totalSizeBytes} bytes) for library ${library.name}`
+      `Retrieved ${result.totalFiles} files (${result.totalSizeBytes} bytes) for library ${library.name}`,
     );
 
     return result;

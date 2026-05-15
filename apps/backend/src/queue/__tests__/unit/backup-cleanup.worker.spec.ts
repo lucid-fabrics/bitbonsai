@@ -41,9 +41,11 @@ describe('BackupCleanupWorker', () => {
   describe('onModuleInit', () => {
     it('should call start', async () => {
       // Mock start to prevent infinite loop
-      const startSpy = jest.spyOn(worker as any, 'start').mockImplementation(() => {
-        /* noop */
-      });
+      const startSpy = jest
+        .spyOn(worker as any, 'start')
+        .mockImplementation(() => {
+          /* noop */
+        });
 
       await worker.onModuleInit();
 
@@ -87,7 +89,11 @@ describe('BackupCleanupWorker', () => {
 
       const oldTime = Date.now() - 48 * 60 * 60 * 1000; // 48 hours ago
       (fsMock.readdir as jest.Mock).mockResolvedValue([
-        { name: 'movie.mkv.backup', isFile: () => true, isDirectory: () => false },
+        {
+          name: 'movie.mkv.backup',
+          isFile: () => true,
+          isDirectory: () => false,
+        },
       ]);
       (fsMock.stat as jest.Mock).mockResolvedValue({
         mtimeMs: oldTime,
@@ -97,7 +103,9 @@ describe('BackupCleanupWorker', () => {
 
       await (worker as any).cleanupOrphanedBackups();
 
-      expect(fsMock.unlink).toHaveBeenCalledWith('/media/movies/movie.mkv.backup');
+      expect(fsMock.unlink).toHaveBeenCalledWith(
+        '/media/movies/movie.mkv.backup',
+      );
     });
 
     it('should skip recent backup files', async () => {
@@ -107,7 +115,11 @@ describe('BackupCleanupWorker', () => {
       (existsSync as jest.Mock).mockReturnValue(true);
 
       (fsMock.readdir as jest.Mock).mockResolvedValue([
-        { name: 'recent.mkv.backup', isFile: () => true, isDirectory: () => false },
+        {
+          name: 'recent.mkv.backup',
+          isFile: () => true,
+          isDirectory: () => false,
+        },
       ]);
       (fsMock.stat as jest.Mock).mockResolvedValue({
         mtimeMs: Date.now() - 1000, // 1 second ago
@@ -147,16 +159,25 @@ describe('BackupCleanupWorker', () => {
           { name: 'subfolder', isFile: () => false, isDirectory: () => true },
         ])
         .mockResolvedValueOnce([
-          { name: 'deep.mkv.backup', isFile: () => true, isDirectory: () => false },
+          {
+            name: 'deep.mkv.backup',
+            isFile: () => true,
+            isDirectory: () => false,
+          },
         ]);
 
       const oldTime = Date.now() - 48 * 60 * 60 * 1000;
-      (fsMock.stat as jest.Mock).mockResolvedValue({ mtimeMs: oldTime, size: 500 });
+      (fsMock.stat as jest.Mock).mockResolvedValue({
+        mtimeMs: oldTime,
+        size: 500,
+      });
       (fsMock.unlink as jest.Mock).mockResolvedValue(undefined);
 
       await (worker as any).cleanupOrphanedBackups();
 
-      expect(fsMock.unlink).toHaveBeenCalledWith('/media/movies/subfolder/deep.mkv.backup');
+      expect(fsMock.unlink).toHaveBeenCalledWith(
+        '/media/movies/subfolder/deep.mkv.backup',
+      );
     });
 
     it('should continue on individual file errors', async () => {
@@ -166,8 +187,16 @@ describe('BackupCleanupWorker', () => {
       (existsSync as jest.Mock).mockReturnValue(true);
 
       (fsMock.readdir as jest.Mock).mockResolvedValue([
-        { name: 'bad.mkv.backup', isFile: () => true, isDirectory: () => false },
-        { name: 'good.mkv.backup', isFile: () => true, isDirectory: () => false },
+        {
+          name: 'bad.mkv.backup',
+          isFile: () => true,
+          isDirectory: () => false,
+        },
+        {
+          name: 'good.mkv.backup',
+          isFile: () => true,
+          isDirectory: () => false,
+        },
       ]);
 
       const oldTime = Date.now() - 48 * 60 * 60 * 1000;

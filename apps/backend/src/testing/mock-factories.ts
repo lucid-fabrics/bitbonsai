@@ -9,7 +9,14 @@
  *   import { createMockJob, createMockPolicy, createMockNode } from '../../../testing/mock-factories';
  *   const job = createMockJob({ stage: JobStage.ENCODING, progress: 50 });
  */
-import type { Job, Library, License, Metric, Node, Policy } from '@prisma/client';
+import type {
+  Job,
+  Library,
+  License,
+  Metric,
+  Node,
+  Policy,
+} from '@prisma/client';
 import {
   AccelerationType,
   FileHealthStatus,

@@ -18,7 +18,12 @@ class TestNonOperationalError extends BaseError {
 describe('GlobalExceptionFilter', () => {
   let filter: GlobalExceptionFilter;
   let mockResponse: { status: jest.Mock; json: jest.Mock };
-  let mockRequest: { url: string; method: string; ip: string; headers: Record<string, string> };
+  let mockRequest: {
+    url: string;
+    method: string;
+    ip: string;
+    headers: Record<string, string>;
+  };
   let mockHost: ArgumentsHost;
 
   beforeEach(() => {
@@ -57,7 +62,9 @@ describe('GlobalExceptionFilter', () => {
 
   describe('BaseError handling', () => {
     it('should format BaseError correctly', () => {
-      const error = new TestOperationalError('Something went wrong', { key: 'value' });
+      const error = new TestOperationalError('Something went wrong', {
+        key: 'value',
+      });
 
       filter.catch(error, mockHost);
 
@@ -70,7 +77,7 @@ describe('GlobalExceptionFilter', () => {
           message: 'Something went wrong',
           errorCode: 'TEST_ERROR',
           context: { key: 'value' },
-        })
+        }),
       );
     });
 
@@ -132,14 +139,14 @@ describe('GlobalExceptionFilter', () => {
           statusCode: 404,
           message: 'Not Found',
           errorCode: 'HTTP_EXCEPTION',
-        })
+        }),
       );
     });
 
     it('should format HttpException with object response', () => {
       const error = new HttpException(
         { message: 'Validation failed', statusCode: 400 },
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
 
       filter.catch(error, mockHost);
@@ -149,14 +156,14 @@ describe('GlobalExceptionFilter', () => {
         expect.objectContaining({
           statusCode: 400,
           message: 'Validation failed',
-        })
+        }),
       );
     });
 
     it('should format HttpException with array message', () => {
       const error = new HttpException(
         { message: ['field1 is required', 'field2 must be a number'] },
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
 
       filter.catch(error, mockHost);
@@ -164,12 +171,15 @@ describe('GlobalExceptionFilter', () => {
       expect(mockResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           message: 'field1 is required, field2 must be a number',
-        })
+        }),
       );
     });
 
     it('should log 5xx HttpExceptions at error level', () => {
-      const error = new HttpException('Server Error', HttpStatus.INTERNAL_SERVER_ERROR);
+      const error = new HttpException(
+        'Server Error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
 
       filter.catch(error, mockHost);
 
@@ -196,7 +206,7 @@ describe('GlobalExceptionFilter', () => {
         expect.objectContaining({
           statusCode: 500,
           errorCode: 'INTERNAL_SERVER_ERROR',
-        })
+        }),
       );
     });
 
@@ -275,7 +285,7 @@ describe('GlobalExceptionFilter', () => {
       expect((filter as any).logger.error).toHaveBeenCalledWith(
         expect.objectContaining({
           correlationId: 'test-correlation-123',
-        })
+        }),
       );
     });
 
@@ -292,7 +302,7 @@ describe('GlobalExceptionFilter', () => {
       expect((filter as any).logger.error).toHaveBeenCalledWith(
         expect.objectContaining({
           correlationId: 'request-456',
-        })
+        }),
       );
     });
 
@@ -306,7 +316,7 @@ describe('GlobalExceptionFilter', () => {
       expect((filter as any).logger.error).toHaveBeenCalledWith(
         expect.objectContaining({
           correlationId: 'none',
-        })
+        }),
       );
     });
   });

@@ -23,7 +23,9 @@ describe('HealthCheckCodecAnalyzerService', () => {
       ],
     }).compile();
 
-    service = module.get<HealthCheckCodecAnalyzerService>(HealthCheckCodecAnalyzerService);
+    service = module.get<HealthCheckCodecAnalyzerService>(
+      HealthCheckCodecAnalyzerService,
+    );
   });
 
   describe('checkCodecMatch', () => {
@@ -56,7 +58,9 @@ describe('HealthCheckCodecAnalyzerService', () => {
     it('includes codec display name in message when codecs match', () => {
       const result = service.checkCodecMatch('hevc', 'hevc');
 
-      expect(result!.message).toBe('This file is already encoded in HEVC (H.265) format');
+      expect(result!.message).toBe(
+        'This file is already encoded in HEVC (H.265) format',
+      );
     });
 
     it('normalizes mixed-case codecs before comparison', () => {
@@ -125,55 +129,91 @@ describe('HealthCheckCodecAnalyzerService', () => {
 
   describe('calculateExpectedSavingsPercent', () => {
     it('returns 5 for same codec', () => {
-      const result = service.calculateExpectedSavingsPercent('hevc', 'hevc', BigInt(1_000_000));
+      const result = service.calculateExpectedSavingsPercent(
+        'hevc',
+        'hevc',
+        BigInt(1_000_000),
+      );
 
       expect(result).toBe(5);
     });
 
     it('returns 35 for h264 → hevc', () => {
-      const result = service.calculateExpectedSavingsPercent('h264', 'hevc', BigInt(1_000_000));
+      const result = service.calculateExpectedSavingsPercent(
+        'h264',
+        'hevc',
+        BigInt(1_000_000),
+      );
 
       expect(result).toBe(35);
     });
 
     it('returns 50 for h264 → av1', () => {
-      const result = service.calculateExpectedSavingsPercent('h264', 'av1', BigInt(1_000_000));
+      const result = service.calculateExpectedSavingsPercent(
+        'h264',
+        'av1',
+        BigInt(1_000_000),
+      );
 
       expect(result).toBe(50);
     });
 
     it('returns 30 for h264 → vp9', () => {
-      const result = service.calculateExpectedSavingsPercent('h264', 'vp9', BigInt(1_000_000));
+      const result = service.calculateExpectedSavingsPercent(
+        'h264',
+        'vp9',
+        BigInt(1_000_000),
+      );
 
       expect(result).toBe(30);
     });
 
     it('returns 25 for hevc → av1', () => {
-      const result = service.calculateExpectedSavingsPercent('hevc', 'av1', BigInt(1_000_000));
+      const result = service.calculateExpectedSavingsPercent(
+        'hevc',
+        'av1',
+        BigInt(1_000_000),
+      );
 
       expect(result).toBe(25);
     });
 
     it('returns -30 for hevc → h264 (negative savings)', () => {
-      const result = service.calculateExpectedSavingsPercent('hevc', 'h264', BigInt(1_000_000));
+      const result = service.calculateExpectedSavingsPercent(
+        'hevc',
+        'h264',
+        BigInt(1_000_000),
+      );
 
       expect(result).toBe(-30);
     });
 
     it('returns -10 for av1 → hevc (negative savings)', () => {
-      const result = service.calculateExpectedSavingsPercent('av1', 'hevc', BigInt(1_000_000));
+      const result = service.calculateExpectedSavingsPercent(
+        'av1',
+        'hevc',
+        BigInt(1_000_000),
+      );
 
       expect(result).toBe(-10);
     });
 
     it('returns 0 for unknown codec pair', () => {
-      const result = service.calculateExpectedSavingsPercent('xvid', 'mpeg2', BigInt(1_000_000));
+      const result = service.calculateExpectedSavingsPercent(
+        'xvid',
+        'mpeg2',
+        BigInt(1_000_000),
+      );
 
       expect(result).toBe(0);
     });
 
     it('normalizes codec case before lookup', () => {
-      const result = service.calculateExpectedSavingsPercent('H264', 'HEVC', BigInt(1_000_000));
+      const result = service.calculateExpectedSavingsPercent(
+        'H264',
+        'HEVC',
+        BigInt(1_000_000),
+      );
 
       expect(result).toBe(35);
     });
@@ -181,26 +221,48 @@ describe('HealthCheckCodecAnalyzerService', () => {
 
   describe('checkCodecMatchWithThreshold', () => {
     it('always returns a BLOCKER issue', () => {
-      const result = service.checkCodecMatchWithThreshold('h264', 'hevc', 10, 30);
+      const result = service.checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        10,
+        30,
+      );
 
       expect(result).not.toBeNull();
       expect(result!.severity).toBe(HealthCheckIssueSeverity.BLOCKER);
     });
 
     it('returns correct code', () => {
-      const result = service.checkCodecMatchWithThreshold('h264', 'hevc', 10, 30);
+      const result = service.checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        10,
+        30,
+      );
 
       expect(result!.code).toBe('SAVINGS_BELOW_THRESHOLD');
     });
 
     it('includes expected savings and threshold in message', () => {
-      const result = service.checkCodecMatchWithThreshold('h264', 'hevc', 10, 30);
+      const result = service.checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        10,
+        30,
+      );
 
-      expect(result!.message).toBe('Expected savings (10%) is below the policy threshold (30%)');
+      expect(result!.message).toBe(
+        'Expected savings (10%) is below the policy threshold (30%)',
+      );
     });
 
     it('sets correct metadata', () => {
-      const result = service.checkCodecMatchWithThreshold('h264', 'hevc', 10, 30);
+      const result = service.checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        10,
+        30,
+      );
 
       expect(result!.metadata!.sourceCodec).toBe('h264');
       expect(result!.metadata!.targetCodec).toBe('hevc');
@@ -209,7 +271,12 @@ describe('HealthCheckCodecAnalyzerService', () => {
     });
 
     it('marks skip_encoding as recommended', () => {
-      const result = service.checkCodecMatchWithThreshold('h264', 'hevc', 10, 30);
+      const result = service.checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        10,
+        30,
+      );
       const recommended = result!.suggestedActions.filter((a) => a.recommended);
 
       expect(recommended).toHaveLength(1);
@@ -217,21 +284,38 @@ describe('HealthCheckCodecAnalyzerService', () => {
     });
 
     it('includes savings percentage in skip action description', () => {
-      const result = service.checkCodecMatchWithThreshold('h264', 'hevc', 10, 30);
-      const skipAction = result!.suggestedActions.find((a) => a.id === 'skip_encoding')!;
+      const result = service.checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        10,
+        30,
+      );
+      const skipAction = result!.suggestedActions.find(
+        (a) => a.id === 'skip_encoding',
+      )!;
 
       expect(skipAction.description).toContain('10%');
       expect(skipAction.description).toContain('30%');
     });
 
     it('has category CODEC', () => {
-      const result = service.checkCodecMatchWithThreshold('h264', 'hevc', 5, 20);
+      const result = service.checkCodecMatchWithThreshold(
+        'h264',
+        'hevc',
+        5,
+        20,
+      );
 
       expect(result!.category).toBe(HealthCheckIssueCategory.CODEC);
     });
 
     it('normalizes codec case before storing in metadata', () => {
-      const result = service.checkCodecMatchWithThreshold('H264', 'HEVC', 10, 30);
+      const result = service.checkCodecMatchWithThreshold(
+        'H264',
+        'HEVC',
+        10,
+        30,
+      );
 
       expect(result!.metadata!.sourceCodec).toBe('h264');
       expect(result!.metadata!.targetCodec).toBe('hevc');
@@ -302,7 +386,9 @@ describe('HealthCheckCodecAnalyzerService', () => {
         warnings: [],
       });
 
-      expect(result).toBe('❌ Score: 10/100 | Issues: Corrupt frame at 00:01:23; Missing keyframe');
+      expect(result).toBe(
+        '❌ Score: 10/100 | Issues: Corrupt frame at 00:01:23; Missing keyframe',
+      );
     });
 
     it('appends warnings when present', () => {
@@ -313,7 +399,9 @@ describe('HealthCheckCodecAnalyzerService', () => {
         warnings: ['Low bitrate', 'High noise'],
       });
 
-      expect(result).toBe('⚠️ Score: 80/100 | Warnings: Low bitrate; High noise');
+      expect(result).toBe(
+        '⚠️ Score: 80/100 | Warnings: Low bitrate; High noise',
+      );
     });
 
     it('appends both issues and warnings when both present', () => {
@@ -324,7 +412,9 @@ describe('HealthCheckCodecAnalyzerService', () => {
         warnings: ['Low bitrate'],
       });
 
-      expect(result).toBe('⚠️ Score: 55/100 | Issues: Corrupt header | Warnings: Low bitrate');
+      expect(result).toBe(
+        '⚠️ Score: 55/100 | Issues: Corrupt header | Warnings: Low bitrate',
+      );
     });
 
     it('joins multiple issues with semicolon', () => {

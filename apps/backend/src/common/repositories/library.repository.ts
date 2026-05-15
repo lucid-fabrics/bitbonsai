@@ -54,14 +54,18 @@ export class LibraryRepository extends BaseRepository {
     return result._sum.sizeBytes ?? BigInt(0);
   }
 
-  async aggregateTotalSizeBytes(): Promise<{ _sum: { totalSizeBytes: bigint | null } }> {
-    return this.prisma.library.aggregate({ _sum: { totalSizeBytes: true } }) as Promise<{
+  async aggregateTotalSizeBytes(): Promise<{
+    _sum: { totalSizeBytes: bigint | null };
+  }> {
+    return this.prisma.library.aggregate({
+      _sum: { totalSizeBytes: true },
+    }) as Promise<{
       _sum: { totalSizeBytes: bigint | null };
     }>;
   }
 
   async findManyWithJobCountOrdered(
-    take: number
+    take: number,
   ): Promise<Array<Library & { _count: { jobs: number } }>> {
     return this.prisma.library.findMany({
       include: { _count: { select: { jobs: true } } },
@@ -70,37 +74,46 @@ export class LibraryRepository extends BaseRepository {
     }) as Promise<Array<Library & { _count: { jobs: number } }>>;
   }
 
-  async findByWhere(where: Prisma.LibraryWhereUniqueInput): Promise<Library | null> {
+  async findByWhere(
+    where: Prisma.LibraryWhereUniqueInput,
+  ): Promise<Library | null> {
     return this.prisma.library.findUnique({ where });
   }
 
   async findUniqueWithInclude(
     where: Prisma.LibraryWhereUniqueInput,
-    include: Prisma.LibraryInclude
+    include: Prisma.LibraryInclude,
   ): Promise<(Library & Record<string, unknown>) | null> {
     return this.prisma.library.findUnique({ where, include }) as Promise<
       (Library & Record<string, unknown>) | null
     >;
   }
 
-  async findFirstWhere(where: Prisma.LibraryWhereInput): Promise<Library | null> {
+  async findFirstWhere(
+    where: Prisma.LibraryWhereInput,
+  ): Promise<Library | null> {
     return this.prisma.library.findFirst({ where });
   }
 
   async findAllLibraries(
     where?: Prisma.LibraryWhereInput,
-    include?: Prisma.LibraryInclude
+    include?: Prisma.LibraryInclude,
   ): Promise<Library[]> {
-    return this.prisma.library.findMany({ ...(where && { where }), ...(include && { include }) });
+    return this.prisma.library.findMany({
+      ...(where && { where }),
+      ...(include && { include }),
+    });
   }
 
-  async createLibrary(data: Prisma.LibraryUncheckedCreateInput): Promise<Library> {
+  async createLibrary(
+    data: Prisma.LibraryUncheckedCreateInput,
+  ): Promise<Library> {
     return this.prisma.library.create({ data });
   }
 
   async updateLibrary(
     where: Prisma.LibraryWhereUniqueInput,
-    data: Prisma.LibraryUncheckedUpdateInput
+    data: Prisma.LibraryUncheckedUpdateInput,
   ): Promise<Library> {
     return this.prisma.library.update({ where, data });
   }
@@ -108,7 +121,7 @@ export class LibraryRepository extends BaseRepository {
   async updateWithInclude(
     where: Prisma.LibraryWhereUniqueInput,
     data: Prisma.LibraryUncheckedUpdateInput,
-    include: Prisma.LibraryInclude
+    include: Prisma.LibraryInclude,
   ): Promise<Library & Record<string, unknown>> {
     return this.prisma.library.update({ where, data, include }) as Promise<
       Library & Record<string, unknown>
@@ -122,7 +135,7 @@ export class LibraryRepository extends BaseRepository {
   async upsertLibrary(
     where: Prisma.LibraryWhereUniqueInput,
     create: Prisma.LibraryUncheckedCreateInput,
-    update: Prisma.LibraryUncheckedUpdateInput
+    update: Prisma.LibraryUncheckedUpdateInput,
   ): Promise<Library> {
     return this.prisma.library.upsert({ where, create, update });
   }

@@ -5,45 +5,46 @@
 BitBonsai ships with an **optimal default encoding policy** that requires zero configuration. This policy is the "sweet spot" for H.265 encoding, offering excellent quality, broad device compatibility, and efficient compression.
 
 ## Policy Name
+
 **"Default - Universal H.265 (Recommended)"**
 
 ## Key Settings
 
 ### Video Encoding
 
-| Setting | Value | Why This is Optimal |
-|---------|-------|---------------------|
-| **Codec** | H.265 (HEVC) | Best balance of compatibility and compression (50% smaller than H.264) |
-| **CRF** | 20 | "Sweet spot" - visually transparent for 99% of content, excellent compression |
-| **Preset** | medium | Best balance of encoding speed and compression efficiency |
-| **Tune** | film | Optimized for film/TV content (works excellently for most media) |
-| **Hardware Acceleration** | auto | Auto-detects NVIDIA NVENC, Intel QSV, AMD VCE, Apple VideoToolbox |
+| Setting                   | Value        | Why This is Optimal                                                           |
+| ------------------------- | ------------ | ----------------------------------------------------------------------------- |
+| **Codec**                 | H.265 (HEVC) | Best balance of compatibility and compression (50% smaller than H.264)        |
+| **CRF**                   | 20           | "Sweet spot" - visually transparent for 99% of content, excellent compression |
+| **Preset**                | medium       | Best balance of encoding speed and compression efficiency                     |
+| **Tune**                  | film         | Optimized for film/TV content (works excellently for most media)              |
+| **Hardware Acceleration** | auto         | Auto-detects NVIDIA NVENC, Intel QSV, AMD VCE, Apple VideoToolbox             |
 
 ### Quality Guardrails
 
-| Setting | Value | Purpose |
-|---------|-------|---------|
-| **Min CRF** | 18 | Never go below this (prevents bloated files for simple scenes) |
-| **Max CRF** | 22 | Never go above this (maintains quality for complex scenes) |
-| **B-frames** | 4 | Better compression through bidirectional prediction |
-| **Reference Frames** | 3 | Good balance of quality and decode compatibility |
+| Setting              | Value | Purpose                                                        |
+| -------------------- | ----- | -------------------------------------------------------------- |
+| **Min CRF**          | 18    | Never go below this (prevents bloated files for simple scenes) |
+| **Max CRF**          | 22    | Never go above this (maintains quality for complex scenes)     |
+| **B-frames**         | 4     | Better compression through bidirectional prediction            |
+| **Reference Frames** | 3     | Good balance of quality and decode compatibility               |
 
 ### Audio & Subtitles
 
-| Setting | Value | Why |
-|---------|-------|-----|
-| **Audio** | Copy original | Preserves lossless audio (TrueHD, DTS-HD MA, FLAC) |
-| **Audio Fallback** | AAC 256k | If codec incompatible, convert to high-quality AAC |
-| **Subtitles** | Copy all tracks | Keeps all subtitle languages and formats |
-| **Container** | MKV | Universal support for all codecs, audio, and subtitle formats |
+| Setting            | Value           | Why                                                           |
+| ------------------ | --------------- | ------------------------------------------------------------- |
+| **Audio**          | Copy original   | Preserves lossless audio (TrueHD, DTS-HD MA, FLAC)            |
+| **Audio Fallback** | AAC 256k        | If codec incompatible, convert to high-quality AAC            |
+| **Subtitles**      | Copy all tracks | Keeps all subtitle languages and formats                      |
+| **Container**      | MKV             | Universal support for all codecs, audio, and subtitle formats |
 
 ### Safety Features
 
-| Feature | Enabled | Purpose |
-|---------|---------|---------|
-| **Atomic Replace** | ✅ Yes | Safe file replacement (rename, not overwrite) - prevents corruption |
-| **Verify Output** | ✅ Yes | Always verifies playback after encoding - catches errors |
-| **Skip Seeding** | ✅ Yes | Won't encode files actively being seeded in torrent clients |
+| Feature            | Enabled | Purpose                                                             |
+| ------------------ | ------- | ------------------------------------------------------------------- |
+| **Atomic Replace** | ✅ Yes  | Safe file replacement (rename, not overwrite) - prevents corruption |
+| **Verify Output**  | ✅ Yes  | Always verifies playback after encoding - catches errors            |
+| **Skip Seeding**   | ✅ Yes  | Won't encode files actively being seeded in torrent clients         |
 
 ### Device Compatibility
 
@@ -63,20 +64,22 @@ The default policy is compatible with **ALL major streaming devices**:
 ## Why CRF 20?
 
 CRF (Constant Rate Factor) is a quality-based encoding mode where:
+
 - **Lower CRF** = Higher quality, larger file size
 - **Higher CRF** = Lower quality, smaller file size
 
 ### CRF Comparison
 
-| CRF | Quality | Use Case | File Size (relative) |
-|-----|---------|----------|----------------------|
-| 18 | Nearly lossless | Archival, 4K HDR | 100% (baseline) |
-| **20** | **Visually transparent** | **Default (recommended)** | **75%** |
-| 23 | High quality | Fast encoding, large libraries | 50% |
-| 25 | Good quality | TV shows, older content | 35% |
-| 28 | Acceptable quality | Low-priority content | 25% |
+| CRF    | Quality                  | Use Case                       | File Size (relative) |
+| ------ | ------------------------ | ------------------------------ | -------------------- |
+| 18     | Nearly lossless          | Archival, 4K HDR               | 100% (baseline)      |
+| **20** | **Visually transparent** | **Default (recommended)**      | **75%**              |
+| 23     | High quality             | Fast encoding, large libraries | 50%                  |
+| 25     | Good quality             | TV shows, older content        | 35%                  |
+| 28     | Acceptable quality       | Low-priority content           | 25%                  |
 
 **CRF 20 is the sweet spot** because:
+
 1. **Visually indistinguishable** from source for 99% of viewers
 2. **Excellent compression** - typically 40-60% smaller than H.264
 3. **Fast encoding** - hardware acceleration works great at this CRF
@@ -88,34 +91,36 @@ CRF (Constant Rate Factor) is a quality-based encoding mode where:
 
 Typical space savings when encoding from H.264 to H.265 with CRF 20:
 
-| Original Codec | File Type | Expected Savings |
-|----------------|-----------|------------------|
-| H.264 (High bitrate) | Blu-ray remux | 50-60% reduction |
-| H.264 (Medium bitrate) | Web-DL | 40-50% reduction |
-| H.264 (Low bitrate) | DVDRip | 30-40% reduction |
-| MPEG-2 | DVD source | 60-70% reduction |
+| Original Codec         | File Type     | Expected Savings |
+| ---------------------- | ------------- | ---------------- |
+| H.264 (High bitrate)   | Blu-ray remux | 50-60% reduction |
+| H.264 (Medium bitrate) | Web-DL        | 40-50% reduction |
+| H.264 (Low bitrate)    | DVDRip        | 30-40% reduction |
+| MPEG-2                 | DVD source    | 60-70% reduction |
 
 **Example**:
+
 - 10 GB movie (H.264) → 4-5 GB (H.265 CRF 20)
 - 1.5 GB TV episode (H.264) → 700-800 MB (H.265 CRF 20)
 
 ### Encoding Speed (with Hardware Acceleration)
 
-| Hardware | Resolution | Approximate Speed |
-|----------|-----------|-------------------|
-| NVIDIA RTX 3060+ | 1080p | 150-300 fps |
-| NVIDIA RTX 3060+ | 4K | 50-100 fps |
-| Intel QSV (12th gen+) | 1080p | 100-200 fps |
-| Intel QSV (12th gen+) | 4K | 40-80 fps |
-| AMD VCE | 1080p | 100-200 fps |
-| Apple M1/M2/M3 | 1080p | 120-250 fps |
-| CPU Only (8-core) | 1080p | 15-30 fps |
+| Hardware              | Resolution | Approximate Speed |
+| --------------------- | ---------- | ----------------- |
+| NVIDIA RTX 3060+      | 1080p      | 150-300 fps       |
+| NVIDIA RTX 3060+      | 4K         | 50-100 fps        |
+| Intel QSV (12th gen+) | 1080p      | 100-200 fps       |
+| Intel QSV (12th gen+) | 4K         | 40-80 fps         |
+| AMD VCE               | 1080p      | 100-200 fps       |
+| Apple M1/M2/M3        | 1080p      | 120-250 fps       |
+| CPU Only (8-core)     | 1080p      | 15-30 fps         |
 
 **Speed depends on**: CPU/GPU model, file complexity, preset
 
 ## When to Use the Default Policy
 
 ✅ **Use default policy for:**
+
 - Movies (all resolutions)
 - TV shows
 - Documentaries
@@ -125,6 +130,7 @@ Typical space savings when encoding from H.264 to H.265 with CRF 20:
 - When quality is important but file size matters
 
 ❌ **Consider custom policy for:**
+
 - Archival (use CRF 18 or lower)
 - Very large libraries where speed is critical (use CRF 23-25)
 - Experimental AV1 encoding (different codec)
@@ -154,6 +160,7 @@ ffmpeg \
 ```
 
 **With NVIDIA GPU**:
+
 ```bash
 ffmpeg \
   -hwaccel cuda \
@@ -173,19 +180,20 @@ ffmpeg \
 
 ### Hardware Encoder Mappings
 
-| Hardware | FFmpeg Encoder | Preset Mapping |
-|----------|----------------|----------------|
-| NVIDIA | hevc_nvenc | p1-p7 (p4 = medium) |
-| Intel QSV | hevc_qsv | 1-7 (4 = medium) |
-| AMD VCE | hevc_amf | balanced |
-| Apple Silicon | hevc_videotoolbox | medium |
-| CPU | libx265 | medium |
+| Hardware      | FFmpeg Encoder    | Preset Mapping      |
+| ------------- | ----------------- | ------------------- |
+| NVIDIA        | hevc_nvenc        | p1-p7 (p4 = medium) |
+| Intel QSV     | hevc_qsv          | 1-7 (4 = medium)    |
+| AMD VCE       | hevc_amf          | balanced            |
+| Apple Silicon | hevc_videotoolbox | medium              |
+| CPU           | libx265           | medium              |
 
 ## Customization Options
 
 While the default policy is optimal for most users, you can create custom policies for specific needs:
 
 ### For Speed (Faster Encoding)
+
 ```json
 {
   "targetQuality": 23,
@@ -195,6 +203,7 @@ While the default policy is optimal for most users, you can create custom polici
 ```
 
 ### For Archival (Maximum Quality)
+
 ```json
 {
   "targetQuality": 18,
@@ -204,6 +213,7 @@ While the default policy is optimal for most users, you can create custom polici
 ```
 
 ### For Anime (Grain Preservation)
+
 ```json
 {
   "targetQuality": 20,
@@ -213,6 +223,7 @@ While the default policy is optimal for most users, you can create custom polici
 ```
 
 ### For Low-Priority Content
+
 ```json
 {
   "targetQuality": 25,
@@ -226,13 +237,13 @@ While the default policy is optimal for most users, you can create custom polici
 
 **Configuration**: NVIDIA RTX 3060, Intel i7-12700K
 
-| Preset | Encoding Time | Output Size | Quality (VMAF) |
-|--------|---------------|-------------|----------------|
-| veryfast | 8 minutes | 5.2 GB | 92 |
-| fast | 12 minutes | 4.8 GB | 94 |
-| **medium** | **18 minutes** | **4.3 GB** | **96** |
-| slow | 35 minutes | 4.0 GB | 97 |
-| veryslow | 65 minutes | 3.8 GB | 97.5 |
+| Preset     | Encoding Time  | Output Size | Quality (VMAF) |
+| ---------- | -------------- | ----------- | -------------- |
+| veryfast   | 8 minutes      | 5.2 GB      | 92             |
+| fast       | 12 minutes     | 4.8 GB      | 94             |
+| **medium** | **18 minutes** | **4.3 GB**  | **96**         |
+| slow       | 35 minutes     | 4.0 GB      | 97             |
+| veryslow   | 65 minutes     | 3.8 GB      | 97.5           |
 
 **Takeaway**: Medium preset offers the best balance - only slightly slower than fast, but significantly better compression.
 
@@ -251,14 +262,14 @@ If verification fails, the job is marked as FAILED and the original file is pres
 
 ### Example Library: 5TB of H.264 Content
 
-| Metric | Before | After (CRF 20) | Savings |
-|--------|--------|----------------|---------|
-| Total Size | 5 TB | 2.5 TB | 2.5 TB saved |
-| File Count | 2,000 files | 2,000 files | - |
-| Quality | High | Virtually identical | - |
-| Encoding Time* | - | ~200 hours | - |
+| Metric          | Before      | After (CRF 20)      | Savings      |
+| --------------- | ----------- | ------------------- | ------------ |
+| Total Size      | 5 TB        | 2.5 TB              | 2.5 TB saved |
+| File Count      | 2,000 files | 2,000 files         | -            |
+| Quality         | High        | Virtually identical | -            |
+| Encoding Time\* | -           | ~200 hours          | -            |
 
-*With hardware acceleration (NVIDIA RTX 3060)
+\*With hardware acceleration (NVIDIA RTX 3060)
 
 **Storage savings**: $50-100 in hard drive costs
 **Electricity cost**: ~$10-20 (200 hours @ $0.12/kWh, 100W GPU)
@@ -274,6 +285,7 @@ After using the default policy, monitor:
 4. **Device Compatibility** - Test playback on your devices
 
 If results are not meeting expectations:
+
 - Check hardware acceleration is working (`nvidia-smi` or similar)
 - Verify FFmpeg supports your GPU
 - Consider adjusting CRF ±2 for your specific content
@@ -281,18 +293,23 @@ If results are not meeting expectations:
 ## Frequently Asked Questions
 
 ### Q: Why not CRF 18 for maximum quality?
+
 **A**: CRF 18 is nearly lossless but produces files ~30% larger than CRF 20 with no visible difference for most viewers. CRF 20 is the sweet spot.
 
 ### Q: Can I use this for 4K content?
+
 **A**: Yes! CRF 20 works excellently for 4K. You may want to increase to CRF 22 for 4K to save more space without quality loss.
 
 ### Q: Will this work without a GPU?
+
 **A**: Yes! CPU encoding works but is much slower (10-30 fps vs 100-300 fps). Consider adjusting preset to "fast" for CPU-only encoding.
 
 ### Q: What about AV1?
+
 **A**: AV1 offers better compression than H.265 but has limited device support and slower encoding. Use the "Quality AV1" policy for web-only content.
 
 ### Q: How do I change the default policy?
+
 **A**: You can create custom policies in the UI or modify the seed file. The default policy serves as a template.
 
 ## Summary

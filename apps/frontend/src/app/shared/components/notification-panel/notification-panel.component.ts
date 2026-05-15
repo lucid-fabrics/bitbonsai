@@ -84,7 +84,9 @@ export class NotificationPanelComponent implements OnInit {
    * Get currently displayed notifications based on active tab
    */
   get displayedNotifications(): Notification[] {
-    return this.activeTab === 'active' ? this.notifications : this.archivedNotifications;
+    return this.activeTab === 'active'
+      ? this.notifications
+      : this.archivedNotifications;
   }
 
   /**
@@ -188,7 +190,9 @@ export class NotificationPanelComponent implements OnInit {
 
     // Move to archived
     this.archivedNotifications = [notification, ...this.archivedNotifications];
-    this.notifications = this.notifications.filter((n) => n.id !== notification.id);
+    this.notifications = this.notifications.filter(
+      (n) => n.id !== notification.id,
+    );
     this.cdr.markForCheck();
 
     // Also mark as dismissed on the server
@@ -210,7 +214,7 @@ export class NotificationPanelComponent implements OnInit {
       .subscribe({
         next: () => {
           this.archivedNotifications = this.archivedNotifications.filter(
-            (n) => n.id !== notification.id
+            (n) => n.id !== notification.id,
           );
           this.cdr.markForCheck();
         },

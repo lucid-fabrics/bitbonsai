@@ -97,7 +97,11 @@ describe('JobTransferController', () => {
     });
 
     it('should return multiple active transfers', async () => {
-      const secondJob = { ...mockTransferringJob, id: 'job-2', fileLabel: 'Dune (2021).mkv' };
+      const secondJob = {
+        ...mockTransferringJob,
+        id: 'job-2',
+        fileLabel: 'Dune (2021).mkv',
+      };
       const paginatedResult = {
         jobs: [mockTransferringJob, secondJob],
         total: 2,
@@ -107,16 +111,21 @@ describe('JobTransferController', () => {
       };
       queueService.findAll.mockResolvedValue(paginatedResult);
 
-      const result = (await controller.getActiveTransfers()) as typeof paginatedResult;
+      const result =
+        (await controller.getActiveTransfers()) as typeof paginatedResult;
 
       expect(result.total).toBe(2);
       expect(result.jobs).toHaveLength(2);
     });
 
     it('should propagate errors from QueueService', async () => {
-      queueService.findAll.mockRejectedValue(new Error('Database connection lost'));
+      queueService.findAll.mockRejectedValue(
+        new Error('Database connection lost'),
+      );
 
-      await expect(controller.getActiveTransfers()).rejects.toThrow('Database connection lost');
+      await expect(controller.getActiveTransfers()).rejects.toThrow(
+        'Database connection lost',
+      );
     });
   });
 
@@ -124,18 +133,26 @@ describe('JobTransferController', () => {
 
   describe('getTransferProgress', () => {
     it('should return transfer progress for a valid job', async () => {
-      fileTransferService.getTransferProgress.mockResolvedValue(mockTransferProgress);
+      fileTransferService.getTransferProgress.mockResolvedValue(
+        mockTransferProgress,
+      );
 
       const result = await controller.getTransferProgress('job-1');
 
       expect(result).toEqual(mockTransferProgress);
-      expect(fileTransferService.getTransferProgress).toHaveBeenCalledWith('job-1');
+      expect(fileTransferService.getTransferProgress).toHaveBeenCalledWith(
+        'job-1',
+      );
     });
 
     it('should return progress with all fields populated', async () => {
-      fileTransferService.getTransferProgress.mockResolvedValue(mockTransferProgress);
+      fileTransferService.getTransferProgress.mockResolvedValue(
+        mockTransferProgress,
+      );
 
-      const result = (await controller.getTransferProgress('job-1')) as TransferProgress;
+      const result = (await controller.getTransferProgress(
+        'job-1',
+      )) as TransferProgress;
 
       expect(result.progress).toBe(45);
       expect(result.speedMBps).toBe(120.5);
@@ -153,9 +170,13 @@ describe('JobTransferController', () => {
         eta: null,
         status: 'COMPLETED',
       };
-      fileTransferService.getTransferProgress.mockResolvedValue(completedProgress);
+      fileTransferService.getTransferProgress.mockResolvedValue(
+        completedProgress,
+      );
 
-      const result = (await controller.getTransferProgress('job-1')) as TransferProgress;
+      const result = (await controller.getTransferProgress(
+        'job-1',
+      )) as TransferProgress;
 
       expect(result.status).toBe('COMPLETED');
       expect(result.progress).toBe(100);
@@ -175,7 +196,9 @@ describe('JobTransferController', () => {
       };
       fileTransferService.getTransferProgress.mockResolvedValue(failedProgress);
 
-      const result = (await controller.getTransferProgress('job-1')) as TransferProgress;
+      const result = (await controller.getTransferProgress(
+        'job-1',
+      )) as TransferProgress;
 
       expect(result.status).toBe('FAILED');
       expect(result.error).toBe('SSH connection refused');
@@ -191,9 +214,13 @@ describe('JobTransferController', () => {
         eta: null,
         status: 'PENDING',
       };
-      fileTransferService.getTransferProgress.mockResolvedValue(pendingProgress);
+      fileTransferService.getTransferProgress.mockResolvedValue(
+        pendingProgress,
+      );
 
-      const result = (await controller.getTransferProgress('job-2')) as TransferProgress;
+      const result = (await controller.getTransferProgress(
+        'job-2',
+      )) as TransferProgress;
 
       expect(result.status).toBe('PENDING');
       expect(result.progress).toBe(0);
@@ -201,22 +228,28 @@ describe('JobTransferController', () => {
 
     it('should throw NotFoundException when job does not exist', async () => {
       fileTransferService.getTransferProgress.mockRejectedValue(
-        new NotFoundException('Job not found')
+        new NotFoundException('Job not found'),
       );
 
-      await expect(controller.getTransferProgress('non-existent')).rejects.toThrow(
-        NotFoundException
+      await expect(
+        controller.getTransferProgress('non-existent'),
+      ).rejects.toThrow(NotFoundException);
+      expect(fileTransferService.getTransferProgress).toHaveBeenCalledWith(
+        'non-existent',
       );
-      expect(fileTransferService.getTransferProgress).toHaveBeenCalledWith('non-existent');
     });
 
     it('should pass the correct job ID to FileTransferService', async () => {
       const jobId = 'clq8x9z8x0000qh8x9z8x0000';
-      fileTransferService.getTransferProgress.mockResolvedValue(mockTransferProgress);
+      fileTransferService.getTransferProgress.mockResolvedValue(
+        mockTransferProgress,
+      );
 
       await controller.getTransferProgress(jobId);
 
-      expect(fileTransferService.getTransferProgress).toHaveBeenCalledWith(jobId);
+      expect(fileTransferService.getTransferProgress).toHaveBeenCalledWith(
+        jobId,
+      );
     });
   });
 
@@ -244,27 +277,35 @@ describe('JobTransferController', () => {
 
     it('should throw NotFoundException when job does not exist', async () => {
       fileTransferService.cancelTransfer.mockRejectedValue(
-        new NotFoundException('Job not found or no active transfer')
+        new NotFoundException('Job not found or no active transfer'),
       );
 
-      await expect(controller.cancelTransfer('non-existent')).rejects.toThrow(NotFoundException);
       await expect(controller.cancelTransfer('non-existent')).rejects.toThrow(
-        'Job not found or no active transfer'
+        NotFoundException,
+      );
+      await expect(controller.cancelTransfer('non-existent')).rejects.toThrow(
+        'Job not found or no active transfer',
       );
     });
 
     it('should throw an error when there is no active transfer for the job', async () => {
       fileTransferService.cancelTransfer.mockRejectedValue(
-        new NotFoundException('No active transfer found for job "job-1"')
+        new NotFoundException('No active transfer found for job "job-1"'),
       );
 
-      await expect(controller.cancelTransfer('job-1')).rejects.toThrow(NotFoundException);
+      await expect(controller.cancelTransfer('job-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should propagate generic errors from FileTransferService', async () => {
-      fileTransferService.cancelTransfer.mockRejectedValue(new Error('rsync process kill failed'));
+      fileTransferService.cancelTransfer.mockRejectedValue(
+        new Error('rsync process kill failed'),
+      );
 
-      await expect(controller.cancelTransfer('job-1')).rejects.toThrow('rsync process kill failed');
+      await expect(controller.cancelTransfer('job-1')).rejects.toThrow(
+        'rsync process kill failed',
+      );
     });
   });
 });

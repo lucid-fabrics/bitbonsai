@@ -63,12 +63,21 @@ describe('DashboardComponent', () => {
 
     // Setup FontAwesome icons
     const library = TestBed.inject(FaIconLibrary);
-    library.addIcons(faChartLine, faSync, faList, faTimes, faExclamationCircle, faDatabase);
+    library.addIcons(
+      faChartLine,
+      faSync,
+      faList,
+      faTimes,
+      faExclamationCircle,
+      faDatabase,
+    );
 
     fixture = TestBed.createComponent(DashboardComponent);
     component = fixture.componentInstance;
     store = TestBed.inject(MockStore);
-    mediaStatsClient = TestBed.inject(MediaStatsClient) as jest.Mocked<MediaStatsClient>;
+    mediaStatsClient = TestBed.inject(
+      MediaStatsClient,
+    ) as jest.Mocked<MediaStatsClient>;
 
     // Setup selectors
     store.overrideSelector(MediaStatsSelectors.selectMediaStats, null);
@@ -86,7 +95,9 @@ describe('DashboardComponent', () => {
     it('should dispatch load action on init', () => {
       const dispatchSpy = jest.spyOn(store, 'dispatch');
       component.ngOnInit();
-      expect(dispatchSpy).toHaveBeenCalledWith(MediaStatsActions.loadMediaStats());
+      expect(dispatchSpy).toHaveBeenCalledWith(
+        MediaStatsActions.loadMediaStats(),
+      );
     });
   });
 
@@ -106,7 +117,14 @@ describe('DashboardComponent', () => {
 
     it('should open dialog and load files when viewFilesToEncode is called', () => {
       const mockFiles = {
-        files: [{ name: 'file1.mp4', codec: 'h264', size_bytes: 1000, bitrate_mbps: 5 }],
+        files: [
+          {
+            name: 'file1.mp4',
+            codec: 'h264',
+            size_bytes: 1000,
+            bitrate_mbps: 5,
+          },
+        ],
       };
       mediaStatsClient.getFolderFiles.mockReturnValue(of(mockFiles));
 
@@ -115,7 +133,10 @@ describe('DashboardComponent', () => {
       expect(component.dialogOpen).toBe(true);
       expect(component.dialogFolderName).toBe('Movies');
       expect(component.dialogCodec).toBe('h264');
-      expect(mediaStatsClient.getFolderFiles).toHaveBeenCalledWith('Movies', 'h264');
+      expect(mediaStatsClient.getFolderFiles).toHaveBeenCalledWith(
+        'Movies',
+        'h264',
+      );
     });
 
     it('should close dialog when closeDialog is called', () => {

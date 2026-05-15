@@ -122,7 +122,9 @@ describe('DistributionOrchestratorService', () => {
       ],
     }).compile();
 
-    service = module.get<DistributionOrchestratorService>(DistributionOrchestratorService);
+    service = module.get<DistributionOrchestratorService>(
+      DistributionOrchestratorService,
+    );
 
     jest.clearAllMocks();
     (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(true);
@@ -166,12 +168,22 @@ describe('DistributionOrchestratorService', () => {
     it('should return the best-scoring node', async () => {
       mockJobRepo.findByIdWithLibrary.mockResolvedValue(mockJob);
       const node2 = { ...mockNode, id: 'node-2', name: 'Worker Node' };
-      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode, node2]);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([
+        mockNode,
+        node2,
+      ]);
 
       const lowScore = { ...mockScore, nodeId: 'node-1', totalScore: 50 };
-      const highScore = { ...mockScore, nodeId: 'node-2', nodeName: 'Worker Node', totalScore: 90 };
+      const highScore = {
+        ...mockScore,
+        nodeId: 'node-2',
+        nodeName: 'Worker Node',
+        totalScore: 90,
+      };
 
-      scorer.calculateScore.mockResolvedValueOnce(lowScore).mockResolvedValueOnce(highScore);
+      scorer.calculateScore
+        .mockResolvedValueOnce(lowScore)
+        .mockResolvedValueOnce(highScore);
 
       const result = await service.findOptimalNode('job-1');
 
@@ -254,7 +266,11 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should update ETAs for both old and new node on migration', async () => {
-      const migratingJob = { ...mockJob, nodeId: 'node-old', updatedAt: new Date() };
+      const migratingJob = {
+        ...mockJob,
+        nodeId: 'node-old',
+        updatedAt: new Date(),
+      };
       mockJobRepo.findByIdWithLibrary.mockResolvedValue(migratingJob);
       mockNodeRepo.findByIdWithActiveJobCount.mockResolvedValue(mockNode);
       scorer.calculateScore.mockResolvedValue(mockScore);
@@ -283,11 +299,16 @@ describe('DistributionOrchestratorService', () => {
     it('should return scores sorted descending by totalScore', async () => {
       mockJobRepo.findByIdWithLibrary.mockResolvedValue(mockJob);
       const node2 = { ...mockNode, id: 'node-2', name: 'Worker' };
-      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode, node2]);
+      mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([
+        mockNode,
+        node2,
+      ]);
 
       const score1 = { ...mockScore, totalScore: 40 };
       const score2 = { ...mockScore, nodeId: 'node-2', totalScore: 90 };
-      scorer.calculateScore.mockResolvedValueOnce(score1).mockResolvedValueOnce(score2);
+      scorer.calculateScore
+        .mockResolvedValueOnce(score1)
+        .mockResolvedValueOnce(score2);
 
       const result = await service.getAllNodeScores('job-1');
 
@@ -388,7 +409,7 @@ describe('DistributionOrchestratorService', () => {
         'node-1',
         job,
         'encoding error',
-        'ERR_FFMPEG'
+        'ERR_FFMPEG',
       );
     });
 
@@ -436,9 +457,22 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should prefer node with available capacity and GPU', async () => {
-      const gpuNode = { ...mockNode, id: 'gpu-1', hasGpu: true, _count: { jobs: 0 } };
-      const cpuNode = { ...mockNode, id: 'cpu-1', hasGpu: false, _count: { jobs: 2 } };
-      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([cpuNode, gpuNode]);
+      const gpuNode = {
+        ...mockNode,
+        id: 'gpu-1',
+        hasGpu: true,
+        _count: { jobs: 0 },
+      };
+      const cpuNode = {
+        ...mockNode,
+        id: 'cpu-1',
+        hasGpu: false,
+        _count: { jobs: 2 },
+      };
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([
+        cpuNode,
+        gpuNode,
+      ]);
 
       const result = await service.findBestNodeForNewJob('lib-node-1');
 
@@ -446,9 +480,22 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should penalize at-capacity nodes', async () => {
-      const fullNode = { ...mockNode, id: 'full', maxWorkers: 2, _count: { jobs: 2 } };
-      const freeNode = { ...mockNode, id: 'free', maxWorkers: 4, _count: { jobs: 0 } };
-      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([fullNode, freeNode]);
+      const fullNode = {
+        ...mockNode,
+        id: 'full',
+        maxWorkers: 2,
+        _count: { jobs: 2 },
+      };
+      const freeNode = {
+        ...mockNode,
+        id: 'free',
+        maxWorkers: 4,
+        _count: { jobs: 0 },
+      };
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([
+        fullNode,
+        freeNode,
+      ]);
 
       const result = await service.findBestNodeForNewJob('lib-node-1');
 
@@ -457,8 +504,15 @@ describe('DistributionOrchestratorService', () => {
 
     it('should exclude nodes outside schedule window', async () => {
       const scheduled = { ...mockNode, id: 'scheduled', _count: { jobs: 0 } };
-      const unscheduled = { ...mockNode, id: 'unscheduled', _count: { jobs: 0 } };
-      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([unscheduled, scheduled]);
+      const unscheduled = {
+        ...mockNode,
+        id: 'unscheduled',
+        _count: { jobs: 0 },
+      };
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([
+        unscheduled,
+        scheduled,
+      ]);
 
       (scheduleChecker.isNodeInAllowedWindow as jest.Mock)
         .mockReturnValueOnce(false) // unscheduled
@@ -473,7 +527,9 @@ describe('DistributionOrchestratorService', () => {
       const node = { ...mockNode, _count: { jobs: 0 } };
       mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([node]);
 
-      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(false);
+      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(
+        false,
+      );
 
       const result = await service.findBestNodeForNewJob('lib-node-1');
 
@@ -495,7 +551,10 @@ describe('DistributionOrchestratorService', () => {
         hasSharedStorage: false,
         _count: { jobs: 0 },
       };
-      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([libNode, otherNode]);
+      mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([
+        libNode,
+        otherNode,
+      ]);
 
       const result = await service.findBestNodeForNewJob('lib-node');
 
@@ -531,7 +590,11 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should skip nodes where getNodeCapacity returns null', async () => {
-      mockNodeRepo.findOnlineIds.mockResolvedValue([{ id: 'n1' }, { id: 'n2' }, { id: 'n3' }]);
+      mockNodeRepo.findOnlineIds.mockResolvedValue([
+        { id: 'n1' },
+        { id: 'n2' },
+        { id: 'n3' },
+      ]);
       loadMonitor.getNodeCapacity
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
@@ -596,12 +659,17 @@ describe('DistributionOrchestratorService', () => {
     it('should fetch active config then update by id', async () => {
       const config = { id: 'cfg-1', isActive: true };
       mockDistConfigRepo.findOrCreateDefault.mockResolvedValue(config);
-      mockDistConfigRepo.updateById.mockResolvedValue({ ...config, loadWeight: 0.5 });
+      mockDistConfigRepo.updateById.mockResolvedValue({
+        ...config,
+        loadWeight: 0.5,
+      });
 
       const result = await service.updateConfig({ loadWeight: 0.5 });
 
       expect(mockDistConfigRepo.findOrCreateDefault).toHaveBeenCalled();
-      expect(mockDistConfigRepo.updateById).toHaveBeenCalledWith('cfg-1', { loadWeight: 0.5 });
+      expect(mockDistConfigRepo.updateById).toHaveBeenCalledWith('cfg-1', {
+        loadWeight: 0.5,
+      });
       expect(result).toMatchObject({ loadWeight: 0.5 });
     });
   });
@@ -657,14 +725,24 @@ describe('DistributionOrchestratorService', () => {
       // findOptimalNode internals
       mockJobRepo.findByIdWithLibrary.mockResolvedValue(assignedJob);
       mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
-      scorer.calculateScore.mockResolvedValue({ ...mockScore, nodeId: optimalNodeId });
+      scorer.calculateScore.mockResolvedValue({
+        ...mockScore,
+        nodeId: optimalNodeId,
+      });
 
       // currentNode and candidateNode lookups
       mockNodeRepo.findByIdWithActiveJobCount
-        .mockResolvedValueOnce({ ...mockNode, id: 'node-old', name: 'Old Node' })
+        .mockResolvedValueOnce({
+          ...mockNode,
+          id: 'node-old',
+          name: 'Old Node',
+        })
         .mockResolvedValueOnce(mockNode);
 
-      scorer.shouldMigrate.mockResolvedValue({ shouldMigrate: true, scoreDelta: 15 });
+      scorer.shouldMigrate.mockResolvedValue({
+        shouldMigrate: true,
+        scoreDelta: 15,
+      });
 
       // assignJob internals
       mockJobRepo.atomicUpdateMany.mockResolvedValue({ count: 1 });
@@ -683,13 +761,19 @@ describe('DistributionOrchestratorService', () => {
 
       mockJobRepo.findByIdWithLibrary.mockResolvedValue(assignedJob);
       mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
-      scorer.calculateScore.mockResolvedValue({ ...mockScore, nodeId: 'node-1' });
+      scorer.calculateScore.mockResolvedValue({
+        ...mockScore,
+        nodeId: 'node-1',
+      });
 
       mockNodeRepo.findByIdWithActiveJobCount
         .mockResolvedValueOnce({ ...mockNode, id: 'node-old' })
         .mockResolvedValueOnce(mockNode);
 
-      scorer.shouldMigrate.mockResolvedValue({ shouldMigrate: false, scoreDelta: 2 });
+      scorer.shouldMigrate.mockResolvedValue({
+        shouldMigrate: false,
+        scoreDelta: 2,
+      });
 
       const result = await service.rebalanceJobs();
 
@@ -713,7 +797,10 @@ describe('DistributionOrchestratorService', () => {
 
       mockJobRepo.findByIdWithLibrary.mockResolvedValue(assignedJob);
       mockNodeRepo.findOnlineWithActiveJobCount.mockResolvedValue([mockNode]);
-      scorer.calculateScore.mockResolvedValue({ ...mockScore, nodeId: 'node-1' });
+      scorer.calculateScore.mockResolvedValue({
+        ...mockScore,
+        nodeId: 'node-1',
+      });
 
       mockNodeRepo.findByIdWithActiveJobCount.mockResolvedValue(null); // currentNode null
 
@@ -727,7 +814,12 @@ describe('DistributionOrchestratorService', () => {
 
   describe('autoDistributeJobs', () => {
     it('should do nothing when all nodes are at capacity', async () => {
-      const fullNode = { ...mockNode, id: 'n1', maxWorkers: 2, _count: { jobs: 2 } };
+      const fullNode = {
+        ...mockNode,
+        id: 'n1',
+        maxWorkers: 2,
+        _count: { jobs: 2 },
+      };
       mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([fullNode]);
 
       await service.autoDistributeJobs();
@@ -736,9 +828,16 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should skip node outside schedule window', async () => {
-      const freeNode = { ...mockNode, id: 'n1', maxWorkers: 4, _count: { jobs: 0 } };
+      const freeNode = {
+        ...mockNode,
+        id: 'n1',
+        maxWorkers: 4,
+        _count: { jobs: 0 },
+      };
       mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([freeNode]);
-      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(false);
+      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(
+        false,
+      );
 
       await service.autoDistributeJobs();
 
@@ -746,11 +845,23 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should move jobs to nodes with available slots', async () => {
-      const freeNode = { ...mockNode, id: 'n1', maxWorkers: 4, _count: { jobs: 1 } };
+      const freeNode = {
+        ...mockNode,
+        id: 'n1',
+        maxWorkers: 4,
+        _count: { jobs: 1 },
+      };
       mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([freeNode]);
-      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(true);
+      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(
+        true,
+      );
 
-      const queuedJob = { ...mockJob, id: 'job-q', updatedAt: new Date(), nodeId: 'other-node' };
+      const queuedJob = {
+        ...mockJob,
+        id: 'job-q',
+        updatedAt: new Date(),
+        nodeId: 'other-node',
+      };
       mockJobRepo.findQueuedExcludingNode.mockResolvedValue([queuedJob]);
       mockJobRepo.atomicUpdateMany.mockResolvedValue({ count: 1 });
       mockJobRepo.countForNode.mockResolvedValue(2);
@@ -758,15 +869,29 @@ describe('DistributionOrchestratorService', () => {
       await service.autoDistributeJobs();
 
       expect(mockJobRepo.atomicUpdateMany).toHaveBeenCalled();
-      expect(mockNodeRepo.updateById).toHaveBeenCalledWith('n1', { queuedJobCount: 2 });
+      expect(mockNodeRepo.updateById).toHaveBeenCalledWith('n1', {
+        queuedJobCount: 2,
+      });
     });
 
     it('should skip job assignment when atomicUpdateMany returns count 0', async () => {
-      const freeNode = { ...mockNode, id: 'n1', maxWorkers: 4, _count: { jobs: 0 } };
+      const freeNode = {
+        ...mockNode,
+        id: 'n1',
+        maxWorkers: 4,
+        _count: { jobs: 0 },
+      };
       mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([freeNode]);
-      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(true);
+      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(
+        true,
+      );
 
-      const queuedJob = { ...mockJob, id: 'job-q', updatedAt: new Date(), nodeId: 'other-node' };
+      const queuedJob = {
+        ...mockJob,
+        id: 'job-q',
+        updatedAt: new Date(),
+        nodeId: 'other-node',
+      };
       mockJobRepo.findQueuedExcludingNode.mockResolvedValue([queuedJob]);
       mockJobRepo.atomicUpdateMany.mockResolvedValue({ count: 0 }); // race lost
       mockJobRepo.countForNode.mockResolvedValue(0);
@@ -778,9 +903,16 @@ describe('DistributionOrchestratorService', () => {
     });
 
     it('should not query jobs when node has no jobs to distribute', async () => {
-      const freeNode = { ...mockNode, id: 'n1', maxWorkers: 4, _count: { jobs: 1 } };
+      const freeNode = {
+        ...mockNode,
+        id: 'n1',
+        maxWorkers: 4,
+        _count: { jobs: 1 },
+      };
       mockNodeRepo.findOnlineWithAllJobCount.mockResolvedValue([freeNode]);
-      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(true);
+      (scheduleChecker.isNodeInAllowedWindow as jest.Mock).mockReturnValue(
+        true,
+      );
       mockJobRepo.findQueuedExcludingNode.mockResolvedValue([]); // no jobs available
 
       await service.autoDistributeJobs();

@@ -24,6 +24,7 @@ Reduce storage by 40-60% while maintaining quality. Perfect for Plex, Jellyfin, 
 BitBonsai is currently in **public beta**. Core features are stable, but you may encounter bugs.
 
 **What to expect:**
+
 - ✅ Core encoding features work reliably
 - ✅ Multi-node distribution functional
 - ✅ Hardware acceleration (NVIDIA, Intel QSV, AMD)
@@ -44,13 +45,13 @@ BitBonsai is a **self-hosted video encoding platform** that automatically conver
 
 ### Why BitBonsai?
 
-| Traditional Tools | BitBonsai |
-|-------------------|-----------|
-| 47+ plugins to configure | Zero plugins - everything built-in |
-| Crashes lose all progress | **TRUE RESUME** - never restart from 0% |
-| Manual retry on failures | **Auto-Heal** - self-recovers from crashes |
-| Complex, confusing UI | Clean, intuitive interface |
-| Single machine only | Multi-node distributed encoding |
+| Traditional Tools         | BitBonsai                                  |
+| ------------------------- | ------------------------------------------ |
+| 47+ plugins to configure  | Zero plugins - everything built-in         |
+| Crashes lose all progress | **TRUE RESUME** - never restart from 0%    |
+| Manual retry on failures  | **Auto-Heal** - self-recovers from crashes |
+| Complex, confusing UI     | Clean, intuitive interface                 |
+| Single machine only       | Multi-node distributed encoding            |
 
 ---
 
@@ -58,49 +59,49 @@ BitBonsai is a **self-hosted video encoding platform** that automatically conver
 
 ### Core Encoding
 
-| Feature | Description |
-|---------|-------------|
-| 🎬 **Smart Codec Detection** | Automatically identifies H.264, H.265, AV1, VP9 and legacy codecs |
-| 🔄 **TRUE RESUME** | Resume interrupted jobs from exact timestamp - never lose progress |
-| 🛡️ **Auto-Heal System** | 4-layer crash recovery automatically resurrects orphaned jobs |
-| ⚡ **Hardware Acceleration** | NVIDIA NVENC, Intel QuickSync, AMD AMF support |
-| 📊 **Real-Time Progress** | Live FPS, ETA, and encoding statistics |
-| 💾 **Space Savings Preview** | See potential savings before encoding (40-60% typical) |
+| Feature                      | Description                                                        |
+| ---------------------------- | ------------------------------------------------------------------ |
+| 🎬 **Smart Codec Detection** | Automatically identifies H.264, H.265, AV1, VP9 and legacy codecs  |
+| 🔄 **TRUE RESUME**           | Resume interrupted jobs from exact timestamp - never lose progress |
+| 🛡️ **Auto-Heal System**      | 4-layer crash recovery automatically resurrects orphaned jobs      |
+| ⚡ **Hardware Acceleration** | NVIDIA NVENC, Intel QuickSync, AMD AMF support                     |
+| 📊 **Real-Time Progress**    | Live FPS, ETA, and encoding statistics                             |
+| 💾 **Space Savings Preview** | See potential savings before encoding (40-60% typical)             |
 
 ### Library Management
 
-| Feature | Description |
-|---------|-------------|
-| 📚 **Multiple Libraries** | Organize Movies, TV Shows, Anime separately |
-| 🎯 **Smart Policies** | Create encoding rules once, apply to entire libraries |
-| 🔍 **Library Filtering** | Filter queue by library in multi-library setups |
+| Feature                    | Description                                                     |
+| -------------------------- | --------------------------------------------------------------- |
+| 📚 **Multiple Libraries**  | Organize Movies, TV Shows, Anime separately                     |
+| 🎯 **Smart Policies**      | Create encoding rules once, apply to entire libraries           |
+| 🔍 **Library Filtering**   | Filter queue by library in multi-library setups                 |
 | 📈 **Analytics Dashboard** | Visualize codec distribution, storage savings, encoding history |
 
 ### Multi-Node Distribution
 
-| Feature | Description |
-|---------|-------------|
-| 🌐 **Distributed Encoding** | Spread work across multiple machines |
-| 🔗 **Auto-Discovery** | mDNS/Bonjour for automatic node detection |
-| 🔑 **SSH Key Exchange** | Automatic passwordless authentication between nodes |
-| 📡 **NFS Auto-Mount** | Shared storage detection and configuration |
-| 📊 **Per-Node Stats** | Monitor performance of each encoding node |
+| Feature                     | Description                                         |
+| --------------------------- | --------------------------------------------------- |
+| 🌐 **Distributed Encoding** | Spread work across multiple machines                |
+| 🔗 **Auto-Discovery**       | mDNS/Bonjour for automatic node detection           |
+| 🔑 **SSH Key Exchange**     | Automatic passwordless authentication between nodes |
+| 📡 **NFS Auto-Mount**       | Shared storage detection and configuration          |
+| 📊 **Per-Node Stats**       | Monitor performance of each encoding node           |
 
 ### Reliability
 
-| Feature | Description |
-|---------|-------------|
-| ♻️ **Job Retry** | Automatic retry with exponential backoff |
-| 🏥 **Health Checks** | Continuous monitoring of encoding jobs |
+| Feature              | Description                                          |
+| -------------------- | ---------------------------------------------------- |
+| ♻️ **Job Retry**     | Automatic retry with exponential backoff             |
+| 🏥 **Health Checks** | Continuous monitoring of encoding jobs               |
 | 🔒 **Safe Encoding** | Original files preserved until verification succeeds |
-| 📝 **Audit Trail** | Complete history of all encoding decisions |
+| 📝 **Audit Trail**   | Complete history of all encoding decisions           |
 
 ### Integrations
 
-| Feature | Description |
-|---------|-------------|
-| 🎬 **Jellyfin** | Auto-refresh libraries after encoding |
-| 📺 **Plex** | Library scan triggers (coming soon) |
+| Feature              | Description                                |
+| -------------------- | ------------------------------------------ |
+| 🎬 **Jellyfin**      | Auto-refresh libraries after encoding      |
+| 📺 **Plex**          | Library scan triggers (coming soon)        |
 | 🔔 **Notifications** | Discord, Slack, email alerts (coming soon) |
 
 ---
@@ -134,15 +135,15 @@ services:
     restart: unless-stopped
     environment:
       - TZ=America/New_York
-      - ADMIN_PASSWORD=changeme        # Change this!
+      - ADMIN_PASSWORD=changeme # Change this!
       - DATABASE_URL=file:/data/bitbonsai.db
       - MEDIA_PATHS=/media,/downloads
       - ENCODING_TEMP_PATH=/cache
     volumes:
-      - /mnt/media:/media:rw           # Your media library
-      - /mnt/downloads:/downloads:rw   # Optional: Downloads folder
-      - ./appdata:/data:rw             # Database & config
-      - ./cache:/cache:rw              # Temp encoding files (use SSD!)
+      - /mnt/media:/media:rw # Your media library
+      - /mnt/downloads:/downloads:rw # Optional: Downloads folder
+      - ./appdata:/data:rw # Database & config
+      - ./cache:/cache:rw # Temp encoding files (use SSD!)
     # For NVIDIA GPU:
     # runtime: nvidia
     # environment:
@@ -170,6 +171,7 @@ Access at `http://YOUR-SERVER:8108`
 ### 1. First Login
 
 Navigate to `http://YOUR-SERVER:8108` and log in with:
+
 - **Username:** `admin`
 - **Password:** Your configured `ADMIN_PASSWORD`
 
@@ -209,16 +211,20 @@ Navigate to `http://YOUR-SERVER:8108` and log in with:
 ## 📸 Screenshots
 
 ### Dashboard Overview
-*Clean, minimal dashboard showing node status, active jobs, and storage savings at a glance.*
+
+_Clean, minimal dashboard showing node status, active jobs, and storage savings at a glance._
 
 ### Queue Management
-*Real-time job progress with FPS, ETA, and priority controls. Filter by library, retry failed jobs.*
+
+_Real-time job progress with FPS, ETA, and priority controls. Filter by library, retry failed jobs._
 
 ### Policy Configuration
-*Create smart encoding rules with codec selection, quality presets, and hardware acceleration options.*
+
+_Create smart encoding rules with codec selection, quality presets, and hardware acceleration options._
 
 ### Multi-Node View
-*Monitor distributed encoding across multiple machines with per-node statistics.*
+
+_Monitor distributed encoding across multiple machines with per-node statistics._
 
 > 📷 Screenshots coming soon - beta UI still being polished!
 
@@ -228,28 +234,29 @@ Navigate to `http://YOUR-SERVER:8108` and log in with:
 
 ### Path Mappings
 
-| Container Path | Purpose | Recommendation |
-|----------------|---------|----------------|
-| `/media` | Media library | Your movies/TV shows |
-| `/downloads` | Downloads folder | For *arr integration |
-| `/data` | Database & config | Persistent storage |
-| `/cache` | Temp encoding files | **Use SSD for 10-100x faster encoding!** |
+| Container Path | Purpose             | Recommendation                           |
+| -------------- | ------------------- | ---------------------------------------- |
+| `/media`       | Media library       | Your movies/TV shows                     |
+| `/downloads`   | Downloads folder    | For \*arr integration                    |
+| `/data`        | Database & config   | Persistent storage                       |
+| `/cache`       | Temp encoding files | **Use SSD for 10-100x faster encoding!** |
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ADMIN_PASSWORD` | (required) | Admin login password |
-| `TZ` | `UTC` | Timezone (e.g., `America/New_York`) |
-| `DATABASE_URL` | `file:/data/bitbonsai.db` | Database location |
-| `MEDIA_PATHS` | `/media` | Comma-separated scan paths |
-| `ENCODING_TEMP_PATH` | `/cache` | Temp file location |
-| `MAX_CONCURRENT_JOBS` | `2` | Parallel encoding jobs |
-| `LOG_LEVEL` | `info` | Logging verbosity |
+| Variable              | Default                   | Description                         |
+| --------------------- | ------------------------- | ----------------------------------- |
+| `ADMIN_PASSWORD`      | (required)                | Admin login password                |
+| `TZ`                  | `UTC`                     | Timezone (e.g., `America/New_York`) |
+| `DATABASE_URL`        | `file:/data/bitbonsai.db` | Database location                   |
+| `MEDIA_PATHS`         | `/media`                  | Comma-separated scan paths          |
+| `ENCODING_TEMP_PATH`  | `/cache`                  | Temp file location                  |
+| `MAX_CONCURRENT_JOBS` | `2`                       | Parallel encoding jobs              |
+| `LOG_LEVEL`           | `info`                    | Logging verbosity                   |
 
 ### Hardware Acceleration
 
 #### NVIDIA GPU (NVENC)
+
 ```yaml
 services:
   bitbonsai:
@@ -259,6 +266,7 @@ services:
 ```
 
 #### Intel QuickSync
+
 ```yaml
 services:
   bitbonsai:
@@ -267,6 +275,7 @@ services:
 ```
 
 #### AMD GPU (AMF)
+
 ```yaml
 services:
   bitbonsai:
@@ -302,7 +311,7 @@ BitBonsai can distribute encoding across multiple machines for faster processing
 services:
   bitbonsai:
     image: lucidfabrics/bitbonsai:latest
-    network_mode: host  # Required for node discovery
+    network_mode: host # Required for node discovery
     environment:
       - NODE_ROLE=MAIN
       - ADMIN_PASSWORD=changeme
@@ -322,22 +331,22 @@ services:
       - NODE_ROLE=LINKED
       - MAIN_NODE_URL=http://192.168.1.100:8108
     volumes:
-      - /mnt/media:/media  # Same NFS mount as MAIN
+      - /mnt/media:/media # Same NFS mount as MAIN
 ```
 
 ### Node Discovery Methods
 
-| Method | Requirements | Best For |
-|--------|--------------|----------|
-| **Auto-Discovery (mDNS)** | `network_mode: host` | Home networks |
-| **Manual Pairing** | Enter MAIN URL | VLANs, VPNs, enterprise |
+| Method                    | Requirements         | Best For                |
+| ------------------------- | -------------------- | ----------------------- |
+| **Auto-Discovery (mDNS)** | `network_mode: host` | Home networks           |
+| **Manual Pairing**        | Enter MAIN URL       | VLANs, VPNs, enterprise |
 
 ### Storage Sharing
 
-| Type | Description |
-|------|-------------|
+| Type                         | Description                                                  |
+| ---------------------------- | ------------------------------------------------------------ |
 | **Shared Storage (NFS/SMB)** | CHILD mounts same network share as MAIN - zero file transfer |
-| **File Transfer (rsync)** | Files copied via SSH before encoding - works anywhere |
+| **File Transfer (rsync)**    | Files copied via SSH before encoding - works anywhere        |
 
 BitBonsai automatically detects shared storage and chooses the optimal method.
 
@@ -352,12 +361,14 @@ Traditional encoders restart from 0% if interrupted. A 12-hour job crashes at 98
 ### BitBonsai's Solution
 
 **TRUE RESUME** tracks encoding progress to the exact frame. After a crash:
+
 1. Detects interrupted jobs on startup
 2. Validates temp files exist
 3. Resumes from exact timestamp (e.g., `01:45:30`)
 4. No manual intervention required
 
 **Example:**
+
 ```
 Job: "Avengers Endgame 4K.mkv" (25GB, 3h runtime)
 Crashed at: 67% (2h encoded)
@@ -367,11 +378,11 @@ BitBonsai: Resume from 02:00:00 (save 2 hours)
 
 ### Auto-Heal 4-Layer Defense
 
-| Layer | Purpose |
-|-------|---------|
-| **1. Initial Delay** | Container initialization |
-| **2. Volume Probing** | Wait for Docker mounts |
-| **3. Stabilization** | NFS/FUSE settling time |
+| Layer                  | Purpose                      |
+| ---------------------- | ---------------------------- |
+| **1. Initial Delay**   | Container initialization     |
+| **2. Volume Probing**  | Wait for Docker mounts       |
+| **3. Stabilization**   | NFS/FUSE settling time       |
 | **4. Temp Validation** | Verify partial encodes exist |
 
 This handles Docker, Unraid, Kubernetes, and complex storage setups.
@@ -386,28 +397,33 @@ This handles Docker, Unraid, Kubernetes, and complex storage setups.
 **Input:** H.264, H.265/HEVC, AV1, VP9, MPEG-2, MPEG-4, and most legacy codecs
 
 **Output:** H.265/HEVC, AV1 (coming soon)
+
 </details>
 
 <details>
 <summary><b>Will this affect my video quality?</b></summary>
 
 No visible quality loss with default settings (CRF 22-23). BitBonsai uses conservative presets that prioritize quality. You can adjust quality settings per policy.
+
 </details>
 
 <details>
 <summary><b>How much storage will I save?</b></summary>
 
 Typical savings:
+
 - **H.264 → H.265:** 40-60% smaller
 - **H.264 → AV1:** 50-70% smaller
 
 BitBonsai shows estimated savings before encoding.
+
 </details>
 
 <details>
 <summary><b>Does this work with Plex/Jellyfin/Emby?</b></summary>
 
 Yes! BitBonsai can trigger library refreshes after encoding. Currently supports Jellyfin natively, with Plex/Emby coming soon.
+
 </details>
 
 <details>
@@ -422,41 +438,46 @@ Yes! BitBonsai can trigger library refreshes after encoding. Currently supports 
 <summary><b>Can I encode while streaming?</b></summary>
 
 Yes! BitBonsai runs as a background process. You can continue streaming while encoding happens. Use the "Nice Level" setting to prioritize streaming.
+
 </details>
 
 <details>
 <summary><b>What about audio and subtitles?</b></summary>
 
 By default, all audio tracks and subtitles are preserved. You can configure this per policy (e.g., keep only specific languages).
+
 </details>
 
 <details>
 <summary><b>Does it work on Windows?</b></summary>
 
 BitBonsai runs anywhere Docker runs. Officially supported: Linux (Unraid, Ubuntu, Debian), macOS. Windows via Docker Desktop works but is community-supported.
+
 </details>
 
 <details>
 <summary><b>Why does mDNS discovery not work?</b></summary>
 
 mDNS requires `network_mode: host` on your Docker container. Standard bridge networking blocks mDNS broadcasts. Use manual pairing if you can't use host networking.
+
 </details>
 
 <details>
 <summary><b>What if my server crashes during encoding?</b></summary>
 
 BitBonsai's TRUE RESUME system automatically detects interrupted jobs and resumes from the exact timestamp. Zero manual intervention required.
+
 </details>
 
 ---
 
 ## 🐛 Known Issues (Beta)
 
-| Issue | Status | Workaround |
-|-------|--------|------------|
-| UI flicker on queue refresh | Investigating | Refresh page |
-| AV1 encoding not yet available | In development | Use H.265 for now |
-| Plex integration incomplete | In development | Manual library scan |
+| Issue                          | Status         | Workaround          |
+| ------------------------------ | -------------- | ------------------- |
+| UI flicker on queue refresh    | Investigating  | Refresh page        |
+| AV1 encoding not yet available | In development | Use H.265 for now   |
+| Plex integration incomplete    | In development | Manual library scan |
 
 Report new issues: [GitHub Issues](https://github.com/wassimmehanna/bitbonsai/issues)
 
@@ -465,6 +486,7 @@ Report new issues: [GitHub Issues](https://github.com/wassimmehanna/bitbonsai/is
 ## 🗺️ Roadmap
 
 ### Current (Beta)
+
 - ✅ Core encoding (H.264 → H.265)
 - ✅ Multi-node distribution
 - ✅ Hardware acceleration
@@ -472,6 +494,7 @@ Report new issues: [GitHub Issues](https://github.com/wassimmehanna/bitbonsai/is
 - ✅ Jellyfin integration
 
 ### Coming Soon
+
 - 🔄 AV1 encoding support
 - 🔄 Plex/Emby integration
 - 🔄 Webhook notifications (Discord, Slack)
@@ -479,6 +502,7 @@ Report new issues: [GitHub Issues](https://github.com/wassimmehanna/bitbonsai/is
 - 🔄 Advanced analytics
 
 ### Future
+
 - 📋 Mobile app
 - 📋 Cloud storage support (S3, B2)
 - 📋 Machine learning quality optimization
@@ -488,10 +512,12 @@ Report new issues: [GitHub Issues](https://github.com/wassimmehanna/bitbonsai/is
 ## 📞 Support & Feedback
 
 ### Beta Feedback
+
 - **Issues:** [GitHub Issues](https://github.com/wassimmehanna/bitbonsai/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/wassimmehanna/bitbonsai/discussions)
 
 ### Community
+
 - **Discord:** Coming soon
 
 ---

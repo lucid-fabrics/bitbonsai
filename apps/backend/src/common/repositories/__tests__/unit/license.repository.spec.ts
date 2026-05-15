@@ -40,7 +40,10 @@ describe('LicenseRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [LicenseRepository, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [
+        LicenseRepository,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
     }).compile();
 
     repository = module.get<LicenseRepository>(LicenseRepository);
@@ -57,7 +60,9 @@ describe('LicenseRepository', () => {
       const result = await repository.findById('lic-1');
 
       expect(result).toEqual(mockLicense);
-      expect(mockPrismaLicense.findUnique).toHaveBeenCalledWith({ where: { id: 'lic-1' } });
+      expect(mockPrismaLicense.findUnique).toHaveBeenCalledWith({
+        where: { id: 'lic-1' },
+      });
     });
 
     it('should return null when not found', async () => {
@@ -71,12 +76,15 @@ describe('LicenseRepository', () => {
 
   describe('findByIdWithSelect', () => {
     it('should return selected fields only', async () => {
-      mockPrismaLicense.findUnique.mockResolvedValue({ id: 'lic-1', status: LicenseStatus.ACTIVE });
+      mockPrismaLicense.findUnique.mockResolvedValue({
+        id: 'lic-1',
+        status: LicenseStatus.ACTIVE,
+      });
 
-      const result = await repository.findByIdWithSelect<{ id: string; status: LicenseStatus }>(
-        'lic-1',
-        { id: true, status: true }
-      );
+      const result = await repository.findByIdWithSelect<{
+        id: string;
+        status: LicenseStatus;
+      }>('lic-1', { id: true, status: true });
 
       expect(result).toEqual({ id: 'lic-1', status: LicenseStatus.ACTIVE });
       expect(mockPrismaLicense.findUnique).toHaveBeenCalledWith({
@@ -93,7 +101,9 @@ describe('LicenseRepository', () => {
       const result = await repository.findByKey('KEY-ABC-123');
 
       expect(result).toEqual(mockLicense);
-      expect(mockPrismaLicense.findUnique).toHaveBeenCalledWith({ where: { key: 'KEY-ABC-123' } });
+      expect(mockPrismaLicense.findUnique).toHaveBeenCalledWith({
+        where: { key: 'KEY-ABC-123' },
+      });
     });
 
     it('should return null when key not found', async () => {
@@ -110,9 +120,12 @@ describe('LicenseRepository', () => {
       const withUser = { ...mockLicense, user: { id: 'u-1' } };
       mockPrismaLicense.findUnique.mockResolvedValue(withUser);
 
-      const result = await repository.findByKeyWithInclude<typeof withUser>('KEY-ABC-123', {
-        user: true,
-      });
+      const result = await repository.findByKeyWithInclude<typeof withUser>(
+        'KEY-ABC-123',
+        {
+          user: true,
+        },
+      );
 
       expect(result).toEqual(withUser);
       expect(mockPrismaLicense.findUnique).toHaveBeenCalledWith({
@@ -222,7 +235,9 @@ describe('LicenseRepository', () => {
       const updated = { ...mockLicense, status: LicenseStatus.EXPIRED };
       mockPrismaLicense.update.mockResolvedValue(updated);
 
-      const result = await repository.updateById('lic-1', { status: LicenseStatus.EXPIRED });
+      const result = await repository.updateById('lic-1', {
+        status: LicenseStatus.EXPIRED,
+      });
 
       expect(result).toEqual(updated);
       expect(mockPrismaLicense.update).toHaveBeenCalledWith({
@@ -237,7 +252,9 @@ describe('LicenseRepository', () => {
       const updated = { ...mockLicense, maxNodes: 5 };
       mockPrismaLicense.update.mockResolvedValue(updated);
 
-      const result = await repository.updateByKey('KEY-ABC-123', { maxNodes: 5 });
+      const result = await repository.updateByKey('KEY-ABC-123', {
+        maxNodes: 5,
+      });
 
       expect(result).toEqual(updated);
       expect(mockPrismaLicense.update).toHaveBeenCalledWith({
@@ -254,7 +271,9 @@ describe('LicenseRepository', () => {
       const result = await repository.deleteById('lic-1');
 
       expect(result).toEqual(mockLicense);
-      expect(mockPrismaLicense.delete).toHaveBeenCalledWith({ where: { id: 'lic-1' } });
+      expect(mockPrismaLicense.delete).toHaveBeenCalledWith({
+        where: { id: 'lic-1' },
+      });
     });
   });
 
@@ -275,7 +294,7 @@ describe('LicenseRepository', () => {
       const result = await repository.upsertByEmail(
         'user@example.com',
         { maxNodes: 2 },
-        createData
+        createData,
       );
 
       expect(result).toEqual(mockLicense);
@@ -295,7 +314,9 @@ describe('LicenseRepository', () => {
         create: jest.fn(),
       };
       const tx = { license: txLicense };
-      mockPrisma.$transaction.mockImplementation((cb: (tx: unknown) => Promise<unknown>) => cb(tx));
+      mockPrisma.$transaction.mockImplementation(
+        (cb: (tx: unknown) => Promise<unknown>) => cb(tx),
+      );
 
       const result = await repository.transactionFindFirstAndUpsert({
         status: LicenseStatus.ACTIVE,
@@ -315,7 +336,9 @@ describe('LicenseRepository', () => {
         create: jest.fn().mockResolvedValue(mockLicense),
       };
       const tx = { license: txLicense };
-      mockPrisma.$transaction.mockImplementation((cb: (tx: unknown) => Promise<unknown>) => cb(tx));
+      mockPrisma.$transaction.mockImplementation(
+        (cb: (tx: unknown) => Promise<unknown>) => cb(tx),
+      );
 
       const result = await repository.transactionFindFirstAndUpsert({
         key: 'KEY-NEW',
@@ -340,7 +363,10 @@ describe('LicenseRepository', () => {
 
       expect(result[LicenseStatus.ACTIVE]).toBe(3);
       expect(result[LicenseStatus.EXPIRED]).toBe(1);
-      expect(mockPrismaLicense.groupBy).toHaveBeenCalledWith({ by: ['status'], _count: true });
+      expect(mockPrismaLicense.groupBy).toHaveBeenCalledWith({
+        by: ['status'],
+        _count: true,
+      });
     });
   });
 });

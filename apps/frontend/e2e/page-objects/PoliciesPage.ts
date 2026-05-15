@@ -93,7 +93,9 @@ export class PoliciesPage extends BasePage {
    * Get CRF quality value
    */
   async getCRFQualityValue(): Promise<string> {
-    const crfInput = this.page.locator('input[type="range"], input[name="targetQuality"]');
+    const crfInput = this.page.locator(
+      'input[type="range"], input[name="targetQuality"]',
+    );
     return (await crfInput.inputValue()) || '';
   }
 
@@ -109,7 +111,9 @@ export class PoliciesPage extends BasePage {
    * Close the policy form modal
    */
   async closeForm(): Promise<void> {
-    const closeButton = this.page.getByRole('button', { name: /close|cancel/i });
+    const closeButton = this.page.getByRole('button', {
+      name: /close|cancel/i,
+    });
     await closeButton.click();
   }
 

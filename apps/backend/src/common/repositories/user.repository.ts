@@ -57,7 +57,7 @@ export class UserRepository {
       refreshToken?: string | null;
       refreshTokenExpiresAt?: Date | null;
       lastLoginAt?: Date;
-    }
+    },
   ): Promise<User> {
     return this.prisma.user.update({
       where: { id },

@@ -1,5 +1,9 @@
 import { HttpService } from '@nestjs/axios';
-import { type INestApplication, NotFoundException, ValidationPipe } from '@nestjs/common';
+import {
+  type INestApplication,
+  NotFoundException,
+  ValidationPipe,
+} from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { type Job } from '@prisma/client';
 import request from 'supertest';
@@ -101,7 +105,9 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
       .compile();
 
     app = module.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
   });
 
@@ -122,7 +128,10 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
   // -------------------------------------------------------------------------
   describe('GET /queue', () => {
     it('returns 200 with paginated jobs list', async () => {
-      const jobs = [makeJob(), makeJob({ id: 'job-2', filePath: '/media/show.mkv' })];
+      const jobs = [
+        makeJob(),
+        makeJob({ id: 'job-2', filePath: '/media/show.mkv' }),
+      ];
       mockQueueService.findAll.mockResolvedValue({
         jobs,
         total: 2,
@@ -147,7 +156,9 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
         totalPages: 1,
       });
 
-      const res = await request(app.getHttpServer()).get('/queue?stage=ENCODING').expect(200);
+      const res = await request(app.getHttpServer())
+        .get('/queue?stage=ENCODING')
+        .expect(200);
 
       expect(res.body.jobs[0].stage).toBe('ENCODING');
       const [stage] = mockQueueService.findAll.mock.calls[0];
@@ -178,14 +189,18 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
       const job = makeJob();
       mockQueueService.findOne.mockResolvedValue(job);
 
-      const res = await request(app.getHttpServer()).get('/queue/job-1').expect(200);
+      const res = await request(app.getHttpServer())
+        .get('/queue/job-1')
+        .expect(200);
 
       expect(res.body.id).toBe('job-1');
       expect(mockQueueService.findOne).toHaveBeenCalledWith('job-1');
     });
 
     it('returns 404 when job does not exist', async () => {
-      mockQueueService.findOne.mockRejectedValue(new NotFoundException('Job not found'));
+      mockQueueService.findOne.mockRejectedValue(
+        new NotFoundException('Job not found'),
+      );
 
       await request(app.getHttpServer()).get('/queue/missing-id').expect(404);
     });
@@ -210,7 +225,9 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
     });
 
     it('returns 404 when job not found during update', async () => {
-      mockQueueService.findOne.mockRejectedValue(new NotFoundException('Job not found'));
+      mockQueueService.findOne.mockRejectedValue(
+        new NotFoundException('Job not found'),
+      );
 
       await request(app.getHttpServer())
         .patch('/queue/missing-id')
@@ -223,7 +240,10 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
       mockNodeConfig.getNodeId.mockReturnValue('node-other');
       mockQueueService.findOne.mockResolvedValue(makeJob({ nodeId: 'node-1' }));
 
-      await request(app.getHttpServer()).patch('/queue/job-1').send({ progress: 10 }).expect(403);
+      await request(app.getHttpServer())
+        .patch('/queue/job-1')
+        .send({ progress: 10 })
+        .expect(403);
     });
   });
 
@@ -240,9 +260,13 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
     });
 
     it('returns 404 when job to delete does not exist', async () => {
-      mockQueueService.remove.mockRejectedValue(new NotFoundException('Job not found'));
+      mockQueueService.remove.mockRejectedValue(
+        new NotFoundException('Job not found'),
+      );
 
-      await request(app.getHttpServer()).delete('/queue/missing-id').expect(404);
+      await request(app.getHttpServer())
+        .delete('/queue/missing-id')
+        .expect(404);
     });
   });
 
@@ -277,7 +301,9 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
     });
 
     it('returns 404 when job to cancel does not exist', async () => {
-      mockQueueService.cancelJob.mockRejectedValue(new NotFoundException('Job not found'));
+      mockQueueService.cancelJob.mockRejectedValue(
+        new NotFoundException('Job not found'),
+      );
 
       await request(app.getHttpServer())
         .post('/queue/missing-id/cancel')
@@ -296,7 +322,11 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
 
       const res = await request(app.getHttpServer())
         .post('/queue/job-1/complete')
-        .send({ afterSizeBytes: '800000000', savedBytes: '200000000', savedPercent: 20 })
+        .send({
+          afterSizeBytes: '800000000',
+          savedBytes: '200000000',
+          savedPercent: 20,
+        })
         .expect(201);
 
       expect(res.body.stage).toBe('COMPLETED');
@@ -317,7 +347,10 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
         .expect(201);
 
       expect(res.body.stage).toBe('FAILED');
-      expect(mockQueueService.failJob).toHaveBeenCalledWith('job-1', 'FFmpeg exit code 1');
+      expect(mockQueueService.failJob).toHaveBeenCalledWith(
+        'job-1',
+        'FFmpeg exit code 1',
+      );
     });
   });
 
@@ -329,7 +362,9 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
       const requeued = makeJob({ stage: 'QUEUED' });
       mockQueueService.retryJob.mockResolvedValue(requeued);
 
-      const res = await request(app.getHttpServer()).post('/queue/job-1/retry').expect(201);
+      const res = await request(app.getHttpServer())
+        .post('/queue/job-1/retry')
+        .expect(201);
 
       expect(res.body.stage).toBe('QUEUED');
       expect(mockQueueService.retryJob).toHaveBeenCalledWith('job-1');
@@ -343,21 +378,32 @@ describe('Queue HTTP endpoints (E2E — mocked services)', () => {
     it('returns 200 with job history timeline', async () => {
       const job = makeJob();
       const history = [
-        { id: 'h1', eventType: 'FAILED', progress: 45.3, createdAt: new Date().toISOString() },
+        {
+          id: 'h1',
+          eventType: 'FAILED',
+          progress: 45.3,
+          createdAt: new Date().toISOString(),
+        },
       ];
       mockQueueService.findOne.mockResolvedValue(job);
       mockJobHistoryService.getJobHistory.mockResolvedValue(history);
 
-      const res = await request(app.getHttpServer()).get('/queue/job-1/history').expect(200);
+      const res = await request(app.getHttpServer())
+        .get('/queue/job-1/history')
+        .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body[0].eventType).toBe('FAILED');
     });
 
     it('returns 404 when job not found for history', async () => {
-      mockQueueService.findOne.mockRejectedValue(new NotFoundException('Job not found'));
+      mockQueueService.findOne.mockRejectedValue(
+        new NotFoundException('Job not found'),
+      );
 
-      await request(app.getHttpServer()).get('/queue/missing-id/history').expect(404);
+      await request(app.getHttpServer())
+        .get('/queue/missing-id/history')
+        .expect(404);
     });
   });
 });

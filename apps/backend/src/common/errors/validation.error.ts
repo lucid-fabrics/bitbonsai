@@ -14,7 +14,9 @@ export class ValidationError extends BaseError {
  */
 export class MissingFieldError extends BaseError {
   constructor(fieldName: string) {
-    super(`Missing required field: ${fieldName}`, 400, 'MISSING_FIELD', true, { field: fieldName });
+    super(`Missing required field: ${fieldName}`, 400, 'MISSING_FIELD', true, {
+      field: fieldName,
+    });
   }
 }
 

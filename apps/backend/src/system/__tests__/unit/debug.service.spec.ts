@@ -25,7 +25,11 @@ jest.mock('node:os', () => ({
   cpus: jest
     .fn()
     .mockReturnValue(
-      Array(4).fill({ model: 'x', speed: 0, times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 } })
+      Array(4).fill({
+        model: 'x',
+        speed: 0,
+        times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
+      }),
     ),
   freemem: jest.fn().mockReturnValue(8 * 1024 ** 3),
   totalmem: jest.fn().mockReturnValue(16 * 1024 ** 3),
@@ -39,11 +43,17 @@ jest.mock('node:child_process', () => ({
 describe('DebugService (__tests__/unit)', () => {
   let service: DebugService;
   let mockJobRepository: { findManySelect: jest.Mock };
-  let mockNodeRepository: { findFirstByIpAddresses: jest.Mock; updateById: jest.Mock };
+  let mockNodeRepository: {
+    findFirstByIpAddresses: jest.Mock;
+    updateById: jest.Mock;
+  };
 
   beforeEach(async () => {
     mockJobRepository = { findManySelect: jest.fn() };
-    mockNodeRepository = { findFirstByIpAddresses: jest.fn(), updateById: jest.fn() };
+    mockNodeRepository = {
+      findFirstByIpAddresses: jest.fn(),
+      updateById: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -72,7 +82,7 @@ describe('DebugService (__tests__/unit)', () => {
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
       jest.spyOn(os, 'freemem').mockReturnValue(16 * 1024 ** 3);
       jest.spyOn(os, 'totalmem').mockReturnValue(32 * 1024 ** 3);
@@ -93,7 +103,7 @@ describe('DebugService (__tests__/unit)', () => {
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
       jest.spyOn(os, 'freemem').mockReturnValue(8 * 1024 ** 3);
       jest.spyOn(os, 'totalmem').mockReturnValue(16 * 1024 ** 3);
@@ -104,14 +114,16 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('handles node fetch error gracefully', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockRejectedValue(new Error('db error'));
+      mockNodeRepository.findFirstByIpAddresses.mockRejectedValue(
+        new Error('db error'),
+      );
       jest.spyOn(os, 'loadavg').mockReturnValue([0.1, 0.1, 0.1]);
       jest.spyOn(os, 'cpus').mockReturnValue(
         Array(4).fill({
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
       jest.spyOn(os, 'freemem').mockReturnValue(8 * 1024 ** 3);
       jest.spyOn(os, 'totalmem').mockReturnValue(16 * 1024 ** 3);
@@ -128,7 +140,7 @@ describe('DebugService (__tests__/unit)', () => {
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
       jest.spyOn(os, 'freemem').mockReturnValue(2 * 1024 ** 3);
       jest.spyOn(os, 'totalmem').mockReturnValue(8 * 1024 ** 3);
@@ -146,7 +158,7 @@ describe('DebugService (__tests__/unit)', () => {
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
       jest.spyOn(os, 'freemem').mockReturnValue(8 * 1024 ** 3);
       jest.spyOn(os, 'totalmem').mockReturnValue(16 * 1024 ** 3);
@@ -164,7 +176,7 @@ describe('DebugService (__tests__/unit)', () => {
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
       jest.spyOn(os, 'freemem').mockReturnValue(8 * 1024 ** 3);
       jest.spyOn(os, 'totalmem').mockReturnValue(16 * 1024 ** 3);
@@ -214,19 +226,21 @@ describe('DebugService (__tests__/unit)', () => {
       mockJobRepository.findManySelect.mockResolvedValue([]);
       const { execFileSync } = require('node:child_process');
       execFileSync.mockReturnValue(
-        'PID %CPU %MEM ELAPSED COMMAND\n  9999  10.0  3.0  1-02:30:45  ffmpeg -i input.mkv output.mkv\n'
+        'PID %CPU %MEM ELAPSED COMMAND\n  9999  10.0  3.0  1-02:30:45  ffmpeg -i input.mkv output.mkv\n',
       );
 
       const result = await service.getFfmpegProcesses();
       expect(result.systemProcesses).toHaveLength(1);
-      expect(result.systemProcesses[0].runtimeSeconds).toBe(86400 + 7200 + 1800 + 45);
+      expect(result.systemProcesses[0].runtimeSeconds).toBe(
+        86400 + 7200 + 1800 + 45,
+      );
     });
 
     it('truncates very long commands', async () => {
       mockJobRepository.findManySelect.mockResolvedValue([]);
       const { execFileSync } = require('node:child_process');
       execFileSync.mockReturnValue(
-        `PID %CPU %MEM ELAPSED COMMAND\n  8888  1.0  0.5  00:00:10  ffmpeg ${'x'.repeat(250)}\n`
+        `PID %CPU %MEM ELAPSED COMMAND\n  8888  1.0  0.5  00:00:10  ffmpeg ${'x'.repeat(250)}\n`,
       );
 
       const result = await service.getFfmpegProcesses();
@@ -247,19 +261,27 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('throws BadRequestException for PID = 0', async () => {
-      await expect(service.killProcessByPid(0)).rejects.toThrow(BadRequestException);
+      await expect(service.killProcessByPid(0)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('throws BadRequestException for negative PID', async () => {
-      await expect(service.killProcessByPid(-5)).rejects.toThrow(BadRequestException);
+      await expect(service.killProcessByPid(-5)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('throws BadRequestException for PID > 4194304', async () => {
-      await expect(service.killProcessByPid(4194305)).rejects.toThrow(BadRequestException);
+      await expect(service.killProcessByPid(4194305)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('throws BadRequestException for float PID', async () => {
-      await expect(service.killProcessByPid(1.5)).rejects.toThrow(BadRequestException);
+      await expect(service.killProcessByPid(1.5)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('force-kills process that survives SIGTERM', async () => {
@@ -307,14 +329,16 @@ describe('DebugService (__tests__/unit)', () => {
 
   describe('updateLoadThreshold', () => {
     it('updates threshold for valid multiplier', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockResolvedValue(undefined);
       jest.spyOn(os, 'cpus').mockReturnValue(
         Array(8).fill({
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
 
       const result = await service.updateLoadThreshold(3.5);
@@ -342,7 +366,9 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('handles repository error', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockRejectedValue(new Error('db error'));
 
       const result = await service.updateLoadThreshold(2.0);
@@ -350,14 +376,16 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('accepts boundary value 1.0', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockResolvedValue(undefined);
       jest.spyOn(os, 'cpus').mockReturnValue(
         Array(4).fill({
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
 
       const result = await service.updateLoadThreshold(1.0);
@@ -365,14 +393,16 @@ describe('DebugService (__tests__/unit)', () => {
     });
 
     it('accepts boundary value 10.0', async () => {
-      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({ id: 'node-1' });
+      mockNodeRepository.findFirstByIpAddresses.mockResolvedValue({
+        id: 'node-1',
+      });
       mockNodeRepository.updateById.mockResolvedValue(undefined);
       jest.spyOn(os, 'cpus').mockReturnValue(
         Array(4).fill({
           model: 'x',
           speed: 0,
           times: { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 },
-        })
+        }),
       );
 
       const result = await service.updateLoadThreshold(10.0);

@@ -19,7 +19,8 @@ export class InsightsStatsDto {
   totalJobsFailed!: number;
 
   @ApiProperty({
-    description: 'Total bytes saved across all completed jobs (as string for BigInt support)',
+    description:
+      'Total bytes saved across all completed jobs (as string for BigInt support)',
     example: '524288000000',
     format: 'int64',
   })

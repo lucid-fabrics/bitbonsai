@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+  scryptSync,
+} from 'crypto';
 
 /**
  * Service for encrypting and decrypting sensitive data
@@ -22,7 +27,7 @@ export class EncryptionService {
     if (!secret) {
       throw new Error(
         '⚠️  ENCRYPTION_KEY environment variable is required! ' +
-          'Generate with: openssl rand -base64 32'
+          'Generate with: openssl rand -base64 32',
       );
     }
 

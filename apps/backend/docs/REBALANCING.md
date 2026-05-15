@@ -77,6 +77,7 @@ curl -X POST http://YOUR_IP:3100/api/v1/queue/rebalance
 ```
 
 **When to manually rebalance:**
+
 - After adding many jobs to one node's library
 - After adding a new node to your cluster
 - When you see one node overloaded while another sits idle
@@ -120,17 +121,18 @@ Replace `CHILD_NODE_ID` and `MAIN_NODE_ID` with actual node IDs from your databa
 **Option 2: Adjust Thresholds (Developer)**
 
 Edit `apps/backend/src/queue/services/job-router.service.ts`:
+
 - Line 294: Change `n.load > 80` to higher value (e.g., `> 100`)
 - Line 295: Change `n.load < 50` to higher value (e.g., `< 100`)
 
 ## Important Limitations
 
-| Limitation | Why? | Impact |
-|------------|------|--------|
-| Only moves QUEUED jobs | Moving ENCODING jobs would interrupt work | Active jobs stay put |
-| Only rebalances LOCAL nodes | Network latency hurts performance | REMOTE nodes excluded |
-| 5 jobs per batch | Prevents overwhelming target nodes | Large imbalances need multiple runs |
-| Conservative thresholds | Avoids constant shuffling | May miss some imbalances |
+| Limitation                  | Why?                                      | Impact                              |
+| --------------------------- | ----------------------------------------- | ----------------------------------- |
+| Only moves QUEUED jobs      | Moving ENCODING jobs would interrupt work | Active jobs stay put                |
+| Only rebalances LOCAL nodes | Network latency hurts performance         | REMOTE nodes excluded               |
+| 5 jobs per batch            | Prevents overwhelming target nodes        | Large imbalances need multiple runs |
+| Conservative thresholds     | Avoids constant shuffling                 | May miss some imbalances            |
 
 ## Best Practices
 

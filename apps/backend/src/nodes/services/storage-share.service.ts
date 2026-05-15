@@ -1,7 +1,17 @@
 import { HttpService } from '@nestjs/axios';
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { StorageProtocol, type StorageShare, StorageShareStatus } from '@prisma/client';
+import {
+  StorageProtocol,
+  type StorageShare,
+  StorageShareStatus,
+} from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import { StorageAutoDetectMountEvent } from '../../common/events';
 import { NodeRepository } from '../../common/repositories/node.repository';
@@ -73,14 +83,16 @@ export class StorageShareService {
     private readonly nodeRepository: NodeRepository,
     private readonly encryptionService: EncryptionService,
     private readonly mountService: StorageMountService,
-    private readonly httpService: HttpService
+    private readonly httpService: HttpService,
   ) {}
 
   /**
    * Create a new storage share configuration
    */
   async create(data: CreateStorageShareDto): Promise<StorageShare> {
-    this.logger.log(`Creating storage share: ${data.name} on node ${data.nodeId}`);
+    this.logger.log(
+      `Creating storage share: ${data.name} on node ${data.nodeId}`,
+    );
 
     // Validate protocol-specific requirements
     if (data.protocol === StorageProtocol.SMB && !data.smbUsername) {
@@ -88,10 +100,15 @@ export class StorageShareService {
     }
 
     // Check for duplicate mount point on same node
-    const existing = await this.repository.findByMountPoint(data.nodeId, data.mountPoint);
+    const existing = await this.repository.findByMountPoint(
+      data.nodeId,
+      data.mountPoint,
+    );
 
     if (existing) {
-      throw new BadRequestException(`Mount point ${data.mountPoint} already exists on this node`);
+      throw new BadRequestException(
+        `Mount point ${data.mountPoint} already exists on this node`,
+      );
     }
 
     // Build export path for easy reference
@@ -114,7 +131,9 @@ export class StorageShareService {
 
       // SMB fields
       smbUsername: data.smbUsername,
-      smbPassword: data.smbPassword ? this.encryptionService.encrypt(data.smbPassword) : null,
+      smbPassword: data.smbPassword
+        ? this.encryptionService.encrypt(data.smbPassword)
+        : null,
       smbDomain: data.smbDomain,
       smbVersion: data.smbVersion ?? '3.0',
 
@@ -181,7 +200,9 @@ export class StorageShareService {
 
       // SMB credentials
       smbUsername: data.smbUsername,
-      smbPassword: data.smbPassword ? this.encryptionService.encrypt(data.smbPassword) : undefined,
+      smbPassword: data.smbPassword
+        ? this.encryptionService.encrypt(data.smbPassword)
+        : undefined,
       smbDomain: data.smbDomain,
       smbVersion: data.smbVersion,
     });
@@ -199,7 +220,7 @@ export class StorageShareService {
   async updateStatus(
     id: string,
     status: StorageShareStatus,
-    error?: string
+    error?: string,
   ): Promise<StorageShare> {
     const updateData: Record<string, unknown> = {
       status,
@@ -221,7 +242,7 @@ export class StorageShareService {
           networkLocation: 'LOCAL',
         });
         this.logger.log(
-          `✅ Auto-set hasSharedStorage=true for node ${share.nodeId} after mounting ${share.name}`
+          `✅ Auto-set hasSharedStorage=true for node ${share.nodeId} after mounting ${share.name}`,
         );
       }
     } else if (status === StorageShareStatus.UNMOUNTED) {
@@ -248,7 +269,7 @@ export class StorageShareService {
       totalSizeBytes?: bigint;
       availableSizeBytes?: bigint;
       usedPercent?: number;
-    }
+    },
   ): Promise<StorageShare> {
     return this.repository.update(id, stats);
   }
@@ -271,7 +292,9 @@ export class StorageShareService {
     const share = await this.findOne(id);
 
     if (share.isMounted) {
-      throw new BadRequestException('Cannot delete a mounted share. Unmount it first.');
+      throw new BadRequestException(
+        'Cannot delete a mounted share. Unmount it first.',
+      );
     }
 
     await this.repository.delete(id);
@@ -286,8 +309,11 @@ export class StorageShareService {
     const stats: StorageShareStats = {
       totalShares: shares.length,
       mountedShares: shares.filter((s) => s.isMounted).length,
-      availableShares: shares.filter((s) => s.status === StorageShareStatus.AVAILABLE).length,
-      errorShares: shares.filter((s) => s.status === StorageShareStatus.ERROR).length,
+      availableShares: shares.filter(
+        (s) => s.status === StorageShareStatus.AVAILABLE,
+      ).length,
+      errorShares: shares.filter((s) => s.status === StorageShareStatus.ERROR)
+        .length,
       totalCapacityBytes: 0n,
       usedCapacityBytes: 0n,
     };
@@ -295,11 +321,13 @@ export class StorageShareService {
     // Calculate total capacity and usage
     for (const share of shares) {
       if (share.totalSizeBytes) {
-        stats.totalCapacityBytes = stats.totalCapacityBytes + share.totalSizeBytes;
+        stats.totalCapacityBytes =
+          stats.totalCapacityBytes + share.totalSizeBytes;
       }
       if (share.totalSizeBytes && share.availableSizeBytes) {
         stats.usedCapacityBytes =
-          stats.usedCapacityBytes + (share.totalSizeBytes - share.availableSizeBytes);
+          stats.usedCapacityBytes +
+          (share.totalSizeBytes - share.availableSizeBytes);
       }
     }
 
@@ -325,13 +353,18 @@ export class StorageShareService {
     // For LINKED nodes, fetch shares from the main node via HTTP
     if (currentNode.role === 'LINKED' && currentNode.mainNodeUrl) {
       try {
-        this.logger.log(`Fetching storage shares from main node: ${currentNode.mainNodeUrl}`);
+        this.logger.log(
+          `Fetching storage shares from main node: ${currentNode.mainNodeUrl}`,
+        );
 
         // Get main node ID first
         const mainNodesResponse = await firstValueFrom(
-          this.httpService.get(`${currentNode.mainNodeUrl}/api/v1/nodes`)
+          this.httpService.get(`${currentNode.mainNodeUrl}/api/v1/nodes`),
         );
-        const mainNodes = mainNodesResponse.data as Array<{ id: string; role: string }>;
+        const mainNodes = mainNodesResponse.data as Array<{
+          id: string;
+          role: string;
+        }>;
         const mainNode = mainNodes.find((n) => n.role === 'MAIN');
 
         if (!mainNode) {
@@ -342,26 +375,31 @@ export class StorageShareService {
         // Fetch storage shares from main node
         const sharesResponse = await firstValueFrom(
           this.httpService.get(
-            `${currentNode.mainNodeUrl}/api/v1/storage-shares/node/${mainNode.id}`
-          )
+            `${currentNode.mainNodeUrl}/api/v1/storage-shares/node/${mainNode.id}`,
+          ),
         );
         const allMainShares = sharesResponse.data;
 
-        this.logger.debug(`All shares from main node API: ${JSON.stringify(allMainShares)}`);
+        this.logger.debug(
+          `All shares from main node API: ${JSON.stringify(allMainShares)}`,
+        );
         this.logger.debug(`Main node ID: ${mainNode.id}`);
 
         // Filter to only shares owned by the main node (exported shares)
         sharedByMain = allMainShares.filter(
-          (share: StorageShare) => share.ownerNodeId === mainNode.id
+          (share: StorageShare) => share.ownerNodeId === mainNode.id,
         );
 
         this.logger.log(`Found ${sharedByMain.length} shares from main node`);
         this.logger.debug(
-          `Shared by main: ${JSON.stringify(sharedByMain.map((s: StorageShare) => ({ name: s.name, mountPoint: s.mountPoint, ownerNodeId: s.ownerNodeId })))}`
+          `Shared by main: ${JSON.stringify(sharedByMain.map((s: StorageShare) => ({ name: s.name, mountPoint: s.mountPoint, ownerNodeId: s.ownerNodeId })))}`,
         );
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        this.logger.error(`Error fetching shares from main node: ${errorMessage}`);
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(
+          `Error fetching shares from main node: ${errorMessage}`,
+        );
         this.logger.error(`Error details:`, error);
         if (error instanceof Error && error.stack) {
           this.logger.error(`Stack trace: ${error.stack}`);
@@ -377,24 +415,27 @@ export class StorageShareService {
     }
 
     // Filter out shares that are already configured on this node
-    const existingMountPoints = await this.repository.findMountPointsByNodeId(nodeId);
+    const existingMountPoints =
+      await this.repository.findMountPointsByNodeId(nodeId);
 
     this.logger.debug(
-      `Existing mount points on node ${nodeId}: ${JSON.stringify(existingMountPoints)}`
+      `Existing mount points on node ${nodeId}: ${JSON.stringify(existingMountPoints)}`,
     );
 
     const existingMountPointSet = new Set(
-      existingMountPoints.map((s: { mountPoint: string }) => s.mountPoint)
+      existingMountPoints.map((s: { mountPoint: string }) => s.mountPoint),
     );
 
-    this.logger.debug(`Existing mount point paths: ${JSON.stringify([...existingMountPointSet])}`);
+    this.logger.debug(
+      `Existing mount point paths: ${JSON.stringify([...existingMountPointSet])}`,
+    );
 
     const filteredShares = sharedByMain.filter(
-      (share) => !existingMountPointSet.has(share.mountPoint)
+      (share) => !existingMountPointSet.has(share.mountPoint),
     );
 
     this.logger.log(
-      `Filtered out ${sharedByMain.length - filteredShares.length} already-configured shares, returning ${filteredShares.length} new shares`
+      `Filtered out ${sharedByMain.length - filteredShares.length} already-configured shares, returning ${filteredShares.length} new shares`,
     );
 
     return filteredShares;
@@ -442,13 +483,18 @@ export class StorageShareService {
       }
 
       // Get main node ID via HTTP
-      const mainNodesResponse = await fetch(`${currentNode.mainNodeUrl}/api/v1/nodes`);
+      const mainNodesResponse = await fetch(
+        `${currentNode.mainNodeUrl}/api/v1/nodes`,
+      );
       if (!mainNodesResponse.ok) {
         this.logger.error('Failed to fetch nodes from main node');
         return result;
       }
 
-      const mainNodes = (await mainNodesResponse.json()) as Array<{ id: string; role: string }>;
+      const mainNodes = (await mainNodesResponse.json()) as Array<{
+        id: string;
+        role: string;
+      }>;
       const mainNode = mainNodes.find((n) => n.role === 'MAIN');
 
       if (!mainNode) {
@@ -458,7 +504,7 @@ export class StorageShareService {
 
       // Fetch storage shares from main node via HTTP
       const sharesResponse = await fetch(
-        `${currentNode.mainNodeUrl}/api/v1/storage-shares/node/${mainNode.id}`
+        `${currentNode.mainNodeUrl}/api/v1/storage-shares/node/${mainNode.id}`,
       );
 
       if (!sharesResponse.ok) {
@@ -470,7 +516,8 @@ export class StorageShareService {
 
       // Filter to only auto-managed shares owned by the main node
       const autoManagedShares = (allMainShares as StorageShare[]).filter(
-        (share) => share.ownerNodeId === mainNode.id && share.autoManaged === true
+        (share) =>
+          share.ownerNodeId === mainNode.id && share.autoManaged === true,
       );
 
       result.detected = autoManagedShares.length;
@@ -480,7 +527,9 @@ export class StorageShareService {
         return result;
       }
 
-      this.logger.log(`Found ${autoManagedShares.length} auto-managed shares to mount`);
+      this.logger.log(
+        `Found ${autoManagedShares.length} auto-managed shares to mount`,
+      );
 
       // Create and mount each share on this node
       for (const mainShare of autoManagedShares) {
@@ -491,18 +540,24 @@ export class StorageShareService {
           const mountPoint = mainShare.mountPoint;
 
           // Warn if mount point looks like a host path instead of container path
-          if (mountPoint.startsWith('/mnt/') || mountPoint.startsWith('/home/')) {
+          if (
+            mountPoint.startsWith('/mnt/') ||
+            mountPoint.startsWith('/home/')
+          ) {
             this.logger.warn(
-              `⚠️  Mount point ${mountPoint} looks like a host path. Auto-managed shares should use container paths (e.g., /media). This might cause issues on child nodes.`
+              `⚠️  Mount point ${mountPoint} looks like a host path. Auto-managed shares should use container paths (e.g., /media). This might cause issues on child nodes.`,
             );
           }
 
           // Check if already exists - if so, use existing record for mounting
-          let localShare = await this.repository.findByMountPoint(nodeId, mainShare.mountPoint);
+          let localShare = await this.repository.findByMountPoint(
+            nodeId,
+            mainShare.mountPoint,
+          );
 
           if (localShare) {
             this.logger.debug(
-              `Share ${mainShare.name} already exists on this node, using existing record`
+              `Share ${mainShare.name} already exists on this node, using existing record`,
             );
           } else {
             // Create local StorageShare record
@@ -524,18 +579,25 @@ export class StorageShareService {
               });
 
               result.created++;
-              this.logger.log(`✓ Created local share record for ${mainShare.name}`);
+              this.logger.log(
+                `✓ Created local share record for ${mainShare.name}`,
+              );
             } catch (createError: unknown) {
               // Handle race condition: unique constraint violation (P2002)
               // Another request may have created the record between our check and create
               const prismaError = createError as { code?: string };
               if (prismaError?.code === 'P2002') {
                 this.logger.debug(
-                  `Share ${mainShare.name} was created by concurrent request, fetching existing record`
+                  `Share ${mainShare.name} was created by concurrent request, fetching existing record`,
                 );
-                localShare = await this.repository.findByMountPoint(nodeId, mainShare.mountPoint);
+                localShare = await this.repository.findByMountPoint(
+                  nodeId,
+                  mainShare.mountPoint,
+                );
                 if (!localShare) {
-                  throw new Error('Race condition: record exists but cannot be found');
+                  throw new Error(
+                    'Race condition: record exists but cannot be found',
+                  );
                 }
               } else {
                 throw createError;
@@ -544,8 +606,13 @@ export class StorageShareService {
           }
 
           // Mount the share if not already mounted
-          if (!localShare.isMounted && (mainShare.autoMount || mainShare.mountOnDetection)) {
-            this.logger.log(`Mounting ${mainShare.name} at ${mainShare.mountPoint}...`);
+          if (
+            !localShare.isMounted &&
+            (mainShare.autoMount || mainShare.mountOnDetection)
+          ) {
+            this.logger.log(
+              `Mounting ${mainShare.name} at ${mainShare.mountPoint}...`,
+            );
 
             const mountResult = await this.mountService.mount(localShare.id);
 
@@ -571,7 +638,7 @@ export class StorageShareService {
       }
 
       this.logger.log(
-        `Auto-mount complete: ${result.created} shares created, ${result.errors.length} errors`
+        `Auto-mount complete: ${result.created} shares created, ${result.errors.length} errors`,
       );
 
       return result;
@@ -601,12 +668,14 @@ export class StorageShareService {
    * @param mainNodeId - ID of the main node whose libraries should be shared
    * @returns Array of existing auto-managed storage shares (does NOT create new ones)
    */
-  async autoCreateSharesForLibraries(mainNodeId: string): Promise<StorageShare[]> {
+  async autoCreateSharesForLibraries(
+    mainNodeId: string,
+  ): Promise<StorageShare[]> {
     this.logger.warn(
-      `⚠️  autoCreateSharesForLibraries is DEPRECATED. Use NFSAutoExportService.autoExportDockerVolumes() instead.`
+      `⚠️  autoCreateSharesForLibraries is DEPRECATED. Use NFSAutoExportService.autoExportDockerVolumes() instead.`,
     );
     this.logger.warn(
-      `This method uses container paths which don't work for NFS exports inside Docker.`
+      `This method uses container paths which don't work for NFS exports inside Docker.`,
     );
 
     try {
@@ -619,11 +688,12 @@ export class StorageShareService {
 
       // Instead of creating broken shares, return existing auto-managed shares
       // These should have been created by NFSAutoExportService with correct paths
-      const existingShares = await this.repository.findAutoManagedByNodeId(mainNodeId);
+      const existingShares =
+        await this.repository.findAutoManagedByNodeId(mainNodeId);
 
       if (existingShares.length > 0) {
         this.logger.log(
-          `Returning ${existingShares.length} existing auto-managed shares (created by NFSAutoExportService)`
+          `Returning ${existingShares.length} existing auto-managed shares (created by NFSAutoExportService)`,
         );
         return existingShares;
       }
@@ -631,7 +701,7 @@ export class StorageShareService {
       // If no auto-managed shares exist, warn user to use the correct method
       this.logger.warn(
         `No auto-managed shares found. Please use POST /storage-shares/auto-export-docker-volumes ` +
-          `to create NFS shares with correct HOST paths.`
+          `to create NFS shares with correct HOST paths.`,
       );
 
       // Return empty array instead of creating broken shares
@@ -639,7 +709,7 @@ export class StorageShareService {
     } catch (error: unknown) {
       this.logger.error(
         `Auto-create shares failed:`,
-        error instanceof Error ? error.message : 'unknown error'
+        error instanceof Error ? error.message : 'unknown error',
       );
       return [];
     }
@@ -648,18 +718,20 @@ export class StorageShareService {
   // ─── Event Listeners (from StorageInitService via EventEmitter) ─────
 
   @OnEvent(StorageAutoDetectMountEvent.event)
-  async handleAutoDetectMount(event: StorageAutoDetectMountEvent): Promise<void> {
+  async handleAutoDetectMount(
+    event: StorageAutoDetectMountEvent,
+  ): Promise<void> {
     try {
       const result = await this.autoDetectAndMount(event.nodeId);
       this.logger.log(
-        `Auto-detect mount result for node ${event.nodeId}: ${result.detected} detected, ${result.mounted} mounted`
+        `Auto-detect mount result for node ${event.nodeId}: ${result.detected} detected, ${result.mounted} mounted`,
       );
       if (result.errors.length > 0) {
         this.logger.warn(`Mount errors: ${result.errors.join(', ')}`);
       }
     } catch (error: unknown) {
       this.logger.error(
-        `Auto-detect mount failed for node ${event.nodeId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Auto-detect mount failed for node ${event.nodeId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }

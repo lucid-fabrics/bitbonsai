@@ -32,7 +32,7 @@ export class DiscoveryController {
     private readonly discoveryService: NodeDiscoveryService,
     private readonly syncService: PolicySyncService,
     private readonly registrationRequestService: RegistrationRequestService,
-    private readonly systemInfoService: SystemInfoService
+    private readonly systemInfoService: SystemInfoService,
   ) {}
 
   /**
@@ -128,26 +128,31 @@ export class DiscoveryController {
       // Make HTTP request to MAIN node to create registration request
       // Now includes system info from CHILD node
       const mainNodeUrl = `http://${mainNode.ipAddress}:${mainNode.apiPort}`;
-      const response = await fetch(`${mainNodeUrl}/api/v1/nodes/registration-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mainNodeId: dto.mainNodeId,
-          childNodeName: dto.childNodeName,
-          // Include system info from CHILD node
-          ipAddress: systemInfo.ipAddress,
-          hostname: systemInfo.hostname,
-          macAddress: systemInfo.macAddress,
-          subnet: systemInfo.subnet,
-          containerType: systemInfo.containerType,
-          hardwareSpecs: systemInfo.hardwareSpecs,
-          acceleration: systemInfo.acceleration,
-        }),
-      });
+      const response = await fetch(
+        `${mainNodeUrl}/api/v1/nodes/registration-requests`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mainNodeId: dto.mainNodeId,
+            childNodeName: dto.childNodeName,
+            // Include system info from CHILD node
+            ipAddress: systemInfo.ipAddress,
+            hostname: systemInfo.hostname,
+            macAddress: systemInfo.macAddress,
+            subnet: systemInfo.subnet,
+            containerType: systemInfo.containerType,
+            hardwareSpecs: systemInfo.hardwareSpecs,
+            acceleration: systemInfo.acceleration,
+          }),
+        },
+      );
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to create registration request on MAIN node');
+        throw new Error(
+          error.message || 'Failed to create registration request on MAIN node',
+        );
       }
 
       const request = await response.json();
@@ -162,7 +167,8 @@ export class DiscoveryController {
     } catch (error: unknown) {
       return {
         status: PairingStatus.ERROR,
-        message: error instanceof Error ? error.message : 'Failed to initiate pairing',
+        message:
+          error instanceof Error ? error.message : 'Failed to initiate pairing',
       };
     }
   }
@@ -191,9 +197,12 @@ export class DiscoveryController {
   @ApiInternalServerErrorResponse({
     description: 'Failed to check pairing status',
   })
-  async getPairingStatus(@Param('requestId') requestId: string): Promise<PairResponseDto> {
+  async getPairingStatus(
+    @Param('requestId') requestId: string,
+  ): Promise<PairResponseDto> {
     try {
-      const request = await this.registrationRequestService.getRequest(requestId);
+      const request =
+        await this.registrationRequestService.getRequest(requestId);
 
       // Map registration request status to pairing status
       switch (request.status) {
@@ -249,7 +258,10 @@ export class DiscoveryController {
     } catch (error: unknown) {
       return {
         status: PairingStatus.ERROR,
-        message: error instanceof Error ? error.message : 'Failed to check pairing status',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to check pairing status',
       };
     }
   }
@@ -311,10 +323,12 @@ export class DiscoveryController {
   @ApiInternalServerErrorResponse({
     description: 'Failed to request pairing',
   })
-  async requestPairing(@Body() dto: RequestPairingDto): Promise<PairingTokenResponseDto> {
+  async requestPairing(
+    @Body() dto: RequestPairingDto,
+  ): Promise<PairingTokenResponseDto> {
     const pairingToken = await this.discoveryService.requestPairing(
       dto.mainNodeUrl,
-      dto.mainNodeId
+      dto.mainNodeId,
     );
 
     return {
@@ -356,8 +370,13 @@ export class DiscoveryController {
   @ApiInternalServerErrorResponse({
     description: 'Failed to complete pairing',
   })
-  async completePairing(@Body() dto: CompletePairingDto): Promise<CompletePairingResponseDto> {
-    const result = await this.discoveryService.completePairing(dto.mainNodeUrl, dto.pairingToken);
+  async completePairing(
+    @Body() dto: CompletePairingDto,
+  ): Promise<CompletePairingResponseDto> {
+    const result = await this.discoveryService.completePairing(
+      dto.mainNodeUrl,
+      dto.pairingToken,
+    );
     return {
       success: true,
       nodeId: result.nodeId,
@@ -392,7 +411,9 @@ export class DiscoveryController {
   @ApiInternalServerErrorResponse({
     description: 'Failed to approve node',
   })
-  async approveNode(@Param('nodeId') nodeId: string): Promise<ApproveNodeResponseDto> {
+  async approveNode(
+    @Param('nodeId') nodeId: string,
+  ): Promise<ApproveNodeResponseDto> {
     // Approve the node
     const node = await this.discoveryService.approveNode(nodeId);
 
@@ -433,7 +454,9 @@ export class DiscoveryController {
   @ApiInternalServerErrorResponse({
     description: 'Failed to reject node',
   })
-  async rejectNode(@Param('nodeId') nodeId: string): Promise<RejectNodeResponseDto> {
+  async rejectNode(
+    @Param('nodeId') nodeId: string,
+  ): Promise<RejectNodeResponseDto> {
     await this.discoveryService.rejectNode(nodeId);
 
     return {

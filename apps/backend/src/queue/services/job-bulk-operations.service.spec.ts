@@ -6,7 +6,7 @@ import { JobBulkOperationsService } from './job-bulk-operations.service';
 
 describe('JobBulkOperationsService', () => {
   let service: JobBulkOperationsService;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let jobRepository: any;
   let ffmpegService: jest.Mocked<FfmpegService>;
 
@@ -55,9 +55,11 @@ describe('JobBulkOperationsService', () => {
       expect(ffmpegService.killProcess).toHaveBeenCalledWith('job-2');
       expect(jobRepository.updateManyWhere).toHaveBeenCalledWith(
         expect.objectContaining({
-          stage: expect.objectContaining({ in: expect.arrayContaining([JobStage.ENCODING]) }),
+          stage: expect.objectContaining({
+            in: expect.arrayContaining([JobStage.ENCODING]),
+          }),
         }),
-        expect.objectContaining({ stage: JobStage.CANCELLED })
+        expect.objectContaining({ stage: JobStage.CANCELLED }),
       );
       expect(result.cancelledCount).toBe(5);
     });
@@ -73,9 +75,13 @@ describe('JobBulkOperationsService', () => {
     });
 
     it('should propagate errors from repository', async () => {
-      jobRepository.findManySelect.mockRejectedValue(new Error('DB connection lost'));
+      jobRepository.findManySelect.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
-      await expect(service.cancelAllQueued()).rejects.toThrow('DB connection lost');
+      await expect(service.cancelAllQueued()).rejects.toThrow(
+        'DB connection lost',
+      );
     });
   });
 
@@ -92,7 +98,7 @@ describe('JobBulkOperationsService', () => {
 
       expect(jobRepository.updateManyWhere).toHaveBeenCalledWith(
         { stage: JobStage.CANCELLED },
-        expect.objectContaining({ stage: JobStage.QUEUED, progress: 0 })
+        expect.objectContaining({ stage: JobStage.QUEUED, progress: 0 }),
       );
       expect(result.retriedCount).toBe(2);
       expect(result.totalSizeBytes).toBe('800000000');
@@ -128,7 +134,11 @@ describe('JobBulkOperationsService', () => {
     it('should filter by error category when errorFilter is provided', async () => {
       const failedJobs = [
         { id: 'job-1', fileLabel: 'a.mkv', error: 'FFmpeg exit code 1' },
-        { id: 'job-2', fileLabel: 'b.mkv', error: 'No such file or directory (ENOENT)' },
+        {
+          id: 'job-2',
+          fileLabel: 'b.mkv',
+          error: 'No such file or directory (ENOENT)',
+        },
       ];
       jobRepository.findManySelect.mockResolvedValue(failedJobs as never);
       jobRepository.updateManyByIds.mockResolvedValue({ count: 1 } as never);
@@ -136,7 +146,8 @@ describe('JobBulkOperationsService', () => {
       const result = await service.retryAllFailed('File Not Found');
 
       // Only the ENOENT job should be retried
-      const retryIds = jobRepository.updateManyByIds.mock.calls[0][0] as string[];
+      const retryIds = jobRepository.updateManyByIds.mock
+        .calls[0][0] as string[];
       expect(retryIds).toEqual(['job-2']);
       expect(result.jobs).toHaveLength(1);
     });
@@ -144,33 +155,57 @@ describe('JobBulkOperationsService', () => {
 
   describe('categorizeError', () => {
     it('should categorize FFmpeg exit code errors', () => {
-      expect(service.categorizeError('FFmpeg exit code 1')).toBe('FFmpeg Error Code 1');
-      expect(service.categorizeError('ffmpeg process exit code 255')).toBe('FFmpeg Error Code 255');
+      expect(service.categorizeError('FFmpeg exit code 1')).toBe(
+        'FFmpeg Error Code 1',
+      );
+      expect(service.categorizeError('ffmpeg process exit code 255')).toBe(
+        'FFmpeg Error Code 255',
+      );
     });
 
     it('should categorize timeout errors', () => {
-      expect(service.categorizeError('Job timeout after 30 minutes')).toBe('Job Timeout/Stuck');
-      expect(service.categorizeError('Process stuck with no progress')).toBe('Job Timeout/Stuck');
+      expect(service.categorizeError('Job timeout after 30 minutes')).toBe(
+        'Job Timeout/Stuck',
+      );
+      expect(service.categorizeError('Process stuck with no progress')).toBe(
+        'Job Timeout/Stuck',
+      );
     });
 
     it('should categorize file not found errors', () => {
-      expect(service.categorizeError('No such file or directory (ENOENT)')).toBe('File Not Found');
-      expect(service.categorizeError('File not found: movie.mkv')).toBe('File Not Found');
+      expect(
+        service.categorizeError('No such file or directory (ENOENT)'),
+      ).toBe('File Not Found');
+      expect(service.categorizeError('File not found: movie.mkv')).toBe(
+        'File Not Found',
+      );
     });
 
     it('should categorize network errors', () => {
-      expect(service.categorizeError('ECONNREFUSED 127.0.0.1:3100')).toBe('Network Error');
-      expect(service.categorizeError('Network connection reset')).toBe('Network Error');
+      expect(service.categorizeError('ECONNREFUSED 127.0.0.1:3100')).toBe(
+        'Network Error',
+      );
+      expect(service.categorizeError('Network connection reset')).toBe(
+        'Network Error',
+      );
     });
 
     it('should categorize disk space errors', () => {
-      expect(service.categorizeError('ENOSPC: no space left on device')).toBe('Disk Space Error');
-      expect(service.categorizeError('disk full, cannot write')).toBe('Disk Space Error');
+      expect(service.categorizeError('ENOSPC: no space left on device')).toBe(
+        'Disk Space Error',
+      );
+      expect(service.categorizeError('disk full, cannot write')).toBe(
+        'Disk Space Error',
+      );
     });
 
     it('should categorize permission errors', () => {
-      expect(service.categorizeError('EACCES permission denied')).toBe('Permission Error');
-      expect(service.categorizeError('EPERM: operation not permitted')).toBe('Permission Error');
+      expect(service.categorizeError('EACCES permission denied')).toBe(
+        'Permission Error',
+      );
+      expect(service.categorizeError('EPERM: operation not permitted')).toBe(
+        'Permission Error',
+      );
     });
 
     it('should categorize memory errors', () => {
@@ -208,14 +243,17 @@ describe('JobBulkOperationsService', () => {
           decisionIssues: null,
         },
       ];
-      jobRepository.findManySelect.mockResolvedValue(needsDecisionJobs as never);
+      jobRepository.findManySelect.mockResolvedValue(
+        needsDecisionJobs as never,
+      );
       jobRepository.updateManyByIds.mockResolvedValue({ count: 1 } as never);
       jobRepository.updateById.mockResolvedValue({} as never);
 
       const result = await service.skipAllCodecMatch();
 
       // Only job-1 (hevc→hevc) should be skipped
-      const updatedIds = jobRepository.updateManyByIds.mock.calls[0][0] as string[];
+      const updatedIds = jobRepository.updateManyByIds.mock
+        .calls[0][0] as string[];
       expect(updatedIds).toEqual(['job-1']);
       expect(result.skippedCount).toBe(1);
       expect(result.jobs[0].fileLabel).toBe('hevc-file.mkv');
@@ -242,13 +280,17 @@ describe('JobBulkOperationsService', () => {
           decisionIssues: null,
         },
       ];
-      jobRepository.findManySelect.mockResolvedValue(needsDecisionJobs as never);
+      jobRepository.findManySelect.mockResolvedValue(
+        needsDecisionJobs as never,
+      );
       jobRepository.updateManyByIds.mockResolvedValue({ count: 1 } as never);
       jobRepository.updateById.mockResolvedValue({} as never);
 
       await service.skipAllCodecMatch();
 
-      const updateData = jobRepository.updateManyByIds.mock.calls[0][1] as { stage: string };
+      const updateData = jobRepository.updateManyByIds.mock.calls[0][1] as {
+        stage: string;
+      };
       expect(updateData.stage).toBe(JobStage.COMPLETED);
     });
   });
@@ -264,12 +306,16 @@ describe('JobBulkOperationsService', () => {
           decisionIssues: null,
         },
       ];
-      jobRepository.findManySelect.mockResolvedValue(needsDecisionJobs as never);
+      jobRepository.findManySelect.mockResolvedValue(
+        needsDecisionJobs as never,
+      );
       jobRepository.updateManyByIds.mockResolvedValue({ count: 1 } as never);
 
       const result = await service.forceEncodeAllCodecMatch();
 
-      const updateData = jobRepository.updateManyByIds.mock.calls[0][1] as { stage: string };
+      const updateData = jobRepository.updateManyByIds.mock.calls[0][1] as {
+        stage: string;
+      };
       expect(updateData.stage).toBe(JobStage.QUEUED);
       expect(result.queuedCount).toBe(1);
     });

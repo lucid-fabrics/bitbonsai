@@ -197,7 +197,12 @@ export class QueueManagementController {
   })
   async skipAllCodecMatch(): Promise<{
     skippedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.queueService.skipAllCodecMatch();
   }
@@ -249,7 +254,12 @@ export class QueueManagementController {
   })
   async forceEncodeAllCodecMatch(): Promise<{
     queuedCount: number;
-    jobs: Array<{ id: string; fileLabel: string; sourceCodec: string; targetCodec: string }>;
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      sourceCodec: string;
+      targetCodec: string;
+    }>;
   }> {
     return this.queueService.forceEncodeAllCodecMatch();
   }
@@ -277,7 +287,8 @@ export class QueueManagementController {
   @ApiQuery({
     name: 'stages',
     required: false,
-    description: 'Comma-separated list of job stages to delete (e.g., COMPLETED,FAILED,CANCELLED)',
+    description:
+      'Comma-separated list of job stages to delete (e.g., COMPLETED,FAILED,CANCELLED)',
     example: 'COMPLETED,FAILED',
   })
   @ApiOkResponse({
@@ -296,7 +307,9 @@ export class QueueManagementController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while clearing jobs',
   })
-  async clearJobs(@Query('stages') stagesParam?: string): Promise<{ deleted: number }> {
+  async clearJobs(
+    @Query('stages') stagesParam?: string,
+  ): Promise<{ deleted: number }> {
     const stages = stagesParam
       ? (stagesParam.split(',').map((s) => s.trim()) as JobStage[])
       : undefined;
@@ -398,7 +411,9 @@ export class QueueManagementController {
     return {
       fixed,
       message:
-        fixed > 0 ? `Reset ${fixed} stuck transfer(s) back to QUEUED` : 'No stuck transfers found',
+        fixed > 0
+          ? `Reset ${fixed} stuck transfer(s) back to QUEUED`
+          : 'No stuck transfers found',
     };
   }
 }

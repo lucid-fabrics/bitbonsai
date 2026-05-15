@@ -61,14 +61,21 @@ export class FfmpegProcessCleanupService {
           // Parse elapsed time to seconds
           let runtimeSeconds = 0;
           const timeParts = etime.split(/[-:]/).reverse();
-          if (timeParts.length >= 1) runtimeSeconds += parseInt(timeParts[0], 10) || 0; // seconds
-          if (timeParts.length >= 2) runtimeSeconds += (parseInt(timeParts[1], 10) || 0) * 60; // minutes
-          if (timeParts.length >= 3) runtimeSeconds += (parseInt(timeParts[2], 10) || 0) * 3600; // hours
-          if (timeParts.length >= 4) runtimeSeconds += (parseInt(timeParts[3], 10) || 0) * 86400; // days
+          if (timeParts.length >= 1)
+            runtimeSeconds += parseInt(timeParts[0], 10) || 0; // seconds
+          if (timeParts.length >= 2)
+            runtimeSeconds += (parseInt(timeParts[1], 10) || 0) * 60; // minutes
+          if (timeParts.length >= 3)
+            runtimeSeconds += (parseInt(timeParts[2], 10) || 0) * 3600; // hours
+          if (timeParts.length >= 4)
+            runtimeSeconds += (parseInt(timeParts[3], 10) || 0) * 86400; // days
 
           processes.push({
             pid,
-            command: command.length > 200 ? `${command.substring(0, 200)}...` : command,
+            command:
+              command.length > 200
+                ? `${command.substring(0, 200)}...`
+                : command,
             cpuPercent,
             memPercent,
             runtimeSeconds,
@@ -97,7 +104,7 @@ export class FfmpegProcessCleanupService {
   async killFfmpegByPid(
     pid: number,
     trackedPids: Set<number> = new Set(),
-    trackedPidToJobId: Map<number, string> = new Map()
+    trackedPidToJobId: Map<number, string> = new Map(),
   ): Promise<{ success: boolean; message: string }> {
     const { execFileSync } = await import('node:child_process');
 
@@ -138,11 +145,20 @@ export class FfmpegProcessCleanupService {
         // Process already dead (good)
       }
 
-      return { success: true, message: `Successfully killed FFmpeg process PID ${pid}` };
+      return {
+        success: true,
+        message: `Successfully killed FFmpeg process PID ${pid}`,
+      };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to kill FFmpeg process PID ${pid}: ${errorMessage}`);
-      return { success: false, message: `Failed to kill PID ${pid}: ${errorMessage}` };
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to kill FFmpeg process PID ${pid}: ${errorMessage}`,
+      );
+      return {
+        success: false,
+        message: `Failed to kill PID ${pid}: ${errorMessage}`,
+      };
     }
   }
 
@@ -166,7 +182,9 @@ export class FfmpegProcessCleanupService {
         return;
       }
 
-      this.logger.log(`🧹 Found ${tempFiles.length} orphaned temp files, cleaning up...`);
+      this.logger.log(
+        `🧹 Found ${tempFiles.length} orphaned temp files, cleaning up...`,
+      );
 
       let removed = 0;
       for (const file of tempFiles) {
@@ -179,7 +197,9 @@ export class FfmpegProcessCleanupService {
         }
       }
 
-      this.logger.log(`✅ Cleaned up ${removed}/${tempFiles.length} orphaned temp files`);
+      this.logger.log(
+        `✅ Cleaned up ${removed}/${tempFiles.length} orphaned temp files`,
+      );
     } catch (error: unknown) {
       // Don't crash on cleanup failure - log and continue
       this.logger.warn(`Failed to cleanup orphaned temp files: ${error}`);

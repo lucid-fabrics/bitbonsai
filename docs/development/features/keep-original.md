@@ -1,11 +1,13 @@
 # Keep Original File Feature - Implementation Spec
 
 ## Overview
+
 Allow users to preserve original files during encoding by clicking a "Keep Original" button while jobs are encoding.
 
 ## User Flow
 
 ### During Encoding
+
 1. Original file stays at: `/path/movie.mkv` (untouched)
 2. Encoding to temp: `/path/movie.tmp-12345.mkv`
 3. UI shows **"Keep Original"** button on encoding jobs
@@ -13,12 +15,15 @@ Allow users to preserve original files during encoding by clicking a "Keep Origi
 5. Button changes to **"✓ Keeping Original"** (green)
 
 ### On Completion
+
 **If `keepOriginalRequested = true`:**
+
 - Rename original: `movie.mkv` → `movie.mkv.original`
 - Rename temp: `movie.tmp-12345.mkv` → `movie.mkv`
 - Store: `originalBackupPath`, `originalSizeBytes`, `replacementAction='KEPT_BOTH'`
 
 **If `keepOriginalRequested = false` (default):**
+
 - Delete original: `rm movie.mkv`
 - Rename temp: `movie.tmp-12345.mkv` → `movie.mkv`
 - Store: `replacementAction='REPLACED'`
@@ -26,6 +31,7 @@ Allow users to preserve original files during encoding by clicking a "Keep Origi
 ## Database Changes
 
 ### Prisma Schema (DONE ✓)
+
 ```prisma
 model Job {
   // ... existing fields ...
@@ -45,6 +51,7 @@ model Job {
 ### 1. Queue Service (`apps/backend/src/queue/queue.service.ts`)
 
 #### New Method: `requestKeepOriginal(jobId: string)`
+
 ```typescript
 async requestKeepOriginal(jobId: string): Promise<Job> {
   const job = await this.findOne(jobId);
@@ -64,6 +71,7 @@ async requestKeepOriginal(jobId: string): Promise<Job> {
 ```
 
 #### Update: `completeJob()` Method
+
 Modify file replacement logic at completion:
 
 ```typescript
@@ -92,6 +100,7 @@ if (job.keepOriginalRequested) {
 ```
 
 #### New Method: `deleteOriginalBackup(jobId: string)`
+
 ```typescript
 async deleteOriginalBackup(jobId: string): Promise<{ freedSpace: bigint }> {
   const job = await this.findOne(jobId);
@@ -116,6 +125,7 @@ async deleteOriginalBackup(jobId: string): Promise<{ freedSpace: bigint }> {
 ```
 
 #### New Method: `restoreOriginal(jobId: string)`
+
 ```typescript
 async restoreOriginal(jobId: string): Promise<Job> {
   const job = await this.findOne(jobId);
@@ -144,6 +154,7 @@ async restoreOriginal(jobId: string): Promise<Job> {
 Add three new endpoints:
 
 #### POST `/queue/:id/keep-original`
+
 ```typescript
 @Post(':id/keep-original')
 @ApiOperation({ summary: 'Request to keep original file after encoding' })
@@ -153,6 +164,7 @@ async keepOriginal(@Param('id') id: string): Promise<Job> {
 ```
 
 #### DELETE `/queue/:id/original`
+
 ```typescript
 @Delete(':id/original')
 @ApiOperation({ summary: 'Delete original backup file to free space' })
@@ -162,6 +174,7 @@ async deleteOriginal(@Param('id') id: string) {
 ```
 
 #### POST `/queue/:id/restore-original`
+
 ```typescript
 @Post(':id/restore-original')
 @ApiOperation({ summary: 'Restore original file (swap with encoded)' })
@@ -175,6 +188,7 @@ async restoreOriginal(@Param('id') id: string): Promise<Job> {
 ### 1. Update Models (`apps/frontend/src/app/features/queue/models/`)
 
 #### `queue-job.model.ts`
+
 ```typescript
 export interface QueueJobModel {
   // ... existing fields ...
@@ -259,25 +273,25 @@ onRestoreOriginal(job: QueueJobModel): void {
 ### 4. Queue Page Template (`apps/frontend/src/app/features/queue/queue.page.html`)
 
 #### For ENCODING Jobs:
+
 ```html
 <div *ngIf="job.stage === 'ENCODING'" class="job-actions">
   <button
     *ngIf="!job.keepOriginalRequested"
     (click)="onKeepOriginal(job)"
-    class="btn-secondary">
+    class="btn-secondary"
+  >
     💾 Keep Original
   </button>
 
-  <button
-    *ngIf="job.keepOriginalRequested"
-    disabled
-    class="btn-success">
+  <button *ngIf="job.keepOriginalRequested" disabled class="btn-success">
     ✓ Keeping Original
   </button>
 </div>
 ```
 
 #### For COMPLETED Jobs:
+
 ```html
 <div *ngIf="job.stage === 'COMPLETED'" class="job-details">
   <!-- File details -->
@@ -287,12 +301,13 @@ onRestoreOriginal(job: QueueJobModel): void {
     <p *ngIf="job.originalBackupPath">
       Original: {{ formatBytes(job.originalSizeBytes) }}
       <span class="badge-success">KEPT</span>
-      <br>
+      <br />
       <small class="text-muted">{{ job.originalBackupPath }}</small>
     </p>
 
     <p *ngIf="!job.originalBackupPath && job.replacementAction === 'REPLACED'">
-      Original: Deleted (freed {{ formatBytes(job.beforeSizeBytes - job.afterSizeBytes) }})
+      Original: Deleted (freed {{ formatBytes(job.beforeSizeBytes -
+      job.afterSizeBytes) }})
     </p>
   </div>
 
@@ -311,6 +326,7 @@ onRestoreOriginal(job: QueueJobModel): void {
 ## Testing Plan
 
 ### Backend Tests
+
 1. **Unit Tests** (`queue.service.spec.ts`):
    - `requestKeepOriginal()` - sets flag correctly
    - `completeJob()` - handles both keep/delete scenarios
@@ -323,6 +339,7 @@ onRestoreOriginal(job: QueueJobModel): void {
    - Verify default behavior (delete original)
 
 ### Frontend Tests
+
 1. **Component Tests** (`queue.page.spec.ts`):
    - Keep Original button shows for ENCODING jobs
    - Button disabled after clicking

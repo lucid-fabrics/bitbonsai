@@ -9,11 +9,13 @@
 ### PM2 Process Management
 
 **View all processes:**
+
 ```bash
 pm2 status
 ```
 
 **View logs:**
+
 ```bash
 pm2 logs              # All processes
 pm2 logs license-api  # Specific process
@@ -21,11 +23,13 @@ pm2 logs --lines 100  # Last 100 lines
 ```
 
 **Monitor in real-time:**
+
 ```bash
 pm2 monit
 ```
 
 **Restart services:**
+
 ```bash
 pm2 restart all
 pm2 restart license-api
@@ -70,15 +74,15 @@ curl http://localhost:4201
 
 ### License API
 
-| Metric | Endpoint | Alert Threshold |
-|--------|----------|-----------------|
-| Health | `GET /health` | Response time > 1s |
-| Active Licenses | `GET /analytics/revenue-metrics` | Track daily |
-| MRR/ARR | `GET /analytics/revenue-metrics` | Track daily |
-| Churn Rate | `GET /analytics/revenue-metrics` | > 10% monthly |
-| Database Connections | Postgres metrics | > 80% pool utilization |
-| API Response Time | Application logs | P95 > 500ms |
-| Error Rate | Application logs | > 1% |
+| Metric               | Endpoint                         | Alert Threshold        |
+| -------------------- | -------------------------------- | ---------------------- |
+| Health               | `GET /health`                    | Response time > 1s     |
+| Active Licenses      | `GET /analytics/revenue-metrics` | Track daily            |
+| MRR/ARR              | `GET /analytics/revenue-metrics` | Track daily            |
+| Churn Rate           | `GET /analytics/revenue-metrics` | > 10% monthly          |
+| Database Connections | Postgres metrics                 | > 80% pool utilization |
+| API Response Time    | Application logs                 | P95 > 500ms            |
+| Error Rate           | Application logs                 | > 1%                   |
 
 ### Database (PostgreSQL)
 
@@ -162,22 +166,26 @@ du -sh logs/
 ### Database Backups
 
 **Automated daily backups:**
+
 ```bash
 # Add to crontab (runs at 2 AM daily)
 0 2 * * * docker exec bitbonsai-license-db pg_dump -U license_user license_api | gzip > /backups/license-api-$(date +\%Y\%m\%d).sql.gz
 ```
 
 **Manual backup:**
+
 ```bash
 docker exec bitbonsai-license-db pg_dump -U license_user license_api > backup.sql
 ```
 
 **Restore from backup:**
+
 ```bash
 docker exec -i bitbonsai-license-db psql -U license_user license_api < backup.sql
 ```
 
 **Keep backups for:**
+
 - Daily: Last 7 days
 - Weekly: Last 4 weeks
 - Monthly: Last 12 months
@@ -232,12 +240,14 @@ tar czf docker-compose-backup.tar.gz docker-compose*.yml
 ### License API Won't Start
 
 **Check logs:**
+
 ```bash
 docker logs bitbonsai-license-api
 pm2 logs license-api
 ```
 
 **Common issues:**
+
 1. Missing environment variables → Check .env file
 2. Database connection failed → Verify LICENSE_DATABASE_URL
 3. Port already in use → Check `lsof -i :3000`
@@ -246,12 +256,14 @@ pm2 logs license-api
 ### High Memory Usage
 
 **Identify memory hog:**
+
 ```bash
 docker stats
 pm2 list
 ```
 
 **Solutions:**
+
 1. Restart service: `pm2 restart license-api`
 2. Check for memory leaks in code
 3. Increase `max_memory_restart` in PM2 config
@@ -260,17 +272,20 @@ pm2 list
 ### Slow Queries
 
 **Enable PostgreSQL query logging:**
+
 ```sql
 ALTER SYSTEM SET log_min_duration_statement = 1000;  -- Log queries > 1s
 SELECT pg_reload_conf();
 ```
 
 **View slow queries:**
+
 ```bash
 docker exec bitbonsai-license-db tail -f /var/lib/postgresql/data/log/postgresql.log
 ```
 
 **Solutions:**
+
 1. Add indexes to frequently queried columns
 2. Optimize N+1 queries
 3. Add caching layer (Redis)
@@ -279,15 +294,18 @@ docker exec bitbonsai-license-db tail -f /var/lib/postgresql/data/log/postgresql
 ### Stripe Webhook Issues
 
 **Check webhook logs:**
+
 ```bash
 pm2 logs license-api | grep webhook
 ```
 
 **Verify webhook signature:**
+
 - Check STRIPE_WEBHOOK_SECRET in .env
 - Compare with Stripe Dashboard → Developers → Webhooks
 
 **Test webhook locally:**
+
 ```bash
 stripe listen --forward-to localhost:3000/webhooks/stripe
 ```
@@ -296,12 +314,12 @@ stripe listen --forward-to localhost:3000/webhooks/stripe
 
 ## 📞 Escalation Contacts
 
-| Issue Type | Contact | Response Time |
-|------------|---------|---------------|
-| Critical Outage | On-call engineer | < 15 minutes |
-| Database Issues | DBA | < 30 minutes |
-| Security Incident | Security team | < 10 minutes |
-| Payment Issues | Finance team | < 1 hour |
+| Issue Type        | Contact          | Response Time |
+| ----------------- | ---------------- | ------------- |
+| Critical Outage   | On-call engineer | < 15 minutes  |
+| Database Issues   | DBA              | < 30 minutes  |
+| Security Incident | Security team    | < 10 minutes  |
+| Payment Issues    | Finance team     | < 1 hour      |
 
 ---
 

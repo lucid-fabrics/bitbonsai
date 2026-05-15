@@ -40,8 +40,14 @@ export class QueueJobStatsService {
     ] = await Promise.all([
       this.jobRepository.countWhere({ ...where, stage: JobStage.DETECTED }),
       this.jobRepository.countWhere({ ...where, stage: JobStage.HEALTH_CHECK }),
-      this.jobRepository.countWhere({ ...where, stage: JobStage.NEEDS_DECISION }),
-      this.jobRepository.findManyWithInclude<{ sourceCodec: string; targetCodec: string }>({
+      this.jobRepository.countWhere({
+        ...where,
+        stage: JobStage.NEEDS_DECISION,
+      }),
+      this.jobRepository.findManyWithInclude<{
+        sourceCodec: string;
+        targetCodec: string;
+      }>({
         where: { ...where, stage: JobStage.NEEDS_DECISION },
         select: { sourceCodec: true, targetCodec: true },
       }),
@@ -54,7 +60,7 @@ export class QueueJobStatsService {
       this.jobRepository.countWhere({ ...where, stage: JobStage.CANCELLED }),
       this.jobRepository.aggregateSumWhere(
         { ...where, stage: JobStage.COMPLETED },
-        { savedBytes: true }
+        { savedBytes: true },
       ),
     ]);
 
@@ -76,7 +82,9 @@ export class QueueJobStatsService {
       completed,
       failed,
       cancelled,
-      totalSavedBytes: ((totalSaved._sum.savedBytes as bigint | null) || BigInt(0)).toString(),
+      totalSavedBytes: (
+        (totalSaved._sum.savedBytes as bigint | null) || BigInt(0)
+      ).toString(),
       nodeId,
     };
   }

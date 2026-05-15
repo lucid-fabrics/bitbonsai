@@ -37,7 +37,10 @@ describe('LibraryRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [LibraryRepository, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [
+        LibraryRepository,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
     }).compile();
 
     repository = module.get<LibraryRepository>(LibraryRepository);
@@ -164,14 +167,16 @@ describe('LibraryRepository', () => {
         expect.objectContaining({
           where: { id: 'lib-1' },
           data: expect.objectContaining({ lastScanAt: expect.any(Date) }),
-        })
+        }),
       );
     });
 
     it('should propagate errors', async () => {
       mockPrismaLibrary.update.mockRejectedValue(new Error('Not found'));
 
-      await expect(repository.updateLastScan('ghost')).rejects.toThrow('Not found');
+      await expect(repository.updateLastScan('ghost')).rejects.toThrow(
+        'Not found',
+      );
     });
   });
 
@@ -191,7 +196,9 @@ describe('LibraryRepository', () => {
     });
 
     it('should return BigInt(0) when aggregate sum is null', async () => {
-      mockPrismaLibrary.aggregate.mockResolvedValue({ _sum: { sizeBytes: null } });
+      mockPrismaLibrary.aggregate.mockResolvedValue({
+        _sum: { sizeBytes: null },
+      });
 
       const result = await repository.getTotalSize();
 
@@ -213,7 +220,9 @@ describe('LibraryRepository', () => {
     });
 
     it('should return null sum when no data', async () => {
-      mockPrismaLibrary.aggregate.mockResolvedValue({ _sum: { totalSizeBytes: null } });
+      mockPrismaLibrary.aggregate.mockResolvedValue({
+        _sum: { totalSizeBytes: null },
+      });
 
       const result = await repository.aggregateTotalSizeBytes();
 
@@ -252,7 +261,9 @@ describe('LibraryRepository', () => {
       const result = await repository.findByWhere({ id: 'lib-1' });
 
       expect(result).toEqual(mockLibrary);
-      expect(mockPrismaLibrary.findUnique).toHaveBeenCalledWith({ where: { id: 'lib-1' } });
+      expect(mockPrismaLibrary.findUnique).toHaveBeenCalledWith({
+        where: { id: 'lib-1' },
+      });
     });
 
     it('should return null when not found', async () => {
@@ -269,7 +280,10 @@ describe('LibraryRepository', () => {
       const withJobs = { ...mockLibrary, jobs: [] };
       mockPrismaLibrary.findUnique.mockResolvedValue(withJobs);
 
-      const result = await repository.findUniqueWithInclude({ id: 'lib-1' }, { jobs: true });
+      const result = await repository.findUniqueWithInclude(
+        { id: 'lib-1' },
+        { jobs: true },
+      );
 
       expect(result).toEqual(withJobs);
       expect(mockPrismaLibrary.findUnique).toHaveBeenCalledWith({
@@ -281,7 +295,10 @@ describe('LibraryRepository', () => {
     it('should return null when not found', async () => {
       mockPrismaLibrary.findUnique.mockResolvedValue(null);
 
-      const result = await repository.findUniqueWithInclude({ id: 'ghost' }, { jobs: true });
+      const result = await repository.findUniqueWithInclude(
+        { id: 'ghost' },
+        { jobs: true },
+      );
 
       expect(result).toBeNull();
     });
@@ -294,7 +311,9 @@ describe('LibraryRepository', () => {
       const result = await repository.findFirstWhere({ id: 'lib-1' });
 
       expect(result).toEqual(mockLibrary);
-      expect(mockPrismaLibrary.findFirst).toHaveBeenCalledWith({ where: { id: 'lib-1' } });
+      expect(mockPrismaLibrary.findFirst).toHaveBeenCalledWith({
+        where: { id: 'lib-1' },
+      });
     });
 
     it('should return null when not found', async () => {
@@ -321,7 +340,9 @@ describe('LibraryRepository', () => {
 
       await repository.findAllLibraries({ nodeId: 'node-1' });
 
-      expect(mockPrismaLibrary.findMany).toHaveBeenCalledWith({ where: { nodeId: 'node-1' } });
+      expect(mockPrismaLibrary.findMany).toHaveBeenCalledWith({
+        where: { nodeId: 'node-1' },
+      });
     });
 
     it('should call findMany with include when provided', async () => {
@@ -329,7 +350,9 @@ describe('LibraryRepository', () => {
 
       await repository.findAllLibraries(undefined, { jobs: true });
 
-      expect(mockPrismaLibrary.findMany).toHaveBeenCalledWith({ include: { jobs: true } });
+      expect(mockPrismaLibrary.findMany).toHaveBeenCalledWith({
+        include: { jobs: true },
+      });
     });
 
     it('should call findMany with both where and include', async () => {
@@ -348,9 +371,11 @@ describe('LibraryRepository', () => {
     it('should create a library with provided data', async () => {
       mockPrismaLibrary.create.mockResolvedValue(mockLibrary);
 
-      const createData = { name: 'Movies', path: '/mnt/movies', nodeId: 'node-1' } as Parameters<
-        typeof repository.createLibrary
-      >[0];
+      const createData = {
+        name: 'Movies',
+        path: '/mnt/movies',
+        nodeId: 'node-1',
+      } as Parameters<typeof repository.createLibrary>[0];
       const result = await repository.createLibrary(createData);
 
       expect(result).toEqual(mockLibrary);
@@ -360,13 +385,17 @@ describe('LibraryRepository', () => {
     });
 
     it('should propagate errors', async () => {
-      mockPrismaLibrary.create.mockRejectedValue(new Error('Unique constraint failed'));
+      mockPrismaLibrary.create.mockRejectedValue(
+        new Error('Unique constraint failed'),
+      );
 
-      const createData = { name: 'Dup', path: '/mnt/movies', nodeId: 'node-1' } as Parameters<
-        typeof repository.createLibrary
-      >[0];
+      const createData = {
+        name: 'Dup',
+        path: '/mnt/movies',
+        nodeId: 'node-1',
+      } as Parameters<typeof repository.createLibrary>[0];
       await expect(repository.createLibrary(createData)).rejects.toThrow(
-        'Unique constraint failed'
+        'Unique constraint failed',
       );
     });
   });
@@ -376,7 +405,10 @@ describe('LibraryRepository', () => {
       const updated = { ...mockLibrary, name: 'TV Shows' };
       mockPrismaLibrary.update.mockResolvedValue(updated);
 
-      const result = await repository.updateLibrary({ id: 'lib-1' }, { name: 'TV Shows' });
+      const result = await repository.updateLibrary(
+        { id: 'lib-1' },
+        { name: 'TV Shows' },
+      );
 
       expect(result).toEqual(updated);
       expect(mockPrismaLibrary.update).toHaveBeenCalledWith({
@@ -394,7 +426,7 @@ describe('LibraryRepository', () => {
       const result = await repository.updateWithInclude(
         { id: 'lib-1' },
         { name: 'Updated' },
-        { jobs: true }
+        { jobs: true },
       );
 
       expect(result).toEqual(withJobs);
@@ -413,13 +445,17 @@ describe('LibraryRepository', () => {
       const result = await repository.deleteLibrary({ id: 'lib-1' });
 
       expect(result).toEqual(mockLibrary);
-      expect(mockPrismaLibrary.delete).toHaveBeenCalledWith({ where: { id: 'lib-1' } });
+      expect(mockPrismaLibrary.delete).toHaveBeenCalledWith({
+        where: { id: 'lib-1' },
+      });
     });
 
     it('should propagate errors when not found', async () => {
       mockPrismaLibrary.delete.mockRejectedValue(new Error('Record not found'));
 
-      await expect(repository.deleteLibrary({ id: 'ghost' })).rejects.toThrow('Record not found');
+      await expect(repository.deleteLibrary({ id: 'ghost' })).rejects.toThrow(
+        'Record not found',
+      );
     });
   });
 
@@ -427,12 +463,18 @@ describe('LibraryRepository', () => {
     it('should call prisma upsert with where, create, and update', async () => {
       mockPrismaLibrary.upsert.mockResolvedValue(mockLibrary);
 
-      const createData = { name: 'Movies', path: '/mnt/movies', nodeId: 'node-1' } as Parameters<
-        typeof repository.upsertLibrary
-      >[1];
-      const result = await repository.upsertLibrary({ id: 'lib-1' }, createData, {
-        name: 'Movies Updated',
-      });
+      const createData = {
+        name: 'Movies',
+        path: '/mnt/movies',
+        nodeId: 'node-1',
+      } as Parameters<typeof repository.upsertLibrary>[1];
+      const result = await repository.upsertLibrary(
+        { id: 'lib-1' },
+        createData,
+        {
+          name: 'Movies Updated',
+        },
+      );
 
       expect(result).toEqual(mockLibrary);
       expect(mockPrismaLibrary.upsert).toHaveBeenCalledWith({

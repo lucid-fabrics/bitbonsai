@@ -5,7 +5,7 @@ export class NodePerformanceBO {
   constructor(
     public readonly nodeName: string,
     public readonly jobsCompleted: number,
-    public readonly successRate: number
+    public readonly successRate: number,
   ) {}
 
   static fromDto(dto: {
@@ -13,7 +13,11 @@ export class NodePerformanceBO {
     jobsCompleted: number;
     successRate: number;
   }): NodePerformanceBO {
-    return new NodePerformanceBO(dto.nodeName, dto.jobsCompleted, dto.successRate);
+    return new NodePerformanceBO(
+      dto.nodeName,
+      dto.jobsCompleted,
+      dto.successRate,
+    );
   }
 
   get performanceStatus(): 'high' | 'medium' | 'low' {

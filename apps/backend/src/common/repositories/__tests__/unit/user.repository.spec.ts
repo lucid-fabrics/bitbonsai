@@ -40,7 +40,10 @@ describe('UserRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UserRepository, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [
+        UserRepository,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
     }).compile();
 
     repository = module.get<UserRepository>(UserRepository);
@@ -57,7 +60,9 @@ describe('UserRepository', () => {
       const result = await repository.findById('user-1');
 
       expect(result).toEqual(mockUser);
-      expect(mockPrismaUser.findUnique).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+      expect(mockPrismaUser.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+      });
     });
 
     it('should return null when not found', async () => {
@@ -97,7 +102,9 @@ describe('UserRepository', () => {
       const result = await repository.findByUsername('admin');
 
       expect(result).toEqual(mockUser);
-      expect(mockPrismaUser.findUnique).toHaveBeenCalledWith({ where: { username: 'admin' } });
+      expect(mockPrismaUser.findUnique).toHaveBeenCalledWith({
+        where: { username: 'admin' },
+      });
     });
 
     it('should return null when username not found', async () => {
@@ -116,7 +123,9 @@ describe('UserRepository', () => {
       const result = await repository.findAll();
 
       expect(result).toEqual([mockUser]);
-      expect(mockPrismaUser.findMany).toHaveBeenCalledWith({ orderBy: { createdAt: 'desc' } });
+      expect(mockPrismaUser.findMany).toHaveBeenCalledWith({
+        orderBy: { createdAt: 'desc' },
+      });
     });
   });
 
@@ -127,7 +136,9 @@ describe('UserRepository', () => {
       const result = await repository.findByRole(UserRole.ADMIN);
 
       expect(result).toEqual([mockUser]);
-      expect(mockPrismaUser.findMany).toHaveBeenCalledWith({ where: { role: UserRole.ADMIN } });
+      expect(mockPrismaUser.findMany).toHaveBeenCalledWith({
+        where: { role: UserRole.ADMIN },
+      });
     });
   });
 
@@ -186,9 +197,15 @@ describe('UserRepository', () => {
     it('should update refresh token fields', async () => {
       const token = 'refresh-token-xyz';
       const expiry = new Date('2025-12-31');
-      mockPrismaUser.update.mockResolvedValue({ ...mockUser, refreshToken: token });
+      mockPrismaUser.update.mockResolvedValue({
+        ...mockUser,
+        refreshToken: token,
+      });
 
-      await repository.update('user-1', { refreshToken: token, refreshTokenExpiresAt: expiry });
+      await repository.update('user-1', {
+        refreshToken: token,
+        refreshTokenExpiresAt: expiry,
+      });
 
       expect(mockPrismaUser.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
@@ -204,13 +221,17 @@ describe('UserRepository', () => {
       const result = await repository.delete('user-1');
 
       expect(result).toEqual(mockUser);
-      expect(mockPrismaUser.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+      expect(mockPrismaUser.delete).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+      });
     });
 
     it('should propagate error when user not found', async () => {
       mockPrismaUser.delete.mockRejectedValue(new Error('Record not found'));
 
-      await expect(repository.delete('ghost')).rejects.toThrow('Record not found');
+      await expect(repository.delete('ghost')).rejects.toThrow(
+        'Record not found',
+      );
     });
   });
 
@@ -268,7 +289,10 @@ describe('UserRepository', () => {
 
       expect(result[UserRole.ADMIN]).toBe(1);
       expect(result[UserRole.USER]).toBe(4);
-      expect(mockPrismaUser.groupBy).toHaveBeenCalledWith({ by: ['role'], _count: true });
+      expect(mockPrismaUser.groupBy).toHaveBeenCalledWith({
+        by: ['role'],
+        _count: true,
+      });
     });
   });
 });

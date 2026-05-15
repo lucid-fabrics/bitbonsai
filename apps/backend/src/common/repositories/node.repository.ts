@@ -114,7 +114,7 @@ export class NodeRepository extends BaseRepository {
 
   async findFirstByRole(
     role: NodeRole,
-    opts?: { orderBy?: Record<string, unknown> }
+    opts?: { orderBy?: Record<string, unknown> },
   ): Promise<Node | null> {
     return this.findFirst<Node | null>({
       where: { role },
@@ -123,7 +123,7 @@ export class NodeRepository extends BaseRepository {
   }
 
   async findFirstWithLicense(
-    where: Record<string, unknown>
+    where: Record<string, unknown>,
   ): Promise<(Node & { license: { key: string } }) | null> {
     return this.findFirst<(Node & { license: { key: string } }) | null>({
       where,
@@ -140,7 +140,7 @@ export class NodeRepository extends BaseRepository {
 
   async findManyByRole(
     role: NodeRole,
-    opts?: { orderBy?: Record<string, unknown> }
+    opts?: { orderBy?: Record<string, unknown> },
   ): Promise<Node[]> {
     return this.findMany<Node>({
       where: { role },
@@ -201,7 +201,7 @@ export class NodeRepository extends BaseRepository {
 
   async findWithSelect<T = unknown>(
     id: string,
-    select: Record<string, unknown>
+    select: Record<string, unknown>,
   ): Promise<T | null> {
     return this.findUnique<T | null>({ where: { id }, select });
   }
@@ -222,7 +222,9 @@ export class NodeRepository extends BaseRepository {
     return this.delete<Node>({ where: { id } });
   }
 
-  async findAllWithMetrics(where?: Record<string, unknown>): Promise<NodeWithMetrics[]> {
+  async findAllWithMetrics(
+    where?: Record<string, unknown>,
+  ): Promise<NodeWithMetrics[]> {
     return this.findMany<NodeWithMetrics>({
       ...(where && { where }),
       include: { metrics: true },
@@ -236,7 +238,9 @@ export class NodeRepository extends BaseRepository {
       where: { status: 'ONLINE' as NodeStatus },
       include: {
         _count: {
-          select: { jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } } },
+          select: {
+            jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } },
+          },
         },
       },
     });
@@ -248,19 +252,25 @@ export class NodeRepository extends BaseRepository {
       include: {
         _count: {
           select: {
-            jobs: { where: { stage: { in: ['QUEUED', 'ENCODING', 'VERIFYING'] } } },
+            jobs: {
+              where: { stage: { in: ['QUEUED', 'ENCODING', 'VERIFYING'] } },
+            },
           },
         },
       },
     });
   }
 
-  async findByIdWithActiveJobCount(id: string): Promise<NodeWithJobCount | null> {
+  async findByIdWithActiveJobCount(
+    id: string,
+  ): Promise<NodeWithJobCount | null> {
     return this.findUnique<NodeWithJobCount | null>({
       where: { id },
       include: {
         _count: {
-          select: { jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } } },
+          select: {
+            jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } },
+          },
         },
       },
     });
@@ -283,14 +293,20 @@ export class NodeRepository extends BaseRepository {
         status: true,
         _count: { select: { jobs: true } },
       },
-    }) as Promise<(Pick<Node, 'id' | 'name' | 'status'> & { _count: { jobs: number } })[]>;
+    }) as Promise<
+      (Pick<Node, 'id' | 'name' | 'status'> & { _count: { jobs: number } })[]
+    >;
   }
 
   async findLoadData(
-    nodeId: string
+    nodeId: string,
   ): Promise<Pick<
     Node,
-    'id' | 'lastHeartbeatLoad' | 'currentSystemLoad' | 'currentMemoryFreeGB' | 'cpuCores'
+    | 'id'
+    | 'lastHeartbeatLoad'
+    | 'currentSystemLoad'
+    | 'currentMemoryFreeGB'
+    | 'cpuCores'
   > | null> {
     return this.findUnique({
       where: { id: nodeId },
@@ -303,14 +319,22 @@ export class NodeRepository extends BaseRepository {
       },
     }) as Promise<Pick<
       Node,
-      'id' | 'lastHeartbeatLoad' | 'currentSystemLoad' | 'currentMemoryFreeGB' | 'cpuCores'
+      | 'id'
+      | 'lastHeartbeatLoad'
+      | 'currentSystemLoad'
+      | 'currentMemoryFreeGB'
+      | 'cpuCores'
     > | null>;
   }
 
   async findAllLoadData(): Promise<
     Pick<
       Node,
-      'id' | 'lastHeartbeatLoad' | 'currentSystemLoad' | 'currentMemoryFreeGB' | 'cpuCores'
+      | 'id'
+      | 'lastHeartbeatLoad'
+      | 'currentSystemLoad'
+      | 'currentMemoryFreeGB'
+      | 'cpuCores'
     >[]
   > {
     return this.findMany({
@@ -325,13 +349,17 @@ export class NodeRepository extends BaseRepository {
     }) as Promise<
       Pick<
         Node,
-        'id' | 'lastHeartbeatLoad' | 'currentSystemLoad' | 'currentMemoryFreeGB' | 'cpuCores'
+        | 'id'
+        | 'lastHeartbeatLoad'
+        | 'currentSystemLoad'
+        | 'currentMemoryFreeGB'
+        | 'cpuCores'
       >[]
     >;
   }
 
   async findCapacityData(
-    nodeId: string
+    nodeId: string,
   ): Promise<
     | (Pick<
         Node,
@@ -362,7 +390,9 @@ export class NodeRepository extends BaseRepository {
         currentSystemLoad: true,
         currentMemoryFreeGB: true,
         _count: {
-          select: { jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } } },
+          select: {
+            jobs: { where: { stage: { in: ['ENCODING', 'VERIFYING'] } } },
+          },
         },
       },
     }) as Promise<
@@ -397,22 +427,28 @@ export class NodeRepository extends BaseRepository {
 
   async findManySelect<T>(
     where: Record<string, unknown>,
-    select: Record<string, unknown>
+    select: Record<string, unknown>,
   ): Promise<T[]> {
     return this.findMany<T>({ where, select });
   }
 
-  async groupByStatusCount(): Promise<Array<{ status: NodeStatus; _count: { status: number } }>> {
+  async groupByStatusCount(): Promise<
+    Array<{ status: NodeStatus; _count: { status: number } }>
+  > {
     // Prisma groupBy requires type cast: strict return type not inferrable for object-form _count
     return this.prisma.node.groupBy({
       by: ['status'],
       _count: { status: true },
-    } as unknown as Parameters<typeof this.prisma.node.groupBy>[0]) as unknown as Promise<
+    } as unknown as Parameters<
+      typeof this.prisma.node.groupBy
+    >[0]) as unknown as Promise<
       Array<{ status: NodeStatus; _count: { status: number } }>
     >;
   }
 
-  async findManyWithJobCountOrdered(): Promise<(Node & { _count: { jobs: number } })[]> {
+  async findManyWithJobCountOrdered(): Promise<
+    (Node & { _count: { jobs: number } })[]
+  > {
     return this.prisma.node.findMany({
       include: { _count: { select: { jobs: true } } },
       orderBy: [{ role: 'asc' }, { name: 'asc' }],
@@ -420,6 +456,8 @@ export class NodeRepository extends BaseRepository {
   }
 
   async findFirstByIpAddresses(ipAddresses: string[]): Promise<Node | null> {
-    return this.prisma.node.findFirst({ where: { ipAddress: { in: ipAddresses } } });
+    return this.prisma.node.findFirst({
+      where: { ipAddress: { in: ipAddresses } },
+    });
   }
 }

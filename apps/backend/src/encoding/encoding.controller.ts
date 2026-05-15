@@ -57,7 +57,7 @@ export class EncodingController {
     description: 'Internal server error occurred while starting workers',
   })
   async startWorker(
-    @Param('nodeId') nodeId: string
+    @Param('nodeId') nodeId: string,
   ): Promise<{ message: string; workersStarted: number }> {
     const workersStarted = await this.encodingService.startWorkerPool(nodeId);
     return {
@@ -91,7 +91,10 @@ export class EncodingController {
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Worker stopped for node clq8x9z8x0000qh8x9z8x0000' },
+        message: {
+          type: 'string',
+          example: 'Worker stopped for node clq8x9z8x0000qh8x9z8x0000',
+        },
       },
     },
   })
@@ -101,7 +104,9 @@ export class EncodingController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while stopping worker',
   })
-  async stopWorker(@Param('nodeId') nodeId: string): Promise<{ message: string }> {
+  async stopWorker(
+    @Param('nodeId') nodeId: string,
+  ): Promise<{ message: string }> {
     await this.encodingService.stopWorker(nodeId);
     return { message: `Worker stopped for node ${nodeId}` };
   }

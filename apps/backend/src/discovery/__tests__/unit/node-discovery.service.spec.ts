@@ -4,7 +4,10 @@ import { NodeRole } from '@prisma/client';
 import { NodesService } from '../../../nodes/nodes.service';
 import { NotificationsService } from '../../../notifications/notifications.service';
 import { HardwareDetectionService } from '../../../system/hardware-detection.service';
-import { type DiscoveredNode, NodeDiscoveryService } from '../../node-discovery.service';
+import {
+  type DiscoveredNode,
+  NodeDiscoveryService,
+} from '../../node-discovery.service';
 
 // Mock bonjour-service before imports resolve
 jest.mock('bonjour-service', () => {
@@ -29,7 +32,6 @@ jest.mock('bonjour-service', () => {
   };
 });
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const bonjourMock = require('bonjour-service');
 
 describe('NodeDiscoveryService (discovery module)', () => {
@@ -77,7 +79,9 @@ describe('NodeDiscoveryService (discovery module)', () => {
 
   async function buildModule() {
     jest.clearAllMocks();
-    bonjourMock.__mockBonjour.publish.mockReturnValue(bonjourMock.__mockService);
+    bonjourMock.__mockBonjour.publish.mockReturnValue(
+      bonjourMock.__mockService,
+    );
     bonjourMock.__mockBonjour.find.mockReturnValue(bonjourMock.__mockBrowser);
     bonjourMock.__mockBrowser.on.mockReturnValue(bonjourMock.__mockBrowser);
 
@@ -86,7 +90,10 @@ describe('NodeDiscoveryService (discovery module)', () => {
         NodeDiscoveryService,
         { provide: NodesService, useValue: mockNodesService },
         { provide: EventEmitter2, useValue: mockEventEmitter },
-        { provide: HardwareDetectionService, useValue: mockHardwareDetectionService },
+        {
+          provide: HardwareDetectionService,
+          useValue: mockHardwareDetectionService,
+        },
         { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
@@ -110,17 +117,21 @@ describe('NodeDiscoveryService (discovery module)', () => {
   describe('onModuleInit', () => {
     it('should initialize Bonjour and start broadcasting for MAIN node', async () => {
       mockNodesService.getCurrentNode.mockResolvedValue(mockMainNode);
-      mockHardwareDetectionService.detectHardware.mockResolvedValue(mockHardware);
+      mockHardwareDetectionService.detectHardware.mockResolvedValue(
+        mockHardware,
+      );
 
       await service.onModuleInit();
 
       expect(mockNodesService.getCurrentNode).toHaveBeenCalledTimes(1);
-      expect(mockHardwareDetectionService.detectHardware).toHaveBeenCalledTimes(1);
+      expect(mockHardwareDetectionService.detectHardware).toHaveBeenCalledTimes(
+        1,
+      );
       expect(bonjourMock.__mockBonjour.publish).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Main Node',
           type: 'bitbonsai',
-        })
+        }),
       );
     });
 
@@ -134,7 +145,9 @@ describe('NodeDiscoveryService (discovery module)', () => {
     });
 
     it('should initialize without error when no node is configured yet', async () => {
-      mockNodesService.getCurrentNode.mockRejectedValue(new Error('No node configured'));
+      mockNodesService.getCurrentNode.mockRejectedValue(
+        new Error('No node configured'),
+      );
 
       await expect(service.onModuleInit()).resolves.not.toThrow();
 
@@ -158,7 +171,9 @@ describe('NodeDiscoveryService (discovery module)', () => {
 
     it('should stop published service on destroy when broadcasting', async () => {
       mockNodesService.getCurrentNode.mockResolvedValue(mockMainNode);
-      mockHardwareDetectionService.detectHardware.mockResolvedValue(mockHardware);
+      mockHardwareDetectionService.detectHardware.mockResolvedValue(
+        mockHardware,
+      );
       await service.onModuleInit();
 
       await service.onModuleDestroy();
@@ -180,8 +195,9 @@ describe('NodeDiscoveryService (discovery module)', () => {
 
     it('should return discovered nodes from internal cache', () => {
       // Access private map via type casting to seed data
-      const internalMap = (service as unknown as { discoveredNodes: Map<string, DiscoveredNode> })
-        .discoveredNodes;
+      const internalMap = (
+        service as unknown as { discoveredNodes: Map<string, DiscoveredNode> }
+      ).discoveredNodes;
       const node: DiscoveredNode = {
         nodeId: 'node-abc',
         name: 'Discovered Node',
@@ -196,7 +212,10 @@ describe('NodeDiscoveryService (discovery module)', () => {
       const result = service.getDiscoveredNodes();
 
       expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({ nodeId: 'node-abc', name: 'Discovered Node' });
+      expect(result[0]).toMatchObject({
+        nodeId: 'node-abc',
+        name: 'Discovered Node',
+      });
     });
   });
 
@@ -206,8 +225,9 @@ describe('NodeDiscoveryService (discovery module)', () => {
 
   describe('clearDiscoveredNodes', () => {
     it('should clear the discovered nodes cache', () => {
-      const internalMap = (service as unknown as { discoveredNodes: Map<string, DiscoveredNode> })
-        .discoveredNodes;
+      const internalMap = (
+        service as unknown as { discoveredNodes: Map<string, DiscoveredNode> }
+      ).discoveredNodes;
       internalMap.set('node-abc', {
         nodeId: 'node-abc',
         name: 'Test',
@@ -233,7 +253,9 @@ describe('NodeDiscoveryService (discovery module)', () => {
       // Force bonjour to null
       (service as unknown as { bonjour: null }).bonjour = null;
 
-      await expect(service.scanForMainNodes()).rejects.toThrow('Bonjour not initialized');
+      await expect(service.scanForMainNodes()).rejects.toThrow(
+        'Bonjour not initialized',
+      );
     });
 
     it('should prevent concurrent scans by returning existing promise', async () => {
@@ -243,7 +265,9 @@ describe('NodeDiscoveryService (discovery module)', () => {
       // Inject a fake active scan
       const fakeResult: DiscoveredNode[] = [];
       const fakeScan = Promise.resolve(fakeResult);
-      (service as unknown as { activeScan: Promise<DiscoveredNode[]> }).activeScan = fakeScan;
+      (
+        service as unknown as { activeScan: Promise<DiscoveredNode[]> }
+      ).activeScan = fakeScan;
 
       const result = await service.scanForMainNodes();
 
@@ -263,7 +287,7 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (svc: unknown) => Promise<void>) => {
           if (event === 'up') upHandler = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
       const scanPromise = service.scanForMainNodes();
@@ -271,7 +295,12 @@ describe('NodeDiscoveryService (discovery module)', () => {
       // Simulate a service being discovered
       if (upHandler) {
         await upHandler({
-          txt: { nodeId: 'found-node', name: 'Found Node', version: '2.0.0', apiPort: '3100' },
+          txt: {
+            nodeId: 'found-node',
+            name: 'Found Node',
+            version: '2.0.0',
+            apiPort: '3100',
+          },
           addresses: ['192.168.1.77'],
           host: 'found-host',
           port: 3100,
@@ -285,7 +314,10 @@ describe('NodeDiscoveryService (discovery module)', () => {
       const result = await scanPromise;
 
       expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({ nodeId: 'found-node', name: 'Found Node' });
+      expect(result[0]).toMatchObject({
+        nodeId: 'found-node',
+        name: 'Found Node',
+      });
 
       jest.useRealTimers();
       jest.restoreAllMocks();
@@ -303,16 +335,23 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (svc: unknown) => Promise<void>) => {
           if (event === 'up') upHandler = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-1' });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'notif-1',
+      });
 
       const scanPromise = service.scanForMainNodes();
 
       if (upHandler) {
         await upHandler({
-          txt: { nodeId: 'emit-node', name: 'Emit Node', version: '1.0.0', apiPort: '3100' },
+          txt: {
+            nodeId: 'emit-node',
+            name: 'Emit Node',
+            version: '1.0.0',
+            apiPort: '3100',
+          },
           addresses: ['192.168.1.88'],
           host: 'emit-host',
           port: 3100,
@@ -325,7 +364,7 @@ describe('NodeDiscoveryService (discovery module)', () => {
 
       expect(mockEventEmitter.emit).toHaveBeenCalledWith(
         'node.discovered',
-        expect.objectContaining({ nodeId: 'emit-node' })
+        expect.objectContaining({ nodeId: 'emit-node' }),
       );
 
       jest.useRealTimers();
@@ -343,7 +382,7 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (svc: unknown) => Promise<void>) => {
           if (event === 'up') upHandler = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
       const scanPromise = service.scanForMainNodes();
@@ -379,11 +418,14 @@ describe('NodeDiscoveryService (discovery module)', () => {
       });
       global.fetch = mockFetch as unknown as typeof fetch;
 
-      const result = await service.requestPairing('http://192.168.1.100:3100', 'node-1');
+      const result = await service.requestPairing(
+        'http://192.168.1.100:3100',
+        'node-1',
+      );
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://192.168.1.100:3100/api/v1/nodes/node-1/pairing-token',
-        expect.objectContaining({ method: 'POST' })
+        expect.objectContaining({ method: 'POST' }),
       );
       expect(result).toBe('654321');
     });
@@ -395,18 +437,20 @@ describe('NodeDiscoveryService (discovery module)', () => {
       }) as unknown as typeof fetch;
 
       await expect(
-        service.requestPairing('http://192.168.1.100:3100', 'missing-node')
+        service.requestPairing('http://192.168.1.100:3100', 'missing-node'),
       ).rejects.toThrow('Pairing request failed: Not Found');
     });
 
     it('should propagate network errors', async () => {
       global.fetch = jest
         .fn()
-        .mockRejectedValue(new Error('Network failure')) as unknown as typeof fetch;
+        .mockRejectedValue(
+          new Error('Network failure'),
+        ) as unknown as typeof fetch;
 
-      await expect(service.requestPairing('http://192.168.1.100:3100', 'node-1')).rejects.toThrow(
-        'Network failure'
-      );
+      await expect(
+        service.requestPairing('http://192.168.1.100:3100', 'node-1'),
+      ).rejects.toThrow('Network failure');
     });
   });
 
@@ -428,7 +472,9 @@ describe('NodeDiscoveryService (discovery module)', () => {
     it('should propagate NotFoundException for unknown node', async () => {
       mockNodesService.findOne.mockRejectedValue(new Error('Node not found'));
 
-      await expect(service.approveNode('missing')).rejects.toThrow('Node not found');
+      await expect(service.approveNode('missing')).rejects.toThrow(
+        'Node not found',
+      );
     });
   });
 
@@ -438,8 +484,9 @@ describe('NodeDiscoveryService (discovery module)', () => {
 
   describe('rejectNode', () => {
     it('should remove the node from the discovered cache', async () => {
-      const internalMap = (service as unknown as { discoveredNodes: Map<string, DiscoveredNode> })
-        .discoveredNodes;
+      const internalMap = (
+        service as unknown as { discoveredNodes: Map<string, DiscoveredNode> }
+      ).discoveredNodes;
       internalMap.set('node-abc', {
         nodeId: 'node-abc',
         name: 'To Reject',
@@ -468,14 +515,17 @@ describe('NodeDiscoveryService (discovery module)', () => {
     it('should use PORT env var when broadcasting', async () => {
       process.env.PORT = '4000';
       const freshModule = await buildModule();
-      const freshService = freshModule.get<NodeDiscoveryService>(NodeDiscoveryService);
+      const freshService =
+        freshModule.get<NodeDiscoveryService>(NodeDiscoveryService);
       mockNodesService.getCurrentNode.mockResolvedValue(mockMainNode);
-      mockHardwareDetectionService.detectHardware.mockResolvedValue(mockHardware);
+      mockHardwareDetectionService.detectHardware.mockResolvedValue(
+        mockHardware,
+      );
 
       await freshService.onModuleInit();
 
       expect(bonjourMock.__mockBonjour.publish).toHaveBeenCalledWith(
-        expect.objectContaining({ port: 4000 })
+        expect.objectContaining({ port: 4000 }),
       );
 
       process.env.PORT = undefined as any;
@@ -484,22 +534,28 @@ describe('NodeDiscoveryService (discovery module)', () => {
     it('should default to port 3100 when PORT env var is empty string', async () => {
       process.env.PORT = '';
       const freshModule = await buildModule();
-      const freshService = freshModule.get<NodeDiscoveryService>(NodeDiscoveryService);
+      const freshService =
+        freshModule.get<NodeDiscoveryService>(NodeDiscoveryService);
       mockNodesService.getCurrentNode.mockResolvedValue(mockMainNode);
-      mockHardwareDetectionService.detectHardware.mockResolvedValue(mockHardware);
+      mockHardwareDetectionService.detectHardware.mockResolvedValue(
+        mockHardware,
+      );
 
       await freshService.onModuleInit();
 
       expect(bonjourMock.__mockBonjour.publish).toHaveBeenCalledWith(
-        expect.objectContaining({ port: 3100 })
+        expect.objectContaining({ port: 3100 }),
       );
     });
 
     it('should include hardware info in TXT records when broadcasting', async () => {
       const freshModule = await buildModule();
-      const freshService = freshModule.get<NodeDiscoveryService>(NodeDiscoveryService);
+      const freshService =
+        freshModule.get<NodeDiscoveryService>(NodeDiscoveryService);
       mockNodesService.getCurrentNode.mockResolvedValue(mockMainNode);
-      mockHardwareDetectionService.detectHardware.mockResolvedValue(mockHardware);
+      mockHardwareDetectionService.detectHardware.mockResolvedValue(
+        mockHardware,
+      );
 
       await freshService.onModuleInit();
 
@@ -511,17 +567,18 @@ describe('NodeDiscoveryService (discovery module)', () => {
             cpuCores: '8',
             platform: 'linux',
           }),
-        })
+        }),
       );
     });
 
     it('should not throw when hardware detection fails during broadcast (error is caught internally)', async () => {
       const freshModule = await buildModule();
-      const freshService = freshModule.get<NodeDiscoveryService>(NodeDiscoveryService);
+      const freshService =
+        freshModule.get<NodeDiscoveryService>(NodeDiscoveryService);
 
       mockNodesService.getCurrentNode.mockResolvedValue(mockMainNode);
       mockHardwareDetectionService.detectHardware.mockRejectedValue(
-        new Error('Hardware detection failed')
+        new Error('Hardware detection failed'),
       );
 
       // onModuleInit catches startBroadcast errors and does NOT re-throw
@@ -536,10 +593,14 @@ describe('NodeDiscoveryService (discovery module)', () => {
   describe('onModuleDestroy - additional branches', () => {
     it('should handle missing stop method on published service', async () => {
       mockNodesService.getCurrentNode.mockResolvedValue(mockMainNode);
-      mockHardwareDetectionService.detectHardware.mockResolvedValue(mockHardware);
+      mockHardwareDetectionService.detectHardware.mockResolvedValue(
+        mockHardware,
+      );
 
       // Return a service without a stop method
-      bonjourMock.__mockBonjour.publish.mockReturnValueOnce({ name: 'no-stop' });
+      bonjourMock.__mockBonjour.publish.mockReturnValueOnce({
+        name: 'no-stop',
+      });
 
       await service.onModuleInit();
       await expect(service.onModuleDestroy()).resolves.not.toThrow();
@@ -551,7 +612,8 @@ describe('NodeDiscoveryService (discovery module)', () => {
 
       // Inject a browser
       const fakeBrowser = { stop: jest.fn() };
-      (service as unknown as { browser: typeof fakeBrowser }).browser = fakeBrowser;
+      (service as unknown as { browser: typeof fakeBrowser }).browser =
+        fakeBrowser;
 
       await service.onModuleDestroy();
 
@@ -562,8 +624,9 @@ describe('NodeDiscoveryService (discovery module)', () => {
       mockNodesService.getCurrentNode.mockRejectedValue(new Error('No node'));
       await service.onModuleInit();
 
-      const internalMap = (service as unknown as { discoveredNodes: Map<string, DiscoveredNode> })
-        .discoveredNodes;
+      const internalMap = (
+        service as unknown as { discoveredNodes: Map<string, DiscoveredNode> }
+      ).discoveredNodes;
       internalMap.set('x', {
         nodeId: 'x',
         name: 'X',
@@ -602,14 +665,19 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (svc: unknown) => Promise<void>) => {
           if (event === 'up') upHandler = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
       const scanPromise = service.scanForMainNodes();
 
       if (upHandler) {
         await upHandler({
-          txt: { nodeId: 'hw-node', name: 'HW Node', version: '1.0.0', apiPort: '3100' },
+          txt: {
+            nodeId: 'hw-node',
+            name: 'HW Node',
+            version: '1.0.0',
+            apiPort: '3100',
+          },
           addresses: ['192.168.1.10'],
           host: 'hw-host',
           port: 3100,
@@ -638,17 +706,24 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (svc: unknown) => void) => {
           handlers[event] = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
-      mockNotificationsService.createNotification.mockResolvedValue({ id: 'notif-2' });
+      mockNotificationsService.createNotification.mockResolvedValue({
+        id: 'notif-2',
+      });
 
       const scanPromise = service.scanForMainNodes();
 
       // First add a node via 'up'
       if (handlers.up) {
         await (handlers.up as (svc: unknown) => Promise<void>)({
-          txt: { nodeId: 'down-node', name: 'Down Node', version: '1.0.0', apiPort: '3100' },
+          txt: {
+            nodeId: 'down-node',
+            name: 'Down Node',
+            version: '1.0.0',
+            apiPort: '3100',
+          },
           addresses: ['192.168.1.20'],
           host: 'down-host',
           port: 3100,
@@ -667,7 +742,10 @@ describe('NodeDiscoveryService (discovery module)', () => {
       const result = await scanPromise;
 
       expect(result).toHaveLength(0);
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith('node.lost', 'down-node');
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'node.lost',
+        'down-node',
+      );
 
       jest.useRealTimers();
       jest.restoreAllMocks();
@@ -684,7 +762,7 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (svc: unknown) => void) => {
           handlers[event] = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
       const scanPromise = service.scanForMainNodes();
@@ -697,7 +775,10 @@ describe('NodeDiscoveryService (discovery module)', () => {
       jest.advanceTimersByTime(5000);
       await scanPromise;
 
-      expect(mockEventEmitter.emit).not.toHaveBeenCalledWith('node.lost', 'ghost-node');
+      expect(mockEventEmitter.emit).not.toHaveBeenCalledWith(
+        'node.lost',
+        'ghost-node',
+      );
 
       jest.useRealTimers();
     });
@@ -713,7 +794,7 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (arg: unknown) => void) => {
           handlers[event] = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
       const scanPromise = service.scanForMainNodes();
@@ -739,7 +820,7 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (svc: unknown) => Promise<void>) => {
           if (event === 'up') upHandler = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
       const scanPromise = service.scanForMainNodes();
@@ -775,7 +856,7 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (svc: unknown) => Promise<void>) => {
           if (event === 'up') upHandler = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
       const scanPromise = service.scanForMainNodes();
@@ -811,7 +892,7 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (svc: unknown) => Promise<void>) => {
           if (event === 'up') upHandler = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
       const scanPromise = service.scanForMainNodes();
@@ -847,30 +928,36 @@ describe('NodeDiscoveryService (discovery module)', () => {
         statusText: 'Forbidden',
       }) as unknown as typeof fetch;
 
-      await expect(service.completePairing('http://192.168.1.100:3100', '123456')).rejects.toThrow(
-        'Pairing completion failed: Forbidden'
-      );
+      await expect(
+        service.completePairing('http://192.168.1.100:3100', '123456'),
+      ).rejects.toThrow('Pairing completion failed: Forbidden');
     });
 
     it('should propagate network errors during completePairing', async () => {
       global.fetch = jest
         .fn()
-        .mockRejectedValue(new Error('ECONNREFUSED')) as unknown as typeof fetch;
+        .mockRejectedValue(
+          new Error('ECONNREFUSED'),
+        ) as unknown as typeof fetch;
 
-      await expect(service.completePairing('http://192.168.1.100:3100', '123456')).rejects.toThrow(
-        'ECONNREFUSED'
-      );
+      await expect(
+        service.completePairing('http://192.168.1.100:3100', '123456'),
+      ).rejects.toThrow('ECONNREFUSED');
     });
 
     it('should return willRestart=true and schedule process.exit on successful pairing', async () => {
-      const mockData = { nodeId: 'node-99', apiKey: 'abc123key456', name: 'Paired Node' };
+      const mockData = {
+        nodeId: 'node-99',
+        apiKey: 'abc123key456',
+        name: 'Paired Node',
+      };
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: jest.fn().mockResolvedValue(mockData),
       }) as unknown as typeof fetch;
 
       // Spy on fs via jest require mock at the module level
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
+
       const fs = require('fs');
       jest.spyOn(fs, 'existsSync').mockReturnValue(false);
       jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {
@@ -880,11 +967,19 @@ describe('NodeDiscoveryService (discovery module)', () => {
       jest.useFakeTimers();
       const exitSpy = jest
         .spyOn(process, 'exit')
-        .mockImplementation((_code?: string | number | null | undefined) => undefined as never);
+        .mockImplementation(
+          (_code?: string | number | null | undefined) => undefined as never,
+        );
 
-      const result = await service.completePairing('http://192.168.1.100:3100', '123456');
+      const result = await service.completePairing(
+        'http://192.168.1.100:3100',
+        '123456',
+      );
 
-      expect(result).toMatchObject({ nodeId: 'node-99', apiKey: 'abc123key456' });
+      expect(result).toMatchObject({
+        nodeId: 'node-99',
+        apiKey: 'abc123key456',
+      });
       expect((result as Record<string, unknown>).willRestart).toBe(true);
 
       jest.advanceTimersByTime(2100);
@@ -896,21 +991,26 @@ describe('NodeDiscoveryService (discovery module)', () => {
     });
 
     it('should throw when .env write fails during completePairing', async () => {
-      const mockData = { nodeId: 'node-88', apiKey: 'key888', name: 'Write Fail Node' };
+      const mockData = {
+        nodeId: 'node-88',
+        apiKey: 'key888',
+        name: 'Write Fail Node',
+      };
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: jest.fn().mockResolvedValue(mockData),
       }) as unknown as typeof fetch;
 
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const fs = require('fs');
       jest.spyOn(fs, 'existsSync').mockReturnValue(false);
       jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {
         throw new Error('Permission denied');
       });
 
-      await expect(service.completePairing('http://192.168.1.100:3100', '654321')).rejects.toThrow(
-        'Failed to write configuration file: Permission denied'
+      await expect(
+        service.completePairing('http://192.168.1.100:3100', '654321'),
+      ).rejects.toThrow(
+        'Failed to write configuration file: Permission denied',
       );
 
       jest.restoreAllMocks();
@@ -929,12 +1029,13 @@ describe('NodeDiscoveryService (discovery module)', () => {
       jest.useFakeTimers();
 
       const existingBrowser = { stop: jest.fn() };
-      (service as unknown as { browser: typeof existingBrowser }).browser = existingBrowser;
+      (service as unknown as { browser: typeof existingBrowser }).browser =
+        existingBrowser;
 
       bonjourMock.__mockBrowser.on.mockImplementation(
         (event: string, handler: (svc: unknown) => void) => {
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
       const scanPromise = service.scanForMainNodes();
@@ -958,12 +1059,12 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (svc: unknown) => Promise<void>) => {
           if (event === 'up') upHandler = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
       // Make notification creation fail
       mockNotificationsService.createNotification.mockRejectedValue(
-        new Error('DB connection lost')
+        new Error('DB connection lost'),
       );
 
       const scanPromise = service.scanForMainNodes();
@@ -1005,7 +1106,7 @@ describe('NodeDiscoveryService (discovery module)', () => {
         (event: string, handler: (svc: unknown) => void) => {
           handlers[event] = handler;
           return bonjourMock.__mockBrowser;
-        }
+        },
       );
 
       const scanPromise = service.scanForMainNodes();

@@ -23,7 +23,7 @@ export class SetupService {
     private readonly licenseRepository: LicenseRepository,
     private readonly nodeRepository: NodeRepository,
     private readonly settingsRepository: SettingsRepository,
-    private readonly userRepository: UserRepository
+    private readonly userRepository: UserRepository,
   ) {}
 
   /**
@@ -42,7 +42,7 @@ export class SetupService {
   async getSetupStatus(): Promise<SetupStatusDto> {
     // Check if this is a LINKED (child) node
     const linkedNode = await this.nodeRepository.findFirstByRole(
-      'LINKED' as import('@prisma/client').NodeRole
+      'LINKED' as import('@prisma/client').NodeRole,
     );
 
     // For child nodes, skip user check and just return the flag
@@ -86,7 +86,7 @@ export class SetupService {
    * @throws BadRequestException if setup has already been completed or validation fails
    */
   async initializeSetup(
-    dto: InitializeSetupDto
+    dto: InitializeSetupDto,
   ): Promise<{ message: string; pairingToken?: string }> {
     // Check if setup has already been completed
     const userCount = await this.userRepository.count();
@@ -101,7 +101,9 @@ export class SetupService {
     // Validate required fields for main node
     if (nodeType === NodeType.Main) {
       if (!dto.username || !dto.password) {
-        throw new BadRequestException('Username and password are required for main node setup');
+        throw new BadRequestException(
+          'Username and password are required for main node setup',
+        );
       }
 
       // Hash password using bcrypt
@@ -157,7 +159,9 @@ export class SetupService {
       // Create a MAIN node entry
       const hostname = process.env.HOSTNAME || 'main-node';
       const apiKey = `bb_${this.generateRandomString(64)}`;
-      const pairingToken = (100000 + require('crypto').randomInt(900000)).toString(); // 6-digit token
+      const pairingToken = (
+        100000 + require('crypto').randomInt(900000)
+      ).toString(); // 6-digit token
 
       await this.nodeRepository.createNode({
         name: `Main Node (${hostname})`,
@@ -195,7 +199,8 @@ export class SetupService {
 
       const pairingToken = this.generatePairingToken();
       return {
-        message: 'Child node setup completed. Use the pairing token to connect to a main node.',
+        message:
+          'Child node setup completed. Use the pairing token to connect to a main node.',
         pairingToken,
       };
     }
@@ -259,11 +264,15 @@ export class SetupService {
     // Reset setup complete flag
     const settings = await this.settingsRepository.findFirst();
     if (settings) {
-      await this.settingsRepository.update({ id: settings.id }, { isSetupComplete: false });
+      await this.settingsRepository.update(
+        { id: settings.id },
+        { isSetupComplete: false },
+      );
     }
 
     return {
-      message: 'Setup reset successfully. You can now run first-time setup again.',
+      message:
+        'Setup reset successfully. You can now run first-time setup again.',
     };
   }
 }

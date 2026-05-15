@@ -36,7 +36,7 @@ class TestError extends BaseError {
     statusCode = 500,
     errorCode = 'TEST',
     isOperational = true,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
   ) {
     super(message, statusCode, errorCode, isOperational, context);
   }
@@ -45,7 +45,9 @@ class TestError extends BaseError {
 describe('Custom Error Classes', () => {
   describe('BaseError', () => {
     it('should set all properties correctly', () => {
-      const error = new TestError('Test message', 400, 'TEST_CODE', true, { key: 'val' });
+      const error = new TestError('Test message', 400, 'TEST_CODE', true, {
+        key: 'val',
+      });
 
       expect(error.message).toBe('Test message');
       expect(error.statusCode).toBe(400);
@@ -70,7 +72,9 @@ describe('Custom Error Classes', () => {
     });
 
     it('should serialize to JSON correctly', () => {
-      const error = new TestError('Test', 422, 'CODE', true, { detail: 'info' });
+      const error = new TestError('Test', 422, 'CODE', true, {
+        detail: 'info',
+      });
       const json = error.toJSON();
 
       expect(json).toEqual({
@@ -149,7 +153,10 @@ describe('Custom Error Classes', () => {
       expect(error.statusCode).toBe(422);
       expect(error.errorCode).toBe('NODE_OFFLINE');
       expect(error.message).toContain('Worker Node');
-      expect(error.context).toEqual({ nodeId: 'node-1', nodeName: 'Worker Node' });
+      expect(error.context).toEqual({
+        nodeId: 'node-1',
+        nodeName: 'Worker Node',
+      });
     });
 
     it('should create NodeOfflineError without name', () => {
@@ -174,11 +181,17 @@ describe('Custom Error Classes', () => {
     });
 
     it('should create FileAccessError', () => {
-      const error = new FileAccessError('/media/video.mkv', 'Permission denied');
+      const error = new FileAccessError(
+        '/media/video.mkv',
+        'Permission denied',
+      );
 
       expect(error.statusCode).toBe(422);
       expect(error.errorCode).toBe('FILE_ACCESS_ERROR');
-      expect(error.context).toEqual({ filePath: '/media/video.mkv', reason: 'Permission denied' });
+      expect(error.context).toEqual({
+        filePath: '/media/video.mkv',
+        reason: 'Permission denied',
+      });
     });
 
     it('should create FileAccessError without reason', () => {
@@ -205,11 +218,19 @@ describe('Custom Error Classes', () => {
     });
 
     it('should create DuplicateResourceError', () => {
-      const error = new DuplicateResourceError('Library', 'path', '/media/movies');
+      const error = new DuplicateResourceError(
+        'Library',
+        'path',
+        '/media/movies',
+      );
 
       expect(error.statusCode).toBe(409);
       expect(error.errorCode).toBe('DUPLICATE_RESOURCE');
-      expect(error.context).toEqual({ resource: 'Library', field: 'path', value: '/media/movies' });
+      expect(error.context).toEqual({
+        resource: 'Library',
+        field: 'path',
+        value: '/media/movies',
+      });
     });
 
     it('should create LibraryPathConflictError', () => {
@@ -234,7 +255,10 @@ describe('Custom Error Classes', () => {
       expect(error.statusCode).toBe(503);
       expect(error.errorCode).toBe('EXTERNAL_SERVICE_ERROR');
       expect(error.context).toEqual(
-        expect.objectContaining({ service: 'Plex', reason: 'Connection refused' })
+        expect.objectContaining({
+          service: 'Plex',
+          reason: 'Connection refused',
+        }),
       );
     });
 
@@ -259,7 +283,7 @@ describe('Custom Error Classes', () => {
       expect(error.statusCode).toBe(503);
       expect(error.errorCode).toBe('NETWORK_ERROR');
       expect(error.context).toEqual(
-        expect.objectContaining({ endpoint: 'https://api.example.com' })
+        expect.objectContaining({ endpoint: 'https://api.example.com' }),
       );
     });
   });

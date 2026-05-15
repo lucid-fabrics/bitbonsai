@@ -1,6 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { StorageProtocol } from '@prisma/client';
-import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateStorageShareDto {
   @ApiProperty({ description: 'Node ID that will use this storage share' })
@@ -13,7 +20,10 @@ export class CreateStorageShareDto {
   @IsNotEmpty()
   name!: string;
 
-  @ApiProperty({ enum: StorageProtocol, description: 'Storage protocol (NFS or SMB)' })
+  @ApiProperty({
+    enum: StorageProtocol,
+    description: 'Storage protocol (NFS or SMB)',
+  })
   @IsEnum(StorageProtocol)
   protocol!: StorageProtocol;
 

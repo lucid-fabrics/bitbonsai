@@ -21,7 +21,9 @@ export const OverviewActions = createActionGroup({
 
     // Load environment info
     'Load Environment Info': emptyProps(),
-    'Load Environment Info Success': props<{ environmentInfo: EnvironmentInfo }>(),
+    'Load Environment Info Success': props<{
+      environmentInfo: EnvironmentInfo;
+    }>(),
     'Load Environment Info Failure': props<{ error: string }>(),
 
     // Start/stop polling

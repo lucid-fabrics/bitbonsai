@@ -3,6 +3,7 @@
 ## ✅ Completed: Implementation
 
 All code changes complete and builds successful:
+
 - ✅ License-API checkout endpoint
 - ✅ Website checkout flow
 - ✅ Frontend license-api integration
@@ -20,6 +21,7 @@ nx serve license-api
 ```
 
 Verify:
+
 - Server starts on port 3200
 - Swagger docs: http://localhost:3200/docs
 - Health endpoint: http://localhost:3200/api/health
@@ -31,6 +33,7 @@ Verify:
 ```
 
 Should show:
+
 - ✓ License-API running
 - ✓ Pricing API working
 - ✓ Checkout endpoint validates
@@ -47,6 +50,7 @@ nx serve website
 ```
 
 Test flow:
+
 1. Visit http://localhost:4201/pricing
 2. Click "Get Started" on paid tier
 3. Should redirect to `/checkout?tier=...&priceId=...`
@@ -66,6 +70,7 @@ nx serve frontend
 ```
 
 Test flow:
+
 1. Visit http://localhost:4200
 2. Go to Settings → License tab
 3. Verify commercial tiers load
@@ -254,6 +259,7 @@ docker logs -f bitbonsai-license-api
 ```
 
 Look for:
+
 ```
 Stripe webhook: checkout.session.completed
 Created license {id} for {email} via STRIPE
@@ -267,7 +273,7 @@ If issues in production:
 2. Revert frontend to use backend:
    ```typescript
    // apps/frontend/src/environments/environment.prod.ts
-   licenseApiUrl: environment.apiUrl // Use backend instead
+   licenseApiUrl: environment.apiUrl; // Use backend instead
    ```
 3. Rebuild and redeploy frontend
 4. Remove license-api webhook from Stripe
@@ -275,6 +281,7 @@ If issues in production:
 ## 📊 Post-Deployment Monitoring
 
 Watch for 24-48 hours:
+
 - ✅ No duplicate licenses created
 - ✅ All webhooks processed successfully
 - ✅ License emails sent
@@ -282,6 +289,7 @@ Watch for 24-48 hours:
 - ✅ Desktop app checkout still works
 
 Check Stripe Dashboard:
+
 - Payments → See successful charges
 - Webhooks → Check delivery status
 - Customers → Verify subscriptions created
@@ -289,6 +297,7 @@ Check Stripe Dashboard:
 ## 🎉 Success Criteria
 
 After 7 days:
+
 - [ ] Website checkout working (>0 conversions)
 - [ ] Desktop app checkout working
 - [ ] No duplicate licenses
@@ -330,6 +339,7 @@ const allowedOrigins = [
 ### Webhook signature verification failed
 
 Verify `STRIPE_WEBHOOK_SECRET` matches Stripe dashboard:
+
 1. Go to Webhooks → Your endpoint
 2. Click "Reveal" on signing secret
 3. Must match env var exactly

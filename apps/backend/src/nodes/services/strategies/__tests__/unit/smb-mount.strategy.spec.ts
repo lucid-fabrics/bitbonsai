@@ -94,7 +94,10 @@ describe('SMBMountStrategy', () => {
     });
 
     it('should include credentials file when username and password provided', async () => {
-      const share = makeShare({ smbUsername: 'user', smbPassword: 'plain-pass' });
+      const share = makeShare({
+        smbUsername: 'user',
+        smbPassword: 'plain-pass',
+      });
 
       const cmd = await strategy.buildMountCommand(share);
 
@@ -102,7 +105,7 @@ describe('SMBMountStrategy', () => {
       expect(mockedFs.writeFile).toHaveBeenCalledWith(
         `/tmp/smb-creds-${share.id}`,
         'username=user\npassword=plain-pass',
-        { mode: 0o600 }
+        { mode: 0o600 },
       );
     });
 
@@ -110,15 +113,20 @@ describe('SMBMountStrategy', () => {
       mockEncryptionService.isEncrypted.mockReturnValue(true);
       mockEncryptionService.decrypt.mockReturnValue('decrypted-pass');
 
-      const share = makeShare({ smbUsername: 'user', smbPassword: 'encrypted:xyz' });
+      const share = makeShare({
+        smbUsername: 'user',
+        smbPassword: 'encrypted:xyz',
+      });
 
       const cmd = await strategy.buildMountCommand(share);
 
-      expect(mockEncryptionService.decrypt).toHaveBeenCalledWith('encrypted:xyz');
+      expect(mockEncryptionService.decrypt).toHaveBeenCalledWith(
+        'encrypted:xyz',
+      );
       expect(mockedFs.writeFile).toHaveBeenCalledWith(
         expect.any(String),
         'username=user\npassword=decrypted-pass',
-        expect.any(Object)
+        expect.any(Object),
       );
       expect(cmd).toContain('credentials=');
     });
@@ -134,7 +142,7 @@ describe('SMBMountStrategy', () => {
       expect(mockedFs.writeFile).toHaveBeenCalledWith(
         expect.any(String),
         'username=user\npassword=plain',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -191,11 +199,15 @@ describe('SMBMountStrategy', () => {
       // Let the async unlink settle
       await Promise.resolve();
 
-      expect(mockedFs.unlink).toHaveBeenCalledWith(`/tmp/smb-creds-${share.id}`);
+      expect(mockedFs.unlink).toHaveBeenCalledWith(
+        `/tmp/smb-creds-${share.id}`,
+      );
     });
 
     it('should handle credential file cleanup failure silently', async () => {
-      (mockedFs.unlink as jest.Mock).mockRejectedValueOnce(new Error('File not found'));
+      (mockedFs.unlink as jest.Mock).mockRejectedValueOnce(
+        new Error('File not found'),
+      );
 
       const share = makeShare({ smbUsername: 'user', smbPassword: 'pass' });
 
@@ -247,9 +259,11 @@ describe('SMBMountStrategy', () => {
       expect(mockedFs.writeFile).toHaveBeenCalledWith(
         `/etc/bitbonsai/smb-credentials-${share.id}`,
         'username=admin\npassword=secret',
-        { mode: 0o600 }
+        { mode: 0o600 },
       );
-      expect(entry).toContain(`credentials=/etc/bitbonsai/smb-credentials-${share.id}`);
+      expect(entry).toContain(
+        `credentials=/etc/bitbonsai/smb-credentials-${share.id}`,
+      );
     });
 
     it('should decrypt encrypted password for fstab entry', async () => {
@@ -264,7 +278,7 @@ describe('SMBMountStrategy', () => {
       expect(mockedFs.writeFile).toHaveBeenCalledWith(
         expect.any(String),
         'username=u\npassword=plain',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -313,9 +327,15 @@ describe('SMBMountStrategy', () => {
   describe('testConnectivity', () => {
     it('should return true when smbclient succeeds without connection errors', async () => {
       mockedExec.mockImplementation(
-        (_cmd: string, cb: (err: null, result: { stdout: string; stderr: string }) => void) => {
-          cb(null, { stdout: 'Sharename   Type   Comment\n-------\nmedia   Disk\n', stderr: '' });
-        }
+        (
+          _cmd: string,
+          cb: (err: null, result: { stdout: string; stderr: string }) => void,
+        ) => {
+          cb(null, {
+            stdout: 'Sharename   Type   Comment\n-------\nmedia   Disk\n',
+            stderr: '',
+          });
+        },
       );
 
       const result = await strategy.testConnectivity('192.168.1.100');
@@ -325,9 +345,12 @@ describe('SMBMountStrategy', () => {
 
     it('should return false when smbclient output contains "Connection"', async () => {
       mockedExec.mockImplementation(
-        (_cmd: string, cb: (err: null, result: { stdout: string; stderr: string }) => void) => {
+        (
+          _cmd: string,
+          cb: (err: null, result: { stdout: string; stderr: string }) => void,
+        ) => {
           cb(null, { stdout: 'Connection refused', stderr: '' });
-        }
+        },
       );
 
       const result = await strategy.testConnectivity('192.168.1.100');
@@ -337,9 +360,12 @@ describe('SMBMountStrategy', () => {
 
     it('should return false when smbclient output contains "error"', async () => {
       mockedExec.mockImplementation(
-        (_cmd: string, cb: (err: null, result: { stdout: string; stderr: string }) => void) => {
+        (
+          _cmd: string,
+          cb: (err: null, result: { stdout: string; stderr: string }) => void,
+        ) => {
           cb(null, { stdout: 'NT_STATUS_error', stderr: '' });
-        }
+        },
       );
 
       const result = await strategy.testConnectivity('192.168.1.100');
@@ -348,9 +374,11 @@ describe('SMBMountStrategy', () => {
     });
 
     it('should return false when exec throws', async () => {
-      mockedExec.mockImplementation((_cmd: string, cb: (err: Error) => void) => {
-        cb(new Error('Command not found: smbclient'));
-      });
+      mockedExec.mockImplementation(
+        (_cmd: string, cb: (err: Error) => void) => {
+          cb(new Error('Command not found: smbclient'));
+        },
+      );
 
       const result = await strategy.testConnectivity('192.168.1.100');
 

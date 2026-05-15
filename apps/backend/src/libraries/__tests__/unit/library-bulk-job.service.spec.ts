@@ -5,7 +5,10 @@ import { JobRepository } from '../../../common/repositories/job.repository';
 import { LibraryRepository } from '../../../common/repositories/library.repository';
 import { PolicyRepository } from '../../../common/repositories/policy.repository';
 import { DistributionOrchestratorService } from '../../../distribution/services/distribution-orchestrator.service';
-import { FileHealthStatus, MediaAnalysisService } from '../../../media/media-analysis.service';
+import {
+  FileHealthStatus,
+  MediaAnalysisService,
+} from '../../../media/media-analysis.service';
 import { QueueService } from '../../../queue/queue.service';
 import { FileFailureTrackingService } from '../../../queue/services/file-failure-tracking.service';
 import { LibraryBulkJobService } from '../../library-bulk-job.service';
@@ -114,21 +117,33 @@ describe('LibraryBulkJobService', () => {
         { provide: JobRepository, useValue: mockJobRepo },
         { provide: MediaAnalysisService, useValue: mockMediaAnalysis },
         { provide: QueueService, useValue: mockQueueService },
-        { provide: DistributionOrchestratorService, useValue: mockDistributionOrchestrator },
-        { provide: FileFailureTrackingService, useValue: mockFileFailureTracking },
+        {
+          provide: DistributionOrchestratorService,
+          useValue: mockDistributionOrchestrator,
+        },
+        {
+          provide: FileFailureTrackingService,
+          useValue: mockFileFailureTracking,
+        },
       ],
     }).compile();
 
     service = module.get(LibraryBulkJobService);
 
     // Default: no directory to scan (scanDirectoryStream yields nothing)
-    jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-      /* empty */
-    });
+    jest
+      .spyOn(service, 'scanDirectoryStream')
+      .mockImplementation(async function* () {
+        /* empty */
+      });
 
     // Default happy-path stubs
-    mockDistributionOrchestrator.findBestNodeForNewJob.mockResolvedValue('node-1');
-    mockFileFailureTracking.getBlacklistedPaths.mockResolvedValue(new Set<string>());
+    mockDistributionOrchestrator.findBestNodeForNewJob.mockResolvedValue(
+      'node-1',
+    );
+    mockFileFailureTracking.getBlacklistedPaths.mockResolvedValue(
+      new Set<string>(),
+    );
     mockJobRepo.findManySelect.mockResolvedValue([]);
   });
 
@@ -146,10 +161,14 @@ describe('LibraryBulkJobService', () => {
 
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(library);
         mockPolicyRepo.findById.mockResolvedValue(policy);
-        mockMediaAnalysis.probeVideoFile.mockResolvedValue(makeVideoInfo({ filePath }));
+        mockMediaAnalysis.probeVideoFile.mockResolvedValue(
+          makeVideoInfo({ filePath }),
+        );
         mockQueueService.create.mockResolvedValue(job);
 
-        const result = await service.createJobsFromScan('lib-1', 'policy-1', [filePath]);
+        const result = await service.createJobsFromScan('lib-1', 'policy-1', [
+          filePath,
+        ]);
 
         expect(result.jobsCreated).toBe(1);
         expect(result.jobs).toHaveLength(1);
@@ -189,13 +208,17 @@ describe('LibraryBulkJobService', () => {
         const filePath = '/mnt/user/media/Movies/found.mkv';
         const job = makeJob({ filePath });
 
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield filePath;
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield filePath;
+          });
 
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(library);
         mockPolicyRepo.findById.mockResolvedValue(policy);
-        mockMediaAnalysis.probeVideoFile.mockResolvedValue(makeVideoInfo({ filePath }));
+        mockMediaAnalysis.probeVideoFile.mockResolvedValue(
+          makeVideoInfo({ filePath }),
+        );
         mockQueueService.create.mockResolvedValue(job);
 
         const result = await service.createJobsFromScan('lib-1', 'policy-1');
@@ -234,8 +257,10 @@ describe('LibraryBulkJobService', () => {
       it('throws when library is not found', async () => {
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(null);
 
-        await expect(service.createJobsFromScan('missing-lib', 'policy-1')).rejects.toThrow(
-          new NotFoundException('Library with ID "missing-lib" not found')
+        await expect(
+          service.createJobsFromScan('missing-lib', 'policy-1'),
+        ).rejects.toThrow(
+          new NotFoundException('Library with ID "missing-lib" not found'),
         );
       });
 
@@ -243,8 +268,10 @@ describe('LibraryBulkJobService', () => {
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(makeLibrary());
         mockPolicyRepo.findById.mockResolvedValue(null);
 
-        await expect(service.createJobsFromScan('lib-1', 'bad-policy')).rejects.toThrow(
-          new NotFoundException('Policy with ID "bad-policy" not found')
+        await expect(
+          service.createJobsFromScan('lib-1', 'bad-policy'),
+        ).rejects.toThrow(
+          new NotFoundException('Policy with ID "bad-policy" not found'),
         );
       });
     });
@@ -252,10 +279,12 @@ describe('LibraryBulkJobService', () => {
     describe('BadRequestException', () => {
       it('throws when no policyId provided and library has no default policy', async () => {
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(
-          makeLibrary({ defaultPolicyId: null })
+          makeLibrary({ defaultPolicyId: null }),
         );
 
-        await expect(service.createJobsFromScan('lib-1')).rejects.toThrow(BadRequestException);
+        await expect(service.createJobsFromScan('lib-1')).rejects.toThrow(
+          BadRequestException,
+        );
       });
     });
 
@@ -266,9 +295,15 @@ describe('LibraryBulkJobService', () => {
 
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(makeLibrary());
         mockPolicyRepo.findById.mockResolvedValue(makePolicy());
-        mockJobRepo.findManySelect.mockResolvedValue([{ filePath: blacklistedPath }]);
-        mockMediaAnalysis.probeVideoFile.mockResolvedValue(makeVideoInfo({ filePath: goodPath }));
-        mockQueueService.create.mockResolvedValue(makeJob({ filePath: goodPath }));
+        mockJobRepo.findManySelect.mockResolvedValue([
+          { filePath: blacklistedPath },
+        ]);
+        mockMediaAnalysis.probeVideoFile.mockResolvedValue(
+          makeVideoInfo({ filePath: goodPath }),
+        );
+        mockQueueService.create.mockResolvedValue(
+          makeJob({ filePath: goodPath }),
+        );
 
         const result = await service.createJobsFromScan('lib-1', 'policy-1', [
           blacklistedPath,
@@ -278,7 +313,7 @@ describe('LibraryBulkJobService', () => {
         expect(result.jobsCreated).toBe(1);
         expect(result.jobs[0].filePath).toBe(goodPath);
         expect(mockQueueService.create).not.toHaveBeenCalledWith(
-          expect.objectContaining({ filePath: blacklistedPath })
+          expect.objectContaining({ filePath: blacklistedPath }),
         );
       });
 
@@ -287,9 +322,13 @@ describe('LibraryBulkJobService', () => {
 
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(makeLibrary());
         mockPolicyRepo.findById.mockResolvedValue(makePolicy());
-        mockFileFailureTracking.getBlacklistedPaths.mockResolvedValue(new Set([autoBlacklisted]));
+        mockFileFailureTracking.getBlacklistedPaths.mockResolvedValue(
+          new Set([autoBlacklisted]),
+        );
 
-        const result = await service.createJobsFromScan('lib-1', 'policy-1', [autoBlacklisted]);
+        const result = await service.createJobsFromScan('lib-1', 'policy-1', [
+          autoBlacklisted,
+        ]);
 
         expect(result.jobsCreated).toBe(0);
         expect(result.jobs).toEqual([]);
@@ -305,7 +344,9 @@ describe('LibraryBulkJobService', () => {
         mockPolicyRepo.findById.mockResolvedValue(makePolicy());
         mockMediaAnalysis.probeVideoFile.mockResolvedValue(null);
 
-        const result = await service.createJobsFromScan('lib-1', 'policy-1', [filePath]);
+        const result = await service.createJobsFromScan('lib-1', 'policy-1', [
+          filePath,
+        ]);
 
         expect(result.jobsCreated).toBe(0);
         expect(mockQueueService.create).not.toHaveBeenCalled();
@@ -322,13 +363,17 @@ describe('LibraryBulkJobService', () => {
       it('returns correct BulkJobCreationResultDto shape', async () => {
         const filePath = '/mnt/user/media/Movies/movie.mkv';
 
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield filePath;
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield filePath;
+          });
 
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(makeLibrary());
         mockPolicyRepo.findById.mockResolvedValue(makePolicy());
-        mockMediaAnalysis.probeVideoFile.mockResolvedValue(makeVideoInfo({ filePath }));
+        mockMediaAnalysis.probeVideoFile.mockResolvedValue(
+          makeVideoInfo({ filePath }),
+        );
         mockQueueService.create.mockResolvedValue(makeJob({ filePath }));
 
         const result = await service.createAllJobs('lib-1', 'policy-1');
@@ -353,8 +398,10 @@ describe('LibraryBulkJobService', () => {
       it('throws when library is not found', async () => {
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(null);
 
-        await expect(service.createAllJobs('missing-lib', 'policy-1')).rejects.toThrow(
-          new NotFoundException('Library with ID "missing-lib" not found')
+        await expect(
+          service.createAllJobs('missing-lib', 'policy-1'),
+        ).rejects.toThrow(
+          new NotFoundException('Library with ID "missing-lib" not found'),
         );
       });
 
@@ -362,8 +409,10 @@ describe('LibraryBulkJobService', () => {
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(makeLibrary());
         mockPolicyRepo.findById.mockResolvedValue(null);
 
-        await expect(service.createAllJobs('lib-1', 'bad-policy')).rejects.toThrow(
-          new NotFoundException('Policy with ID "bad-policy" not found')
+        await expect(
+          service.createAllJobs('lib-1', 'bad-policy'),
+        ).rejects.toThrow(
+          new NotFoundException('Policy with ID "bad-policy" not found'),
         );
       });
     });
@@ -372,9 +421,11 @@ describe('LibraryBulkJobService', () => {
       it('skips files already present in the job queue', async () => {
         const queuedPath = '/mnt/user/media/Movies/queued.mkv';
 
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield queuedPath;
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield queuedPath;
+          });
 
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(makeLibrary());
         mockPolicyRepo.findById.mockResolvedValue(makePolicy());
@@ -386,7 +437,9 @@ describe('LibraryBulkJobService', () => {
 
         expect(result.jobsCreated).toBe(0);
         expect(result.filesSkipped).toBe(1);
-        expect(result.skippedFiles).toEqual([{ path: queuedPath, reason: 'Already in queue' }]);
+        expect(result.skippedFiles).toEqual([
+          { path: queuedPath, reason: 'Already in queue' },
+        ]);
         expect(mockQueueService.create).not.toHaveBeenCalled();
       });
     });
@@ -395,9 +448,11 @@ describe('LibraryBulkJobService', () => {
       it('skips manually blacklisted files with reason "Blacklisted"', async () => {
         const blacklistedPath = '/mnt/user/media/Movies/bad.mkv';
 
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield blacklistedPath;
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield blacklistedPath;
+          });
 
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(makeLibrary());
         mockPolicyRepo.findById.mockResolvedValue(makePolicy());
@@ -409,26 +464,35 @@ describe('LibraryBulkJobService', () => {
 
         expect(result.jobsCreated).toBe(0);
         expect(result.filesSkipped).toBe(1);
-        expect(result.skippedFiles).toEqual([{ path: blacklistedPath, reason: 'Blacklisted' }]);
+        expect(result.skippedFiles).toEqual([
+          { path: blacklistedPath, reason: 'Blacklisted' },
+        ]);
       });
 
       it('skips auto-blacklisted files from failure tracking', async () => {
         const autoBlacklisted = '/mnt/user/media/Movies/auto-bad.mkv';
 
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield autoBlacklisted;
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield autoBlacklisted;
+          });
 
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(makeLibrary());
         mockPolicyRepo.findById.mockResolvedValue(makePolicy());
-        mockFileFailureTracking.getBlacklistedPaths.mockResolvedValue(new Set([autoBlacklisted]));
+        mockFileFailureTracking.getBlacklistedPaths.mockResolvedValue(
+          new Set([autoBlacklisted]),
+        );
 
         const result = await service.createAllJobs('lib-1', 'policy-1');
 
         expect(result.jobsCreated).toBe(0);
         expect(result.filesSkipped).toBe(1);
         expect(result.skippedFiles).toEqual([
-          { path: autoBlacklisted, reason: 'Auto-blacklisted (repeated failures)' },
+          {
+            path: autoBlacklisted,
+            reason: 'Auto-blacklisted (repeated failures)',
+          },
         ]);
       });
     });
@@ -437,9 +501,11 @@ describe('LibraryBulkJobService', () => {
       it('records skipped file with reason "Failed to probe file"', async () => {
         const filePath = '/mnt/user/media/Movies/unreadable.mkv';
 
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield filePath;
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield filePath;
+          });
 
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(makeLibrary());
         mockPolicyRepo.findById.mockResolvedValue(makePolicy());
@@ -449,7 +515,9 @@ describe('LibraryBulkJobService', () => {
 
         expect(result.jobsCreated).toBe(0);
         expect(result.filesSkipped).toBe(1);
-        expect(result.skippedFiles).toEqual([{ path: filePath, reason: 'Failed to probe file' }]);
+        expect(result.skippedFiles).toEqual([
+          { path: filePath, reason: 'Failed to probe file' },
+        ]);
       });
     });
 
@@ -459,11 +527,13 @@ describe('LibraryBulkJobService', () => {
         const queuedPath = '/mnt/user/media/Movies/queued.mkv';
         const badProbePath = '/mnt/user/media/Movies/unreadable.mkv';
 
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield goodPath;
-          yield queuedPath;
-          yield badProbePath;
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield goodPath;
+            yield queuedPath;
+            yield badProbePath;
+          });
 
         mockLibraryRepo.findUniqueWithInclude.mockResolvedValue(makeLibrary());
         mockPolicyRepo.findById.mockResolvedValue(makePolicy());
@@ -473,9 +543,11 @@ describe('LibraryBulkJobService', () => {
         mockMediaAnalysis.probeVideoFile.mockImplementation((fp: string) =>
           fp === goodPath
             ? Promise.resolve(makeVideoInfo({ filePath: goodPath }))
-            : Promise.resolve(null)
+            : Promise.resolve(null),
         );
-        mockQueueService.create.mockResolvedValue(makeJob({ filePath: goodPath }));
+        mockQueueService.create.mockResolvedValue(
+          makeJob({ filePath: goodPath }),
+        );
 
         const result = await service.createAllJobs('lib-1', 'policy-1');
 
@@ -497,9 +569,11 @@ describe('LibraryBulkJobService', () => {
         const filePath = '/mnt/user/media/Movies/movie.mkv';
         const videoInfo = makeVideoInfo({ filePath });
 
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield filePath;
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield filePath;
+          });
 
         mockLibraryRepo.findByWhere.mockResolvedValue(library);
         mockMediaAnalysis.probeVideoFile.mockResolvedValue(videoInfo);
@@ -520,29 +594,35 @@ describe('LibraryBulkJobService', () => {
       it('marks file canAddToQueue=true when health is HEALTHY', async () => {
         const filePath = '/mnt/user/media/Movies/healthy.mkv';
 
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield filePath;
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield filePath;
+          });
 
         mockLibraryRepo.findByWhere.mockResolvedValue(makeLibrary());
         mockMediaAnalysis.probeVideoFile.mockResolvedValue(
-          makeVideoInfo({ filePath, healthStatus: FileHealthStatus.HEALTHY })
+          makeVideoInfo({ filePath, healthStatus: FileHealthStatus.HEALTHY }),
         );
 
         const result = await service.getLibraryFiles('lib-1');
 
-        expect((result.files[0] as unknown as Record<string, unknown>).canAddToQueue).toBe(true);
         expect(
-          (result.files[0] as unknown as Record<string, unknown>).blockedReason
+          (result.files[0] as unknown as Record<string, unknown>).canAddToQueue,
+        ).toBe(true);
+        expect(
+          (result.files[0] as unknown as Record<string, unknown>).blockedReason,
         ).toBeUndefined();
       });
 
       it('marks file canAddToQueue=false when health is CORRUPTED', async () => {
         const filePath = '/mnt/user/media/Movies/corrupted.mkv';
 
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield filePath;
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield filePath;
+          });
 
         mockLibraryRepo.findByWhere.mockResolvedValue(makeLibrary());
         mockMediaAnalysis.probeVideoFile.mockResolvedValue(
@@ -550,15 +630,17 @@ describe('LibraryBulkJobService', () => {
             filePath,
             healthStatus: FileHealthStatus.CORRUPTED,
             healthMessage: 'File is corrupted',
-          })
+          }),
         );
 
         const result = await service.getLibraryFiles('lib-1');
 
-        expect((result.files[0] as unknown as Record<string, unknown>).canAddToQueue).toBe(false);
-        expect((result.files[0] as unknown as Record<string, unknown>).blockedReason).toBe(
-          'File is corrupted'
-        );
+        expect(
+          (result.files[0] as unknown as Record<string, unknown>).canAddToQueue,
+        ).toBe(false);
+        expect(
+          (result.files[0] as unknown as Record<string, unknown>).blockedReason,
+        ).toBe('File is corrupted');
       });
 
       it('returns empty files array and zero size when library has no videos', async () => {
@@ -572,14 +654,16 @@ describe('LibraryBulkJobService', () => {
       });
 
       it('sorts files alphabetically by fileName', async () => {
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield '/mnt/user/media/Movies/zebra.mkv';
-          yield '/mnt/user/media/Movies/alpha.mkv';
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield '/mnt/user/media/Movies/zebra.mkv';
+            yield '/mnt/user/media/Movies/alpha.mkv';
+          });
 
         mockLibraryRepo.findByWhere.mockResolvedValue(makeLibrary());
         mockMediaAnalysis.probeVideoFile.mockImplementation((fp: string) =>
-          Promise.resolve(makeVideoInfo({ filePath: fp }))
+          Promise.resolve(makeVideoInfo({ filePath: fp })),
         );
 
         const result = await service.getLibraryFiles('lib-1');
@@ -589,14 +673,18 @@ describe('LibraryBulkJobService', () => {
       });
 
       it('accumulates totalSizeBytes across all files', async () => {
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield '/mnt/user/media/Movies/a.mkv';
-          yield '/mnt/user/media/Movies/b.mkv';
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield '/mnt/user/media/Movies/a.mkv';
+            yield '/mnt/user/media/Movies/b.mkv';
+          });
 
         mockLibraryRepo.findByWhere.mockResolvedValue(makeLibrary());
         mockMediaAnalysis.probeVideoFile.mockImplementation((fp: string) =>
-          Promise.resolve(makeVideoInfo({ filePath: fp, sizeBytes: 500_000_000 }))
+          Promise.resolve(
+            makeVideoInfo({ filePath: fp, sizeBytes: 500_000_000 }),
+          ),
         );
 
         const result = await service.getLibraryFiles('lib-1');
@@ -610,7 +698,7 @@ describe('LibraryBulkJobService', () => {
         mockLibraryRepo.findByWhere.mockResolvedValue(null);
 
         await expect(service.getLibraryFiles('missing-lib')).rejects.toThrow(
-          new NotFoundException('Library with ID "missing-lib" not found')
+          new NotFoundException('Library with ID "missing-lib" not found'),
         );
       });
     });
@@ -620,16 +708,18 @@ describe('LibraryBulkJobService', () => {
         const goodPath = '/mnt/user/media/Movies/good.mkv';
         const badPath = '/mnt/user/media/Movies/bad.mkv';
 
-        jest.spyOn(service, 'scanDirectoryStream').mockImplementation(async function* () {
-          yield goodPath;
-          yield badPath;
-        });
+        jest
+          .spyOn(service, 'scanDirectoryStream')
+          .mockImplementation(async function* () {
+            yield goodPath;
+            yield badPath;
+          });
 
         mockLibraryRepo.findByWhere.mockResolvedValue(makeLibrary());
         mockMediaAnalysis.probeVideoFile.mockImplementation((fp: string) =>
           fp === goodPath
             ? Promise.resolve(makeVideoInfo({ filePath: goodPath }))
-            : Promise.resolve(null)
+            : Promise.resolve(null),
         );
 
         const result = await service.getLibraryFiles('lib-1');

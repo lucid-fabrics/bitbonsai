@@ -60,7 +60,11 @@
   background: $bg-tertiary;
 
   &.main-node {
-    background: color.adjust($accent-primary, $lightness: -30%, $saturation: -20%);
+    background: color.adjust(
+      $accent-primary,
+      $lightness: -30%,
+      $saturation: -20%
+    );
     border-color: color.adjust($accent-primary, $lightness: -10%);
 
     .role-label {
@@ -70,7 +74,11 @@
   }
 
   &.child-node {
-    background: color.adjust($text-secondary, $lightness: -35%, $saturation: -20%);
+    background: color.adjust(
+      $text-secondary,
+      $lightness: -35%,
+      $saturation: -20%
+    );
     border-color: color.adjust($text-secondary, $lightness: -20%);
 
     .role-label {
@@ -119,7 +127,7 @@
     border-radius: 3px;
 
     &:hover {
-      background: color.adjust($border-secondary, $lightness:  10%);
+      background: color.adjust($border-secondary, $lightness: 10%);
     }
   }
 }

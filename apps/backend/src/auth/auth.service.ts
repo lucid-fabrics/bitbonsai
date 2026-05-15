@@ -31,7 +31,7 @@ export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     readonly _configService: ConfigService,
-    private readonly userRepository: UserRepository
+    private readonly userRepository: UserRepository,
   ) {}
 
   /**
@@ -63,7 +63,10 @@ export class AuthService {
     }
 
     // Security: bcrypt password comparison (constant-time)
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.passwordHash,
+    );
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
@@ -73,7 +76,7 @@ export class AuthService {
     const { accessToken, refreshToken } = await this.generateTokens(
       user.id,
       user.username,
-      user.role
+      user.role,
     );
 
     // Store refresh token in database with expiry
@@ -86,7 +89,13 @@ export class AuthService {
       lastLoginAt: new Date(),
     });
 
-    return new AuthResponseDto(accessToken, refreshToken, user.id, user.username, user.role);
+    return new AuthResponseDto(
+      accessToken,
+      refreshToken,
+      user.id,
+      user.username,
+      user.role,
+    );
   }
 
   /**
@@ -102,16 +111,23 @@ export class AuthService {
    * @returns New access token and refresh token
    * @throws UnauthorizedException if refresh token is invalid or expired
    */
-  async refreshToken(refreshTokenDto: RefreshTokenDto): Promise<AuthResponseDto> {
+  async refreshToken(
+    refreshTokenDto: RefreshTokenDto,
+  ): Promise<AuthResponseDto> {
     // Find user by refresh token
-    const user = await this.userRepository.findByRefreshToken(refreshTokenDto.refreshToken);
+    const user = await this.userRepository.findByRefreshToken(
+      refreshTokenDto.refreshToken,
+    );
 
     if (!user) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
     // Check if refresh token is expired
-    if (!user.refreshTokenExpiresAt || user.refreshTokenExpiresAt < new Date()) {
+    if (
+      !user.refreshTokenExpiresAt ||
+      user.refreshTokenExpiresAt < new Date()
+    ) {
       throw new UnauthorizedException('Refresh token expired');
     }
 
@@ -119,7 +135,7 @@ export class AuthService {
     const { accessToken, refreshToken } = await this.generateTokens(
       user.id,
       user.username,
-      user.role
+      user.role,
     );
 
     // Update refresh token in database
@@ -131,7 +147,13 @@ export class AuthService {
       refreshTokenExpiresAt: refreshTokenExpiry,
     });
 
-    return new AuthResponseDto(accessToken, refreshToken, user.id, user.username, user.role);
+    return new AuthResponseDto(
+      accessToken,
+      refreshToken,
+      user.id,
+      user.username,
+      user.role,
+    );
   }
 
   /**
@@ -153,7 +175,9 @@ export class AuthService {
    * @returns Decoded token payload
    * @throws UnauthorizedException if token is invalid
    */
-  async validateToken(token: string): Promise<{ userId: string; username: string; role: string }> {
+  async validateToken(
+    token: string,
+  ): Promise<{ userId: string; username: string; role: string }> {
     try {
       return this.jwtService.verify(token);
     } catch {
@@ -183,7 +207,7 @@ export class AuthService {
   private async generateTokens(
     userId: string,
     username: string,
-    role: string
+    role: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = { sub: userId, username, role };
 

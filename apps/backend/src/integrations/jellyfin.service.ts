@@ -50,7 +50,7 @@ export class JellyfinIntegrationService {
 
   constructor(
     private readonly settingsRepository: SettingsRepository,
-    private readonly httpService: HttpService
+    private readonly httpService: HttpService,
   ) {}
 
   /**
@@ -65,7 +65,7 @@ export class JellyfinIntegrationService {
    */
   async findFileByNameAndSize(
     originalPath: string,
-    expectedSizeBytes: bigint | number
+    expectedSizeBytes: bigint | number,
   ): Promise<JellyfinSearchResult> {
     const config = await this.getJellyfinConfig();
     if (!config) {
@@ -79,7 +79,7 @@ export class JellyfinIntegrationService {
     const searchTerms = this.extractSearchTerms(filename);
 
     this.logger.debug(
-      `🔍 Jellyfin: Searching for "${searchTerms}" (expected size: ${expectedSize})`
+      `🔍 Jellyfin: Searching for "${searchTerms}" (expected size: ${expectedSize})`,
     );
 
     try {
@@ -97,7 +97,7 @@ export class JellyfinIntegrationService {
             'X-Emby-Token': config.apiKey,
           },
           timeout: 15000,
-        })
+        }),
       );
 
       const items: JellyfinItem[] = response.data?.Items || [];
@@ -113,7 +113,9 @@ export class JellyfinIntegrationService {
         if (item.Path && item.Size) {
           if (Math.abs(item.Size - expectedSize) < 1024) {
             // Within 1KB tolerance
-            this.logger.log(`✅ Jellyfin: Found exact size match - ${item.Path}`);
+            this.logger.log(
+              `✅ Jellyfin: Found exact size match - ${item.Path}`,
+            );
             return {
               found: true,
               itemId: item.Id,
@@ -130,7 +132,7 @@ export class JellyfinIntegrationService {
             if (source.Path && source.Size) {
               if (Math.abs(source.Size - expectedSize) < 1024) {
                 this.logger.log(
-                  `✅ Jellyfin: Found exact size match in media sources - ${source.Path}`
+                  `✅ Jellyfin: Found exact size match in media sources - ${source.Path}`,
                 );
                 return {
                   found: true,
@@ -153,7 +155,9 @@ export class JellyfinIntegrationService {
           const itemDir = path.dirname(itemPath);
           // Check if in same parent directory structure
           if (this.isSimilarPath(originalDir, itemDir)) {
-            this.logger.log(`✅ Jellyfin: Found path similarity match - ${itemPath}`);
+            this.logger.log(
+              `✅ Jellyfin: Found path similarity match - ${itemPath}`,
+            );
             return {
               found: true,
               itemId: item.Id,
@@ -165,10 +169,14 @@ export class JellyfinIntegrationService {
         }
       }
 
-      this.logger.debug(`Jellyfin: Found ${items.length} items but no size/path match`);
+      this.logger.debug(
+        `Jellyfin: Found ${items.length} items but no size/path match`,
+      );
       return { found: false };
     } catch (error: unknown) {
-      this.logger.warn(`Jellyfin search failed: ${error instanceof Error ? error.message : error}`);
+      this.logger.warn(
+        `Jellyfin search failed: ${error instanceof Error ? error.message : error}`,
+      );
       return { found: false };
     }
   }
@@ -190,7 +198,7 @@ export class JellyfinIntegrationService {
             'X-Emby-Token': config.apiKey,
           },
           timeout: 10000,
-        })
+        }),
       );
 
       return response.data;
@@ -217,8 +225,8 @@ export class JellyfinIntegrationService {
               'X-Emby-Token': config.apiKey,
             },
             timeout: 10000,
-          }
-        )
+          },
+        ),
       );
 
       this.logger.log(`📺 Jellyfin: Library refresh triggered`);
@@ -232,8 +240,13 @@ export class JellyfinIntegrationService {
    */
   async testConnection(
     url: string,
-    apiKey: string
-  ): Promise<{ success: boolean; serverName?: string; version?: string; error?: string }> {
+    apiKey: string,
+  ): Promise<{
+    success: boolean;
+    serverName?: string;
+    version?: string;
+    error?: string;
+  }> {
     const result = await testIntegrationConnection(this.httpService, {
       url,
       path: '/System/Info',
@@ -271,9 +284,15 @@ export class JellyfinIntegrationService {
       // Remove year in brackets/parens: (2024), [2024]
       .replace(/[([]\d{4}[)\]]/g, '')
       // Remove quality tags
-      .replace(/\b(2160p|1080p|720p|480p|4K|UHD|HDR|HDR10|DV|Dolby.?Vision)\b/gi, '')
+      .replace(
+        /\b(2160p|1080p|720p|480p|4K|UHD|HDR|HDR10|DV|Dolby.?Vision)\b/gi,
+        '',
+      )
       // Remove source tags
-      .replace(/\b(BluRay|Bluray|BDRip|BRRip|WEB-DL|WEBRip|HDTV|DVDRip|Remux)\b/gi, '')
+      .replace(
+        /\b(BluRay|Bluray|BDRip|BRRip|WEB-DL|WEBRip|HDTV|DVDRip|Remux)\b/gi,
+        '',
+      )
       // Remove codec tags
       .replace(/\b(x264|x265|HEVC|H\.?264|H\.?265|AV1|VP9|AVC)\b/gi, '')
       // Remove audio tags

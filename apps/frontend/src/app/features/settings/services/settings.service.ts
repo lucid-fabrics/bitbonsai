@@ -24,44 +24,64 @@ export class SettingsService {
     return this.http.get<SystemSettings>(`${this.apiUrl}/system`);
   }
 
-  updateSystemSettings(updateDto: UpdateSystemSettings): Observable<SystemSettings> {
+  updateSystemSettings(
+    updateDto: UpdateSystemSettings,
+  ): Observable<SystemSettings> {
     return this.http.patch<SystemSettings>(`${this.apiUrl}/system`, updateDto);
   }
 
   backupDatabase(): Observable<{ backupPath: string; timestamp: string }> {
     return this.http.post<{ backupPath: string; timestamp: string }>(
       `${this.apiUrl}/system/backup`,
-      null
+      null,
     );
   }
 
   resetToDefaults(): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.apiUrl}/system/reset`, null);
+    return this.http.post<{ message: string }>(
+      `${this.apiUrl}/system/reset`,
+      null,
+    );
   }
 
   regenerateApiKey(): Observable<{ apiKey: string }> {
-    return this.http.post<{ apiKey: string }>(`${this.apiUrl}/system/api-key/regenerate`, {});
+    return this.http.post<{ apiKey: string }>(
+      `${this.apiUrl}/system/api-key/regenerate`,
+      {},
+    );
   }
 
   getSecuritySettings(): Observable<SecuritySettings> {
     return this.http.get<SecuritySettings>(`${this.apiUrl}/security`);
   }
 
-  updateSecuritySettings(settings: SecuritySettings): Observable<SecuritySettings> {
-    return this.http.patch<SecuritySettings>(`${this.apiUrl}/security`, settings);
+  updateSecuritySettings(
+    settings: SecuritySettings,
+  ): Observable<SecuritySettings> {
+    return this.http.patch<SecuritySettings>(
+      `${this.apiUrl}/security`,
+      settings,
+    );
   }
 
   getSystemResources(): Observable<SystemResources> {
-    return this.http.get<SystemResources>(`${environment.apiUrl}/system/resources`);
+    return this.http.get<SystemResources>(
+      `${environment.apiUrl}/system/resources`,
+    );
   }
 
   getAdvancedMode(): Observable<AdvancedModeSettings> {
-    return this.http.get<AdvancedModeSettings>('/api/v1/settings/advanced-mode');
+    return this.http.get<AdvancedModeSettings>(
+      '/api/v1/settings/advanced-mode',
+    );
   }
 
   updateAdvancedMode(enabled: boolean): Observable<AdvancedModeSettings> {
-    return this.http.patch<AdvancedModeSettings>('/api/v1/settings/advanced-mode', {
-      advancedModeEnabled: enabled,
-    });
+    return this.http.patch<AdvancedModeSettings>(
+      '/api/v1/settings/advanced-mode',
+      {
+        advancedModeEnabled: enabled,
+      },
+    );
   }
 }

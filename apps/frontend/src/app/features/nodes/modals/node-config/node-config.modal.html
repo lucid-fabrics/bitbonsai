@@ -2,7 +2,11 @@
   <div class="modal-container" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h2 class="modal-header__title">{{ 'nodeConfig.title' | transloco }}</h2>
-      <button class="modal-header__close-btn" (click)="onCancel()" type="button">
+      <button
+        class="modal-header__close-btn"
+        (click)="onCancel()"
+        type="button"
+      >
         <fa-icon [icon]="['fas', 'times']"></fa-icon>
       </button>
     </div>
@@ -11,7 +15,9 @@
       <div class="modal-body">
         <!-- Node Name -->
         <div class="form-group">
-          <label for="name" class="form-group__label">{{ 'nodeConfig.nodeName' | transloco }}</label>
+          <label for="name" class="form-group__label"
+            >{{ 'nodeConfig.nodeName' | transloco }}</label
+          >
           <input
             id="name"
             type="text"
@@ -20,22 +26,29 @@
             placeholder="{{ 'nodeConfig.enterNodeName' | transloco }}"
           />
           @if (nameControl?.touched && nameControl?.hasError('required')) {
-            <div class="error-message">
-              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              {{ 'nodeConfig.nodeNameRequired' | transloco }}
-            </div>
-          }
-          @if (nameControl?.touched && nameControl?.hasError('minlength')) {
-            <div class="error-message">
-              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              {{ 'nodeConfig.nodeNameMinLength' | transloco }}
-            </div>
-          }
-          @if (nameControl?.touched && nameControl?.hasError('maxlength')) {
-            <div class="error-message">
-              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              {{ 'nodeConfig.nodeNameMaxLength' | transloco }}
-            </div>
+          <div class="error-message">
+            <fa-icon
+              [icon]="['fas', 'exclamation-circle']"
+              class="error-message__icon"
+            ></fa-icon>
+            {{ 'nodeConfig.nodeNameRequired' | transloco }}
+          </div>
+          } @if (nameControl?.touched && nameControl?.hasError('minlength')) {
+          <div class="error-message">
+            <fa-icon
+              [icon]="['fas', 'exclamation-circle']"
+              class="error-message__icon"
+            ></fa-icon>
+            {{ 'nodeConfig.nodeNameMinLength' | transloco }}
+          </div>
+          } @if (nameControl?.touched && nameControl?.hasError('maxlength')) {
+          <div class="error-message">
+            <fa-icon
+              [icon]="['fas', 'exclamation-circle']"
+              class="error-message__icon"
+            ></fa-icon>
+            {{ 'nodeConfig.nodeNameMaxLength' | transloco }}
+          </div>
           }
         </div>
 
@@ -48,28 +61,49 @@
 
           <!-- Recommendation Box -->
           @if (optimalConfig && !loadingRecommendations) {
-            <div class="recommendation-box">
-              <div class="recommendation-header">
-                <fa-icon [icon]="['fas', 'lightbulb']" class="recommendation-header__icon"></fa-icon>
-                <strong>{{ 'nodeConfig.autoDetectedRecommendation' | transloco }}</strong>
-              </div>
-              <div class="recommendation-content">
-                <div class="recommendation-summary">{{ optimalConfig.summary }}</div>
-                <div class="recommendation-details">
-                  <span><strong>{{ 'nodeConfig.cpuCores' | transloco }}</strong> {{ optimalConfig.totalCpuCores }}</span>
-                  <span><strong>{{ 'nodeConfig.recommended' | transloco }}</strong> {{ optimalConfig.recommendedMaxWorkers }} {{ 'cpuCapacity.workers' | transloco }}</span>
-                  <span><strong>{{ 'nodeConfig.coresPerJob' | transloco }}</strong> {{ optimalConfig.cpuCoresPerJob }}</span>
-                </div>
-                <button
-                  type="button"
-                  class="btn btn-recommendation"
-                  (click)="applyRecommended()"
-                >
-                  <fa-icon [icon]="['fas', 'wand-magic-sparkles']" class="btn-recommendation__icon"></fa-icon>
-                  {{ 'nodeConfig.applyRecommended' | transloco }}
-                </button>
-              </div>
+          <div class="recommendation-box">
+            <div class="recommendation-header">
+              <fa-icon
+                [icon]="['fas', 'lightbulb']"
+                class="recommendation-header__icon"
+              ></fa-icon>
+              <strong
+                >{{ 'nodeConfig.autoDetectedRecommendation' | transloco
+                }}</strong
+              >
             </div>
+            <div class="recommendation-content">
+              <div class="recommendation-summary">
+                {{ optimalConfig.summary }}
+              </div>
+              <div class="recommendation-details">
+                <span
+                  ><strong>{{ 'nodeConfig.cpuCores' | transloco }}</strong> {{
+                  optimalConfig.totalCpuCores }}</span
+                >
+                <span
+                  ><strong>{{ 'nodeConfig.recommended' | transloco }}</strong>
+                  {{ optimalConfig.recommendedMaxWorkers }} {{
+                  'cpuCapacity.workers' | transloco }}</span
+                >
+                <span
+                  ><strong>{{ 'nodeConfig.coresPerJob' | transloco }}</strong>
+                  {{ optimalConfig.cpuCoresPerJob }}</span
+                >
+              </div>
+              <button
+                type="button"
+                class="btn btn-recommendation"
+                (click)="applyRecommended()"
+              >
+                <fa-icon
+                  [icon]="['fas', 'wand-magic-sparkles']"
+                  class="btn-recommendation__icon"
+                ></fa-icon>
+                {{ 'nodeConfig.applyRecommended' | transloco }}
+              </button>
+            </div>
+          </div>
           }
 
           <input
@@ -81,35 +115,49 @@
             max="20"
           />
           <div class="form-help">
-            <fa-icon [icon]="['fas', 'info-circle']" class="form-help__icon"></fa-icon>
+            <fa-icon
+              [icon]="['fas', 'info-circle']"
+              class="form-help__icon"
+            ></fa-icon>
             {{ 'nodeConfig.concurrentJobsHelp' | transloco }}
           </div>
 
           <!-- Dynamic Warning -->
           @if (showWorkerWarning) {
-            <div class="warning-message worker-warning">
-              <fa-icon [icon]="['fas', 'exclamation-triangle']" class="warning-message__icon"></fa-icon>
-              {{ workerWarningMessage }}
-            </div>
-          }
-
-          @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('required')) {
-            <div class="error-message">
-              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              {{ 'nodeConfig.maxWorkersRequired' | transloco }}
-            </div>
-          }
-          @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('min')) {
-            <div class="error-message">
-              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              {{ 'nodeConfig.maxWorkersMin' | transloco }}
-            </div>
-          }
-          @if (maxWorkersControl?.touched && maxWorkersControl?.hasError('max')) {
-            <div class="error-message">
-              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              {{ 'nodeConfig.maxWorkersMax' | transloco }}
-            </div>
+          <div class="warning-message worker-warning">
+            <fa-icon
+              [icon]="['fas', 'exclamation-triangle']"
+              class="warning-message__icon"
+            ></fa-icon>
+            {{ workerWarningMessage }}
+          </div>
+          } @if (maxWorkersControl?.touched &&
+          maxWorkersControl?.hasError('required')) {
+          <div class="error-message">
+            <fa-icon
+              [icon]="['fas', 'exclamation-circle']"
+              class="error-message__icon"
+            ></fa-icon>
+            {{ 'nodeConfig.maxWorkersRequired' | transloco }}
+          </div>
+          } @if (maxWorkersControl?.touched &&
+          maxWorkersControl?.hasError('min')) {
+          <div class="error-message">
+            <fa-icon
+              [icon]="['fas', 'exclamation-circle']"
+              class="error-message__icon"
+            ></fa-icon>
+            {{ 'nodeConfig.maxWorkersMin' | transloco }}
+          </div>
+          } @if (maxWorkersControl?.touched &&
+          maxWorkersControl?.hasError('max')) {
+          <div class="error-message">
+            <fa-icon
+              [icon]="['fas', 'exclamation-circle']"
+              class="error-message__icon"
+            ></fa-icon>
+            {{ 'nodeConfig.maxWorkersMax' | transloco }}
+          </div>
           }
         </div>
 
@@ -139,40 +187,58 @@
             <span class="range-suffix">%</span>
           </div>
           <div class="form-help">
-            <fa-icon [icon]="['fas', 'info-circle']" class="form-help__icon"></fa-icon>
+            <fa-icon
+              [icon]="['fas', 'info-circle']"
+              class="form-help__icon"
+            ></fa-icon>
             {{ 'nodeConfig.cpuLimitHelp' | transloco }}
           </div>
           @if (showCpuWarning) {
-            <div class="warning-message">
-              <fa-icon [icon]="['fas', 'exclamation-triangle']" class="warning-message__icon"></fa-icon>
-              {{ 'nodeConfig.cpuLimitHighWarning' | transloco }}
-            </div>
-          }
-          @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('required')) {
-            <div class="error-message">
-              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              {{ 'nodeConfig.cpuLimitRequired' | transloco }}
-            </div>
-          }
-          @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('min')) {
-            <div class="error-message">
-              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              {{ 'nodeConfig.cpuLimitMin' | transloco }}
-            </div>
-          }
-          @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('max')) {
-            <div class="error-message">
-              <fa-icon [icon]="['fas', 'exclamation-circle']" class="error-message__icon"></fa-icon>
-              {{ 'nodeConfig.cpuLimitMax' | transloco }}
-            </div>
+          <div class="warning-message">
+            <fa-icon
+              [icon]="['fas', 'exclamation-triangle']"
+              class="warning-message__icon"
+            ></fa-icon>
+            {{ 'nodeConfig.cpuLimitHighWarning' | transloco }}
+          </div>
+          } @if (cpuLimitControl?.touched &&
+          cpuLimitControl?.hasError('required')) {
+          <div class="error-message">
+            <fa-icon
+              [icon]="['fas', 'exclamation-circle']"
+              class="error-message__icon"
+            ></fa-icon>
+            {{ 'nodeConfig.cpuLimitRequired' | transloco }}
+          </div>
+          } @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('min')) {
+          <div class="error-message">
+            <fa-icon
+              [icon]="['fas', 'exclamation-circle']"
+              class="error-message__icon"
+            ></fa-icon>
+            {{ 'nodeConfig.cpuLimitMin' | transloco }}
+          </div>
+          } @if (cpuLimitControl?.touched && cpuLimitControl?.hasError('max')) {
+          <div class="error-message">
+            <fa-icon
+              [icon]="['fas', 'exclamation-circle']"
+              class="error-message__icon"
+            ></fa-icon>
+            {{ 'nodeConfig.cpuLimitMax' | transloco }}
+          </div>
           }
         </div>
 
         <!-- Schedule Configuration -->
         <div class="form-group">
-          <label class="form-group__label">{{ 'nodeConfig.encodingSchedule' | transloco }}</label>
+          <label class="form-group__label"
+            >{{ 'nodeConfig.encodingSchedule' | transloco }}</label
+          >
           <div class="form-help">
-            <fa-icon [icon]="['fas', 'info-circle']" class="form-help__icon"></fa-icon>
+            <fa-icon
+              [icon]="['fas', 'info-circle']"
+              class="form-help__icon"
+            ></fa-icon>
             {{ 'nodeConfig.scheduleHelp' | transloco }}
           </div>
 
@@ -193,11 +259,11 @@
 
           <!-- Schedule Editor (shown when enabled) -->
           @if (form.get('scheduleEnabled')?.value) {
-            <div class="schedule-editor-wrapper">
-              <app-node-schedule-editor
-                formControlName="scheduleWindows"
-              ></app-node-schedule-editor>
-            </div>
+          <div class="schedule-editor-wrapper">
+            <app-node-schedule-editor
+              formControlName="scheduleWindows"
+            ></app-node-schedule-editor>
+          </div>
           }
         </div>
       </div>
@@ -210,12 +276,16 @@
           [disabled]="testingCapabilities()"
         >
           @if (testingCapabilities()) {
-            <fa-icon [icon]="['fas', 'circle-notch']" class="btn__icon fa-spin"></fa-icon>
-            {{ 'nodeConfig.testing' | transloco }}
-          } @else {
-            <fa-icon [icon]="['fas', 'network-wired']" class="btn__icon"></fa-icon>
-            {{ 'nodeConfig.testCapabilities' | transloco }}
-          }
+          <fa-icon
+            [icon]="['fas', 'circle-notch']"
+            class="btn__icon fa-spin"
+          ></fa-icon>
+          {{ 'nodeConfig.testing' | transloco }} } @else {
+          <fa-icon
+            [icon]="['fas', 'network-wired']"
+            class="btn__icon"
+          ></fa-icon>
+          {{ 'nodeConfig.testCapabilities' | transloco }} }
         </button>
         <div class="footer-spacer"></div>
         <button type="button" class="btn btn-secondary" (click)="onCancel()">

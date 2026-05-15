@@ -60,11 +60,15 @@
 
         <div class="preset-card__details">
           <div class="preset-card__detail-row">
-            <span class="preset-card__detail-label">{{ 'policies.codec' | transloco }}:</span>
+            <span class="preset-card__detail-label"
+              >{{ 'policies.codec' | transloco }}:</span
+            >
             <span class="preset-card__detail-value">{{ preset.codec }}</span>
           </div>
           <div class="preset-card__detail-row">
-            <span class="preset-card__detail-label">{{ 'policies.quality' | transloco }}:</span>
+            <span class="preset-card__detail-label"
+              >{{ 'policies.quality' | transloco }}:</span
+            >
             <span class="preset-card__detail-value">CRF {{ preset.crf }}</span>
           </div>
         </div>
@@ -108,7 +112,8 @@
         </ol>
         <p class="help-tip">
           <fa-icon icon="lightbulb"></fa-icon>
-          <strong>{{ 'policies.tipStart' | transloco }}</strong> {{ 'policies.startWithBalanced' | transloco }}
+          <strong>{{ 'policies.tipStart' | transloco }}</strong> {{
+          'policies.startWithBalanced' | transloco }}
         </p>
       </div>
 
@@ -222,9 +227,14 @@
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2 class="modal-header__title">
-          {{ isEditMode ? ('policies.editPolicy' | transloco) : ('policies.createPolicy' | transloco) }}
+          {{ isEditMode ? ('policies.editPolicy' | transloco) :
+          ('policies.createPolicy' | transloco) }}
         </h2>
-        <button class="btn-icon" (click)="closeForm()" [attr.aria-label]="'policies.closeForm' | transloco">
+        <button
+          class="btn-icon"
+          (click)="closeForm()"
+          [attr.aria-label]="'policies.closeForm' | transloco"
+        >
           <fa-icon [icon]="icons.times"></fa-icon>
         </button>
       </div>
@@ -233,7 +243,9 @@
         <form (ngSubmit)="submitForm()">
           <!-- Name Input -->
           <div class="form-group">
-            <label for="name" class="form-group__label">{{ 'policies.policyName' | transloco }}</label>
+            <label for="name" class="form-group__label"
+              >{{ 'policies.policyName' | transloco }}</label
+            >
             <input
               id="name"
               type="text"
@@ -271,13 +283,17 @@
               <option [value]="PolicyPreset.COPY_IF_COMPLIANT">
                 Copy If Compliant
               </option>
-              <option [value]="PolicyPreset.CUSTOM">{{ 'policies.custom' | transloco }}</option>
+              <option [value]="PolicyPreset.CUSTOM">
+                {{ 'policies.custom' | transloco }}
+              </option>
             </select>
           </div>
 
           <!-- Target Codec -->
           <div class="form-group">
-            <label for="codec" class="form-group__label">{{ 'policies.targetCodec' | transloco }}</label>
+            <label for="codec" class="form-group__label"
+              >{{ 'policies.targetCodec' | transloco }}</label
+            >
             <select
               id="codec"
               class="form-group__input"
@@ -351,7 +367,9 @@
               [(ngModel)]="formData.libraryId"
               name="library"
             >
-              <option value="">{{ 'policies.allLibraries' | transloco }}</option>
+              <option value="">
+                {{ 'policies.allLibraries' | transloco }}
+              </option>
               @for (library of libraries$ | async; track library.id) {
               <option [value]="library.id">{{ library.name }}</option>
               }
@@ -364,7 +382,9 @@
 
           <!-- Device Profiles -->
           <div class="form-group">
-            <label class="form-group__label">{{ 'policies.deviceProfiles' | transloco }}</label>
+            <label class="form-group__label"
+              >{{ 'policies.deviceProfiles' | transloco }}</label
+            >
             <div class="field-hint">
               <fa-icon icon="info-circle"></fa-icon>
               Select which devices should be able to play your encoded videos.
@@ -410,7 +430,8 @@
               class="advanced-toggle"
               (click)="showAdvancedSettings = !showAdvancedSettings"
             >
-              {{ showAdvancedSettings ? '▼' : '▶' }} {{ 'policies.advancedSettings' | transloco }}
+              {{ showAdvancedSettings ? '▼' : '▶' }} {{
+              'policies.advancedSettings' | transloco }}
             </button>
 
             @if (showAdvancedSettings) {
@@ -426,7 +447,9 @@
                   [(ngModel)]="formData.audioHandling"
                   name="audio"
                 >
-                  <option [value]="AudioHandling.COPY">{{ 'policies.copyOriginal' | transloco }}</option>
+                  <option [value]="AudioHandling.COPY">
+                    {{ 'policies.copyOriginal' | transloco }}
+                  </option>
                   <option [value]="AudioHandling.TRANSCODE_AAC">
                     {{ 'policies.transcodeAac' | transloco }}
                   </option>
@@ -585,7 +608,8 @@
           (click)="submitForm()"
         >
           <fa-icon [icon]="icons.check"></fa-icon>
-          {{ isEditMode ? ('policies.updatePolicy' | transloco) : ('policies.createPolicy' | transloco) }}
+          {{ isEditMode ? ('policies.updatePolicy' | transloco) :
+          ('policies.createPolicy' | transloco) }}
         </button>
       </div>
     </div>

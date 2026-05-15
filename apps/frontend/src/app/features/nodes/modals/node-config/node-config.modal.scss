@@ -102,58 +102,58 @@
   }
 }
 
-  .range-input-group {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+.range-input-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 
-    .form-range {
-      flex: 1;
-      height: 6px;
-      border-radius: 3px;
-      background: var(--border-color, #333);
-      outline: none;
+  .form-range {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border-color, #333);
+    outline: none;
+    cursor: pointer;
+
+    &::-webkit-slider-thumb {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary-color, #007bff);
       cursor: pointer;
+      transition: all 0.2s;
 
-      &::-webkit-slider-thumb {
-        appearance: none;
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: var(--primary-color, #007bff);
-        cursor: pointer;
-        transition: all 0.2s;
-
-        &:hover {
-          transform: scale(1.2);
-        }
-      }
-
-      &::-moz-range-thumb {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: var(--primary-color, #007bff);
-        cursor: pointer;
-        border: none;
-        transition: all 0.2s;
-
-        &:hover {
-          transform: scale(1.2);
-        }
+      &:hover {
+        transform: scale(1.2);
       }
     }
 
-    .range-value {
-      max-width: 80px;
-      text-align: center;
-    }
+    &::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary-color, #007bff);
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
 
-    .range-suffix {
-      color: var(--text-secondary, #999);
-      font-weight: 500;
+      &:hover {
+        transform: scale(1.2);
+      }
     }
   }
+
+  .range-value {
+    max-width: 80px;
+    text-align: center;
+  }
+
+  .range-suffix {
+    color: var(--text-secondary, #999);
+    font-weight: 500;
+  }
+}
 
 .form-help {
   display: flex;
@@ -331,7 +331,10 @@
   border-radius: 6px;
   font-weight: 500;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
 
   &:hover {
     transform: translateY(-1px);

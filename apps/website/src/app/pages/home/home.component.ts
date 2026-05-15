@@ -33,12 +33,13 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
             </div>
 
             <h1 class="hero__title">
-              Zero-Effort Video Encoding<br>
+              Zero-Effort Video Encoding<br />
               <span class="hero__gradient">Point. Click. Done.</span>
             </h1>
 
             <p class="hero__subtitle">
-              Point BitBonsai at your media library and walk away. We handle the rest.<br class="desktop-only">
+              Point BitBonsai at your media library and walk away. We handle the
+              rest.<br class="desktop-only" />
               Shrink your storage 40-60%. Crashes? We recover automatically.
             </p>
 
@@ -47,7 +48,11 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
                 <fa-icon [icon]="faDownload" class="btn__icon"></fa-icon>
                 <span>Start Encoding in 5 Minutes</span>
               </a>
-              <a href="https://github.com/bitbonsai/bitbonsai" class="btn btn--secondary" target="_blank">
+              <a
+                href="https://github.com/bitbonsai/bitbonsai"
+                class="btn btn--secondary"
+                target="_blank"
+              >
                 <fa-icon [icon]="faCode" class="btn__icon"></fa-icon>
                 <span>View on GitHub</span>
               </a>
@@ -57,7 +62,10 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
               <div class="code-block">
                 <div class="code-block__header">
                   <span class="code-block__label">Quick Install</span>
-                  <button class="code-block__copy" (click)="copyDockerCommand()">
+                  <button
+                    class="code-block__copy"
+                    (click)="copyDockerCommand()"
+                  >
                     {{ copied ? 'Copied!' : 'Copy' }}
                   </button>
                 </div>
@@ -70,7 +78,10 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
             <div class="stats-grid">
               @for (stat of stats; track stat.label) {
                 <div class="stat-card">
-                  <fa-icon [icon]="stat.faIcon" class="stat-card__icon"></fa-icon>
+                  <fa-icon
+                    [icon]="stat.faIcon"
+                    class="stat-card__icon"
+                  ></fa-icon>
                   <div class="stat-card__value">{{ stat.value }}</div>
                   <div class="stat-card__label">{{ stat.label }}</div>
                 </div>
@@ -92,8 +103,16 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
 
           <div class="features__grid">
             @for (feature of keyFeatures; track feature.title; let i = $index) {
-              <div class="feature" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
-                <fa-icon [icon]="feature.faIcon" class="feature__icon"></fa-icon>
+              <div
+                class="feature"
+                bbScrollReveal
+                [delay]="i * 100"
+                animation="fade-in-up"
+              >
+                <fa-icon
+                  [icon]="feature.faIcon"
+                  class="feature__icon"
+                ></fa-icon>
                 <h3 class="feature__title">{{ feature.title }}</h3>
                 <p class="feature__description">{{ feature.description }}</p>
               </div>
@@ -131,7 +150,12 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
         <div class="social-proof__container">
           <div class="social-proof__grid">
             @for (stat of socialProofStats; track stat.label; let i = $index) {
-              <div class="social-proof-card" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+              <div
+                class="social-proof-card"
+                bbScrollReveal
+                [delay]="i * 100"
+                animation="fade-in-up"
+              >
                 <div class="social-proof-card__value">{{ stat.value }}</div>
                 <div class="social-proof-card__label">{{ stat.label }}</div>
               </div>
@@ -151,16 +175,33 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
           </div>
 
           <div class="testimonials__grid">
-            @for (testimonial of testimonials; track testimonial.name; let i = $index) {
-              <div class="testimonial-card" bbScrollReveal [delay]="i * 150" animation="fade-in-up">
+            @for (
+              testimonial of testimonials;
+              track testimonial.name;
+              let i = $index
+            ) {
+              <div
+                class="testimonial-card"
+                bbScrollReveal
+                [delay]="i * 150"
+                animation="fade-in-up"
+              >
                 <div class="testimonial-card__content">
-                  <p class="testimonial-card__quote">"{{ testimonial.quote }}"</p>
+                  <p class="testimonial-card__quote">
+                    "{{ testimonial.quote }}"
+                  </p>
                 </div>
                 <div class="testimonial-card__author">
-                  <div class="testimonial-card__avatar">{{ testimonial.avatar }}</div>
+                  <div class="testimonial-card__avatar">
+                    {{ testimonial.avatar }}
+                  </div>
                   <div class="testimonial-card__info">
-                    <div class="testimonial-card__name">{{ testimonial.name }}</div>
-                    <div class="testimonial-card__title">{{ testimonial.title }}</div>
+                    <div class="testimonial-card__name">
+                      {{ testimonial.name }}
+                    </div>
+                    <div class="testimonial-card__title">
+                      {{ testimonial.title }}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -180,11 +221,25 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
           </div>
 
           <div class="integrations__grid">
-            @for (integration of integrations; track integration.name; let i = $index) {
-              <div class="integration-card" bbScrollReveal [delay]="i * 80" animation="fade-in-up">
-                <fa-icon [icon]="integration.faIcon" class="integration-card__icon"></fa-icon>
+            @for (
+              integration of integrations;
+              track integration.name;
+              let i = $index
+            ) {
+              <div
+                class="integration-card"
+                bbScrollReveal
+                [delay]="i * 80"
+                animation="fade-in-up"
+              >
+                <fa-icon
+                  [icon]="integration.faIcon"
+                  class="integration-card__icon"
+                ></fa-icon>
                 <div class="integration-card__name">{{ integration.name }}</div>
-                <div class="integration-card__status">{{ integration.status }}</div>
+                <div class="integration-card__status">
+                  {{ integration.status }}
+                </div>
               </div>
             }
           </div>
@@ -195,20 +250,33 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
       <section class="pain-section">
         <div class="pain-section__container">
           <div class="pain-section__header">
-            <h2 class="pain-section__title">Traditional vs. Fault-Tolerant Architecture</h2>
-            <p class="pain-section__subtitle">Why stateful recovery changes everything</p>
+            <h2 class="pain-section__title">
+              Traditional vs. Fault-Tolerant Architecture
+            </h2>
+            <p class="pain-section__subtitle">
+              Why stateful recovery changes everything
+            </p>
           </div>
 
           <div class="pain-grid">
             @for (pain of painPoints; track pain.problem; let i = $index) {
-              <div class="pain-card" bbScrollReveal [delay]="i * 100" animation="fade-in-up">
+              <div
+                class="pain-card"
+                bbScrollReveal
+                [delay]="i * 100"
+                animation="fade-in-up"
+              >
                 <div class="pain-card__problem">
-                  <div class="pain-card__icon pain-card__icon--bad">Traditional</div>
+                  <div class="pain-card__icon pain-card__icon--bad">
+                    Traditional
+                  </div>
                   <div class="pain-card__text">{{ pain.problem }}</div>
                 </div>
                 <div class="pain-card__arrow">→</div>
                 <div class="pain-card__solution">
-                  <div class="pain-card__icon pain-card__icon--good">BitBonsai</div>
+                  <div class="pain-card__icon pain-card__icon--good">
+                    BitBonsai
+                  </div>
                   <div class="pain-card__text">{{ pain.solution }}</div>
                 </div>
               </div>
@@ -225,8 +293,12 @@ import { ScrollRevealDirective } from '../../shared/directives/scroll-reveal.dir
             Open source. Self-hosted. Running on thousands of homelabs.
           </p>
           <div class="cta__actions">
-            <a routerLink="/download" class="btn btn--primary btn--large">Deploy in 5 Minutes</a>
-            <a routerLink="/pricing" class="btn btn--secondary btn--large">View Pricing</a>
+            <a routerLink="/download" class="btn btn--primary btn--large"
+              >Deploy in 5 Minutes</a
+            >
+            <a routerLink="/pricing" class="btn btn--secondary btn--large"
+              >View Pricing</a
+            >
           </div>
           <p class="cta__guarantee">
             Free tier supports unlimited encoding. Scale nodes as needed.
@@ -245,9 +317,17 @@ export class HomeComponent {
   ghcr.io/bitbonsai/bitbonsai:latest`;
 
   stats = [
-    { faIcon: faPlayCircle, value: '10-second', label: 'Progress checkpoint interval' },
+    {
+      faIcon: faPlayCircle,
+      value: '10-second',
+      label: 'Progress checkpoint interval',
+    },
     { faIcon: faHdd, value: '40-60%', label: 'Typical storage reduction' },
-    { faIcon: faRocket, value: 'Linear scaling', label: 'Add nodes, multiply throughput' },
+    {
+      faIcon: faRocket,
+      value: 'Linear scaling',
+      label: 'Add nodes, multiply throughput',
+    },
     { faIcon: faSync, value: '4-layer', label: 'Automated recovery system' },
   ];
 
@@ -285,15 +365,18 @@ export class HomeComponent {
   steps = [
     {
       title: 'Connect',
-      description: 'Point BitBonsai to your media library. Supports NFS, SMB, local paths.',
+      description:
+        'Point BitBonsai to your media library. Supports NFS, SMB, local paths.',
     },
     {
       title: 'Scan',
-      description: 'Auto-detect files that need encoding. Smart filtering by codec and quality.',
+      description:
+        'Auto-detect files that need encoding. Smart filtering by codec and quality.',
     },
     {
       title: 'Encode',
-      description: 'Watch your library shrink automatically. Real-time progress tracking.',
+      description:
+        'Watch your library shrink automatically. Real-time progress tracking.',
     },
   ];
 

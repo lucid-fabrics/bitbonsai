@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { type Job, JobStage } from '@prisma/client';
 import { JobRepository } from '../../common/repositories/job.repository';
@@ -27,7 +32,7 @@ export class QueueDelegationService {
     private fileTransferService: FileTransferService,
     private sharedStorageVerifier: SharedStorageVerifierService,
     private jobCrudService: QueueJobCrudService,
-    private jobStateService: QueueJobStateService
+    private jobStateService: QueueJobStateService,
   ) {}
 
   /**
@@ -66,28 +71,29 @@ export class QueueDelegationService {
       }
 
       this.logger.warn(
-        `🔧 CRITICAL #27 FIX: Found ${stuckJobs.length} stuck transfer(s) - attempting recovery`
+        `🔧 CRITICAL #27 FIX: Found ${stuckJobs.length} stuck transfer(s) - attempting recovery`,
       );
 
       for (const job of stuckJobs) {
         const retryCount = job.transferRetryCount || 0;
         const stuckDuration = Math.floor(
-          (Date.now() - new Date(job.transferStartedAt || 0).getTime()) / (60 * 1000)
+          (Date.now() - new Date(job.transferStartedAt || 0).getTime()) /
+            (60 * 1000),
         );
 
         if (retryCount >= MAX_TRANSFER_RETRIES) {
           this.logger.error(
-            `  ✗ Job ${job.fileLabel}: Transfer failed after ${retryCount} retries (stuck ${stuckDuration}min)`
+            `  ✗ Job ${job.fileLabel}: Transfer failed after ${retryCount} retries (stuck ${stuckDuration}min)`,
           );
 
           await this.jobStateService.failJob(
             job.id,
             `File transfer stuck for over ${stuckDuration} minutes after ${retryCount} retry attempts. ` +
-              `Progress: ${job.transferProgress}%. Manual intervention required.`
+              `Progress: ${job.transferProgress}%. Manual intervention required.`,
           );
         } else {
           this.logger.warn(
-            `  ⟳ Job ${job.fileLabel}: Resetting stuck transfer for retry ${retryCount + 1}/${MAX_TRANSFER_RETRIES} (stuck ${stuckDuration}min, progress ${job.transferProgress}%)`
+            `  ⟳ Job ${job.fileLabel}: Resetting stuck transfer for retry ${retryCount + 1}/${MAX_TRANSFER_RETRIES} (stuck ${stuckDuration}min, progress ${job.transferProgress}%)`,
           );
 
           await this.jobCrudService.update(job.id, {
@@ -101,10 +107,13 @@ export class QueueDelegationService {
       }
 
       this.logger.log(
-        `✅ CRITICAL #27 FIX: Stuck transfer cleanup complete - processed ${stuckJobs.length} job(s)`
+        `✅ CRITICAL #27 FIX: Stuck transfer cleanup complete - processed ${stuckJobs.length} job(s)`,
       );
     } catch (error: unknown) {
-      this.logger.error('CRITICAL #27 FIX: Failed to cleanup stuck transfers:', error);
+      this.logger.error(
+        'CRITICAL #27 FIX: Failed to cleanup stuck transfers:',
+        error,
+      );
     }
   }
 
@@ -131,19 +140,21 @@ export class QueueDelegationService {
 
       if (job.nodeId === targetNodeId) {
         throw new BadRequestException(
-          `Job is already assigned to this node. Please select a different node.`
+          `Job is already assigned to this node. Please select a different node.`,
         );
       }
 
       const allowedStages = ['QUEUED', 'PAUSED', 'FAILED', 'ENCODING'];
       if (!allowedStages.includes(job.stage)) {
         throw new BadRequestException(
-          `Cannot delegate job in ${job.stage} stage. Only QUEUED, PAUSED, FAILED, or ENCODING jobs can be delegated.`
+          `Cannot delegate job in ${job.stage} stage. Only QUEUED, PAUSED, FAILED, or ENCODING jobs can be delegated.`,
         );
       }
 
       if (job.stage === 'ENCODING') {
-        this.logger.log(`Pausing ENCODING job ${jobId} before delegation to node ${targetNodeId}`);
+        this.logger.log(
+          `Pausing ENCODING job ${jobId} before delegation to node ${targetNodeId}`,
+        );
       }
 
       const targetNode = await tx.node.findUnique({
@@ -155,15 +166,19 @@ export class QueueDelegationService {
       }
 
       if (targetNode.status !== 'ONLINE') {
-        throw new BadRequestException('Selected node is not available for job assignment');
+        throw new BadRequestException(
+          'Selected node is not available for job assignment',
+        );
       }
 
       this.logger.log(
-        `Manually delegating job ${jobId} from node ${job.nodeId} to node ${targetNodeId}`
+        `Manually delegating job ${jobId} from node ${job.nodeId} to node ${targetNodeId}`,
       );
 
       const sourceNodeId = job.library.nodeId;
-      const sourceNode = await tx.node.findUnique({ where: { id: sourceNodeId } });
+      const sourceNode = await tx.node.findUnique({
+        where: { id: sourceNodeId },
+      });
 
       if (!sourceNode) {
         throw new NotFoundException(`Source node ${sourceNodeId} not found`);
@@ -174,27 +189,31 @@ export class QueueDelegationService {
 
       if (sourceNodeId !== targetNodeId && targetNode.hasSharedStorage) {
         this.logger.log(
-          `Verifying shared storage access for job ${jobId} on target node ${targetNode.name}...`
+          `Verifying shared storage access for job ${jobId} on target node ${targetNode.name}...`,
         );
 
         const verification = await this.sharedStorageVerifier.verifyFileAccess(
           job.filePath,
           targetNode,
-          sourceNode
+          sourceNode,
         );
 
         if (verification.isAccessible && verification.translatedPath) {
-          this.logger.log(`✅ File accessible via shared storage: ${verification.translatedPath}`);
+          this.logger.log(
+            `✅ File accessible via shared storage: ${verification.translatedPath}`,
+          );
           needsTransfer = false;
           translatedPath = verification.translatedPath;
         } else {
           this.logger.warn(
-            `⚠️  Shared storage verification failed: ${verification.error}. Will use file transfer instead.`
+            `⚠️  Shared storage verification failed: ${verification.error}. Will use file transfer instead.`,
           );
           needsTransfer = true;
         }
       } else if (sourceNodeId !== targetNodeId) {
-        this.logger.log(`Target node has no shared storage configured, will use file transfer`);
+        this.logger.log(
+          `Target node has no shared storage configured, will use file transfer`,
+        );
         needsTransfer = true;
       }
 
@@ -218,7 +237,9 @@ export class QueueDelegationService {
       };
 
       if (!needsTransfer && translatedPath && translatedPath !== job.filePath) {
-        this.logger.log(`Translating path: ${job.filePath} -> ${translatedPath}`);
+        this.logger.log(
+          `Translating path: ${job.filePath} -> ${translatedPath}`,
+        );
         updateData.filePath = translatedPath;
         if (!job.originalFilePath) {
           updateData.originalFilePath = job.filePath;
@@ -235,7 +256,7 @@ export class QueueDelegationService {
 
       if (updateResult.count === 0) {
         throw new BadRequestException(
-          'Job stage changed during delegation. Please retry the operation.'
+          'Job stage changed during delegation. Please retry the operation.',
         );
       }
 
@@ -246,14 +267,17 @@ export class QueueDelegationService {
 
         if (sourceNode) {
           this.logger.log(
-            `Job ${jobId} requires file transfer: ${sourceNode.name} -> ${targetNode.name}`
+            `Job ${jobId} requires file transfer: ${sourceNode.name} -> ${targetNode.name}`,
           );
 
           setImmediate(() => {
             this.fileTransferService
               .transferFile(jobId, job.filePath, sourceNode, targetNode)
               .catch((error) => {
-                this.logger.error(`Background file transfer failed for job ${jobId}:`, error);
+                this.logger.error(
+                  `Background file transfer failed for job ${jobId}:`,
+                  error,
+                );
               });
           });
         }
@@ -264,7 +288,7 @@ export class QueueDelegationService {
       });
 
       this.logger.log(
-        `Job ${jobId} successfully delegated to node ${targetNodeId}${needsTransfer ? ' (file transfer initiated)' : ''}`
+        `Job ${jobId} successfully delegated to node ${targetNodeId}${needsTransfer ? ' (file transfer initiated)' : ''}`,
       );
 
       return updatedJob!;
@@ -295,7 +319,10 @@ export class QueueDelegationService {
       where: {
         stage: 'TRANSFERRING',
         transferProgress: 0,
-        OR: [{ transferStartedAt: { lt: fiveMinutesAgo } }, { transferStartedAt: null }],
+        OR: [
+          { transferStartedAt: { lt: fiveMinutesAgo } },
+          { transferStartedAt: null },
+        ],
       },
       select: {
         id: true,
@@ -319,7 +346,7 @@ export class QueueDelegationService {
 
     for (const job of stuckJobs) {
       this.logger.log(
-        `Resetting stuck transfer: ${job.fileLabel} (node: ${job.node?.name}, hasSharedStorage: ${job.node?.hasSharedStorage})`
+        `Resetting stuck transfer: ${job.fileLabel} (node: ${job.node?.name}, hasSharedStorage: ${job.node?.hasSharedStorage})`,
       );
 
       await this.jobRepository.updateById(job.id, {

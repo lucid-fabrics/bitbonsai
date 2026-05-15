@@ -121,22 +121,30 @@
   // Color variants
   &--success .health-card__icon {
     background: rgba($success, 0.15);
-    fa-icon { color: $success; }
+    fa-icon {
+      color: $success;
+    }
   }
 
   &--warning .health-card__icon {
     background: rgba($warning, 0.15);
-    fa-icon { color: $warning; }
+    fa-icon {
+      color: $warning;
+    }
   }
 
   &--info .health-card__icon {
     background: rgba(96, 165, 250, 0.15);
-    fa-icon { color: #60a5fa; } // Blue accent
+    fa-icon {
+      color: #60a5fa;
+    } // Blue accent
   }
 
   &--primary .health-card__icon {
     background: rgba(167, 139, 250, 0.15);
-    fa-icon { color: #a78bfa; } // Purple accent
+    fa-icon {
+      color: #a78bfa;
+    } // Purple accent
   }
 }
 
@@ -246,7 +254,11 @@
 
   &__progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, $accent-primary, color.adjust($accent-primary, $lightness: 10%));
+    background: linear-gradient(
+      90deg,
+      $accent-primary,
+      color.adjust($accent-primary, $lightness: 10%)
+    );
     border-radius: 2px;
     transition: width 0.3s ease;
   }
@@ -273,7 +285,6 @@
   }
 }
 
-
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -292,7 +303,6 @@
     margin: 0;
   }
 }
-
 
 .no-data {
   text-align: center;
@@ -339,7 +349,8 @@
     table {
       font-size: 13px;
 
-      th, td {
+      th,
+      td {
         padding: 12px 8px;
       }
     }
@@ -455,11 +466,21 @@
       font-size: 14px;
       margin-bottom: 2px;
 
-      &--encoding { color: $accent-primary; }
-      &--completed { color: $success; }
-      &--failed { color: $danger; }
-      &--success { color: $success; }
-      &--saved { color: #a78bfa; }
+      &--encoding {
+        color: $accent-primary;
+      }
+      &--completed {
+        color: $success;
+      }
+      &--failed {
+        color: $danger;
+      }
+      &--success {
+        color: $success;
+      }
+      &--saved {
+        color: #a78bfa;
+      }
     }
 
     .stat-value {
@@ -519,11 +540,21 @@
     font-size: 14px;
     opacity: 0.8;
 
-    &--nvidia { color: #76b900; }
-    &--intel { color: #0071c5; }
-    &--amd { color: #ed1c24; }
-    &--apple { color: $accent-primary; }
-    &--cpu { color: $text-tertiary; }
+    &--nvidia {
+      color: #76b900;
+    }
+    &--intel {
+      color: #0071c5;
+    }
+    &--amd {
+      color: #ed1c24;
+    }
+    &--apple {
+      color: $accent-primary;
+    }
+    &--cpu {
+      color: $text-tertiary;
+    }
   }
 
   &__cpu {
@@ -563,7 +594,8 @@
 }
 
 @keyframes pulse-dot {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {

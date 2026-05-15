@@ -19,7 +19,7 @@ export class PolicySyncService {
     private readonly nodeRepository: NodeRepository,
     private readonly settingsRepository: SettingsRepository,
     private readonly policyRepository: PolicyRepository,
-    private readonly libraryRepository: LibraryRepository
+    private readonly libraryRepository: LibraryRepository,
   ) {}
 
   /**
@@ -63,7 +63,7 @@ export class PolicySyncService {
       const _settings = await this.getSettingsForSync();
 
       this.logger.log(
-        `📦 Syncing ${policies.length} policies, ${libraries.length} libraries, and settings to ${childNode.name}`
+        `📦 Syncing ${policies.length} policies, ${libraries.length} libraries, and settings to ${childNode.name}`,
       );
 
       // Stub: child node HTTP sync endpoints not yet implemented — returns simulated success
@@ -88,15 +88,18 @@ export class PolicySyncService {
 
       return result;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`❌ Failed to sync to child node ${childNode.name}: ${errorMessage}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `❌ Failed to sync to child node ${childNode.name}: ${errorMessage}`,
+      );
 
       // Check if we should retry
       const shouldRetry = childNode.syncRetryCount < this.MAX_RETRY_ATTEMPTS;
 
       if (shouldRetry) {
         this.logger.warn(
-          `⚠️  Retry ${childNode.syncRetryCount + 1}/${this.MAX_RETRY_ATTEMPTS} for node ${childNode.name}`
+          `⚠️  Retry ${childNode.syncRetryCount + 1}/${this.MAX_RETRY_ATTEMPTS} for node ${childNode.name}`,
         );
 
         // Update retry count and keep status as SYNCING (will retry)
@@ -283,7 +286,7 @@ export class PolicySyncService {
       await this.policyRepository.upsert(
         { id: policy.id },
         { id: policy.id, ...policyData },
-        policyData
+        policyData,
       );
     }
 
@@ -299,7 +302,9 @@ export class PolicySyncService {
    * @param libraries List of libraries to store
    */
   async receiveLibraries(libraries: LibrarySyncDto[]): Promise<void> {
-    this.logger.log(`📥 Receiving ${libraries.length} libraries from main node`);
+    this.logger.log(
+      `📥 Receiving ${libraries.length} libraries from main node`,
+    );
 
     // Get current node ID
     const currentNode = await this.nodeRepository.findMain();
@@ -326,7 +331,7 @@ export class PolicySyncService {
           mediaType: library.mediaType,
           enabled: library.enabled,
           defaultPolicyId: library.defaultPolicyId,
-        }
+        },
       );
     }
 

@@ -43,7 +43,9 @@ export class BatchOperationsService {
    * @returns Operation result
    */
   async pauseAll(nodeId?: string): Promise<BatchOperationResult> {
-    this.logger.log(`Pausing all jobs${nodeId ? ` for node ${nodeId}` : ''}...`);
+    this.logger.log(
+      `Pausing all jobs${nodeId ? ` for node ${nodeId}` : ''}...`,
+    );
 
     try {
       const now = new Date();
@@ -57,7 +59,9 @@ export class BatchOperationsService {
 
       // CRITICAL #3 FIX: Two-phase pause to prevent QUEUED→ENCODING race
       // Phase 1: Mark all jobs with pause request timestamp
-      await this.jobRepository.atomicUpdateMany(where, { pauseRequestedAt: now });
+      await this.jobRepository.atomicUpdateMany(where, {
+        pauseRequestedAt: now,
+      });
 
       // Phase 2: Only transition jobs still in QUEUED stage
       // Workers check pauseRequestedAt before starting encoding
@@ -70,11 +74,11 @@ export class BatchOperationsService {
         {
           stage: JobStage.PAUSED,
           error: 'Batch paused by user',
-        }
+        },
       );
 
       this.logger.log(
-        `✅ Paused ${result.count} job(s) (workers will stop ENCODING jobs at next checkpoint)`
+        `✅ Paused ${result.count} job(s) (workers will stop ENCODING jobs at next checkpoint)`,
       );
 
       return {
@@ -100,7 +104,9 @@ export class BatchOperationsService {
    * @returns Operation result
    */
   async resumeAll(nodeId?: string): Promise<BatchOperationResult> {
-    this.logger.log(`Resuming all paused jobs${nodeId ? ` for node ${nodeId}` : ''}...`);
+    this.logger.log(
+      `Resuming all paused jobs${nodeId ? ` for node ${nodeId}` : ''}...`,
+    );
 
     try {
       const where: Record<string, unknown> = {
@@ -146,7 +152,9 @@ export class BatchOperationsService {
    * @returns Operation result
    */
   async cancelAll(nodeId?: string): Promise<BatchOperationResult> {
-    this.logger.log(`Cancelling all active jobs${nodeId ? ` for node ${nodeId}` : ''}...`);
+    this.logger.log(
+      `Cancelling all active jobs${nodeId ? ` for node ${nodeId}` : ''}...`,
+    );
 
     try {
       const now = new Date();
@@ -200,9 +208,11 @@ export class BatchOperationsService {
    */
   async retryAllFailed(
     nodeId?: string,
-    maxRetries = DEFAULT_MAX_RETRIES
+    maxRetries = DEFAULT_MAX_RETRIES,
   ): Promise<BatchOperationResult> {
-    this.logger.log(`Retrying all failed jobs${nodeId ? ` for node ${nodeId}` : ''}...`);
+    this.logger.log(
+      `Retrying all failed jobs${nodeId ? ` for node ${nodeId}` : ''}...`,
+    );
 
     try {
       const where: Record<string, unknown> = {
@@ -251,13 +261,13 @@ export class BatchOperationsService {
    */
   async deleteCompletedOlderThan(
     olderThanDays: number,
-    nodeId?: string
+    nodeId?: string,
   ): Promise<BatchOperationResult> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
 
     this.logger.log(
-      `Deleting completed jobs older than ${olderThanDays} days${nodeId ? ` for node ${nodeId}` : ''}...`
+      `Deleting completed jobs older than ${olderThanDays} days${nodeId ? ` for node ${nodeId}` : ''}...`,
     );
 
     try {
@@ -299,7 +309,9 @@ export class BatchOperationsService {
    * @returns Operation result
    */
   async deleteAllFailed(nodeId?: string): Promise<BatchOperationResult> {
-    this.logger.log(`Deleting all failed jobs${nodeId ? ` for node ${nodeId}` : ''}...`);
+    this.logger.log(
+      `Deleting all failed jobs${nodeId ? ` for node ${nodeId}` : ''}...`,
+    );
 
     try {
       const where: Record<string, unknown> = {
@@ -372,7 +384,9 @@ export class BatchOperationsService {
       return {
         success: false,
         affectedCount: 0,
-        errors: ['Invalid confirmation token. Use "CLEAR_ALL_JOBS" to confirm.'],
+        errors: [
+          'Invalid confirmation token. Use "CLEAR_ALL_JOBS" to confirm.',
+        ],
       };
     }
 

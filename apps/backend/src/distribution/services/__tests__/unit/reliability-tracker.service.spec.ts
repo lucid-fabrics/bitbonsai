@@ -64,7 +64,9 @@ describe('ReliabilityTrackerService', () => {
     it('should create a failure log entry and update node stats', async () => {
       nodeFailureLogRepo.createLog.mockResolvedValue({});
       nodeFailureLogRepo.countForNodeSince.mockResolvedValue(3);
-      nodeFailureLogRepo.findLastForNode.mockResolvedValue({ createdAt: new Date() });
+      nodeFailureLogRepo.findLastForNode.mockResolvedValue({
+        createdAt: new Date(),
+      });
       jobRepo.countCompletedForNodeSince.mockResolvedValue(10);
       nodeRepo.updateById.mockResolvedValue({});
 
@@ -86,7 +88,9 @@ describe('ReliabilityTrackerService', () => {
     it('should handle missing errorCode', async () => {
       nodeFailureLogRepo.createLog.mockResolvedValue({});
       nodeFailureLogRepo.countForNodeSince.mockResolvedValue(1);
-      nodeFailureLogRepo.findLastForNode.mockResolvedValue({ createdAt: new Date() });
+      nodeFailureLogRepo.findLastForNode.mockResolvedValue({
+        createdAt: new Date(),
+      });
       jobRepo.countCompletedForNodeSince.mockResolvedValue(5);
       nodeRepo.updateById.mockResolvedValue({});
 
@@ -96,7 +100,7 @@ describe('ReliabilityTrackerService', () => {
       expect(nodeFailureLogRepo.createLog).toHaveBeenCalledWith(
         expect.objectContaining({
           errorCode: undefined,
-        })
+        }),
       );
     });
 
@@ -108,7 +112,7 @@ describe('ReliabilityTrackerService', () => {
 
       expect((service as any).logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to record failure'),
-        expect.any(Error)
+        expect.any(Error),
       );
     });
   });
@@ -149,7 +153,9 @@ describe('ReliabilityTrackerService', () => {
 
     it('should handle 100% failure rate', async () => {
       nodeFailureLogRepo.countForNodeSince.mockResolvedValue(5);
-      nodeFailureLogRepo.findLastForNode.mockResolvedValue({ createdAt: new Date() });
+      nodeFailureLogRepo.findLastForNode.mockResolvedValue({
+        createdAt: new Date(),
+      });
       jobRepo.countCompletedForNodeSince.mockResolvedValue(0);
       nodeRepo.updateById.mockResolvedValue({});
 
@@ -160,13 +166,15 @@ describe('ReliabilityTrackerService', () => {
         'node-1',
         expect.objectContaining({
           failureRate24h: 100,
-        })
+        }),
       );
     });
 
     it('should round failure rate to 2 decimal places', async () => {
       nodeFailureLogRepo.countForNodeSince.mockResolvedValue(1);
-      nodeFailureLogRepo.findLastForNode.mockResolvedValue({ createdAt: new Date() });
+      nodeFailureLogRepo.findLastForNode.mockResolvedValue({
+        createdAt: new Date(),
+      });
       jobRepo.countCompletedForNodeSince.mockResolvedValue(2);
       nodeRepo.updateById.mockResolvedValue({});
 
@@ -177,7 +185,7 @@ describe('ReliabilityTrackerService', () => {
         'node-1',
         expect.objectContaining({
           failureRate24h: 33.33,
-        })
+        }),
       );
     });
   });
@@ -199,7 +207,10 @@ describe('ReliabilityTrackerService', () => {
       expect(result.failureRate).toBe(25);
       expect(result.lastFailure).toEqual(now);
       expect(result.topReasons).toHaveLength(2);
-      expect(result.topReasons[0]).toEqual({ reason: 'FFmpeg crash', count: 3 });
+      expect(result.topReasons[0]).toEqual({
+        reason: 'FFmpeg crash',
+        count: 3,
+      });
       expect(result.topReasons[1]).toEqual({ reason: 'Disk full', count: 1 });
     });
 
@@ -247,10 +258,13 @@ describe('ReliabilityTrackerService', () => {
 
       await service.cleanupOldFailureLogs();
 
-      expect(nodeFailureLogRepo.deleteOlderThan).toHaveBeenCalledWith(expect.any(Date));
+      expect(nodeFailureLogRepo.deleteOlderThan).toHaveBeenCalledWith(
+        expect.any(Date),
+      );
 
       // Verify the cutoff date is 7 days ago
-      const cutoffDate = nodeFailureLogRepo.deleteOlderThan.mock.calls[0][0] as Date;
+      const cutoffDate = nodeFailureLogRepo.deleteOlderThan.mock
+        .calls[0][0] as Date;
       const sevenDaysAgo = new Date('2026-02-14T12:00:00Z');
       expect(cutoffDate.getTime()).toBe(sevenDaysAgo.getTime());
 
@@ -263,18 +277,20 @@ describe('ReliabilityTrackerService', () => {
       await service.cleanupOldFailureLogs();
 
       expect((service as any).logger.log).not.toHaveBeenCalledWith(
-        expect.stringContaining('Cleaned up')
+        expect.stringContaining('Cleaned up'),
       );
     });
 
     it('should handle database errors gracefully', async () => {
-      nodeFailureLogRepo.deleteOlderThan.mockRejectedValue(new Error('DB error'));
+      nodeFailureLogRepo.deleteOlderThan.mockRejectedValue(
+        new Error('DB error'),
+      );
 
       await service.cleanupOldFailureLogs();
 
       expect((service as any).logger.error).toHaveBeenCalledWith(
         'Failed to cleanup old failure logs',
-        expect.any(Error)
+        expect.any(Error),
       );
     });
   });

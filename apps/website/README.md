@@ -8,13 +8,13 @@ Angular standalone application serving as the public-facing marketing site for B
 
 ## Overview
 
-| Property | Value |
-|----------|-------|
-| **Type** | Static Angular website |
-| **Framework** | Angular 20 (standalone) |
-| **Domain** | bitbonsai.app |
-| **Port (dev)** | 4201 |
-| **Deploy** | Static files (Netlify/Vercel/S3) |
+| Property       | Value                            |
+| -------------- | -------------------------------- |
+| **Type**       | Static Angular website           |
+| **Framework**  | Angular 20 (standalone)          |
+| **Domain**     | bitbonsai.app                    |
+| **Port (dev)** | 4201                             |
+| **Deploy**     | Static files (Netlify/Vercel/S3) |
 
 ---
 
@@ -59,19 +59,21 @@ apps/website/
 
 Website fetches live pricing data from license-api:
 
-| Environment | API URL |
-|-------------|---------|
-| **Dev** | http://localhost:3200/api |
-| **Prod** | https://api.bitbonsai.app/api |
+| Environment | API URL                       |
+| ----------- | ----------------------------- |
+| **Dev**     | http://localhost:3200/api     |
+| **Prod**    | https://api.bitbonsai.app/api |
 
 **Key Endpoint:**
+
 ```typescript
-GET /api/pricing
+GET / api / pricing;
 ```
 
 **Service:** `apps/website/src/app/services/pricing-api.service.ts`
 
 **Usage:**
+
 ```typescript
 import { PricingApiService } from '@services/pricing-api.service';
 
@@ -83,16 +85,17 @@ export class PricingComponent {
 ```
 
 **Response:**
+
 ```typescript
 interface PricingTier {
   id: string;
-  name: string;              // "FREE" | "SUPPORTER" | etc.
-  displayName: string;       // "Free" | "Supporter"
+  name: string; // "FREE" | "SUPPORTER" | etc.
+  displayName: string; // "Free" | "Supporter"
   description?: string;
   maxNodes: number;
   maxConcurrentJobs: number;
-  priceMonthly: number;      // cents (500 = $5.00)
-  priceYearly?: number;      // cents
+  priceMonthly: number; // cents (500 = $5.00)
+  priceYearly?: number; // cents
   stripePriceIdMonthly?: string;
   stripePriceIdYearly?: string;
   patreonTierId?: string;
@@ -101,6 +104,7 @@ interface PricingTier {
 ```
 
 **Error Handling:**
+
 - Loading spinner while fetching
 - User-friendly errors (connection, rate limit, server error)
 - No fallback data (real-time pricing only)
@@ -129,7 +133,7 @@ Create `src/environments/environment.ts`:
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:3200/api',
-  licenseApiUrl: 'http://localhost:3200/api'
+  licenseApiUrl: 'http://localhost:3200/api',
 };
 ```
 
@@ -153,12 +157,12 @@ nx build website --configuration=production
 
 Website is a static Angular app (no backend) deployed to:
 
-| Platform | Use Case | Deploy Method |
-|----------|----------|---------------|
-| **Netlify** | Recommended | Drag & drop `dist/apps/website` |
-| **Vercel** | Alternative | CLI or GitHub integration |
-| **AWS S3 + CloudFront** | Enterprise | Terraform/manual upload |
-| **GitHub Pages** | Free tier | GitHub Actions workflow |
+| Platform                | Use Case    | Deploy Method                   |
+| ----------------------- | ----------- | ------------------------------- |
+| **Netlify**             | Recommended | Drag & drop `dist/apps/website` |
+| **Vercel**              | Alternative | CLI or GitHub integration       |
+| **AWS S3 + CloudFront** | Enterprise  | Terraform/manual upload         |
+| **GitHub Pages**        | Free tier   | GitHub Actions workflow         |
 
 ### Build for Production
 
@@ -175,11 +179,12 @@ nx build website --configuration=production
 
 Set in hosting platform:
 
-| Variable | Dev | Prod |
-|----------|-----|------|
+| Variable  | Dev                       | Prod                          |
+| --------- | ------------------------- | ----------------------------- |
 | `API_URL` | http://localhost:3200/api | https://api.bitbonsai.app/api |
 
 **Netlify/Vercel:**
+
 - Build command: `npx nx build website --configuration=production`
 - Publish directory: `dist/apps/website`
 
@@ -190,6 +195,7 @@ Set in hosting platform:
 ### Home (`/`)
 
 **Components:**
+
 - Hero section (CTA buttons)
 - Feature highlights (cards)
 - Screenshots/demo video
@@ -198,6 +204,7 @@ Set in hosting platform:
 - Footer CTA
 
 **Key Features:**
+
 - Responsive design (mobile-first)
 - Scroll animations
 - Video background
@@ -206,6 +213,7 @@ Set in hosting platform:
 ### Pricing (`/pricing`)
 
 **Dynamic Pricing Table:**
+
 - Fetches live data from license-api
 - Monthly/yearly toggle
 - Feature comparison matrix
@@ -214,18 +222,19 @@ Set in hosting platform:
 **Component:** `apps/website/src/app/pages/pricing/pricing.component.ts`
 
 **Template:**
+
 ```html
 <div class="pricing-tiers">
   @for (tier of tiers$ | async; track tier.id) {
-    <div class="tier-card" [class.featured]="tier.name === 'SUPPORTER'">
-      <h3>{{ tier.displayName }}</h3>
-      <p class="price">${{ tier.priceMonthly / 100 }}/mo</p>
-      <ul class="features">
-        <li>{{ tier.maxNodes }} nodes</li>
-        <li>{{ tier.maxConcurrentJobs }} concurrent jobs</li>
-      </ul>
-      <button>Get Started</button>
-    </div>
+  <div class="tier-card" [class.featured]="tier.name === 'SUPPORTER'">
+    <h3>{{ tier.displayName }}</h3>
+    <p class="price">${{ tier.priceMonthly / 100 }}/mo</p>
+    <ul class="features">
+      <li>{{ tier.maxNodes }} nodes</li>
+      <li>{{ tier.maxConcurrentJobs }} concurrent jobs</li>
+    </ul>
+    <button>Get Started</button>
+  </div>
   }
 </div>
 ```
@@ -233,6 +242,7 @@ Set in hosting platform:
 ### Features (`/features`)
 
 **Sections:**
+
 - TRUE RESUME (crash recovery)
 - Multi-node distributed encoding
 - Auto-heal system
@@ -243,6 +253,7 @@ Set in hosting platform:
 ### About (`/about`)
 
 **Content:**
+
 - Team
 - Mission statement
 - Roadmap
@@ -251,6 +262,7 @@ Set in hosting platform:
 ### Contact (`/contact`)
 
 **Form fields:**
+
 - Name, email, subject, message
 - Sends to support email via backend API
 
@@ -263,6 +275,7 @@ Set in hosting platform:
 **Config:** `tailwind.config.js`
 
 **Custom theme:**
+
 ```typescript
 theme: {
   extend: {
@@ -276,6 +289,7 @@ theme: {
 ```
 
 **Usage:**
+
 ```html
 <button class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90">
   Get Started
@@ -296,7 +310,9 @@ body {
   @apply bg-gray-50 text-gray-900;
 }
 
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   @apply font-bold;
 }
 ```
@@ -310,6 +326,7 @@ h1, h2, h3 {
 **Location:** `apps/website/public/`
 
 **Files:**
+
 - `favicon.ico` (legacy)
 - `favicon.svg` (modern browsers)
 - `apple-touch-icon.png` (180x180)
@@ -317,6 +334,7 @@ h1, h2, h3 {
 - `favicon-32x32.png`
 
 **Generate favicons:**
+
 ```bash
 # From SVG source
 convert favicon.svg -resize 32x32 favicon-32x32.png
@@ -328,11 +346,13 @@ convert favicon.svg -resize 16x16 favicon-16x16.png
 **Location:** `apps/website/src/assets/images/`
 
 **Naming convention:**
+
 - `screenshot-{feature}.png` (e.g., `screenshot-queue.png`)
 - `logo-{variant}.svg` (e.g., `logo-dark.svg`, `logo-light.svg`)
 - `hero-background.jpg`
 
 **Optimization:**
+
 - Use WebP for photos
 - SVG for icons/logos
 - Lazy loading: `<img loading="lazy">`
@@ -348,17 +368,26 @@ convert favicon.svg -resize 16x16 favicon-16x16.png
 ```html
 <head>
   <title>BitBonsai - Professional Media Automation</title>
-  <meta name="description" content="Distributed video transcoding platform with TRUE RESUME crash recovery">
-  <meta name="keywords" content="video encoding, HEVC, AV1, transcoding, media automation">
+  <meta
+    name="description"
+    content="Distributed video transcoding platform with TRUE RESUME crash recovery"
+  />
+  <meta
+    name="keywords"
+    content="video encoding, HEVC, AV1, transcoding, media automation"
+  />
 
   <!-- Open Graph -->
-  <meta property="og:title" content="BitBonsai - Media Automation">
-  <meta property="og:description" content="Professional video transcoding platform">
-  <meta property="og:image" content="https://bitbonsai.app/og-image.png">
+  <meta property="og:title" content="BitBonsai - Media Automation" />
+  <meta
+    property="og:description"
+    content="Professional video transcoding platform"
+  />
+  <meta property="og:image" content="https://bitbonsai.app/og-image.png" />
 
   <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="BitBonsai">
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="BitBonsai" />
 </head>
 ```
 
@@ -376,6 +405,7 @@ Sitemap: https://bitbonsai.app/sitemap.xml
 ### sitemap.xml
 
 **Generate:**
+
 ```bash
 # Manual or use Angular Universal
 ng add @ng-toolkit/universal
@@ -388,12 +418,18 @@ ng add @ng-toolkit/universal
 ### Google Analytics 4
 
 **Setup:**
+
 ```html
 <!-- src/index.html -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"
+></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
+  function gtag() {
+    dataLayer.push(arguments);
+  }
   gtag('js', new Date());
   gtag('config', 'G-XXXXXXXXXX');
 </script>
@@ -402,7 +438,11 @@ ng add @ng-toolkit/universal
 ### Plausible (Privacy-friendly alternative)
 
 ```html
-<script defer data-domain="bitbonsai.app" src="https://plausible.io/js/script.js"></script>
+<script
+  defer
+  data-domain="bitbonsai.app"
+  src="https://plausible.io/js/script.js"
+></script>
 ```
 
 ---
@@ -451,6 +491,7 @@ test('should load pricing tiers from API', async ({ page }) => {
 **Symptom:** "Failed to load pricing data"
 
 **Fix:**
+
 1. Check license-api is running: `nx serve license-api`
 2. Verify API URL in `environment.ts`
 3. Check CORS settings in license-api
@@ -460,6 +501,7 @@ test('should load pricing tiers from API', async ({ page }) => {
 **Symptom:** `nx build website` fails
 
 **Fix:**
+
 ```bash
 # Clear cache
 nx reset
@@ -477,12 +519,13 @@ nx build website
 **Symptom:** Browser shows default favicon
 
 **Fix:**
+
 1. Verify `public/favicon.ico` exists
 2. Clear browser cache (Ctrl+Shift+R)
 3. Check `index.html` links:
    ```html
-   <link rel="icon" type="image/x-icon" href="favicon.ico">
-   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+   <link rel="icon" type="image/x-icon" href="favicon.ico" />
+   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
    ```
 
 ---
@@ -492,6 +535,7 @@ nx build website
 ### Code Style
 
 Follow project conventions:
+
 - Components: PascalCase (`PricingComponent`)
 - Services: camelCase with `.service.ts` suffix
 - Use standalone components (no NgModules)
@@ -528,10 +572,12 @@ docs(website): update deployment guide
 ### Access
 
 **URLs:**
+
 - Dev: http://localhost:4201/admin/login
 - Prod: https://bitbonsai.app/admin/login
 
 **Default Credentials:**
+
 - Email: admin@bitbonsai.app
 - Password: admin123
 
@@ -539,15 +585,15 @@ docs(website): update deployment guide
 
 ### Features
 
-| Feature | Endpoint | Description |
-|---------|----------|-------------|
-| **Login** | POST /api/auth/login | JWT authentication |
-| **Dashboard** | /admin/dashboard | User management interface |
-| **Create Admin** | POST /api/auth/admin | Create new admin users |
-| **List Admins** | GET /api/auth/admins | View all admin accounts |
-| **Toggle Status** | PATCH /api/auth/admins/:id/toggle | Activate/deactivate users |
-| **Password Reset** | POST /api/auth/password-reset/request | Request reset token |
-| **Confirm Reset** | POST /api/auth/password-reset/confirm | Reset with token |
+| Feature            | Endpoint                              | Description               |
+| ------------------ | ------------------------------------- | ------------------------- |
+| **Login**          | POST /api/auth/login                  | JWT authentication        |
+| **Dashboard**      | /admin/dashboard                      | User management interface |
+| **Create Admin**   | POST /api/auth/admin                  | Create new admin users    |
+| **List Admins**    | GET /api/auth/admins                  | View all admin accounts   |
+| **Toggle Status**  | PATCH /api/auth/admins/:id/toggle     | Activate/deactivate users |
+| **Password Reset** | POST /api/auth/password-reset/request | Request reset token       |
+| **Confirm Reset**  | POST /api/auth/password-reset/confirm | Reset with token          |
 
 ### Security
 
@@ -562,14 +608,14 @@ docs(website): update deployment guide
 \`\`\`
 apps/website/src/app/
 ├── pages/admin/
-│   ├── login/           # Login form
-│   └── dashboard/       # Admin management
+│ ├── login/ # Login form
+│ └── dashboard/ # Admin management
 ├── services/
-│   └── auth.service.ts  # Authentication state
+│ └── auth.service.ts # Authentication state
 ├── guards/
-│   └── auth.guard.ts    # Route protection
+│ └── auth.guard.ts # Route protection
 └── interceptors/
-    └── auth.interceptor.ts  # JWT injection
+└── auth.interceptor.ts # JWT injection
 \`\`\`
 
 ### Backend Integration

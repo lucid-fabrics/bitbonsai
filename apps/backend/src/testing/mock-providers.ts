@@ -45,9 +45,11 @@ export function createMockPrismaService() {
     $executeRawUnsafe: jest.fn(),
     $transaction: jest.fn().mockImplementation((fnOrPromises: unknown) => {
       if (typeof fnOrPromises === 'function') {
-        return (fnOrPromises as (prisma: ReturnType<typeof createMockPrismaService>) => unknown)(
-          createMockPrismaService()
-        );
+        return (
+          fnOrPromises as (
+            prisma: ReturnType<typeof createMockPrismaService>,
+          ) => unknown
+        )(createMockPrismaService());
       }
       return Promise.all(fnOrPromises as Promise<unknown>[]);
     }),

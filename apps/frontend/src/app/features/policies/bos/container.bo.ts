@@ -19,14 +19,16 @@ export class ContainerBo {
     {
       value: 'mkv',
       label: 'MKV',
-      description: 'Matroska - Universal compatibility, supports all codecs and features',
+      description:
+        'Matroska - Universal compatibility, supports all codecs and features',
       icon: 'videocam',
       extension: '.mkv',
     },
     {
       value: 'mp4',
       label: 'MP4',
-      description: 'MPEG-4 - Streaming optimized, best for web and mobile devices',
+      description:
+        'MPEG-4 - Streaming optimized, best for web and mobile devices',
       icon: 'play-circle',
       extension: '.mp4',
     },
@@ -91,7 +93,11 @@ export class ContainerBo {
   /**
    * Get format for UI dropdown display
    */
-  static getFormatOptions(): Array<{ value: string | null; label: string; description: string }> {
+  static getFormatOptions(): Array<{
+    value: string | null;
+    label: string;
+    description: string;
+  }> {
     return ContainerBo.FORMATS.map((format) => ({
       value: format.value,
       label: format.label,
@@ -104,7 +110,7 @@ export class ContainerBo {
    */
   static needsContainerChange(
     sourceContainer: string | null,
-    targetContainer: string | null
+    targetContainer: string | null,
   ): boolean {
     // If target is null (keep original), no change needed
     if (targetContainer === null) {
@@ -139,10 +145,13 @@ export class ContainerBo {
     sourceCodec: string,
     targetCodec: string,
     sourceContainer: string | null,
-    targetContainer: string | null
+    targetContainer: string | null,
   ): string {
     const codecMatch = sourceCodec.toLowerCase() === targetCodec.toLowerCase();
-    const containerChange = ContainerBo.needsContainerChange(sourceContainer, targetContainer);
+    const containerChange = ContainerBo.needsContainerChange(
+      sourceContainer,
+      targetContainer,
+    );
 
     if (codecMatch && containerChange) {
       const sourceLabel = ContainerBo.getLabel(sourceContainer);

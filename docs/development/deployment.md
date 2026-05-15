@@ -52,6 +52,7 @@ npx nx dev
 ```
 
 **Services:**
+
 - Frontend: http://localhost:4200 (HMR enabled)
 - Backend: http://localhost:3100 (nodemon watch mode)
 - Prisma Studio: `npx prisma studio` (http://localhost:5555)
@@ -61,11 +62,13 @@ npx nx dev
 Both frontend and backend support hot reload:
 
 **Frontend (Angular):**
+
 - Edit files in `apps/frontend/src/`
 - Browser auto-refreshes on save
 - State preserved across reloads
 
 **Backend (NestJS):**
+
 - Edit files in `apps/backend/src/`
 - Server restarts on save (nodemon)
 - ~2 second restart time
@@ -75,17 +78,20 @@ Both frontend and backend support hot reload:
 Quality gates enforce code standards:
 
 **Pre-commit:**
+
 - Runs Biome linter
 - Auto-fixes formatting issues
 - Blocks commit if errors remain
 
 **Pre-push:**
+
 - Builds frontend + backend
 - Runs all tests
 - Runs Playwright E2E tests
 - Blocks push if any failures
 
 **Bypass (emergencies only):**
+
 ```bash
 git commit --no-verify
 git push --no-verify
@@ -102,6 +108,7 @@ BitBonsai uses **Nx** for monorepo management and incremental builds.
 ### Build Commands
 
 **Frontend (Production):**
+
 ```bash
 npx nx build frontend --prod
 
@@ -113,6 +120,7 @@ npx nx build frontend --prod
 ```
 
 **Backend (Production):**
+
 ```bash
 npx nx build backend --prod
 
@@ -122,6 +130,7 @@ npx nx build backend --prod
 ```
 
 **Build All:**
+
 ```bash
 npx nx run-many --target=build --all --prod
 ```
@@ -129,6 +138,7 @@ npx nx run-many --target=build --all --prod
 ### Optimizations
 
 **Frontend:**
+
 - Tree shaking (dead code elimination)
 - Ahead-of-Time (AOT) compilation
 - CSS minification
@@ -136,6 +146,7 @@ npx nx run-many --target=build --all --prod
 - Lazy loading for routes
 
 **Backend:**
+
 - TypeScript compilation to ES2022
 - Source maps for debugging
 - Asset bundling (Prisma schema, .env template)
@@ -181,26 +192,31 @@ npm run update:version
 ### Unit Tests (Jest)
 
 **Run all tests:**
+
 ```bash
 npm test
 ```
 
 **Frontend tests:**
+
 ```bash
 npx nx test frontend --coverage
 ```
 
 **Backend tests:**
+
 ```bash
 npx nx test backend --coverage
 ```
 
 **Watch mode:**
+
 ```bash
 npx nx test backend --watch
 ```
 
 **Coverage requirements:**
+
 - Minimum: 95% coverage
 - Pre-push hook enforces this
 
@@ -232,6 +248,7 @@ npm run test:encoding:all-levels
 ```
 
 **Each level tests:**
+
 - FFmpeg command generation
 - Progress tracking accuracy
 - Error handling
@@ -241,6 +258,7 @@ npm run test:encoding:all-levels
 ### E2E Tests (Playwright)
 
 **Run E2E tests:**
+
 ```bash
 # Headless
 npm run test:e2e
@@ -261,11 +279,13 @@ npm run test:e2e:webkit
 ```
 
 **View reports:**
+
 ```bash
 npm run test:e2e:report
 ```
 
 **Test scenarios:**
+
 - User authentication flow
 - Library creation and scanning
 - Policy configuration
@@ -311,16 +331,19 @@ npm run docker:build-push
 ### Docker Compose Environments
 
 **Development:**
+
 ```bash
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
 **Production:**
+
 ```bash
 docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
 **Unraid:**
+
 ```bash
 docker-compose -f docker-compose.unraid.yml up -d --build
 ```
@@ -442,11 +465,13 @@ scp unraid-release/bitbonsai.xml root@unraid:/boot/config/plugins/dockerMan/temp
 **5. Submit to Community Apps:**
 
 First time:
+
 - Fork https://github.com/Squidly271/docker-templates
 - Add `bitbonsai.xml` to appropriate category
 - Submit pull request
 
 Updates:
+
 - Template auto-updates from GitHub URL
 - No manual submission needed
 
@@ -639,7 +664,7 @@ export const environment = {
   production: false,
   apiUrl: 'http://localhost:3100',
   wsUrl: 'ws://localhost:3100',
-  version: '1.0.0'
+  version: '1.0.0',
 };
 
 // apps/frontend/src/environments/environment.prod.ts
@@ -647,7 +672,7 @@ export const environment = {
   production: true,
   apiUrl: 'http://bitbonsai-backend:3100',
   wsUrl: 'ws://bitbonsai-backend:3100',
-  version: '1.0.0'
+  version: '1.0.0',
 };
 ```
 
@@ -693,7 +718,7 @@ this.logger.log('Job started', {
   jobId: job.id,
   filePath: job.filePath,
   targetCodec: job.targetCodec,
-  nodeId: job.nodeId
+  nodeId: job.nodeId,
 });
 ```
 

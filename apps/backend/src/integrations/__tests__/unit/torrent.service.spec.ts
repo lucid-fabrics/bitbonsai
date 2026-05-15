@@ -2,7 +2,10 @@ import { HttpService } from '@nestjs/axios';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { of, throwError } from 'rxjs';
 import { SettingsRepository } from '../../../common/repositories/settings.repository';
-import { TorrentClient, TorrentIntegrationService } from '../../torrent.service';
+import {
+  TorrentClient,
+  TorrentIntegrationService,
+} from '../../torrent.service';
 
 describe('TorrentIntegrationService', () => {
   let service: TorrentIntegrationService;
@@ -78,7 +81,7 @@ describe('TorrentIntegrationService', () => {
         of({
           headers: { 'set-cookie': ['SID=abc123; path=/'] },
           data: 'Ok.',
-        })
+        }),
       );
 
       // Mock torrents list
@@ -94,14 +97,14 @@ describe('TorrentIntegrationService', () => {
               save_path: '/media/movies',
             },
           ],
-        })
+        }),
       );
 
       // Mock files list
       mockHttpService.get.mockReturnValueOnce(
         of({
           data: [{ name: 'test.mkv' }],
-        })
+        }),
       );
 
       const result = await service.isFileSeeding('/media/movies/test.mkv');
@@ -123,7 +126,7 @@ describe('TorrentIntegrationService', () => {
         of({
           headers: { 'set-cookie': ['SID=abc123; path=/'] },
           data: 'Ok.',
-        })
+        }),
       );
 
       // Mock torrents list
@@ -139,14 +142,14 @@ describe('TorrentIntegrationService', () => {
               save_path: '/media/movies',
             },
           ],
-        })
+        }),
       );
 
       // Mock files list
       mockHttpService.get.mockReturnValueOnce(
         of({
           data: [{ name: 'different.mkv' }],
-        })
+        }),
       );
 
       const result = await service.isFileSeeding('/media/movies/test.mkv');
@@ -166,7 +169,7 @@ describe('TorrentIntegrationService', () => {
         of({
           headers: { 'set-cookie': ['SID=abc123; path=/'] },
           data: 'Ok.',
-        })
+        }),
       );
 
       // Mock torrents list - downloading state, not seeding
@@ -182,7 +185,7 @@ describe('TorrentIntegrationService', () => {
               save_path: '/media/movies',
             },
           ],
-        })
+        }),
       );
 
       const result = await service.isFileSeeding('/media/movies/test.mkv');
@@ -198,7 +201,9 @@ describe('TorrentIntegrationService', () => {
       });
 
       // Mock login failure
-      mockHttpService.post.mockReturnValueOnce(throwError(() => new Error('Connection refused')));
+      mockHttpService.post.mockReturnValueOnce(
+        throwError(() => new Error('Connection refused')),
+      );
 
       const result = await service.isFileSeeding('/media/movies/test.mkv');
 
@@ -227,7 +232,7 @@ describe('TorrentIntegrationService', () => {
         of({
           headers: { 'set-cookie': ['SID=abc123; path=/'] },
           data: 'Ok.',
-        })
+        }),
       );
 
       // Mock torrents list
@@ -243,14 +248,14 @@ describe('TorrentIntegrationService', () => {
               save_path: '/media/movies',
             },
           ],
-        })
+        }),
       );
 
       // Mock files list
       mockHttpService.get.mockReturnValueOnce(
         of({
           data: [{ name: 'movie1.mkv' }, { name: 'movie2.mkv' }],
-        })
+        }),
       );
 
       const result = await service.getSeedingFiles();
@@ -266,7 +271,9 @@ describe('TorrentIntegrationService', () => {
         skipSeeding: true,
       });
 
-      mockHttpService.post.mockReturnValueOnce(throwError(() => new Error('Connection refused')));
+      mockHttpService.post.mockReturnValueOnce(
+        throwError(() => new Error('Connection refused')),
+      );
 
       const result = await service.getSeedingFiles();
 
@@ -281,21 +288,21 @@ describe('TorrentIntegrationService', () => {
         of({
           headers: { 'set-cookie': ['SID=abc123; path=/'] },
           data: 'Ok.',
-        })
+        }),
       );
 
       // Mock torrents list
       mockHttpService.get.mockReturnValueOnce(
         of({
           data: [],
-        })
+        }),
       );
 
       const result = await service.testConnection(
         TorrentClient.QBITTORRENT,
         'http://localhost:8080',
         'admin',
-        'password'
+        'password',
       );
 
       expect(result.success).toBe(true);
@@ -303,13 +310,15 @@ describe('TorrentIntegrationService', () => {
     });
 
     it('should return error for failed connection', async () => {
-      mockHttpService.post.mockReturnValueOnce(throwError(() => new Error('Connection refused')));
+      mockHttpService.post.mockReturnValueOnce(
+        throwError(() => new Error('Connection refused')),
+      );
 
       const result = await service.testConnection(
         TorrentClient.QBITTORRENT,
         'http://localhost:8080',
         'admin',
-        'password'
+        'password',
       );
 
       expect(result.success).toBe(false);
@@ -323,7 +332,7 @@ describe('TorrentIntegrationService', () => {
           response: {
             headers: { 'x-transmission-session-id': 'session123' },
           },
-        }))
+        })),
       );
 
       // Second request succeeds with torrents
@@ -334,14 +343,14 @@ describe('TorrentIntegrationService', () => {
               torrents: [],
             },
           },
-        })
+        }),
       );
 
       const result = await service.testConnection(
         TorrentClient.TRANSMISSION,
         'http://localhost:9091',
         'admin',
-        'password'
+        'password',
       );
 
       expect(result.success).toBe(true);
@@ -353,7 +362,7 @@ describe('TorrentIntegrationService', () => {
         of({
           headers: { 'set-cookie': ['_session_id=abc123; path=/'] },
           data: { result: true },
-        })
+        }),
       );
 
       // Mock torrents list
@@ -364,14 +373,14 @@ describe('TorrentIntegrationService', () => {
               torrents: {},
             },
           },
-        })
+        }),
       );
 
       const result = await service.testConnection(
         TorrentClient.DELUGE,
         'http://localhost:8112',
         undefined,
-        'deluge'
+        'deluge',
       );
 
       expect(result.success).toBe(true);
@@ -380,8 +389,20 @@ describe('TorrentIntegrationService', () => {
 
   describe('seeding state detection', () => {
     // Test with qBittorrent's actual mixed-case states
-    const seedingStates = ['seeding', 'uploading', 'stalledUP', 'forcedUP', 'queuedUP'];
-    const nonSeedingStates = ['downloading', 'paused', 'checking', 'error', 'stopped'];
+    const seedingStates = [
+      'seeding',
+      'uploading',
+      'stalledUP',
+      'forcedUP',
+      'queuedUP',
+    ];
+    const nonSeedingStates = [
+      'downloading',
+      'paused',
+      'checking',
+      'error',
+      'stopped',
+    ];
 
     seedingStates.forEach((state) => {
       it(`should detect ${state} as seeding`, async () => {
@@ -395,7 +416,7 @@ describe('TorrentIntegrationService', () => {
           of({
             headers: { 'set-cookie': ['SID=abc123; path=/'] },
             data: 'Ok.',
-          })
+          }),
         );
 
         mockHttpService.get.mockReturnValueOnce(
@@ -410,13 +431,13 @@ describe('TorrentIntegrationService', () => {
                 save_path: '/media',
               },
             ],
-          })
+          }),
         );
 
         mockHttpService.get.mockReturnValueOnce(
           of({
             data: [{ name: 'test.mkv' }],
-          })
+          }),
         );
 
         const result = await service.isFileSeeding('/media/test.mkv');
@@ -436,7 +457,7 @@ describe('TorrentIntegrationService', () => {
           of({
             headers: { 'set-cookie': ['SID=abc123; path=/'] },
             data: 'Ok.',
-          })
+          }),
         );
 
         mockHttpService.get.mockReturnValueOnce(
@@ -451,7 +472,7 @@ describe('TorrentIntegrationService', () => {
                 save_path: '/media',
               },
             ],
-          })
+          }),
         );
 
         const result = await service.isFileSeeding('/media/test.mkv');
@@ -472,7 +493,7 @@ describe('TorrentIntegrationService', () => {
         of({
           headers: { 'set-cookie': ['SID=abc123; path=/'] },
           data: 'Ok.',
-        })
+        }),
       );
 
       mockHttpService.get.mockReturnValueOnce(
@@ -487,16 +508,18 @@ describe('TorrentIntegrationService', () => {
               save_path: '/media/movies',
             },
           ],
-        })
+        }),
       );
 
       mockHttpService.get.mockReturnValueOnce(
         of({
           data: [{ name: 'Test.Movie.2024.mkv' }],
-        })
+        }),
       );
 
-      const result = await service.isFileSeeding('/media/movies/Test.Movie.2024.mkv');
+      const result = await service.isFileSeeding(
+        '/media/movies/Test.Movie.2024.mkv',
+      );
       expect(result).toBe(true);
     });
 
@@ -511,7 +534,7 @@ describe('TorrentIntegrationService', () => {
         of({
           headers: { 'set-cookie': ['SID=abc123; path=/'] },
           data: 'Ok.',
-        })
+        }),
       );
 
       mockHttpService.get.mockReturnValueOnce(
@@ -526,18 +549,18 @@ describe('TorrentIntegrationService', () => {
               save_path: '/media/movies',
             },
           ],
-        })
+        }),
       );
 
       mockHttpService.get.mockReturnValueOnce(
         of({
           data: [{ name: 'Test.Movie.2024/Test.Movie.2024.mkv' }],
-        })
+        }),
       );
 
       // File path includes the torrent file name
       const result = await service.isFileSeeding(
-        '/media/movies/Test.Movie.2024/Test.Movie.2024.mkv'
+        '/media/movies/Test.Movie.2024/Test.Movie.2024.mkv',
       );
       expect(result).toBe(true);
     });
@@ -553,7 +576,7 @@ describe('TorrentIntegrationService', () => {
         of({
           headers: { 'set-cookie': ['SID=abc123; path=/'] },
           data: 'Ok.',
-        })
+        }),
       );
 
       mockHttpService.get.mockReturnValueOnce(
@@ -568,13 +591,13 @@ describe('TorrentIntegrationService', () => {
               save_path: '/media/movies/',
             },
           ],
-        })
+        }),
       );
 
       mockHttpService.get.mockReturnValueOnce(
         of({
           data: [{ name: 'test.mkv' }],
-        })
+        }),
       );
 
       const result = await service.isFileSeeding('/media/movies/test.mkv');
@@ -590,7 +613,7 @@ describe('TorrentIntegrationService', () => {
 
       const result = await service.testConnection(
         'unknown_client' as TorrentClient,
-        'http://localhost:9999'
+        'http://localhost:9999',
       );
       expect(result.success).toBe(true);
     });
@@ -628,7 +651,7 @@ describe('TorrentIntegrationService', () => {
                 ],
               },
             },
-          })
+          }),
         );
 
       const result = await service.isFileSeeding('/downloads/Movie/movie.mkv');
@@ -650,7 +673,7 @@ describe('TorrentIntegrationService', () => {
         .mockReturnValueOnce(
           of({
             data: { arguments: { torrents: [] } },
-          })
+          }),
         );
 
       const result = await service.isFileSeeding('/downloads/any.mkv');
@@ -691,7 +714,7 @@ describe('TorrentIntegrationService', () => {
                 ],
               },
             },
-          })
+          }),
         )
         // files call: session + data
         .mockReturnValueOnce(throwError(() => sessionError))
@@ -702,10 +725,12 @@ describe('TorrentIntegrationService', () => {
                 torrents: [{ files: [{ name: 'Movie/movie.mkv' }] }],
               },
             },
-          })
+          }),
         );
 
-      const result = await service.isFileSeeding('/media/movies/Movie/movie.mkv');
+      const result = await service.isFileSeeding(
+        '/media/movies/Movie/movie.mkv',
+      );
       expect(result).toBe(true);
     });
   });
@@ -722,7 +747,10 @@ describe('TorrentIntegrationService', () => {
       // getDelugeTorrents: login + web.update_ui
       mockHttpService.post
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=abc; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=abc; path=/'] },
+            data: { result: true },
+          }),
         )
         .mockReturnValueOnce(
           of({
@@ -739,11 +767,14 @@ describe('TorrentIntegrationService', () => {
                 },
               },
             },
-          })
+          }),
         )
         // getDelugeFiles: login + web.get_torrent_files with nested directory
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=abc; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=abc; path=/'] },
+            data: { result: true },
+          }),
         )
         .mockReturnValueOnce(
           of({
@@ -761,12 +792,14 @@ describe('TorrentIntegrationService', () => {
                 },
               },
             },
-          })
+          }),
         );
 
       // extractFiles produces 'Season 1/episode1.mkv/episode1.mkv' (key/name both used as path segments)
       // fullPath = '/media/tv/Season 1/episode1.mkv/episode1.mkv'
-      const result = await service.isFileSeeding('/media/tv/Season 1/episode1.mkv/episode1.mkv');
+      const result = await service.isFileSeeding(
+        '/media/tv/Season 1/episode1.mkv/episode1.mkv',
+      );
       expect(result).toBe(true);
     });
 
@@ -780,7 +813,10 @@ describe('TorrentIntegrationService', () => {
 
       mockHttpService.post
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=x; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=x; path=/'] },
+            data: { result: true },
+          }),
         )
         .mockReturnValueOnce(
           of({
@@ -797,17 +833,20 @@ describe('TorrentIntegrationService', () => {
                 },
               },
             },
-          })
+          }),
         )
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=x; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=x; path=/'] },
+            data: { result: true },
+          }),
         )
         .mockReturnValueOnce(
           of({
             data: {
               result: { type: 'file', name: 'movie.mkv' },
             },
-          })
+          }),
         );
 
       const result = await service.isFileSeeding('/media/movies/movie.mkv');
@@ -824,7 +863,10 @@ describe('TorrentIntegrationService', () => {
 
       mockHttpService.post
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=x; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=x; path=/'] },
+            data: { result: true },
+          }),
         )
         .mockReturnValueOnce(
           of({
@@ -841,13 +883,16 @@ describe('TorrentIntegrationService', () => {
                 },
               },
             },
-          })
+          }),
         )
         .mockReturnValueOnce(
-          of({ headers: { 'set-cookie': ['_session_id=x; path=/'] }, data: { result: true } })
+          of({
+            headers: { 'set-cookie': ['_session_id=x; path=/'] },
+            data: { result: true },
+          }),
         )
         .mockReturnValueOnce(
-          of({ data: { result: null } }) // null result → extractFiles({})
+          of({ data: { result: null } }), // null result → extractFiles({})
         );
 
       const result = await service.isFileSeeding('/media/movies/movie.mkv');
@@ -872,7 +917,7 @@ describe('TorrentIntegrationService', () => {
       });
 
       mockHttpService.post.mockReturnValueOnce(
-        of({ headers: { 'set-cookie': ['SID=abc; path=/'] }, data: 'Ok.' })
+        of({ headers: { 'set-cookie': ['SID=abc; path=/'] }, data: 'Ok.' }),
       );
       mockHttpService.get
         .mockReturnValueOnce(
@@ -887,7 +932,7 @@ describe('TorrentIntegrationService', () => {
                 save_path: '/media/movies/',
               },
             ],
-          })
+          }),
         )
         .mockReturnValueOnce(of({ data: [{ name: 'Film/film.mkv' }] }));
 
@@ -905,7 +950,9 @@ describe('TorrentIntegrationService', () => {
         skipSeeding: true,
       });
 
-      mockHttpService.post.mockReturnValueOnce(throwError(() => new Error('network error')));
+      mockHttpService.post.mockReturnValueOnce(
+        throwError(() => new Error('network error')),
+      );
 
       const result = await service.getSeedingFiles();
       expect(result).toEqual([]);
@@ -921,7 +968,7 @@ describe('TorrentIntegrationService', () => {
       });
 
       mockHttpService.post.mockReturnValueOnce(
-        of({ headers: { 'set-cookie': ['SID=abc; path=/'] }, data: 'Ok.' })
+        of({ headers: { 'set-cookie': ['SID=abc; path=/'] }, data: 'Ok.' }),
       );
       mockHttpService.get.mockReturnValueOnce(
         of({
@@ -935,7 +982,7 @@ describe('TorrentIntegrationService', () => {
               save_path: '/media/',
             },
           ],
-        })
+        }),
       );
 
       const result = await service.getSeedingFiles();

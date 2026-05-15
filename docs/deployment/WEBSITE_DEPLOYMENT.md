@@ -14,12 +14,12 @@
 
 ### Why Cloudflare Pages?
 
-| Feature | Benefit |
-|---------|---------|
-| Free tier | Unlimited requests |
-| Auto-deploy | Push to GitHub → auto-build → auto-deploy |
-| Cloudflare integration | Native DNS/SSL/CDN support |
-| Zero config | Works with existing Cloudflare setup |
+| Feature                | Benefit                                   |
+| ---------------------- | ----------------------------------------- |
+| Free tier              | Unlimited requests                        |
+| Auto-deploy            | Push to GitHub → auto-build → auto-deploy |
+| Cloudflare integration | Native DNS/SSL/CDN support                |
+| Zero config            | Works with existing Cloudflare setup      |
 
 ---
 
@@ -74,6 +74,7 @@ After first deployment:
 ### 4. Deploy
 
 **Option A - Automatic (recommended):**
+
 ```bash
 git add .github/workflows/deploy-website.yml
 git commit -m "ci: add website auto-deploy to Cloudflare Pages"
@@ -81,6 +82,7 @@ git push origin main
 ```
 
 **Option B - Manual trigger:**
+
 - GitHub → Actions → "Deploy Website to Cloudflare Pages" → Run workflow
 
 ### 5. Verify
@@ -97,6 +99,7 @@ curl -I https://bitbonsai.app/
 If Cloudflare Pages unavailable:
 
 ### Quick Deploy
+
 ```bash
 # Build
 nx build website --configuration=production
@@ -109,6 +112,7 @@ netlify deploy --prod --dir=dist/apps/website/browser
 ```
 
 ### GitHub Actions (Netlify)
+
 ```yaml
 - uses: nwtgck/actions-netlify@v3
   with:
@@ -126,11 +130,13 @@ netlify deploy --prod --dir=dist/apps/website/browser
 ### 502 Still Occurs
 
 **Check Cloudflare Pages deployment:**
+
 ```bash
 curl -I https://bitbonsai-website.pages.dev/
 ```
 
 If that works but `bitbonsai.app` doesn't:
+
 1. Check custom domain configuration in Pages project
 2. Verify DNS: `dig bitbonsai.app` should point to Cloudflare
 3. Check SSL certificate status in Cloudflare dashboard
@@ -138,6 +144,7 @@ If that works but `bitbonsai.app` doesn't:
 ### Build Fails
 
 **Common issues:**
+
 - Node version: Use Node 20 (`.nvmrc` file recommended)
 - Dependencies: Run `npm ci --legacy-peer-deps`
 - Build path: Must be `dist/apps/website/browser` (not `dist/apps/website`)
@@ -145,12 +152,14 @@ If that works but `bitbonsai.app` doesn't:
 ### Custom Domain Not Working
 
 **DNS propagation:**
+
 ```bash
 dig bitbonsai.app +short
 # Should return Cloudflare IPs like 172.64.80.1
 ```
 
 If wrong IPs:
+
 1. Cloudflare dashboard → DNS → Check A/CNAME records
 2. Pages project → Custom domains → Re-add domain
 
@@ -161,21 +170,25 @@ If wrong IPs:
 ### Deployment Status
 
 **Cloudflare Pages:**
+
 - Dashboard: https://dash.cloudflare.com → Pages → bitbonsai-website
 - Deployments: View build logs, preview URLs
 
 **GitHub Actions:**
+
 - Repository → Actions → Deploy Website workflow
 - Green checkmark = successful deployment
 
 ### Uptime Monitoring
 
 **Add to monitoring tool:**
+
 - URL: https://bitbonsai.app/
 - Expected: HTTP 200
 - Alert if: HTTP 502 or timeout
 
 **Free options:**
+
 - UptimeRobot (https://uptimerobot.com)
 - Checkly (https://checklyhq.com)
 - Cloudflare Analytics (built-in)
@@ -197,27 +210,30 @@ If wrong IPs:
 
 ## Related Files
 
-| File | Purpose |
-|------|---------|
-| `.github/workflows/deploy-website.yml` | CI/CD pipeline (auto-deploy) |
-| `apps/website/project.json` | Nx build configuration |
-| `apps/website/Dockerfile` | Container build (not used for Pages) |
-| `WEBSITE_DEPLOYMENT.md` | This guide |
+| File                                   | Purpose                              |
+| -------------------------------------- | ------------------------------------ |
+| `.github/workflows/deploy-website.yml` | CI/CD pipeline (auto-deploy)         |
+| `apps/website/project.json`            | Nx build configuration               |
+| `apps/website/Dockerfile`              | Container build (not used for Pages) |
+| `WEBSITE_DEPLOYMENT.md`                | This guide                           |
 
 ---
 
 ## Contact
 
 If recurring 502 errors persist after setup:
+
 1. Check Cloudflare Pages deployment logs
 2. Verify GitHub Actions ran successfully
 3. Check custom domain configuration
 4. Review DNS settings in Cloudflare dashboard
 
 **Emergency manual deploy:**
+
 ```bash
 cd ~/git/bitbonsai
 nx build website --configuration=production
 npx wrangler pages deploy dist/apps/website/browser --project-name=bitbonsai-website
 ```
+
 (Requires Wrangler CLI: `npm install -g wrangler`)

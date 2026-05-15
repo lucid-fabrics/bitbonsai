@@ -85,7 +85,11 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
         },
         {
           provide: NodesService,
-          useValue: { findOne: jest.fn(), findAll: jest.fn(), getCurrentNode: jest.fn() },
+          useValue: {
+            findOne: jest.fn(),
+            findAll: jest.fn(),
+            getCurrentNode: jest.fn(),
+          },
         },
         {
           provide: DataAccessService,
@@ -107,7 +111,9 @@ describe('EncodingProcessorService - TRUE RESUME Integration', () => {
           useValue: {
             startStuckJobWatchdog: jest.fn().mockReturnValue(undefined),
             manageLoadBasedPausing: jest.fn().mockResolvedValue(undefined),
-            getSystemDiagnostics: jest.fn().mockResolvedValue('System Diagnostics:\n- No issues'),
+            getSystemDiagnostics: jest
+              .fn()
+              .mockResolvedValue('System Diagnostics:\n- No issues'),
           },
         },
       ],

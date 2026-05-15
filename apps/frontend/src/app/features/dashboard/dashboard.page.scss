@@ -131,7 +131,11 @@
 
 // Summary Card
 .summary-card {
-  background: linear-gradient(135deg, $bg-secondary 0%, color.adjust($bg-secondary, $lightness:  2%) 100%);
+  background: linear-gradient(
+    135deg,
+    $bg-secondary 0%,
+    color.adjust($bg-secondary, $lightness: 2%) 100%
+  );
   padding: 32px 40px;
   margin-bottom: 32px;
   border-bottom: 1px solid $border-primary;
@@ -196,7 +200,7 @@
   transition: background 0.2s;
 
   &:hover {
-    background: color.adjust($bg-secondary, $lightness:  2%);
+    background: color.adjust($bg-secondary, $lightness: 2%);
   }
 }
 
@@ -317,7 +321,11 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, $accent-primary 0%, color.adjust($accent-primary, $lightness:  10%) 100%);
+  background: linear-gradient(
+    90deg,
+    $accent-primary 0%,
+    color.adjust($accent-primary, $lightness: 10%) 100%
+  );
   transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
@@ -329,7 +337,11 @@
   right: 0;
   bottom: 0;
   width: 100%;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 100%
+  );
 }
 
 // Info Grid

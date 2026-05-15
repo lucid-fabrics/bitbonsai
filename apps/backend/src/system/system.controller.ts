@@ -27,7 +27,10 @@ export class SystemController {
         cpu: {
           type: 'object',
           properties: {
-            model: { type: 'string', example: 'Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz' },
+            model: {
+              type: 'string',
+              example: 'Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz',
+            },
             cores: { type: 'number', example: 16 },
             coresPerJob: { type: 'number', example: 4 },
             theoreticalMaxWorkers: { type: 'number', example: 4 },
@@ -69,7 +72,9 @@ export class SystemController {
       },
     },
   })
-  @ApiInternalServerErrorResponse({ description: 'Failed to retrieve resources' })
+  @ApiInternalServerErrorResponse({
+    description: 'Failed to retrieve resources',
+  })
   getSystemResources() {
     return this.systemService.getSystemResources();
   }

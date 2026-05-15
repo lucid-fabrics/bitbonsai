@@ -23,7 +23,8 @@ export class CodecDistributionDto {
   av1!: number;
 
   @ApiProperty({
-    description: 'Number of files using other codecs (VP9, MPEG-2, MPEG-4, etc.)',
+    description:
+      'Number of files using other codecs (VP9, MPEG-2, MPEG-4, etc.)',
     example: 8,
     minimum: 0,
   })
@@ -86,7 +87,8 @@ export class FolderStatsDto {
   avg_bitrate_mbps!: number;
 
   @ApiProperty({
-    description: 'Estimated space savings if H.264 files were re-encoded to H.265',
+    description:
+      'Estimated space savings if H.264 files were re-encoded to H.265',
     example: 125.3,
     minimum: 0,
   })
@@ -151,7 +153,8 @@ export class MediaStatsDto {
   folders!: FolderStatsDto[];
 
   @ApiProperty({
-    description: 'ISO 8601 timestamp of when the media library was last scanned',
+    description:
+      'ISO 8601 timestamp of when the media library was last scanned',
     example: '2025-09-30T21:45:32.123Z',
     format: 'date-time',
   })

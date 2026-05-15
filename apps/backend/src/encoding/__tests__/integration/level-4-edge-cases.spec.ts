@@ -52,7 +52,9 @@ describe('Level 4: Edge Cases', () => {
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
     _queueService = moduleRef.get<QueueService>(QueueService);
-    encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
+    encodingProcessor = moduleRef.get<EncodingProcessorService>(
+      EncodingProcessorService,
+    );
     _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     await prisma.$connect();
@@ -176,7 +178,10 @@ describe('Level 4: Edge Cases', () => {
   describe('Missing Source Files', () => {
     it('should fail when source file does not exist', async () => {
       // ARRANGE: Create job for non-existent file
-      const nonExistentPath = path.join(getFixturesDir(), 'NonExistent.File.mkv');
+      const nonExistentPath = path.join(
+        getFixturesDir(),
+        'NonExistent.File.mkv',
+      );
 
       expect(fs.existsSync(nonExistentPath)).toBe(false);
 
@@ -222,13 +227,17 @@ describe('Level 4: Edge Cases', () => {
       });
 
       // ACT: Start encoding in background
-      const processPromise = encodingProcessor.processNextJob(`${testNodeId}-worker-1`);
+      const processPromise = encodingProcessor.processNextJob(
+        `${testNodeId}-worker-1`,
+      );
 
       // Wait 2 seconds, then delete the file
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Check if job is in ENCODING stage
-      const encodingJob = await prisma.job.findUnique({ where: { id: job.id } });
+      const encodingJob = await prisma.job.findUnique({
+        where: { id: job.id },
+      });
       if (encodingJob && encodingJob.stage === JobStage.ENCODING) {
         // Delete the source file during encoding
         if (fs.existsSync(videoPath)) {

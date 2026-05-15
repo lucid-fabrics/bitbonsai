@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AccelerationType, ContainerType } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsObject, IsOptional, IsString, Length } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  Length,
+} from 'class-validator';
 
 /**
  * DTO for creating a registration request from a CHILD node
@@ -109,8 +116,10 @@ export class CreateRegistrationRequestDto {
   acceleration!: AccelerationType;
 
   @ApiProperty({
-    description: 'SSH public key for passwordless authentication (for file transfers)',
-    example: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... bitbonsai-cluster-node',
+    description:
+      'SSH public key for passwordless authentication (for file transfers)',
+    example:
+      'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... bitbonsai-cluster-node',
     required: false,
   })
   @IsOptional()

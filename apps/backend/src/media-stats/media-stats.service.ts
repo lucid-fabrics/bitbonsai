@@ -15,7 +15,14 @@ interface VideoInfo {
 @Injectable()
 export class MediaStatsService {
   private readonly logger = new Logger(MediaStatsService.name);
-  private readonly VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv'];
+  private readonly VIDEO_EXTENSIONS = [
+    '.mp4',
+    '.mkv',
+    '.avi',
+    '.mov',
+    '.wmv',
+    '.flv',
+  ];
   private statsCache: MediaStatsDto | null = null;
 
   constructor(private readonly librariesService: LibrariesService) {}
@@ -63,11 +70,14 @@ export class MediaStatsService {
     }
 
     const avgBitrate =
-      allStats.bitrateCount > 0 ? allStats.totalBitrate / allStats.bitrateCount : 0;
+      allStats.bitrateCount > 0
+        ? allStats.totalBitrate / allStats.bitrateCount
+        : 0;
 
     this.statsCache = {
       total_files: allStats.totalFiles,
-      total_size_gb: Math.round((allStats.totalSizeBytes / 1024 ** 3) * 100) / 100,
+      total_size_gb:
+        Math.round((allStats.totalSizeBytes / 1024 ** 3) * 100) / 100,
       average_bitrate_mbps: Math.round(avgBitrate * 100) / 100,
       codec_distribution: {
         hevc: allStats.hevcCount,
@@ -95,10 +105,20 @@ export class MediaStatsService {
     const sampleFiles = this.getRandomSample(files, sampleSize);
 
     const scanResults = this.analyzeSampleFiles(sampleFiles);
-    const extrapolatedStats = this.extrapolateStats(scanResults, totalFiles, sampleSize);
+    const extrapolatedStats = this.extrapolateStats(
+      scanResults,
+      totalFiles,
+      sampleSize,
+    );
 
-    const percentH265 = Math.round((extrapolatedStats.hevcTotal / totalFiles) * 100);
-    const spaceSavedGb = this.calculateSpaceSavings(scanResults, sampleSize, totalFiles);
+    const percentH265 = Math.round(
+      (extrapolatedStats.hevcTotal / totalFiles) * 100,
+    );
+    const spaceSavedGb = this.calculateSpaceSavings(
+      scanResults,
+      sampleSize,
+      totalFiles,
+    );
 
     return {
       name: folderPath.split('/').pop() || folderPath,
@@ -113,7 +133,8 @@ export class MediaStatsService {
       },
       percent_h265: percentH265,
       sampled: sampleSize,
-      avg_bitrate_mbps: Math.round((extrapolatedStats.avgBitrate / 1_000_000) * 100) / 100,
+      avg_bitrate_mbps:
+        Math.round((extrapolatedStats.avgBitrate / 1_000_000) * 100) / 100,
       space_saved_estimate_gb: Math.round(spaceSavedGb * 100) / 100,
     };
   }
@@ -165,7 +186,7 @@ export class MediaStatsService {
 
   private categorizeCodec(
     codec: string,
-    codecCounts: { hevc: number; h264: number; av1: number; other: number }
+    codecCounts: { hevc: number; h264: number; av1: number; other: number },
   ): void {
     if (codec === 'hevc' || codec === 'h265') {
       codecCounts.hevc++;
@@ -186,7 +207,7 @@ export class MediaStatsService {
       bitrateCount: number;
     },
     totalFiles: number,
-    sampleSize: number
+    sampleSize: number,
   ): {
     hevcTotal: number;
     h264Total: number;
@@ -202,9 +223,18 @@ export class MediaStatsService {
     const otherTotal = Math.round(scanResults.codecCounts.other * ratio);
     const totalSizeGb = (scanResults.totalSize * ratio) / 1024 ** 3;
     const avgBitrate =
-      scanResults.bitrateCount > 0 ? scanResults.totalBitrate / scanResults.bitrateCount : 0;
+      scanResults.bitrateCount > 0
+        ? scanResults.totalBitrate / scanResults.bitrateCount
+        : 0;
 
-    return { hevcTotal, h264Total, av1Total, otherTotal, totalSizeGb, avgBitrate };
+    return {
+      hevcTotal,
+      h264Total,
+      av1Total,
+      otherTotal,
+      totalSizeGb,
+      avgBitrate,
+    };
   }
 
   private calculateSpaceSavings(
@@ -213,11 +243,13 @@ export class MediaStatsService {
       totalSize: number;
     },
     sampleSize: number,
-    totalFiles: number
+    totalFiles: number,
   ): number {
     const ratio = totalFiles / sampleSize;
     const h264SizeEstimate =
-      (scanResults.codecCounts.h264 / sampleSize) * scanResults.totalSize * ratio;
+      (scanResults.codecCounts.h264 / sampleSize) *
+      scanResults.totalSize *
+      ratio;
     return (h264SizeEstimate * 0.45) / 1024 ** 3;
   }
 
@@ -233,14 +265,17 @@ export class MediaStatsService {
         if (entry.isDirectory()) {
           files.push(...this.findVideoFiles(fullPath));
         } else if (entry.isFile()) {
-          const ext = entry.name.substring(entry.name.lastIndexOf('.')).toLowerCase();
+          const ext = entry.name
+            .substring(entry.name.lastIndexOf('.'))
+            .toLowerCase();
           if (this.VIDEO_EXTENSIONS.includes(ext)) {
             files.push(fullPath);
           }
         }
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Error reading directory ${dirPath}: ${errorMessage}`);
     }
 
@@ -263,7 +298,7 @@ export class MediaStatsService {
           'json',
           filePath, // Safe - no shell interpretation
         ],
-        { timeout: 5000, encoding: 'utf8' }
+        { timeout: 5000, encoding: 'utf8' },
       );
 
       if (result.error) {
@@ -271,7 +306,9 @@ export class MediaStatsService {
       }
 
       if (result.status !== 0) {
-        throw new Error(`ffprobe exited with code ${result.status}: ${result.stderr}`);
+        throw new Error(
+          `ffprobe exited with code ${result.status}: ${result.stderr}`,
+        );
       }
 
       // MEDIUM #8 FIX: Safe JSON parsing with try-catch
@@ -282,7 +319,7 @@ export class MediaStatsService {
         data = JSON.parse(result.stdout);
       } catch (parseError: unknown) {
         throw new Error(
-          `Failed to parse ffprobe output: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
+          `Failed to parse ffprobe output: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`,
         );
       }
 
@@ -292,7 +329,8 @@ export class MediaStatsService {
 
       return { codec, bitrate, size };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.warn(`Failed to get info for ${filePath}: ${errorMessage}`);
       return { codec: 'unknown', bitrate: 0, size: 0 };
     }
@@ -313,19 +351,26 @@ export class MediaStatsService {
     return shuffled.slice(0, size);
   }
 
-  async getFolderFiles(folderName: string, codec?: string): Promise<FolderFilesDto> {
-    this.logger.log(`Getting files for folder: ${folderName}, codec: ${codec || 'all'}`);
+  async getFolderFiles(
+    folderName: string,
+    codec?: string,
+  ): Promise<FolderFilesDto> {
+    this.logger.log(
+      `Getting files for folder: ${folderName}, codec: ${codec || 'all'}`,
+    );
 
     const mediaPaths = await this.getMediaPaths();
     const folderPath = mediaPaths.find(
       (p) =>
         p.endsWith(`/${folderName}`) ||
         p.endsWith(`\\${folderName}`) ||
-        p === `/media/${folderName}`
+        p === `/media/${folderName}`,
     );
 
     if (!folderPath) {
-      throw new NotFoundException(`Folder "${folderName}" not found in configured media paths`);
+      throw new NotFoundException(
+        `Folder "${folderName}" not found in configured media paths`,
+      );
     }
 
     const allFiles = this.findVideoFiles(folderPath);

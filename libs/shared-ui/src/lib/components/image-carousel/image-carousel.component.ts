@@ -78,7 +78,10 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
 
     // Check if mouse is over the main image
     const target = event.target as HTMLElement;
-    if (target.classList.contains('carousel-image') || target.closest('.carousel-viewport')) {
+    if (
+      target.classList.contains('carousel-image') ||
+      target.closest('.carousel-viewport')
+    ) {
       event.preventDefault();
 
       if (event.deltaY < 0) {
@@ -150,12 +153,14 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
   }
 
   protected getPreviousImage(): CarouselImage {
-    const prevIndex = this.currentIndex > 0 ? this.currentIndex - 1 : this.images.length - 1;
+    const prevIndex =
+      this.currentIndex > 0 ? this.currentIndex - 1 : this.images.length - 1;
     return this.images[prevIndex];
   }
 
   protected getNextImage(): CarouselImage {
-    const nextIndex = this.currentIndex < this.images.length - 1 ? this.currentIndex + 1 : 0;
+    const nextIndex =
+      this.currentIndex < this.images.length - 1 ? this.currentIndex + 1 : 0;
     return this.images[nextIndex];
   }
 

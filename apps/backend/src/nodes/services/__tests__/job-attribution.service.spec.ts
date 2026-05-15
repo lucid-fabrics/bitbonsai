@@ -15,7 +15,9 @@ describe('JobAttributionService', () => {
   /**
    * Mock data factories
    */
-  const createMockNode = (overrides?: Partial<Node & { _count?: { jobs: number } }>): any => {
+  const createMockNode = (
+    overrides?: Partial<Node & { _count?: { jobs: number } }>,
+  ): any => {
     const baseNode: any = {
       id: 'node-1',
       name: 'Test Node',
@@ -234,7 +236,9 @@ describe('JobAttributionService', () => {
 
         jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
         jest.spyOn(prisma.node, 'findMany').mockResolvedValue([node1, node2]);
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const result = await service.findOptimalNode('job-1');
 
@@ -248,7 +252,9 @@ describe('JobAttributionService', () => {
 
         jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
         jest.spyOn(prisma.node, 'findMany').mockResolvedValue([node]);
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const result = await service.findOptimalNode('job-1');
 
@@ -277,7 +283,9 @@ describe('JobAttributionService', () => {
 
         jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
         jest.spyOn(prisma.node, 'findMany').mockResolvedValue([node1, node2]);
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(150));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(150));
 
         const result = await service.findOptimalNode('job-1');
 
@@ -305,7 +313,9 @@ describe('JobAttributionService', () => {
 
         jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
         jest.spyOn(prisma.node, 'findMany').mockResolvedValue([node1, node2]);
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const result = await service.findOptimalNode('job-1');
 
@@ -324,7 +334,9 @@ describe('JobAttributionService', () => {
 
         jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
         jest.spyOn(prisma.node, 'findMany').mockResolvedValue([onlineNode]);
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         await service.findOptimalNode('job-1');
 
@@ -353,7 +365,9 @@ describe('JobAttributionService', () => {
 
         jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
         jest.spyOn(prisma.node, 'findMany').mockResolvedValue([node1, node2]);
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const result = await service.findOptimalNode('job-1');
 
@@ -393,7 +407,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: 100,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const score = await service.calculateNodeScore(node);
 
@@ -413,7 +429,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: 100,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const score = await service.calculateNodeScore(node);
 
@@ -434,7 +452,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -450,7 +470,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -466,7 +488,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -482,7 +506,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -499,7 +525,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -517,7 +545,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -532,7 +562,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -547,7 +579,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -562,7 +596,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -577,7 +613,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -592,7 +630,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -608,7 +648,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -625,7 +667,9 @@ describe('JobAttributionService', () => {
           hasGpu: false,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(null));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(null));
 
         const score = await service.calculateNodeScore(node);
 
@@ -640,7 +684,9 @@ describe('JobAttributionService', () => {
           hasGpu: false,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const score = await service.calculateNodeScore(node);
 
@@ -655,7 +701,9 @@ describe('JobAttributionService', () => {
           hasGpu: false,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const score = await service.calculateNodeScore(node);
 
@@ -670,7 +718,9 @@ describe('JobAttributionService', () => {
           hasGpu: false,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const score = await service.calculateNodeScore(node);
 
@@ -686,7 +736,9 @@ describe('JobAttributionService', () => {
           hasGpu: false,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -705,7 +757,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: 100, // 30 points
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const score = await service.calculateNodeScore(node);
 
@@ -722,7 +776,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: 100, // 30 points (max speed)
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const score = await service.calculateNodeScore(node);
 
@@ -731,7 +787,9 @@ describe('JobAttributionService', () => {
 
       it('should return NodeScore interface with all required fields', async () => {
         const node = createMockNode();
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const score = await service.calculateNodeScore(node);
 
@@ -753,7 +811,9 @@ describe('JobAttributionService', () => {
       const node2 = createMockNode({ id: 'node-2', cpuCores: 16 });
 
       jest.spyOn(prisma.node, 'findMany').mockResolvedValue([node1, node2]);
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       const scores = await service.getAllNodeScores();
 
@@ -764,7 +824,9 @@ describe('JobAttributionService', () => {
 
     it('should use same query as findOptimalNode', async () => {
       jest.spyOn(prisma.node, 'findMany').mockResolvedValue([]);
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       await service.getAllNodeScores();
 
@@ -776,7 +838,9 @@ describe('JobAttributionService', () => {
   describe('caching behavior - score cache', () => {
     it('should cache node score for 1 minute', async () => {
       const node = createMockNode({ id: 'node-1' });
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       const score1 = await service.calculateNodeScore(node);
       const score2 = await service.calculateNodeScore(node);
@@ -788,7 +852,9 @@ describe('JobAttributionService', () => {
 
     it('should return cached score on subsequent calls within TTL', async () => {
       const node = createMockNode({ id: 'node-1' });
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       await service.calculateNodeScore(node);
       const cachedScore = await service.calculateNodeScore(node);
@@ -800,7 +866,9 @@ describe('JobAttributionService', () => {
 
     it('should retrieve same cached score on subsequent calls before TTL', async () => {
       const node = createMockNode({ id: 'node-1' });
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       // First call - establishes cache
       const score1 = await service.calculateNodeScore(node);
@@ -817,7 +885,9 @@ describe('JobAttributionService', () => {
       const node1 = createMockNode({ id: 'node-1' });
       const node2 = createMockNode({ id: 'node-2', cpuCores: 16 });
 
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       await service.calculateNodeScore(node1);
       await service.calculateNodeScore(node2);
@@ -838,7 +908,9 @@ describe('JobAttributionService', () => {
         scheduleWindows: [{ dayOfWeek: 1, startHour: 9, endHour: 17 }] as any,
       });
 
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       // First call within schedule
       const score1 = await service.calculateNodeScore(node);
@@ -854,7 +926,9 @@ describe('JobAttributionService', () => {
 
   describe('caching behavior - max speed cache', () => {
     it('should cache max encoding speed for 5 minutes', async () => {
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       const node1 = createMockNode({ avgEncodingSpeed: 100 });
       const node2 = createMockNode({ avgEncodingSpeed: 50 });
@@ -896,7 +970,9 @@ describe('JobAttributionService', () => {
     });
 
     it('should handle null maxSpeed gracefully', async () => {
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(null));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(null));
 
       const node = createMockNode({ avgEncodingSpeed: null });
       const score = await service.calculateNodeScore(node);
@@ -905,7 +981,9 @@ describe('JobAttributionService', () => {
     });
 
     it('should use cached maxSpeed across multiple node calculations', async () => {
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       const node1 = createMockNode({ id: 'node-1', avgEncodingSpeed: 100 });
       const node2 = createMockNode({ id: 'node-2', avgEncodingSpeed: 50 });
@@ -922,7 +1000,9 @@ describe('JobAttributionService', () => {
 
   describe('cache clearing', () => {
     it('should clear both score and max speed caches', async () => {
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       const node = createMockNode();
 
@@ -934,7 +1014,9 @@ describe('JobAttributionService', () => {
       service.clearCache();
 
       // Second calculation should query again
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
       await service.calculateNodeScore(node);
       expect(prisma.node.aggregate).toHaveBeenCalledTimes(2);
     });
@@ -956,7 +1038,9 @@ describe('JobAttributionService', () => {
           _count: { jobs: 0 },
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -972,7 +1056,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: null,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(0));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(0));
 
         const score = await service.calculateNodeScore(node);
 
@@ -988,7 +1074,9 @@ describe('JobAttributionService', () => {
           hasGpu: false,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(null));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(null));
 
         const score = await service.calculateNodeScore(node);
 
@@ -1026,7 +1114,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: 100,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const lowScore = await service.calculateNodeScore(lowScoreNode);
         service.clearCache();
@@ -1052,7 +1142,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: 100,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const score = await service.calculateNodeScore(node);
 
@@ -1068,13 +1160,17 @@ describe('JobAttributionService', () => {
 
         const node = createMockNode({
           scheduleEnabled: true,
-          scheduleWindows: [{ dayOfWeek: 1, startHour: 9, startMinute: 30, endHour: 17 }] as any,
+          scheduleWindows: [
+            { dayOfWeek: 1, startHour: 9, startMinute: 30, endHour: 17 },
+          ] as any,
           cpuCores: 8,
           hasGpu: true,
           avgEncodingSpeed: 100,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const score = await service.calculateNodeScore(node);
 
@@ -1098,7 +1194,9 @@ describe('JobAttributionService', () => {
           avgEncodingSpeed: 100,
         });
 
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const score = await service.calculateNodeScore(node);
 
@@ -1140,8 +1238,12 @@ describe('JobAttributionService', () => {
         });
 
         jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
-        jest.spyOn(prisma.node, 'findMany').mockResolvedValue([cheapNode, standardNode, powerNode]);
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(150));
+        jest
+          .spyOn(prisma.node, 'findMany')
+          .mockResolvedValue([cheapNode, standardNode, powerNode]);
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(150));
 
         const result = await service.findOptimalNode('job-1');
 
@@ -1173,8 +1275,12 @@ describe('JobAttributionService', () => {
         });
 
         jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
-        jest.spyOn(prisma.node, 'findMany').mockResolvedValue([availableNode, loadedPowerNode]);
-        jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+        jest
+          .spyOn(prisma.node, 'findMany')
+          .mockResolvedValue([availableNode, loadedPowerNode]);
+        jest
+          .spyOn(prisma.node, 'aggregate')
+          .mockResolvedValue(mockAggregateResponse(100));
 
         const result = await service.findOptimalNode('job-1');
 
@@ -1220,12 +1326,16 @@ describe('JobAttributionService', () => {
 
       jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
       jest.spyOn(prisma.node, 'findMany').mockResolvedValue([offlineNode]);
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       await service.findOptimalNode('job-1');
 
       jest.useRealTimers();
-      expect(loggerSpy).toHaveBeenCalledWith('No nodes available within their schedule windows');
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'No nodes available within their schedule windows',
+      );
     });
 
     it('should log selected optimal node', async () => {
@@ -1235,7 +1345,9 @@ describe('JobAttributionService', () => {
 
       jest.spyOn(prisma.job, 'findUnique').mockResolvedValue(job);
       jest.spyOn(prisma.node, 'findMany').mockResolvedValue([node]);
-      jest.spyOn(prisma.node, 'aggregate').mockResolvedValue(mockAggregateResponse(100));
+      jest
+        .spyOn(prisma.node, 'aggregate')
+        .mockResolvedValue(mockAggregateResponse(100));
 
       await service.findOptimalNode('job-1');
 
@@ -1250,7 +1362,9 @@ describe('JobAttributionService', () => {
 
       service.clearCache();
 
-      expect(loggerSpy).toHaveBeenCalledWith('Score cache, locks, and max speed cache cleared');
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'Score cache, locks, and max speed cache cleared',
+      );
     });
   });
 });

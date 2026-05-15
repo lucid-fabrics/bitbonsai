@@ -57,7 +57,9 @@ describe('LicensesController', () => {
 
   describe('getCurrentLicense', () => {
     it('should return LicenseDto built from capabilities for FREE tier', async () => {
-      mockLicenseGuardService.getCapabilities.mockResolvedValue(mockCapabilities);
+      mockLicenseGuardService.getCapabilities.mockResolvedValue(
+        mockCapabilities,
+      );
 
       const result = await controller.getCurrentLicense();
 
@@ -95,7 +97,9 @@ describe('LicensesController', () => {
           cloudStorage: false,
         },
       };
-      mockLicenseGuardService.getCapabilities.mockResolvedValue(proCapabilities);
+      mockLicenseGuardService.getCapabilities.mockResolvedValue(
+        proCapabilities,
+      );
 
       const result = await controller.getCurrentLicense();
 
@@ -104,35 +108,53 @@ describe('LicensesController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLicenseGuardService.getCapabilities.mockRejectedValue(new Error('caps error'));
-      await expect(controller.getCurrentLicense()).rejects.toThrow('caps error');
+      mockLicenseGuardService.getCapabilities.mockRejectedValue(
+        new Error('caps error'),
+      );
+      await expect(controller.getCurrentLicense()).rejects.toThrow(
+        'caps error',
+      );
     });
   });
 
   describe('getCapabilities', () => {
     it('should merge capabilities and upgrade recommendation', async () => {
       const upgradeRec = { shouldUpgrade: false, reason: null };
-      mockLicenseGuardService.getCapabilities.mockResolvedValue(mockCapabilities);
-      mockLicenseGuardService.getUpgradeRecommendation.mockResolvedValue(upgradeRec);
+      mockLicenseGuardService.getCapabilities.mockResolvedValue(
+        mockCapabilities,
+      );
+      mockLicenseGuardService.getUpgradeRecommendation.mockResolvedValue(
+        upgradeRec,
+      );
 
       const result = await controller.getCapabilities();
 
       expect(mockLicenseGuardService.getCapabilities).toHaveBeenCalledTimes(1);
-      expect(mockLicenseGuardService.getUpgradeRecommendation).toHaveBeenCalledTimes(1);
+      expect(
+        mockLicenseGuardService.getUpgradeRecommendation,
+      ).toHaveBeenCalledTimes(1);
       expect(result).toEqual({ ...mockCapabilities, ...upgradeRec });
     });
 
     it('should propagate capabilities errors', async () => {
-      mockLicenseGuardService.getCapabilities.mockRejectedValue(new Error('service error'));
-      await expect(controller.getCapabilities()).rejects.toThrow('service error');
+      mockLicenseGuardService.getCapabilities.mockRejectedValue(
+        new Error('service error'),
+      );
+      await expect(controller.getCapabilities()).rejects.toThrow(
+        'service error',
+      );
     });
 
     it('should propagate upgrade recommendation errors', async () => {
-      mockLicenseGuardService.getCapabilities.mockResolvedValue(mockCapabilities);
-      mockLicenseGuardService.getUpgradeRecommendation.mockRejectedValue(
-        new Error('upgrade error')
+      mockLicenseGuardService.getCapabilities.mockResolvedValue(
+        mockCapabilities,
       );
-      await expect(controller.getCapabilities()).rejects.toThrow('upgrade error');
+      mockLicenseGuardService.getUpgradeRecommendation.mockRejectedValue(
+        new Error('upgrade error'),
+      );
+      await expect(controller.getCapabilities()).rejects.toThrow(
+        'upgrade error',
+      );
     });
   });
 
@@ -156,7 +178,9 @@ describe('LicensesController', () => {
     it('should include COMMERCIAL_ENTERPRISE tier', async () => {
       const result = (await controller.getAvailableTiers()) as any;
 
-      const enterprise = result.tiers.find((t: any) => t.id === LicenseTier.COMMERCIAL_ENTERPRISE);
+      const enterprise = result.tiers.find(
+        (t: any) => t.id === LicenseTier.COMMERCIAL_ENTERPRISE,
+      );
       expect(enterprise).not.toBeUndefined();
       expect(enterprise?.maxNodes).toBe(999);
     });
@@ -164,7 +188,9 @@ describe('LicensesController', () => {
 
   describe('activateLicense', () => {
     it('should call licensesService.activateLicense and return masked LicenseDto', async () => {
-      const activateDto = { licenseKey: 'BITBONSAI-PRO-ABCDEFGHIJKLMNO-1234' } as never;
+      const activateDto = {
+        licenseKey: 'BITBONSAI-PRO-ABCDEFGHIJKLMNO-1234',
+      } as never;
       const activationResult = {
         tier: LicenseTier.PATREON_PRO,
         email: 'user@example.com',
@@ -173,11 +199,15 @@ describe('LicensesController', () => {
         maxConcurrentJobs: 10,
       };
       mockLicensesService.activateLicense.mockResolvedValue(activationResult);
-      mockLicenseGuardService.getCapabilities.mockResolvedValue(mockCapabilities);
+      mockLicenseGuardService.getCapabilities.mockResolvedValue(
+        mockCapabilities,
+      );
 
       const result = await controller.activateLicense(activateDto);
 
-      expect(mockLicensesService.activateLicense).toHaveBeenCalledWith(activateDto);
+      expect(mockLicensesService.activateLicense).toHaveBeenCalledWith(
+        activateDto,
+      );
       expect(mockLicenseGuardService.getCapabilities).toHaveBeenCalledTimes(1);
       expect(result.tier).toBe(LicenseTier.PATREON_PRO);
       expect(result.email).toBe('user@example.com');
@@ -191,7 +221,9 @@ describe('LicensesController', () => {
 
     it('should set validUntil to ISO date string when expiresAt is set', async () => {
       const expiresAt = new Date('2027-01-01T00:00:00.000Z');
-      const activateDto = { licenseKey: 'BITBONSAI-PRO-ABCDEFGHIJKLMNO-1234' } as never;
+      const activateDto = {
+        licenseKey: 'BITBONSAI-PRO-ABCDEFGHIJKLMNO-1234',
+      } as never;
       const activationResult = {
         tier: LicenseTier.PATREON_PRO,
         email: null,
@@ -200,7 +232,9 @@ describe('LicensesController', () => {
         maxConcurrentJobs: 10,
       };
       mockLicensesService.activateLicense.mockResolvedValue(activationResult);
-      mockLicenseGuardService.getCapabilities.mockResolvedValue(mockCapabilities);
+      mockLicenseGuardService.getCapabilities.mockResolvedValue(
+        mockCapabilities,
+      );
 
       const result = await controller.activateLicense(activateDto);
 
@@ -208,38 +242,51 @@ describe('LicensesController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLicensesService.activateLicense.mockRejectedValue(new Error('invalid key'));
-      await expect(controller.activateLicense({ licenseKey: 'bad' } as never)).rejects.toThrow(
-        'invalid key'
+      mockLicensesService.activateLicense.mockRejectedValue(
+        new Error('invalid key'),
       );
+      await expect(
+        controller.activateLicense({ licenseKey: 'bad' } as never),
+      ).rejects.toThrow('invalid key');
     });
   });
 
   describe('lookupLicense', () => {
     it('should call licensesService.lookupLicenseByEmail with email from dto', async () => {
       const dto = { email: 'user@example.com' } as never;
-      const lookupResult = { found: true, license: { tier: 'PATREON_PRO', maskedKey: '****' } };
+      const lookupResult = {
+        found: true,
+        license: { tier: 'PATREON_PRO', maskedKey: '****' },
+      };
       mockLicensesService.lookupLicenseByEmail.mockResolvedValue(lookupResult);
 
       const result = await controller.lookupLicense(dto);
 
-      expect(mockLicensesService.lookupLicenseByEmail).toHaveBeenCalledWith('user@example.com');
+      expect(mockLicensesService.lookupLicenseByEmail).toHaveBeenCalledWith(
+        'user@example.com',
+      );
       expect(result).toEqual(lookupResult);
     });
 
     it('should return found: false when no license associated with email', async () => {
-      mockLicensesService.lookupLicenseByEmail.mockResolvedValue({ found: false });
+      mockLicensesService.lookupLicenseByEmail.mockResolvedValue({
+        found: false,
+      });
 
-      const result = await controller.lookupLicense({ email: 'unknown@example.com' } as never);
+      const result = await controller.lookupLicense({
+        email: 'unknown@example.com',
+      } as never);
 
       expect(result).toEqual({ found: false });
     });
 
     it('should propagate service errors', async () => {
-      mockLicensesService.lookupLicenseByEmail.mockRejectedValue(new Error('lookup error'));
-      await expect(controller.lookupLicense({ email: 'x@y.com' } as never)).rejects.toThrow(
-        'lookup error'
+      mockLicensesService.lookupLicenseByEmail.mockRejectedValue(
+        new Error('lookup error'),
       );
+      await expect(
+        controller.lookupLicense({ email: 'x@y.com' } as never),
+      ).rejects.toThrow('lookup error');
     });
   });
 });

@@ -1,7 +1,10 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobRepository } from '../../../common/repositories/job.repository';
 import { NodeRepository } from '../../../common/repositories/node.repository';
-import { EncodingSchedulerService, type TimeWindow } from '../../encoding-scheduler.service';
+import {
+  EncodingSchedulerService,
+  type TimeWindow,
+} from '../../encoding-scheduler.service';
 
 describe('EncodingSchedulerService', () => {
   let service: EncodingSchedulerService;
@@ -160,7 +163,9 @@ describe('EncodingSchedulerService', () => {
     });
 
     it('should return true on error', async () => {
-      nodeRepository.findWithSelect.mockRejectedValue(new Error('Database error'));
+      nodeRepository.findWithSelect.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       const result = await service.isEncodingAllowed('node-1');
 
@@ -248,7 +253,9 @@ describe('EncodingSchedulerService', () => {
     });
 
     it('should return null on error', async () => {
-      nodeRepository.findWithSelect.mockRejectedValue(new Error('Database error'));
+      nodeRepository.findWithSelect.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       const result = await service.getNextAllowedTime('node-1');
 
@@ -283,7 +290,9 @@ describe('EncodingSchedulerService', () => {
         {
           id: 'node-1',
           name: 'Node 1',
-          scheduleWindows: [{ dayOfWeek: differentDay, startHour: 0, endHour: 24 }],
+          scheduleWindows: [
+            { dayOfWeek: differentDay, startHour: 0, endHour: 24 },
+          ],
         },
       ]);
 
@@ -296,7 +305,7 @@ describe('EncodingSchedulerService', () => {
         expect.objectContaining({
           stage: 'PAUSED',
           error: 'Paused: Outside scheduled encoding window',
-        })
+        }),
       );
     });
 
@@ -309,7 +318,9 @@ describe('EncodingSchedulerService', () => {
         {
           id: 'node-1',
           name: 'Node 1',
-          scheduleWindows: [{ dayOfWeek: currentDay, startHour: 0, endHour: 24 }],
+          scheduleWindows: [
+            { dayOfWeek: currentDay, startHour: 0, endHour: 24 },
+          ],
         },
       ]);
 
@@ -322,12 +333,14 @@ describe('EncodingSchedulerService', () => {
         expect.objectContaining({
           stage: 'QUEUED',
           error: null,
-        })
+        }),
       );
     });
 
     it('should handle errors gracefully', async () => {
-      nodeRepository.findManySelect.mockRejectedValue(new Error('Database error'));
+      nodeRepository.findManySelect.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.enforceSchedules()).resolves.not.toThrow();
     });
@@ -335,7 +348,9 @@ describe('EncodingSchedulerService', () => {
 
   describe('setNodeSchedule', () => {
     it('should enable scheduling with windows', async () => {
-      const windows: TimeWindow[] = [{ dayOfWeek: 1, startHour: 22, endHour: 6 }];
+      const windows: TimeWindow[] = [
+        { dayOfWeek: 1, startHour: 22, endHour: 6 },
+      ];
 
       nodeRepository.updateData.mockResolvedValue({});
 
@@ -345,7 +360,7 @@ describe('EncodingSchedulerService', () => {
         'node-1',
         expect.objectContaining({
           scheduleEnabled: true,
-        })
+        }),
       );
     });
 
@@ -358,7 +373,7 @@ describe('EncodingSchedulerService', () => {
         'node-1',
         expect.objectContaining({
           scheduleEnabled: false,
-        })
+        }),
       );
     });
   });
@@ -378,7 +393,11 @@ describe('EncodingSchedulerService', () => {
       const presets = service.getPresetSchedules();
 
       expect(presets.nights).toHaveLength(7);
-      expect(presets.nights[0]).toEqual({ dayOfWeek: 0, startHour: 22, endHour: 6 });
+      expect(presets.nights[0]).toEqual({
+        dayOfWeek: 0,
+        startHour: 22,
+        endHour: 6,
+      });
     });
 
     it('should have weekend windows for weekends preset', () => {
@@ -392,7 +411,9 @@ describe('EncodingSchedulerService', () => {
       const presets = service.getPresetSchedules();
 
       expect(presets.weekdayNights).toHaveLength(5);
-      expect(presets.weekdayNights.map((w) => w.dayOfWeek)).toEqual([1, 2, 3, 4, 5]);
+      expect(presets.weekdayNights.map((w) => w.dayOfWeek)).toEqual([
+        1, 2, 3, 4, 5,
+      ]);
     });
 
     it('should have combined windows for offPeak', () => {

@@ -87,7 +87,9 @@ describe('PolicyRepository', () => {
         library: { id: 'lib-1', name: 'Movies' },
         _count: { jobs: 5 },
       };
-      mockPrismaService.policy.findUnique.mockResolvedValue(policyWithRelations);
+      mockPrismaService.policy.findUnique.mockResolvedValue(
+        policyWithRelations,
+      );
 
       const result = await repository.findByIdWithRelations('policy-1');
 
@@ -112,7 +114,10 @@ describe('PolicyRepository', () => {
 
   describe('findAll', () => {
     it('should return all policies ordered by createdAt desc', async () => {
-      const policies = [mockPolicy, { ...mockPolicy, id: 'policy-2', name: 'AV1 Fast' }];
+      const policies = [
+        mockPolicy,
+        { ...mockPolicy, id: 'policy-2', name: 'AV1 Fast' },
+      ];
       mockPrismaService.policy.findMany.mockResolvedValue(policies);
 
       const result = await repository.findAll();
@@ -230,7 +235,9 @@ describe('PolicyRepository', () => {
       const updated = { ...mockPolicy, name: 'Renamed Policy' };
       mockPrismaService.policy.update.mockResolvedValue(updated);
 
-      const result = await repository.update('policy-1', { name: 'Renamed Policy' });
+      const result = await repository.update('policy-1', {
+        name: 'Renamed Policy',
+      });
 
       expect(result).toEqual(updated);
       expect(mockPrismaService.policy.update).toHaveBeenCalledWith({
@@ -240,11 +247,13 @@ describe('PolicyRepository', () => {
     });
 
     it('should propagate prisma errors on update', async () => {
-      mockPrismaService.policy.update.mockRejectedValue(new Error('Record not found'));
-
-      await expect(repository.update('ghost-id', { name: 'X' })).rejects.toThrow(
-        'Record not found'
+      mockPrismaService.policy.update.mockRejectedValue(
+        new Error('Record not found'),
       );
+
+      await expect(
+        repository.update('ghost-id', { name: 'X' }),
+      ).rejects.toThrow('Record not found');
     });
   });
 
@@ -261,10 +270,12 @@ describe('PolicyRepository', () => {
     });
 
     it('should propagate prisma errors when policy does not exist', async () => {
-      mockPrismaService.policy.delete.mockRejectedValue(new Error('Record to delete not found'));
+      mockPrismaService.policy.delete.mockRejectedValue(
+        new Error('Record to delete not found'),
+      );
 
       await expect(repository.delete('nonexistent-id')).rejects.toThrow(
-        'Record to delete not found'
+        'Record to delete not found',
       );
     });
   });

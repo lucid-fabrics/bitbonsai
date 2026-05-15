@@ -60,56 +60,56 @@ import { NotificationContainerComponent } from './shared/components/notification
   `,
   styles: [
     `
-    .app-layout {
-      min-height: 100vh;
-      display: flex;
-    }
+      .app-layout {
+        min-height: 100vh;
+        display: flex;
+      }
 
-    .content-wrapper {
-      flex: 1;
-      margin-left: 240px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .app-header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: var(--surface-color);
-      border-bottom: 1px solid var(--border-color);
-      padding: 0.75rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-height: 56px;
-    }
-
-    .header-spacer {
-      flex: 1;
-    }
-
-    .main-content {
-      flex: 1;
-      background: #1a1a1a;
-      padding-top: 56px; /* Account for sticky app-header height */
-    }
-
-    /* When app-header is not shown (non-main nodes), remove padding */
-    .content-wrapper:not(:has(.app-header)) .main-content {
-      padding-top: 0;
-    }
-
-    @media (max-width: 768px) {
       .content-wrapper {
-        margin-left: 60px;
+        flex: 1;
+        margin-left: 240px;
+        display: flex;
+        flex-direction: column;
       }
 
       .app-header {
-        padding: 0.5rem 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--surface-color);
+        border-bottom: 1px solid var(--border-color);
+        padding: 0.75rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 56px;
       }
-    }
-  `,
+
+      .header-spacer {
+        flex: 1;
+      }
+
+      .main-content {
+        flex: 1;
+        background: #1a1a1a;
+        padding-top: 56px; /* Account for sticky app-header height */
+      }
+
+      /* When app-header is not shown (non-main nodes), remove padding */
+      .content-wrapper:not(:has(.app-header)) .main-content {
+        padding-top: 0;
+      }
+
+      @media (max-width: 768px) {
+        .content-wrapper {
+          margin-left: 60px;
+        }
+
+        .app-header {
+          padding: 0.5rem 1rem;
+        }
+      }
+    `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -141,8 +141,10 @@ export class AppComponent implements OnInit {
     // Update showLayout signal on route changes
     this.router.events
       .pipe(
-        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-        takeUntilDestroyed(this.destroyRef)
+        filter(
+          (event): event is NavigationEnd => event instanceof NavigationEnd,
+        ),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((event: NavigationEnd) => {
         const url = event.urlAfterRedirects;
@@ -159,11 +161,12 @@ export class AppComponent implements OnInit {
       .pipe(
         filter((isAuthenticated) => {
           const currentUrl = this.router.url;
-          const isSetupRoute = currentUrl === '/setup' || currentUrl === '/node-setup';
+          const isSetupRoute =
+            currentUrl === '/setup' || currentUrl === '/node-setup';
           return isAuthenticated && !isSetupRoute;
         }),
         switchMap(() => this.nodeService.getCurrentNode()),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (node) => {
@@ -174,7 +177,10 @@ export class AppComponent implements OnInit {
           }
         },
         error: (err) => {
-          this.errorLogger.error('Failed to fetch current node information', err);
+          this.errorLogger.error(
+            'Failed to fetch current node information',
+            err,
+          );
           // If no nodes are registered, the app will still work
           // The user will need to register a node first
         },

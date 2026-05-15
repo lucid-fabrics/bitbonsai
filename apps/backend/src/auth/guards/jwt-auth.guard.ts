@@ -21,7 +21,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   constructor(
     private reflector: Reflector,
-    private settingsRepository: SettingsRepository
+    private settingsRepository: SettingsRepository,
   ) {
     super();
   }
@@ -44,7 +44,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       if (isLocalNetworkIp(clientIp)) {
         // SECURITY: Log local network bypass for audit trail
         this.logger.debug(
-          `Local network authentication bypass: IP=${clientIp}, Path=${request.url}, Method=${request.method}`
+          `Local network authentication bypass: IP=${clientIp}, Path=${request.url}, Method=${request.method}`,
         );
         // Allow access for local network IPs when bypass is enabled
         return true;

@@ -1,5 +1,10 @@
 import { version as APP_VERSION } from '@bitbonsai/version';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import Bonjour, { Service } from 'bonjour-service';
 import { NodeRepository } from '../../common/repositories/node.repository';
 
@@ -53,7 +58,9 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
     try {
       this.bonjour = new Bonjour();
       const port = parseInt(process.env.PORT || '3000', 10);
-      const apiUrl = process.env.API_BASE_URL || `http://${this.getLocalIP()}:${port}/api/v1`;
+      const apiUrl =
+        process.env.API_BASE_URL ||
+        `http://${this.getLocalIP()}:${port}/api/v1`;
 
       this.service = this.bonjour.publish({
         name: nodeName,
@@ -66,7 +73,9 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      this.logger.log(`🌐 Broadcasting MAIN node "${nodeName}" via mDNS on port ${port}`);
+      this.logger.log(
+        `🌐 Broadcasting MAIN node "${nodeName}" via mDNS on port ${port}`,
+      );
       this.logger.debug(`API URL: ${apiUrl}`);
     } catch (error: unknown) {
       this.logger.error('Failed to start mDNS broadcasting', error);
@@ -106,7 +115,9 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         const localIP = this.getLocalIP();
         const currentPort = parseInt(process.env.PORT || '3100', 10);
 
-        this.logger.log(`🔍 Discovering MAIN nodes on the network (timeout: ${timeoutMs}ms)...`);
+        this.logger.log(
+          `🔍 Discovering MAIN nodes on the network (timeout: ${timeoutMs}ms)...`,
+        );
         this.logger.debug(`Local IP: ${localIP}, Port: ${currentPort}`);
 
         const browser = bonjour.find({ type: this.SERVICE_TYPE });
@@ -114,7 +125,8 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         browser.on('up', (service: Service) => {
           try {
             const nodeId = service.txt?.nodeId as string;
-            const serviceIP = service.referer?.address || service.addresses?.[0] || 'unknown';
+            const serviceIP =
+              service.referer?.address || service.addresses?.[0] || 'unknown';
             const servicePort = service.port;
 
             // Skip if we've already found this node
@@ -125,7 +137,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
             // Skip if this is the local node (same IP and port)
             if (serviceIP === localIP && servicePort === currentPort) {
               this.logger.debug(
-                `⏭️  Skipping local node: ${service.name} (${serviceIP}:${servicePort})`
+                `⏭️  Skipping local node: ${service.name} (${serviceIP}:${servicePort})`,
               );
               return;
             }
@@ -145,7 +157,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
             nodes.push(mainNode);
 
             this.logger.debug(
-              `✅ Discovered MAIN node: ${mainNode.nodeName} (${mainNode.ipAddress}:${mainNode.port})`
+              `✅ Discovered MAIN node: ${mainNode.nodeName} (${mainNode.ipAddress}:${mainNode.port})`,
             );
           } catch (error: unknown) {
             this.logger.warn('Failed to parse discovered service', error);
@@ -157,7 +169,9 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
           browser.stop();
           bonjour.destroy();
 
-          this.logger.log(`🎯 Discovery completed. Found ${nodes.length} MAIN node(s)`);
+          this.logger.log(
+            `🎯 Discovery completed. Found ${nodes.length} MAIN node(s)`,
+          );
           resolve(nodes);
         }, timeoutMs);
       } catch (error: unknown) {

@@ -1,7 +1,11 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faCheckCircle, faDownload, faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import {
+  faCheckCircle,
+  faDownload,
+  faEnvelope,
+} from '@fortawesome/free-solid-svg-icons';
 
 @Component({
   selector: 'bb-success',
@@ -16,7 +20,8 @@ import { faCheckCircle, faDownload, faEnvelope } from '@fortawesome/free-solid-s
 
         <h1 class="success__title">Payment Successful!</h1>
         <p class="success__message">
-          Thank you for subscribing to BitBonsai. Your license key has been sent to your email.
+          Thank you for subscribing to BitBonsai. Your license key has been sent
+          to your email.
         </p>
 
         <div class="success__steps">
@@ -38,16 +43,25 @@ import { faCheckCircle, faDownload, faEnvelope } from '@fortawesome/free-solid-s
         </div>
 
         <div class="success__actions">
-          <a routerLink="/download" class="success__button success__button--primary">
+          <a
+            routerLink="/download"
+            class="success__button success__button--primary"
+          >
             Download App
           </a>
-          <a routerLink="/docs" class="success__button success__button--secondary">
+          <a
+            routerLink="/docs"
+            class="success__button success__button--secondary"
+          >
             View Documentation
           </a>
         </div>
 
         <div class="success__help">
-          <p>Need help? Check our <a routerLink="/docs">documentation</a> or contact support.</p>
+          <p>
+            Need help? Check our <a routerLink="/docs">documentation</a> or
+            contact support.
+          </p>
         </div>
       </div>
     </div>

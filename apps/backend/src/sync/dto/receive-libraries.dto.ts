@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { MediaType } from '@prisma/client';
-import { IsArray, IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class LibrarySyncDto {
   @ApiProperty({

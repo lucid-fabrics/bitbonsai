@@ -157,6 +157,7 @@ npx nx release:unraid:major   # Major + generate
 ```
 
 **Output:** `unraid-release/` directory with 6 files
+
 - `bitbonsai.xml` - Unraid template
 - `docker-compose.production.yml`
 - `README-UNRAID.md`
@@ -349,6 +350,7 @@ npx nx prisma:generate
 ## Migration from npm scripts
 
 **Before (npm):**
+
 ```bash
 npm run test
 npm run docker:build
@@ -356,6 +358,7 @@ npm run version:patch
 ```
 
 **After (Nx):**
+
 ```bash
 npx nx test:all
 npx nx docker:build
@@ -363,6 +366,7 @@ npx nx version:patch
 ```
 
 **Benefits:**
+
 - Consistent CLI interface
 - Better caching
 - Parallel execution

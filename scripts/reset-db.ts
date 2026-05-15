@@ -47,7 +47,7 @@ async function resetDatabase() {
       {
         stdio: 'ignore',
         env: process.env,
-      }
+      },
     );
 
     await prisma.$disconnect();

@@ -159,7 +159,9 @@ describe('LicenseGuardService', () => {
       mockPrismaService.node.count.mockResolvedValue(1);
       mockPrismaService.job.count.mockResolvedValue(0);
 
-      await expect(service.assertCanAddNode()).rejects.toThrow(ForbiddenException);
+      await expect(service.assertCanAddNode()).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should include upgrade URL in error response', async () => {
@@ -193,7 +195,9 @@ describe('LicenseGuardService', () => {
       mockPrismaService.node.count.mockResolvedValue(0);
       mockPrismaService.job.count.mockResolvedValue(2);
 
-      await expect(service.assertCanStartJob()).rejects.toThrow(ForbiddenException);
+      await expect(service.assertCanStartJob()).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -217,7 +221,9 @@ describe('LicenseGuardService', () => {
       mockPrismaService.node.count.mockResolvedValue(0);
       mockPrismaService.job.count.mockResolvedValue(0);
 
-      await expect(service.assertFeatureEnabled('api')).rejects.toThrow(ForbiddenException);
+      await expect(service.assertFeatureEnabled('api')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should include feature name in error message', async () => {
@@ -231,7 +237,9 @@ describe('LicenseGuardService', () => {
       } catch (error: unknown) {
         const response = (error as ForbiddenException).getResponse();
         expect(response).toHaveProperty('feature', 'cloudStorage');
-        expect((response as Record<string, string>).message).toContain('Cloud Storage');
+        expect((response as Record<string, string>).message).toContain(
+          'Cloud Storage',
+        );
       }
     });
   });

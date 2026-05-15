@@ -88,7 +88,9 @@ describe('FfprobeService', () => {
 
   describe('getVideoDuration', () => {
     it('should return stream duration when ffprobe succeeds with valid output', async () => {
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: '120.5\n', closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: '120.5\n', closeCode: 0 }),
+      );
 
       const result = await service.getVideoDuration('/video.mkv');
 
@@ -100,7 +102,9 @@ describe('FfprobeService', () => {
       // Second spawn: format duration returns valid value
       spawnMock
         .mockReturnValueOnce(makeFakeProc({ stdoutData: '', closeCode: 0 }))
-        .mockReturnValueOnce(makeFakeProc({ stdoutData: '200.0\n', closeCode: 0 }));
+        .mockReturnValueOnce(
+          makeFakeProc({ stdoutData: '200.0\n', closeCode: 0 }),
+        );
 
       const result = await service.getVideoDuration('/video.mkv');
 
@@ -110,7 +114,9 @@ describe('FfprobeService', () => {
     it('should fall back to format duration when stream ffprobe exits with non-zero code', async () => {
       spawnMock
         .mockReturnValueOnce(makeFakeProc({ stdoutData: '', closeCode: 1 }))
-        .mockReturnValueOnce(makeFakeProc({ stdoutData: '300.0\n', closeCode: 0 }));
+        .mockReturnValueOnce(
+          makeFakeProc({ stdoutData: '300.0\n', closeCode: 0 }),
+        );
 
       const result = await service.getVideoDuration('/video.mkv');
 
@@ -118,7 +124,9 @@ describe('FfprobeService', () => {
     });
 
     it('should return 3600 on ffprobe error event', async () => {
-      spawnMock.mockReturnValue(makeFakeProc({ errorEvent: new Error('spawn ENOENT') }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ errorEvent: new Error('spawn ENOENT') }),
+      );
 
       const result = await service.getVideoDuration('/video.mkv');
 
@@ -129,8 +137,12 @@ describe('FfprobeService', () => {
       // Stream output is not a number → falls through to format fallback
       // Format fallback also returns garbage → resolves 3600
       spawnMock
-        .mockReturnValueOnce(makeFakeProc({ stdoutData: 'N/A\n', closeCode: 0 }))
-        .mockReturnValueOnce(makeFakeProc({ stdoutData: 'N/A\n', closeCode: 0 }));
+        .mockReturnValueOnce(
+          makeFakeProc({ stdoutData: 'N/A\n', closeCode: 0 }),
+        )
+        .mockReturnValueOnce(
+          makeFakeProc({ stdoutData: 'N/A\n', closeCode: 0 }),
+        );
 
       const result = await service.getVideoDuration('/video.mkv');
 
@@ -150,7 +162,11 @@ describe('FfprobeService', () => {
     it('should return 3600 on timeout', async () => {
       jest.useFakeTimers();
 
-      const proc = makeFakeProc({ stdoutData: '120\n', closeCode: 0, delay: 99999 });
+      const proc = makeFakeProc({
+        stdoutData: '120\n',
+        closeCode: 0,
+        delay: 99999,
+      });
       spawnMock.mockReturnValue(proc);
 
       const promise = service.getVideoDuration('/video.mkv');
@@ -174,7 +190,9 @@ describe('FfprobeService', () => {
         format: { format_name: 'matroska,webm' },
       });
 
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: output, closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: output, closeCode: 0 }),
+      );
 
       const result = await service.getVideoInfo('/video.mkv');
 
@@ -188,7 +206,9 @@ describe('FfprobeService', () => {
         format: { format_name: 'mp4' },
       });
 
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: output, closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: output, closeCode: 0 }),
+      );
 
       const result = await service.getVideoInfo('/video.mp4');
 
@@ -202,7 +222,9 @@ describe('FfprobeService', () => {
         format: {},
       });
 
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: output, closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: output, closeCode: 0 }),
+      );
 
       const result = await service.getVideoInfo('/video.mp4');
 
@@ -213,28 +235,38 @@ describe('FfprobeService', () => {
       spawnMock.mockReturnValue(makeFakeProc({ stdoutData: '', closeCode: 1 }));
 
       await expect(service.getVideoInfo('/video.mkv')).rejects.toThrow(
-        'FFprobe failed with code 1'
+        'FFprobe failed with code 1',
       );
     });
 
     it('should reject with parse error on invalid JSON', async () => {
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: 'not-json', closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: 'not-json', closeCode: 0 }),
+      );
 
       await expect(service.getVideoInfo('/video.mkv')).rejects.toThrow(
-        'Failed to parse ffprobe output'
+        'Failed to parse ffprobe output',
       );
     });
 
     it('should reject on error event', async () => {
-      spawnMock.mockReturnValue(makeFakeProc({ errorEvent: new Error('spawn ENOENT') }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ errorEvent: new Error('spawn ENOENT') }),
+      );
 
-      await expect(service.getVideoInfo('/video.mkv')).rejects.toThrow('spawn ENOENT');
+      await expect(service.getVideoInfo('/video.mkv')).rejects.toThrow(
+        'spawn ENOENT',
+      );
     });
 
     it('should reject on timeout', async () => {
       jest.useFakeTimers();
 
-      const proc = makeFakeProc({ stdoutData: '{}', closeCode: 0, delay: 99999 });
+      const proc = makeFakeProc({
+        stdoutData: '{}',
+        closeCode: 0,
+        delay: 99999,
+      });
       spawnMock.mockReturnValue(proc);
 
       const promise = service.getVideoInfo('/video.mkv');
@@ -255,7 +287,9 @@ describe('FfprobeService', () => {
         format: { format_name: 'matroska,webm' },
       });
 
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: output, closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: output, closeCode: 0 }),
+      );
 
       const result = await service.getVideoInfoCached('/video.mkv');
 
@@ -269,7 +303,9 @@ describe('FfprobeService', () => {
         format: { format_name: 'mp4' },
       });
 
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: output, closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: output, closeCode: 0 }),
+      );
 
       await service.getVideoInfoCached('/video.mp4');
       spawnMock.mockClear();
@@ -286,7 +322,9 @@ describe('FfprobeService', () => {
         format: { format_name: 'mp4' },
       });
 
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: output, closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: output, closeCode: 0 }),
+      );
 
       await service.getVideoInfoCached('/video.mp4');
 
@@ -294,7 +332,9 @@ describe('FfprobeService', () => {
       const cached = (service as any).codecCache.get('/video.mp4');
       cached.timestamp = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
 
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: output, closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: output, closeCode: 0 }),
+      );
       await service.getVideoInfoCached('/video.mp4');
 
       expect(spawnMock).toHaveBeenCalledTimes(2);
@@ -316,7 +356,9 @@ describe('FfprobeService', () => {
         });
       }
 
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: output, closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: output, closeCode: 0 }),
+      );
       await service.getVideoInfoCached('/new-video.mp4');
 
       expect((service as any).codecCache.size).toBe(maxSize);
@@ -329,7 +371,9 @@ describe('FfprobeService', () => {
         format: { format_name: 'mp4' },
       });
 
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: output, closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: output, closeCode: 0 }),
+      );
 
       // Set lastCacheCleanup far in the past
       (service as any).lastCacheCleanup = Date.now() - 2 * 60 * 60 * 1000;
@@ -348,7 +392,9 @@ describe('FfprobeService', () => {
 
   describe('verifyFile', () => {
     it('should return isValid=true when ffprobe exits 0 with output', async () => {
-      spawnMock.mockReturnValue(makeFakeProc({ stdoutData: '120.5\n', closeCode: 0 }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ stdoutData: '120.5\n', closeCode: 0 }),
+      );
 
       const result = await service.verifyFile('/video.mkv');
 
@@ -367,7 +413,11 @@ describe('FfprobeService', () => {
 
     it('should include ffprobe stderr in error message when non-zero exit + stderr', async () => {
       spawnMock.mockReturnValue(
-        makeFakeProc({ stdoutData: '', stderrData: 'moov atom not found', closeCode: 1 })
+        makeFakeProc({
+          stdoutData: '',
+          stderrData: 'moov atom not found',
+          closeCode: 1,
+        }),
       );
 
       const result = await service.verifyFile('/video.mkv');
@@ -386,7 +436,9 @@ describe('FfprobeService', () => {
     });
 
     it('should return isValid=false on ffprobe error event', async () => {
-      spawnMock.mockReturnValue(makeFakeProc({ errorEvent: new Error('ENOENT ffprobe') }));
+      spawnMock.mockReturnValue(
+        makeFakeProc({ errorEvent: new Error('ENOENT ffprobe') }),
+      );
 
       const result = await service.verifyFile('/video.mkv');
 
@@ -397,7 +449,11 @@ describe('FfprobeService', () => {
     it('should return isValid=false on timeout (SIGKILL)', async () => {
       jest.useFakeTimers();
 
-      const proc = makeFakeProc({ stdoutData: '120\n', closeCode: 0, delay: 999999 });
+      const proc = makeFakeProc({
+        stdoutData: '120\n',
+        closeCode: 0,
+        delay: 999999,
+      });
       spawnMock.mockReturnValue(proc);
 
       const promise = service.verifyFile('/video.mkv');
@@ -447,7 +503,7 @@ describe('FfprobeService', () => {
       service.cleanupCodecCache();
 
       expect((service as any).logger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Cleaned')
+        expect.stringContaining('Cleaned'),
       );
     });
 
@@ -461,7 +517,7 @@ describe('FfprobeService', () => {
       service.cleanupCodecCache();
 
       expect((service as any).logger.debug).not.toHaveBeenCalledWith(
-        expect.stringContaining('Cleaned')
+        expect.stringContaining('Cleaned'),
       );
     });
 

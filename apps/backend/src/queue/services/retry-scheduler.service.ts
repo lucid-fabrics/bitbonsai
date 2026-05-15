@@ -51,7 +51,13 @@ export class RetrySchedulerService {
           retryCount: { lt: 3 },
           nextRetryAt: { lte: now },
         },
-        { id: true, fileLabel: true, retryCount: true, nextRetryAt: true, error: true }
+        {
+          id: true,
+          fileLabel: true,
+          retryCount: true,
+          nextRetryAt: true,
+          error: true,
+        },
       );
 
       if (eligibleJobs.length === 0) {
@@ -59,7 +65,9 @@ export class RetrySchedulerService {
         return;
       }
 
-      this.logger.log(`Found ${eligibleJobs.length} failed job(s) ready for retry`);
+      this.logger.log(
+        `Found ${eligibleJobs.length} failed job(s) ready for retry`,
+      );
 
       // Reset jobs back to QUEUED
       const result = await this.jobRepository.updateManyByIds(
@@ -71,14 +79,18 @@ export class RetrySchedulerService {
           completedAt: null,
           startedAt: null,
           retryCount: { increment: 1 },
-        }
+        },
       );
 
-      this.logger.log(`Background retry scheduler: ${result.count} job(s) re-queued`);
+      this.logger.log(
+        `Background retry scheduler: ${result.count} job(s) re-queued`,
+      );
 
       // Log each retried job
       for (const job of eligibleJobs) {
-        this.logger.log(`Retrying job: ${job.fileLabel} (attempt ${job.retryCount + 2}/4)`);
+        this.logger.log(
+          `Retrying job: ${job.fileLabel} (attempt ${job.retryCount + 2}/4)`,
+        );
       }
     } catch (error: unknown) {
       this.logger.error('Failed to retry jobs in background scheduler', error);

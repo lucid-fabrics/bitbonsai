@@ -99,6 +99,7 @@ postgres:
 ```
 
 Update backend `DATABASE_URL`:
+
 ```
 DATABASE_URL=postgresql://bitbonsai:bitbonsai_secure_password@postgres:5432/bitbonsai
 ```
@@ -113,6 +114,7 @@ redis:
 ```
 
 Update backend environment:
+
 ```
 REDIS_HOST=redis
 REDIS_PORT=6379
@@ -285,30 +287,30 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ### Backend Environment Variables
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `NODE_ENV` | Environment mode | `development` | Yes |
-| `PORT` | Backend server port | `3000` | Yes |
-| `DATABASE_URL` | Database connection string | `file:/data/bitbonsai.db` | Yes |
-| `MEDIA_PATHS` | Comma-separated media folder paths | `/media` | Yes |
-| `LOG_LEVEL` | Logging level | `info` | No |
-| `REDIS_HOST` | Redis hostname | `redis` | No |
-| `REDIS_PORT` | Redis port | `6379` | No |
+| Variable       | Description                        | Default                   | Required |
+| -------------- | ---------------------------------- | ------------------------- | -------- |
+| `NODE_ENV`     | Environment mode                   | `development`             | Yes      |
+| `PORT`         | Backend server port                | `3000`                    | Yes      |
+| `DATABASE_URL` | Database connection string         | `file:/data/bitbonsai.db` | Yes      |
+| `MEDIA_PATHS`  | Comma-separated media folder paths | `/media`                  | Yes      |
+| `LOG_LEVEL`    | Logging level                      | `info`                    | No       |
+| `REDIS_HOST`   | Redis hostname                     | `redis`                   | No       |
+| `REDIS_PORT`   | Redis port                         | `6379`                    | No       |
 
 ### Frontend Environment Variables
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `NODE_ENV` | Environment mode | `development` | Yes |
-| `API_URL` | Backend API URL | `http://bitbonsai-backend:3000` | No |
+| Variable   | Description      | Default                         | Required |
+| ---------- | ---------------- | ------------------------------- | -------- |
+| `NODE_ENV` | Environment mode | `development`                   | Yes      |
+| `API_URL`  | Backend API URL  | `http://bitbonsai-backend:3000` | No       |
 
 ### Database Environment Variables
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `POSTGRES_DB` | Database name | `bitbonsai` | Yes |
-| `POSTGRES_USER` | Database user | `bitbonsai` | Yes |
-| `POSTGRES_PASSWORD` | Database password | - | Yes |
+| Variable            | Description       | Default     | Required |
+| ------------------- | ----------------- | ----------- | -------- |
+| `POSTGRES_DB`       | Database name     | `bitbonsai` | Yes      |
+| `POSTGRES_USER`     | Database user     | `bitbonsai` | Yes      |
+| `POSTGRES_PASSWORD` | Database password | -           | Yes      |
 
 ---
 
@@ -318,19 +320,19 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ```yaml
 volumes:
-  - ./apps/backend:/app/apps/backend:cached  # Source code sync
-  - bitbonsai-data:/data                      # SQLite database
-  - ./test-media:/media:ro                    # Test media (read-only)
+  - ./apps/backend:/app/apps/backend:cached # Source code sync
+  - bitbonsai-data:/data # SQLite database
+  - ./test-media:/media:ro # Test media (read-only)
 ```
 
 ### Production Volumes
 
 ```yaml
 volumes:
-  - bitbonsai-data:/data            # Application data
-  - /path/to/media:/media:ro       # Production media (read-only)
-  - postgres-data:/var/lib/postgresql/data  # PostgreSQL data
-  - redis-data:/data               # Redis data
+  - bitbonsai-data:/data # Application data
+  - /path/to/media:/media:ro # Production media (read-only)
+  - postgres-data:/var/lib/postgresql/data # PostgreSQL data
+  - redis-data:/data # Redis data
 ```
 
 ### Volume Operations
@@ -358,16 +360,16 @@ docker volume prune
 
 ### Port Mapping
 
-| Service | Internal Port | External Port | Description |
-|---------|---------------|---------------|-------------|
-| bitbonsai-backend | 3000 | 3000 | Backend API |
-| bitbonsai-backend | 9229 | 9229 | Node debugger (dev only) |
-| bitbonsai-frontend | 4200 | 4200 | Angular dev server (dev) |
-| bitbonsai-frontend | 80 | 4200 | Nginx server (prod) |
-| nginx | 80 | 80 | HTTP reverse proxy |
-| nginx | 443 | 443 | HTTPS reverse proxy |
-| postgres | 5432 | 5432 | PostgreSQL |
-| redis | 6379 | 6379 | Redis |
+| Service            | Internal Port | External Port | Description              |
+| ------------------ | ------------- | ------------- | ------------------------ |
+| bitbonsai-backend  | 3000          | 3000          | Backend API              |
+| bitbonsai-backend  | 9229          | 9229          | Node debugger (dev only) |
+| bitbonsai-frontend | 4200          | 4200          | Angular dev server (dev) |
+| bitbonsai-frontend | 80            | 4200          | Nginx server (prod)      |
+| nginx              | 80            | 80            | HTTP reverse proxy       |
+| nginx              | 443           | 443           | HTTPS reverse proxy      |
+| postgres           | 5432          | 5432          | PostgreSQL               |
+| redis              | 6379          | 6379          | Redis                    |
 
 ### Network Configuration
 
@@ -527,6 +529,7 @@ docker exec -it bitbonsai-redis redis-cli
 ## Support
 
 For issues or questions:
+
 - Create an issue on GitHub
 - Check existing documentation
 - Review Docker logs for errors

@@ -1,4 +1,7 @@
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import {
+  HttpClientTestingModule,
+  HttpTestingController,
+} from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import type {
   CreatePolicyRequest,
@@ -214,7 +217,10 @@ describe('PolicyClient', () => {
       });
 
       const req = httpMock.expectOne('/api/v1/policies');
-      req.flush('Policy already exists', { status: 409, statusText: 'Conflict' });
+      req.flush('Policy already exists', {
+        status: 409,
+        statusText: 'Conflict',
+      });
     });
   });
 
@@ -311,7 +317,10 @@ describe('PolicyClient', () => {
       });
 
       const req = httpMock.expectOne('/api/v1/policies/1');
-      req.flush('Policy is in use by libraries', { status: 409, statusText: 'Conflict' });
+      req.flush('Policy is in use by libraries', {
+        status: 409,
+        statusText: 'Conflict',
+      });
     });
   });
 });

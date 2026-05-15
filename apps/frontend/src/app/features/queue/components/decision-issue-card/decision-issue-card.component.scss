@@ -177,7 +177,9 @@
       fa-icon {
         font-size: 14px;
         opacity: 0.5;
-        transition: opacity 0.2s, transform 0.2s;
+        transition:
+          opacity 0.2s,
+          transform 0.2s;
       }
 
       &:hover fa-icon {

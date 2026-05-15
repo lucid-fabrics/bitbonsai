@@ -41,9 +41,24 @@ export class SavingsTrendDto {
     description: 'Array of daily savings data points',
     type: [SavingsDataPointDto],
     example: [
-      { date: '2024-09-25', savedBytes: '5368709120', savedGB: 5.0, jobsCompleted: 42 },
-      { date: '2024-09-26', savedBytes: '6442450944', savedGB: 6.0, jobsCompleted: 38 },
-      { date: '2024-09-27', savedBytes: '4831838208', savedGB: 4.5, jobsCompleted: 35 },
+      {
+        date: '2024-09-25',
+        savedBytes: '5368709120',
+        savedGB: 5.0,
+        jobsCompleted: 42,
+      },
+      {
+        date: '2024-09-26',
+        savedBytes: '6442450944',
+        savedGB: 6.0,
+        jobsCompleted: 38,
+      },
+      {
+        date: '2024-09-27',
+        savedBytes: '4831838208',
+        savedGB: 4.5,
+        jobsCompleted: 35,
+      },
     ],
   })
   trend!: SavingsDataPointDto[];

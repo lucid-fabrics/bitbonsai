@@ -58,7 +58,7 @@ export class SlackNotificationService {
 
   constructor(
     private readonly settingsRepository: SettingsRepository,
-    private readonly httpService: HttpService
+    private readonly httpService: HttpService,
   ) {}
 
   /**
@@ -73,7 +73,9 @@ export class SlackNotificationService {
     const webhookUrl = await this.getWebhookUrl();
     if (!webhookUrl) return;
 
-    const savedGB = job.savedBytes ? (Number(job.savedBytes) / 1024 ** 3).toFixed(2) : '0';
+    const savedGB = job.savedBytes
+      ? (Number(job.savedBytes) / 1024 ** 3).toFixed(2)
+      : '0';
     const savedPercent = job.savedPercent?.toFixed(1) || '0';
     const durationStr = job.duration
       ? `${Math.floor(job.duration / 60)}m ${job.duration % 60}s`
@@ -86,7 +88,11 @@ export class SlackNotificationService {
           blocks: [
             {
               type: 'header',
-              text: { type: 'plain_text', text: '✅ Encoding Complete', emoji: true },
+              text: {
+                type: 'plain_text',
+                text: '✅ Encoding Complete',
+                emoji: true,
+              },
             },
             {
               type: 'section',
@@ -95,7 +101,10 @@ export class SlackNotificationService {
             {
               type: 'section',
               fields: [
-                { type: 'mrkdwn', text: `*Space Saved:*\n${savedPercent}% (${savedGB} GB)` },
+                {
+                  type: 'mrkdwn',
+                  text: `*Space Saved:*\n${savedPercent}% (${savedGB} GB)`,
+                },
                 { type: 'mrkdwn', text: `*Duration:*\n${durationStr}` },
               ],
             },
@@ -125,7 +134,11 @@ export class SlackNotificationService {
           blocks: [
             {
               type: 'header',
-              text: { type: 'plain_text', text: '❌ Encoding Failed', emoji: true },
+              text: {
+                type: 'plain_text',
+                text: '❌ Encoding Failed',
+                emoji: true,
+              },
             },
             {
               type: 'section',
@@ -138,7 +151,10 @@ export class SlackNotificationService {
                   type: 'mrkdwn',
                   text: `*Error:*\n${job.error?.substring(0, 200) || 'Unknown error'}`,
                 },
-                { type: 'mrkdwn', text: `*Retry Count:*\n${job.retryCount || 0}` },
+                {
+                  type: 'mrkdwn',
+                  text: `*Retry Count:*\n${job.retryCount || 0}`,
+                },
               ],
             },
           ],
@@ -163,7 +179,9 @@ export class SlackNotificationService {
 
     const successRate =
       stats.completed + stats.failed > 0
-        ? ((stats.completed / (stats.completed + stats.failed)) * 100).toFixed(1)
+        ? ((stats.completed / (stats.completed + stats.failed)) * 100).toFixed(
+            1,
+          )
         : '0';
 
     const payload: SlackWebhookPayload = {
@@ -173,7 +191,11 @@ export class SlackNotificationService {
           blocks: [
             {
               type: 'header',
-              text: { type: 'plain_text', text: '📊 Batch Encoding Summary', emoji: true },
+              text: {
+                type: 'plain_text',
+                text: '📊 Batch Encoding Summary',
+                emoji: true,
+              },
             },
             {
               type: 'section',
@@ -181,12 +203,17 @@ export class SlackNotificationService {
                 { type: 'mrkdwn', text: `*Completed:*\n${stats.completed}` },
                 { type: 'mrkdwn', text: `*Failed:*\n${stats.failed}` },
                 { type: 'mrkdwn', text: `*Success Rate:*\n${successRate}%` },
-                { type: 'mrkdwn', text: `*Space Saved:*\n${stats.totalSavedGB.toFixed(2)} GB` },
+                {
+                  type: 'mrkdwn',
+                  text: `*Space Saved:*\n${stats.totalSavedGB.toFixed(2)} GB`,
+                },
               ],
             },
             {
               type: 'context',
-              elements: [{ type: 'mrkdwn', text: `Duration: ${stats.duration}` }],
+              elements: [
+                { type: 'mrkdwn', text: `Duration: ${stats.duration}` },
+              ],
             },
           ],
         },
@@ -213,11 +240,18 @@ export class SlackNotificationService {
     const payload: SlackWebhookPayload = {
       attachments: [
         {
-          color: alert.severity === 'critical' ? this.COLORS.ERROR : this.COLORS.WARNING,
+          color:
+            alert.severity === 'critical'
+              ? this.COLORS.ERROR
+              : this.COLORS.WARNING,
           blocks: [
             {
               type: 'header',
-              text: { type: 'plain_text', text: `${emoji} ${title}`, emoji: true },
+              text: {
+                type: 'plain_text',
+                text: `${emoji} ${title}`,
+                emoji: true,
+              },
             },
             {
               type: 'section',
@@ -238,7 +272,9 @@ export class SlackNotificationService {
   /**
    * Test webhook connection
    */
-  async testWebhook(webhookUrl: string): Promise<{ success: boolean; error?: string }> {
+  async testWebhook(
+    webhookUrl: string,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const payload: SlackWebhookPayload = {
         attachments: [
@@ -247,11 +283,18 @@ export class SlackNotificationService {
             blocks: [
               {
                 type: 'header',
-                text: { type: 'plain_text', text: '🧪 BitBonsai Test', emoji: true },
+                text: {
+                  type: 'plain_text',
+                  text: '🧪 BitBonsai Test',
+                  emoji: true,
+                },
               },
               {
                 type: 'section',
-                text: { type: 'mrkdwn', text: 'Webhook connection successful!' },
+                text: {
+                  type: 'mrkdwn',
+                  text: 'Webhook connection successful!',
+                },
               },
             ],
           },
@@ -283,14 +326,17 @@ export class SlackNotificationService {
   /**
    * Send webhook with retry logic
    */
-  private async sendWebhook(url: string, payload: SlackWebhookPayload): Promise<void> {
+  private async sendWebhook(
+    url: string,
+    payload: SlackWebhookPayload,
+  ): Promise<void> {
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
       try {
         await firstValueFrom(
           this.httpService.post(url, payload, {
             headers: { 'Content-Type': 'application/json' },
             timeout: 10000,
-          })
+          }),
         );
         this.logger.debug('Slack webhook sent successfully');
         return;

@@ -38,7 +38,10 @@ describe('MetricsRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [MetricsRepository, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [
+        MetricsRepository,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
     }).compile();
 
     repository = module.get<MetricsRepository>(MetricsRepository);
@@ -71,7 +74,11 @@ describe('MetricsRepository', () => {
     it('should filter by nodeId when provided', async () => {
       mockPrismaMetric.findMany.mockResolvedValue([mockMetric]);
 
-      await repository.findByDateRange({ startDate, endDate, nodeId: 'node-1' });
+      await repository.findByDateRange({
+        startDate,
+        endDate,
+        nodeId: 'node-1',
+      });
 
       expect(mockPrismaMetric.findMany).toHaveBeenCalledWith({
         where: {
@@ -86,7 +93,11 @@ describe('MetricsRepository', () => {
     it('should filter by licenseId when provided', async () => {
       mockPrismaMetric.findMany.mockResolvedValue([mockMetric]);
 
-      await repository.findByDateRange({ startDate, endDate, licenseId: 'license-1' });
+      await repository.findByDateRange({
+        startDate,
+        endDate,
+        licenseId: 'license-1',
+      });
 
       expect(mockPrismaMetric.findMany).toHaveBeenCalledWith({
         where: {
@@ -109,7 +120,11 @@ describe('MetricsRepository', () => {
 
   describe('aggregateByLicense', () => {
     const mockAggResult = {
-      _sum: { jobsCompleted: 100, jobsFailed: 5, totalSavedBytes: BigInt(10240) },
+      _sum: {
+        jobsCompleted: 100,
+        jobsFailed: 5,
+        totalSavedBytes: BigInt(10240),
+      },
       _avg: { avgThroughputFilesPerHour: 7.2 },
     };
 
@@ -195,7 +210,10 @@ describe('MetricsRepository', () => {
     it('should return metrics ordered by date without licenseId', async () => {
       mockPrismaMetric.findMany.mockResolvedValue([mockMetric]);
 
-      const result = await repository.findByDateRangeOrdered({ startDate, endDate });
+      const result = await repository.findByDateRangeOrdered({
+        startDate,
+        endDate,
+      });
 
       expect(result).toEqual([mockMetric]);
       expect(mockPrismaMetric.findMany).toHaveBeenCalledWith({
@@ -209,7 +227,11 @@ describe('MetricsRepository', () => {
     it('should include licenseId filter when provided', async () => {
       mockPrismaMetric.findMany.mockResolvedValue([mockMetric]);
 
-      await repository.findByDateRangeOrdered({ startDate, endDate, licenseId: 'license-1' });
+      await repository.findByDateRangeOrdered({
+        startDate,
+        endDate,
+        licenseId: 'license-1',
+      });
 
       expect(mockPrismaMetric.findMany).toHaveBeenCalledWith({
         where: {
@@ -232,7 +254,10 @@ describe('MetricsRepository', () => {
     it('should return empty array when no metrics', async () => {
       mockPrismaMetric.findMany.mockResolvedValue([]);
 
-      const result = await repository.findByDateRangeOrdered({ startDate, endDate });
+      const result = await repository.findByDateRangeOrdered({
+        startDate,
+        endDate,
+      });
 
       expect(result).toEqual([]);
     });
