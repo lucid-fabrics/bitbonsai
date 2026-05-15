@@ -25,7 +25,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci --legacy-peer-deps
-      - run: rm -rf node_modules/.prisma node_modules/@prisma/client && npx prisma generate
+      - run: npx prisma generate
       - name: Lint with auto-fix
         run: |
           npx nx run-many --target=lint --all --fix || true
@@ -53,7 +53,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci --legacy-peer-deps
-      - run: rm -rf node_modules/.prisma node_modules/@prisma/client && npx prisma generate
+      - run: npx prisma generate
       - name: Test (attempt 1)
         id: t1
         continue-on-error: true
@@ -80,7 +80,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci --legacy-peer-deps
-      - run: rm -rf node_modules/.prisma node_modules/@prisma/client && npx prisma generate
-      - run: npx nx build frontend --configuration=production
-      - run: npx nx build backend --configuration=production
-      - run: npx nx build website --configuration=production
+      - run: npx prisma generate
+      - run: npx nx build frontend --configuration=production --skip-nx-cache
+      - run: npx nx build backend --configuration=production --skip-nx-cache
+      - run: npx nx build website --configuration=production --skip-nx-cache
