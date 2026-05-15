@@ -9,9 +9,7 @@ jest.mock('child_process', () => ({
 }));
 jest.mock('util', () => ({
   ...jest.requireActual('util'),
-  promisify: jest.fn(() =>
-    jest.fn().mockResolvedValue({ stdout: '', stderr: '' }),
-  ),
+  promisify: jest.fn(() => jest.fn().mockResolvedValue({ stdout: '', stderr: '' })),
 }));
 
 describe('NFSAutoExportService', () => {
@@ -36,13 +34,11 @@ describe('NFSAutoExportService', () => {
 
   // IStorageShareRepository mock aliased to same jest.fn() instances
   const mockStorageShareRepository = {
-    deleteAllAutoManaged: jest
-      .fn()
-      .mockImplementation(() =>
-        mockPrismaService.storageShare.deleteMany({
-          where: { autoManaged: true },
-        }),
-      ),
+    deleteAllAutoManaged: jest.fn().mockImplementation(() =>
+      mockPrismaService.storageShare.deleteMany({
+        where: { autoManaged: true },
+      })
+    ),
     findBySharePath: mockPrismaService.storageShare.findFirst,
     create: mockPrismaService.storageShare.create,
   };
@@ -124,9 +120,7 @@ describe('NFSAutoExportService', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      mockPrismaService.storageShare.deleteMany.mockRejectedValue(
-        new Error('DB error'),
-      );
+      mockPrismaService.storageShare.deleteMany.mockRejectedValue(new Error('DB error'));
 
       await expect(service.removeAutoManagedExports()).resolves.not.toThrow();
     });
@@ -203,9 +197,7 @@ describe('NFSAutoExportService', () => {
         { source: '/mnt/user/media', destination: '/media', readOnly: true },
       ]);
       mockPrismaService.storageShare.findFirst.mockResolvedValue(null);
-      mockPrismaService.storageShare.create.mockRejectedValue(
-        new Error('create failed'),
-      );
+      mockPrismaService.storageShare.create.mockRejectedValue(new Error('create failed'));
       mockVolumeDetector.getSuggestedShareName.mockReturnValue('media');
 
       await expect(service.autoExportDockerVolumes()).resolves.not.toThrow();

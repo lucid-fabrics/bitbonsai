@@ -36,7 +36,7 @@ class TestError extends BaseError {
     statusCode = 500,
     errorCode = 'TEST',
     isOperational = true,
-    context?: Record<string, unknown>,
+    context?: Record<string, unknown>
   ) {
     super(message, statusCode, errorCode, isOperational, context);
   }
@@ -181,10 +181,7 @@ describe('Custom Error Classes', () => {
     });
 
     it('should create FileAccessError', () => {
-      const error = new FileAccessError(
-        '/media/video.mkv',
-        'Permission denied',
-      );
+      const error = new FileAccessError('/media/video.mkv', 'Permission denied');
 
       expect(error.statusCode).toBe(422);
       expect(error.errorCode).toBe('FILE_ACCESS_ERROR');
@@ -218,11 +215,7 @@ describe('Custom Error Classes', () => {
     });
 
     it('should create DuplicateResourceError', () => {
-      const error = new DuplicateResourceError(
-        'Library',
-        'path',
-        '/media/movies',
-      );
+      const error = new DuplicateResourceError('Library', 'path', '/media/movies');
 
       expect(error.statusCode).toBe(409);
       expect(error.errorCode).toBe('DUPLICATE_RESOURCE');
@@ -258,7 +251,7 @@ describe('Custom Error Classes', () => {
         expect.objectContaining({
           service: 'Plex',
           reason: 'Connection refused',
-        }),
+        })
       );
     });
 
@@ -283,7 +276,7 @@ describe('Custom Error Classes', () => {
       expect(error.statusCode).toBe(503);
       expect(error.errorCode).toBe('NETWORK_ERROR');
       expect(error.context).toEqual(
-        expect.objectContaining({ endpoint: 'https://api.example.com' }),
+        expect.objectContaining({ endpoint: 'https://api.example.com' })
       );
     });
   });

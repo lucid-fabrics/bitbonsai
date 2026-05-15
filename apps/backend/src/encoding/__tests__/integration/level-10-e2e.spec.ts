@@ -45,9 +45,7 @@ describe('Level 10: Full End-to-End Integration Suite', () => {
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
     _queueService = moduleRef.get<QueueService>(QueueService);
-    encodingProcessor = moduleRef.get<EncodingProcessorService>(
-      EncodingProcessorService,
-    );
+    encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
     _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     // Initialize in-memory database

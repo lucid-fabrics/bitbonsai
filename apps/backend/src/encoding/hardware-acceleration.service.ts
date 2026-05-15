@@ -39,10 +39,7 @@ export class HardwareAccelerationService {
 
     // Check NVIDIA GPU
     try {
-      const nvidiaSmi = spawn('nvidia-smi', [
-        '--query-gpu=name',
-        '--format=csv,noheader',
-      ]);
+      const nvidiaSmi = spawn('nvidia-smi', ['--query-gpu=name', '--format=csv,noheader']);
 
       const timeoutId = setTimeout(() => {
         nvidiaSmi.kill('SIGKILL');
@@ -77,9 +74,7 @@ export class HardwareAccelerationService {
 
     // Check Intel QSV
     if (existsSync('/dev/dri/renderD128')) {
-      this.logger.log(
-        'Intel QSV detected - using Quick Sync Video acceleration',
-      );
+      this.logger.log('Intel QSV detected - using Quick Sync Video acceleration');
       return {
         type: 'INTEL_QSV',
         flags: ['-hwaccel', 'qsv', '-c:v', 'h264_qsv'],
@@ -159,12 +154,10 @@ export class HardwareAccelerationService {
 
     // Get the codec for this combination, with fallbacks
     const selectedCodec =
-      codecMap[targetCodec]?.[hwType] ||
-      codecMap[targetCodec]?.CPU ||
-      'libx265';
+      codecMap[targetCodec]?.[hwType] || codecMap[targetCodec]?.CPU || 'libx265';
 
     this.logger.log(
-      `Codec selection: ${targetCodec} (policy) + ${hwType} (hardware) = ${selectedCodec}`,
+      `Codec selection: ${targetCodec} (policy) + ${hwType} (hardware) = ${selectedCodec}`
     );
 
     return selectedCodec;

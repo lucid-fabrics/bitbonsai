@@ -4,11 +4,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslocoModule } from '@ngneat/transloco';
 import { BytesBo } from '../../bos/bytes.bo';
 import { NodeBo } from '../../bos/node.bo';
-import {
-  AccelerationType,
-  NodeRole,
-  NodeStatus,
-} from '../../models/node.model';
+import { AccelerationType, NodeRole, NodeStatus } from '../../models/node.model';
 import type { NodeStats } from '../../models/node-stats.model';
 
 export interface NodeStatsModalData {

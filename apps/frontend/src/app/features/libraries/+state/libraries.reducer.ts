@@ -100,5 +100,5 @@ export const librariesReducer = createReducer(
     ...state,
     error,
     isLoading: false,
-  })),
+  }))
 );

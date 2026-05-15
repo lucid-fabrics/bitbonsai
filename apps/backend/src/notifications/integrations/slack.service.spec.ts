@@ -55,9 +55,7 @@ describe('SlackNotificationService', () => {
         attachments: Array<{ color: string; blocks: Array<{ type: string }> }>;
       };
       expect(postedPayload.attachments[0].color).toBe('#00ff00');
-      expect(
-        postedPayload.attachments[0].blocks.some((b) => b.type === 'header'),
-      ).toBe(true);
+      expect(postedPayload.attachments[0].blocks.some((b) => b.type === 'header')).toBe(true);
     });
 
     it('should do nothing when no webhook URL is configured', async () => {
@@ -87,7 +85,7 @@ describe('SlackNotificationService', () => {
         }>;
       };
       const sectionBlock = postedPayload.attachments[0].blocks.find(
-        (b) => b.type === 'section' && b.fields,
+        (b) => b.type === 'section' && b.fields
       );
       const fields = sectionBlock?.fields?.map((f) => f.text).join(' ') ?? '';
       expect(fields).toContain('Space Saved');
@@ -212,9 +210,7 @@ describe('SlackNotificationService', () => {
     });
 
     it('should return success:true even when webhook errors are swallowed by retry logic', async () => {
-      httpService.post.mockReturnValue(
-        throwError(() => new Error('Webhook not found')),
-      );
+      httpService.post.mockReturnValue(throwError(() => new Error('Webhook not found')));
 
       const result = await service.testWebhook(mockWebhookUrl);
 

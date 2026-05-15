@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpException,
-  HttpStatus,
-  Param,
-  Post,
-  Put,
-} from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Put } from '@nestjs/common';
 import {
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
@@ -40,7 +31,7 @@ import { ReliabilityTrackerService } from './services/reliability-tracker.servic
 export class DistributionController {
   constructor(
     private readonly orchestrator: DistributionOrchestratorService,
-    private readonly reliabilityTracker: ReliabilityTrackerService,
+    private readonly reliabilityTracker: ReliabilityTrackerService
   ) {}
 
   @Get('scores/:jobId')
@@ -56,10 +47,7 @@ export class DistributionController {
     const scores = await this.orchestrator.getAllNodeScores(jobId);
 
     if (scores.length === 0) {
-      throw new HttpException(
-        'Job not found or no online nodes',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Job not found or no online nodes', HttpStatus.NOT_FOUND);
     }
 
     return {
@@ -78,8 +66,7 @@ export class DistributionController {
   @Get('scores/:jobId/:nodeId')
   @ApiOperation({
     summary: 'Get detailed score for a specific node',
-    description:
-      'Returns detailed scoring breakdown for a specific job-node pair.',
+    description: 'Returns detailed scoring breakdown for a specific job-node pair.',
   })
   @ApiParam({ name: 'jobId', description: 'Job ID' })
   @ApiParam({ name: 'nodeId', description: 'Node ID' })
@@ -87,7 +74,7 @@ export class DistributionController {
   @ApiNotFoundResponse({ description: 'Node score not found' })
   async getNodeScoreDetail(
     @Param('jobId') jobId: string,
-    @Param('nodeId') nodeId: string,
+    @Param('nodeId') nodeId: string
   ): Promise<unknown> {
     const scores = await this.orchestrator.getAllNodeScores(jobId);
     const nodeScore = scores.find((s) => s.nodeId === nodeId);
@@ -110,16 +97,12 @@ export class DistributionController {
   @Post('assign/:jobId')
   @ApiOperation({
     summary: 'Assign or migrate a job to a node',
-    description:
-      'Assigns a job to the optimal node, or to a specific node if nodeId is provided.',
+    description: 'Assigns a job to the optimal node, or to a specific node if nodeId is provided.',
   })
   @ApiParam({ name: 'jobId', description: 'Job ID to assign' })
   @ApiOkResponse({ description: 'Job assigned successfully' })
   @ApiNotFoundResponse({ description: 'Job or node not found' })
-  async assignJob(
-    @Param('jobId') jobId: string,
-    @Body() dto: AssignJobDto,
-  ): Promise<unknown> {
+  async assignJob(@Param('jobId') jobId: string, @Body() dto: AssignJobDto): Promise<unknown> {
     const result = await this.orchestrator.assignJob(jobId, dto.nodeId);
 
     if (!result) {
@@ -169,16 +152,13 @@ export class DistributionController {
   @ApiOkResponse({ description: 'Config updated' })
   @ApiInternalServerErrorResponse({ description: 'Failed to update config' })
   async updateConfig(@Body() dto: UpdateConfigDto): Promise<unknown> {
-    return this.orchestrator.updateConfig(
-      dto as unknown as Record<string, unknown>,
-    );
+    return this.orchestrator.updateConfig(dto as unknown as Record<string, unknown>);
   }
 
   @Get('summary')
   @ApiOperation({
     summary: 'Get distribution summary',
-    description:
-      'Returns summary of job distribution across nodes for dashboard.',
+    description: 'Returns summary of job distribution across nodes for dashboard.',
   })
   @ApiOkResponse({ description: 'Distribution summary retrieved' })
   async getSummary(): Promise<unknown> {
@@ -197,7 +177,7 @@ export class DistributionController {
     const summary = await this.reliabilityTracker.getFailureSummary(nodeId);
     const isUnreliable = this.reliabilityTracker.isUnreliable(
       summary.count24h,
-      summary.failureRate,
+      summary.failureRate
     );
 
     return {
@@ -210,8 +190,7 @@ export class DistributionController {
   @Get('capacity')
   @ApiOperation({
     summary: 'Get capacity status for all nodes',
-    description:
-      'Returns current capacity and load status for all online nodes.',
+    description: 'Returns current capacity and load status for all online nodes.',
   })
   @ApiOkResponse({ description: 'Node capacity status' })
   async getNodesCapacity(): Promise<unknown> {
@@ -221,8 +200,7 @@ export class DistributionController {
   @Post('simulate/:jobId')
   @ApiOperation({
     summary: 'Simulate job assignment (dry run)',
-    description:
-      'Returns what node would be selected for a job without actually assigning it.',
+    description: 'Returns what node would be selected for a job without actually assigning it.',
   })
   @ApiParam({ name: 'jobId', description: 'Job ID to simulate' })
   @ApiOkResponse({ description: 'Simulation result' })

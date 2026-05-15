@@ -21,7 +21,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
         if (!secret) {
           throw new Error(
             'JWT_SECRET environment variable is required. ' +
-              'Generate a strong secret with: openssl rand -base64 32',
+              'Generate a strong secret with: openssl rand -base64 32'
           );
         }
         return {

@@ -26,8 +26,7 @@ export class FilesystemService {
       const normalizedPath = this.sanitizePath(path || '/');
 
       // Get parent path
-      const parentPath =
-        normalizedPath === '/' ? null : dirname(normalizedPath);
+      const parentPath = normalizedPath === '/' ? null : dirname(normalizedPath);
 
       // Read directory contents
       const entries = await readdir(normalizedPath, { withFileTypes: true });
@@ -95,9 +94,7 @@ export class FilesystemService {
     // Block certain sensitive directories
     const blockedPaths = ['/etc/shadow', '/etc/passwd', '/root/.ssh'];
     if (blockedPaths.some((blocked) => absolutePath.startsWith(blocked))) {
-      throw new BadRequestException(
-        'Access denied to sensitive system directories',
-      );
+      throw new BadRequestException('Access denied to sensitive system directories');
     }
 
     return absolutePath;

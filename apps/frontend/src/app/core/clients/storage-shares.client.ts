@@ -160,9 +160,7 @@ export class StorageSharesClient {
    * Get mounted shares for a node
    */
   getMountedSharesByNode(nodeId: string): Observable<StorageShare[]> {
-    return this.http.get<StorageShare[]>(
-      `${this.apiUrl}/node/${nodeId}/mounted`,
-    );
+    return this.http.get<StorageShare[]>(`${this.apiUrl}/node/${nodeId}/mounted`);
   }
 
   /**
@@ -175,10 +173,7 @@ export class StorageSharesClient {
   /**
    * Update storage share configuration
    */
-  updateShare(
-    id: string,
-    request: UpdateStorageShareRequest,
-  ): Observable<StorageShare> {
+  updateShare(id: string, request: UpdateStorageShareRequest): Observable<StorageShare> {
     return this.http.patch<StorageShare>(`${this.apiUrl}/${id}`, request);
   }
 
@@ -217,42 +212,32 @@ export class StorageSharesClient {
    */
   testConnectivity(
     serverAddress: string,
-    protocol?: StorageProtocol,
+    protocol?: StorageProtocol
   ): Observable<ShareConnectivityTest> {
-    return this.http.post<ShareConnectivityTest>(
-      `${this.apiUrl}/test-connectivity`,
-      {
-        serverAddress,
-        protocol,
-      },
-    );
+    return this.http.post<ShareConnectivityTest>(`${this.apiUrl}/test-connectivity`, {
+      serverAddress,
+      protocol,
+    });
   }
 
   /**
    * Get storage statistics for a node
    */
   getNodeStats(nodeId: string): Observable<StorageShareStats> {
-    return this.http.get<StorageShareStats>(
-      `${this.apiUrl}/node/${nodeId}/stats`,
-    );
+    return this.http.get<StorageShareStats>(`${this.apiUrl}/node/${nodeId}/stats`);
   }
 
   /**
    * Auto-detect available storage shares
    */
   autoDetectShares(nodeId: string): Observable<StorageShare[]> {
-    return this.http.post<StorageShare[]>(
-      `${this.apiUrl}/node/${nodeId}/auto-detect`,
-      {},
-    );
+    return this.http.post<StorageShare[]>(`${this.apiUrl}/node/${nodeId}/auto-detect`, {});
   }
 
   /**
    * Auto-detect and auto-mount storage shares
    */
-  autoDetectAndMount(
-    nodeId: string,
-  ): Observable<{
+  autoDetectAndMount(nodeId: string): Observable<{
     detected: number;
     created: number;
     mounted: number;
@@ -279,7 +264,7 @@ export class StorageSharesClient {
   autoExportDockerVolumes(): Observable<{ success: boolean; message: string }> {
     return this.http.post<{ success: boolean; message: string }>(
       `${this.apiUrl}/auto-export-docker-volumes`,
-      {},
+      {}
     );
   }
 }

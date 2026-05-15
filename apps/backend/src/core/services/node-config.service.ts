@@ -66,7 +66,7 @@ export class NodeConfigService implements OnModuleInit {
 
       if (!nodeId) {
         this.logger.warn(
-          '⚠️  No node found in database - configuration not loaded (this is normal during initial setup)',
+          '⚠️  No node found in database - configuration not loaded (this is normal during initial setup)'
         );
         return;
       }
@@ -87,9 +87,7 @@ export class NodeConfigService implements OnModuleInit {
       });
 
       if (!node) {
-        this.logger.error(
-          `Node with ID ${nodeId} not found in database - ID may be stale`,
-        );
+        this.logger.error(`Node with ID ${nodeId} not found in database - ID may be stale`);
         // Clear persisted ID and retry detection
         this.clearPersistedNodeId();
         const retryNodeId = await this.detectCurrentNodeId();
@@ -112,13 +110,10 @@ export class NodeConfigService implements OnModuleInit {
       this.persistNodeId(node.id);
 
       this.logger.log(
-        `✅ Node configuration loaded: ${node.name} (${node.role}), id=${node.id}, mainApiUrl=${node.mainNodeUrl || 'N/A'}`,
+        `✅ Node configuration loaded: ${node.name} (${node.role}), id=${node.id}, mainApiUrl=${node.mainNodeUrl || 'N/A'}`
       );
     } catch (error: unknown) {
-      this.logger.error(
-        'Failed to load node configuration from database:',
-        error,
-      );
+      this.logger.error('Failed to load node configuration from database:', error);
       throw error;
     }
   }
@@ -147,21 +142,14 @@ export class NodeConfigService implements OnModuleInit {
     const persistedNodeId = this.getPersistedNodeId();
     if (persistedNodeId) {
       // Verify the persisted ID still exists in database
-      const exists = await this.nodeRepository.findWithSelect<{ id: string }>(
-        persistedNodeId,
-        {
-          id: true,
-        },
-      );
+      const exists = await this.nodeRepository.findWithSelect<{ id: string }>(persistedNodeId, {
+        id: true,
+      });
       if (exists) {
-        this.logger.log(
-          `📁 Using persisted NODE_ID from ${this.NODE_ID_FILE}: ${persistedNodeId}`,
-        );
+        this.logger.log(`📁 Using persisted NODE_ID from ${this.NODE_ID_FILE}: ${persistedNodeId}`);
         return persistedNodeId;
       }
-      this.logger.warn(
-        `⚠️  Persisted NODE_ID ${persistedNodeId} no longer exists in database`,
-      );
+      this.logger.warn(`⚠️  Persisted NODE_ID ${persistedNodeId} no longer exists in database`);
       this.clearPersistedNodeId();
     }
 
@@ -173,7 +161,7 @@ export class NodeConfigService implements OnModuleInit {
         .then((nodes) => nodes[0] ?? null);
       if (nodeByIp) {
         this.logger.log(
-          `🌐 Detected node by IP address ${currentIp}: ${nodeByIp.name} (${nodeByIp.role})`,
+          `🌐 Detected node by IP address ${currentIp}: ${nodeByIp.name} (${nodeByIp.role})`
         );
         return nodeByIp.id;
       }
@@ -185,23 +173,16 @@ export class NodeConfigService implements OnModuleInit {
       orderBy: { createdAt: 'desc' },
     });
     if (mainNode) {
-      this.logger.log(
-        `🏠 Falling back to MAIN node: ${mainNode.name} (${mainNode.id})`,
-      );
+      this.logger.log(`🏠 Falling back to MAIN node: ${mainNode.name} (${mainNode.id})`);
       return mainNode.id;
     }
 
     // Then try first LINKED node
-    const linkedNode = await this.nodeRepository.findFirstByRole(
-      NodeRole.LINKED,
-      {
-        orderBy: { createdAt: 'asc' },
-      },
-    );
+    const linkedNode = await this.nodeRepository.findFirstByRole(NodeRole.LINKED, {
+      orderBy: { createdAt: 'asc' },
+    });
     if (linkedNode) {
-      this.logger.log(
-        `🔗 Falling back to LINKED node: ${linkedNode.name} (${linkedNode.id})`,
-      );
+      this.logger.log(`🔗 Falling back to LINKED node: ${linkedNode.name} (${linkedNode.id})`);
       return linkedNode.id;
     }
 
@@ -244,10 +225,7 @@ export class NodeConfigService implements OnModuleInit {
         }
       }
     } catch (error: unknown) {
-      this.logger.warn(
-        `Failed to read persisted node ID from ${this.NODE_ID_FILE}:`,
-        error,
-      );
+      this.logger.warn(`Failed to read persisted node ID from ${this.NODE_ID_FILE}:`, error);
     }
     return null;
   }
@@ -266,10 +244,7 @@ export class NodeConfigService implements OnModuleInit {
       fs.writeFileSync(this.NODE_ID_FILE, nodeId, 'utf-8');
       this.logger.debug(`📁 Persisted node ID to ${this.NODE_ID_FILE}`);
     } catch (error: unknown) {
-      this.logger.warn(
-        `Failed to persist node ID to ${this.NODE_ID_FILE}:`,
-        error,
-      );
+      this.logger.warn(`Failed to persist node ID to ${this.NODE_ID_FILE}:`, error);
       // Non-fatal - continue without persistence
     }
   }
@@ -282,15 +257,10 @@ export class NodeConfigService implements OnModuleInit {
     try {
       if (fs.existsSync(this.NODE_ID_FILE)) {
         fs.unlinkSync(this.NODE_ID_FILE);
-        this.logger.debug(
-          `🗑️ Cleared persisted node ID from ${this.NODE_ID_FILE}`,
-        );
+        this.logger.debug(`🗑️ Cleared persisted node ID from ${this.NODE_ID_FILE}`);
       }
     } catch (error: unknown) {
-      this.logger.warn(
-        `Failed to clear persisted node ID from ${this.NODE_ID_FILE}:`,
-        error,
-      );
+      this.logger.warn(`Failed to clear persisted node ID from ${this.NODE_ID_FILE}:`, error);
     }
   }
 

@@ -16,12 +16,10 @@ export class NodesEffects {
       switchMap(() =>
         this.nodesService.getNodes().pipe(
           map((nodes) => NodesActions.loadNodesSuccess({ nodes })),
-          catchError((error) =>
-            of(NodesActions.loadNodesFailure({ error: error.message })),
-          ),
-        ),
-      ),
-    ),
+          catchError((error) => of(NodesActions.loadNodesFailure({ error: error.message })))
+        )
+      )
+    )
   );
 
   registerNode$ = createEffect(() =>
@@ -30,12 +28,10 @@ export class NodesEffects {
       switchMap(() =>
         this.nodesService.register().pipe(
           map((response) => NodesActions.registerNodeSuccess({ response })),
-          catchError((error) =>
-            of(NodesActions.registerNodeFailure({ error: error.message })),
-          ),
-        ),
-      ),
-    ),
+          catchError((error) => of(NodesActions.registerNodeFailure({ error: error.message })))
+        )
+      )
+    )
   );
 
   pairNode$ = createEffect(() =>
@@ -44,12 +40,10 @@ export class NodesEffects {
       switchMap(({ request }) =>
         this.nodesService.pair(request).pipe(
           map((response) => NodesActions.pairNodeSuccess({ response })),
-          catchError((error) =>
-            of(NodesActions.pairNodeFailure({ error: error.message })),
-          ),
-        ),
-      ),
-    ),
+          catchError((error) => of(NodesActions.pairNodeFailure({ error: error.message })))
+        )
+      )
+    )
   );
 
   deleteNode$ = createEffect(() =>
@@ -58,11 +52,9 @@ export class NodesEffects {
       switchMap(({ id }) =>
         this.nodesService.deleteNode(id).pipe(
           map(() => NodesActions.deleteNodeSuccess({ id })),
-          catchError((error) =>
-            of(NodesActions.deleteNodeFailure({ error: error.message })),
-          ),
-        ),
-      ),
-    ),
+          catchError((error) => of(NodesActions.deleteNodeFailure({ error: error.message })))
+        )
+      )
+    )
   );
 }

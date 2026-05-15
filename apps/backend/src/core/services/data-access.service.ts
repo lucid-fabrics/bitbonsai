@@ -26,13 +26,11 @@ export class DataAccessService {
   constructor(
     readonly _prisma: PrismaService,
     private readonly httpService: HttpService,
-    private readonly nodeConfig: NodeConfigService,
+    private readonly nodeConfig: NodeConfigService
   ) {
     // Configuration is now loaded from database via NodeConfigService
     // No synchronous initialization needed - config is fetched on-demand
-    this.logger.log(
-      '🔧 [DataAccessService] Initialized with database-driven configuration',
-    );
+    this.logger.log('🔧 [DataAccessService] Initialized with database-driven configuration');
   }
 
   /**
@@ -63,42 +61,35 @@ export class DataAccessService {
       // MAIN mode: Direct Prisma access (via QueueService in the caller)
       // This method is a pass-through - actual implementation is in the caller
       throw new Error(
-        'getNextJob should not be called directly on MAIN nodes - use QueueService.getNextJob() instead',
+        'getNextJob should not be called directly on MAIN nodes - use QueueService.getNextJob() instead'
       );
     }
 
     // LINKED mode: Call MAIN node's API
     try {
-      this.logger.debug(
-        `[LINKED] Getting next job for node ${nodeId} from MAIN API`,
-      );
+      this.logger.debug(`[LINKED] Getting next job for node ${nodeId} from MAIN API`);
 
       const response: AxiosResponse<Job | null> = await firstValueFrom(
-        this.httpService.get<Job | null>(
-          `${this.mainApiUrl}/api/v1/queue/next-job`,
-          {
-            params: { nodeId },
-            timeout: 10000, // 10 second timeout
-          },
-        ),
+        this.httpService.get<Job | null>(`${this.mainApiUrl}/api/v1/queue/next-job`, {
+          params: { nodeId },
+          timeout: 10000, // 10 second timeout
+        })
       );
 
       const job = response.data || null;
 
       if (job) {
         this.logger.log(
-          `[LINKED] Received job ${job.id} (${job.fileLabel}) from MAIN API for node ${nodeId}`,
+          `[LINKED] Received job ${job.id} (${job.fileLabel}) from MAIN API for node ${nodeId}`
         );
       } else {
-        this.logger.debug(
-          `[LINKED] No jobs available from MAIN API for node ${nodeId}`,
-        );
+        this.logger.debug(`[LINKED] No jobs available from MAIN API for node ${nodeId}`);
       }
 
       return job;
     } catch (error: unknown) {
       this.logger.error(
-        `[LINKED] Failed to get next job from MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `[LINKED] Failed to get next job from MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       throw error;
     }
@@ -114,22 +105,18 @@ export class DataAccessService {
    * @param progress - Current completion percentage (0-100)
    * @param etaSeconds - Estimated time to completion in seconds
    */
-  async updateJobProgress(
-    jobId: string,
-    progress: number,
-    etaSeconds: number,
-  ): Promise<void> {
+  async updateJobProgress(jobId: string, progress: number, etaSeconds: number): Promise<void> {
     if (this.nodeRole === 'MAIN') {
       // MAIN mode: Pass-through to caller's QueueService
       throw new Error(
-        'updateJobProgress should not be called directly on MAIN nodes - use QueueService.updateProgress() instead',
+        'updateJobProgress should not be called directly on MAIN nodes - use QueueService.updateProgress() instead'
       );
     }
 
     // LINKED mode: Call MAIN node's API
     try {
       this.logger.debug(
-        `[LINKED] Updating job ${jobId} progress to ${progress.toFixed(1)}% (ETA: ${etaSeconds}s)`,
+        `[LINKED] Updating job ${jobId} progress to ${progress.toFixed(1)}% (ETA: ${etaSeconds}s)`
       );
 
       await firstValueFrom(
@@ -141,16 +128,14 @@ export class DataAccessService {
           },
           {
             timeout: 5000, // 5 second timeout
-          },
-        ),
+          }
+        )
       );
 
-      this.logger.debug(
-        `[LINKED] Successfully updated job ${jobId} progress on MAIN API`,
-      );
+      this.logger.debug(`[LINKED] Successfully updated job ${jobId} progress on MAIN API`);
     } catch (error: unknown) {
       this.logger.error(
-        `[LINKED] Failed to update job progress on MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `[LINKED] Failed to update job progress on MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       // Don't throw - progress updates are not critical, we don't want to fail the entire job
     }
@@ -169,12 +154,12 @@ export class DataAccessService {
   async updateJobStage(
     jobId: string,
     stage: JobStage,
-    data?: Record<string, unknown>,
+    data?: Record<string, unknown>
   ): Promise<void> {
     if (this.nodeRole === 'MAIN') {
       // MAIN mode: Pass-through to caller's QueueService
       throw new Error(
-        'updateJobStage should not be called directly on MAIN nodes - use QueueService.updateProgress() instead',
+        'updateJobStage should not be called directly on MAIN nodes - use QueueService.updateProgress() instead'
       );
     }
 
@@ -191,16 +176,14 @@ export class DataAccessService {
           },
           {
             timeout: 5000, // 5 second timeout
-          },
-        ),
+          }
+        )
       );
 
-      this.logger.log(
-        `[LINKED] Successfully updated job ${jobId} stage to ${stage} on MAIN API`,
-      );
+      this.logger.log(`[LINKED] Successfully updated job ${jobId} stage to ${stage} on MAIN API`);
     } catch (error: unknown) {
       this.logger.error(
-        `[LINKED] Failed to update job stage on MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `[LINKED] Failed to update job stage on MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       throw error;
     }
@@ -218,15 +201,13 @@ export class DataAccessService {
     if (this.nodeRole === 'MAIN') {
       // MAIN mode: Pass-through to caller's NodesService
       throw new Error(
-        'sendHeartbeat should not be called directly on MAIN nodes - use NodesService.heartbeat() instead',
+        'sendHeartbeat should not be called directly on MAIN nodes - use NodesService.heartbeat() instead'
       );
     }
 
     // LINKED mode: Call MAIN node's API
     try {
-      this.logger.debug(
-        `[LINKED] Sending heartbeat for node ${nodeId} to MAIN API`,
-      );
+      this.logger.debug(`[LINKED] Sending heartbeat for node ${nodeId} to MAIN API`);
 
       // Detect this node's IP address to send to main node
       // This ensures the main node updates the correct IP for this child node
@@ -241,16 +222,14 @@ export class DataAccessService {
           },
           {
             timeout: 5000, // 5 second timeout
-          },
-        ),
+          }
+        )
       );
 
-      this.logger.debug(
-        `[LINKED] Successfully sent heartbeat for node ${nodeId} to MAIN API`,
-      );
+      this.logger.debug(`[LINKED] Successfully sent heartbeat for node ${nodeId} to MAIN API`);
     } catch (error: unknown) {
       this.logger.error(
-        `[LINKED] Failed to send heartbeat to MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `[LINKED] Failed to send heartbeat to MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       // Don't throw - heartbeat failures are not critical
     }
@@ -271,9 +250,7 @@ export class DataAccessService {
 
         for (const addr of addrs) {
           if (addr.family === 'IPv4' && !addr.internal) {
-            this.logger.debug(
-              `[LINKED] Detected local IP address: ${addr.address} on ${name}`,
-            );
+            this.logger.debug(`[LINKED] Detected local IP address: ${addr.address} on ${name}`);
             return { ipAddress: addr.address };
           }
         }
@@ -300,7 +277,7 @@ export class DataAccessService {
     if (this.nodeRole === 'MAIN') {
       // MAIN mode: Pass-through to caller's NodesService
       throw new Error(
-        'getNode should not be called directly on MAIN nodes - use NodesService.findOne() instead',
+        'getNode should not be called directly on MAIN nodes - use NodesService.findOne() instead'
       );
     }
 
@@ -309,21 +286,16 @@ export class DataAccessService {
       this.logger.debug(`[LINKED] Getting node ${nodeId} info from MAIN API`);
 
       const response: AxiosResponse<Node> = await firstValueFrom(
-        this.httpService.get<Node>(
-          `${this.mainApiUrl}/api/v1/nodes/${nodeId}`,
-          {
-            timeout: 5000, // 5 second timeout
-          },
-        ),
+        this.httpService.get<Node>(`${this.mainApiUrl}/api/v1/nodes/${nodeId}`, {
+          timeout: 5000, // 5 second timeout
+        })
       );
 
-      this.logger.debug(
-        `[LINKED] Successfully retrieved node ${nodeId} info from MAIN API`,
-      );
+      this.logger.debug(`[LINKED] Successfully retrieved node ${nodeId} info from MAIN API`);
       return response.data;
     } catch (error: unknown) {
       this.logger.error(
-        `[LINKED] Failed to get node info from MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `[LINKED] Failed to get node info from MAIN API: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       throw error;
     }

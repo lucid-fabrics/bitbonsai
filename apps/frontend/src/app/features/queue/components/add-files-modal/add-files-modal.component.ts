@@ -35,11 +35,7 @@ import type {
 } from '../../../libraries/models/library.model';
 import { BytesBo } from '../../../nodes/bos/bytes.bo';
 
-type ViewMode =
-  | 'library-selection'
-  | 'file-selection'
-  | 'creating-jobs'
-  | 'results';
+type ViewMode = 'library-selection' | 'file-selection' | 'creating-jobs' | 'results';
 
 @Component({
   selector: 'app-add-files-modal',
@@ -82,9 +78,7 @@ export class AddFilesModalComponent implements OnDestroy {
 
   // Job creation state
   protected isCreatingJobs$ = new BehaviorSubject<boolean>(false);
-  protected creationResult$ = new BehaviorSubject<BulkJobCreationResult | null>(
-    null,
-  );
+  protected creationResult$ = new BehaviorSubject<BulkJobCreationResult | null>(null);
   protected creationError$ = new BehaviorSubject<string | null>(null);
 
   constructor() {
@@ -97,12 +91,10 @@ export class AddFilesModalComponent implements OnDestroy {
       }),
       catchError((error) => {
         this.isLoadingLibraries$.next(false);
-        this.librariesError$.next(
-          error?.message || 'Failed to load libraries. Please try again.',
-        );
+        this.librariesError$.next(error?.message || 'Failed to load libraries. Please try again.');
         return of([]);
       }),
-      shareReplay(1), // Cache the result and share among all subscribers
+      shareReplay(1) // Cache the result and share among all subscribers
     );
 
     // Load cache metadata on init
@@ -171,7 +163,7 @@ export class AddFilesModalComponent implements OnDestroy {
       .refreshReadyFilesCache()
       .pipe(
         switchMap(() => this.librariesApi.getAllReadyFiles()),
-        takeUntilDestroyed(this.destroyRef),
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: (_previews) => {
@@ -185,9 +177,7 @@ export class AddFilesModalComponent implements OnDestroy {
         },
         error: (error) => {
           this.isRefreshing$.next(false);
-          this.librariesError$.next(
-            error?.message || 'Failed to refresh cache. Please try again.',
-          );
+          this.librariesError$.next(error?.message || 'Failed to refresh cache. Please try again.');
         },
       });
   }
@@ -202,9 +192,7 @@ export class AddFilesModalComponent implements OnDestroy {
 
     // Select only files that can be added to queue (exclude already encoded, in progress, etc.)
     const selectableFilePaths = new Set(
-      preview.needsEncoding
-        .filter((file) => file.canAddToQueue)
-        .map((file) => file.filePath),
+      preview.needsEncoding.filter((file) => file.canAddToQueue).map((file) => file.filePath)
     );
     this.selectedFiles$.next(selectableFilePaths);
 
@@ -243,9 +231,7 @@ export class AddFilesModalComponent implements OnDestroy {
 
     // Only select files that can be added to queue
     const selectableFilePaths = new Set(
-      library.needsEncoding
-        .filter((file) => file.canAddToQueue)
-        .map((file) => file.filePath),
+      library.needsEncoding.filter((file) => file.canAddToQueue).map((file) => file.filePath)
     );
     this.selectedFiles$.next(selectableFilePaths);
   }
@@ -306,9 +292,7 @@ export class AddFilesModalComponent implements OnDestroy {
         },
         error: (error) => {
           this.isCreatingJobs$.next(false);
-          this.creationError$.next(
-            error?.message || 'Failed to create jobs. Please try again.',
-          );
+          this.creationError$.next(error?.message || 'Failed to create jobs. Please try again.');
           this.viewMode$.next('file-selection');
         },
       });

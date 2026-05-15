@@ -119,11 +119,7 @@ export class StripeService {
 
     let event: Stripe.Event;
     try {
-      event = this.stripe.webhooks.constructEvent(
-        rawBody,
-        signature,
-        webhookSecret,
-      );
+      event = this.stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch (err: unknown) {
       this.logger.error('Webhook signature verification failed', err);
       throw new UnauthorizedException('Invalid webhook signature');
@@ -133,21 +129,15 @@ export class StripeService {
 
     switch (event.type) {
       case 'checkout.session.completed':
-        await this.handleCheckoutComplete(
-          event.data.object as Stripe.Checkout.Session,
-        );
+        await this.handleCheckoutComplete(event.data.object as Stripe.Checkout.Session);
         break;
 
       case 'customer.subscription.updated':
-        await this.handleSubscriptionUpdated(
-          event.data.object as Stripe.Subscription,
-        );
+        await this.handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
         break;
 
       case 'customer.subscription.deleted':
-        await this.handleSubscriptionDeleted(
-          event.data.object as Stripe.Subscription,
-        );
+        await this.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
         break;
 
       case 'invoice.payment_failed':
@@ -162,9 +152,7 @@ export class StripeService {
   /**
    * Handle successful checkout
    */
-  private async handleCheckoutComplete(
-    session: Stripe.Checkout.Session,
-  ): Promise<void> {
+  private async handleCheckoutComplete(session: Stripe.Checkout.Session): Promise<void> {
     const email = session.customer_email || session.metadata?.email;
     const customerId = session.customer as string;
     const subscriptionId = session.subscription as string;
@@ -175,8 +163,7 @@ export class StripeService {
     }
 
     // Get subscription to find price/tier
-    const subscription =
-      await this.stripe?.subscriptions.retrieve(subscriptionId);
+    const subscription = await this.stripe?.subscriptions.retrieve(subscriptionId);
     if (!subscription) {
       this.logger.error('Failed to retrieve subscription from Stripe');
       return;
@@ -227,7 +214,7 @@ export class StripeService {
           stripeCustomerId: customerId,
           stripeSubscriptionId: subscriptionId,
           features,
-        },
+        }
       );
       this.logger.log(`Created new license for ${email} at ${config.tier}`);
     }
@@ -236,9 +223,7 @@ export class StripeService {
   /**
    * Handle subscription update (tier change)
    */
-  private async handleSubscriptionUpdated(
-    subscription: Stripe.Subscription,
-  ): Promise<void> {
+  private async handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
     const subscriptionId = subscription.id;
     const priceId = subscription.items.data[0]?.price.id;
     const config = this.priceMap[priceId];
@@ -257,23 +242,16 @@ export class StripeService {
         tier: config.tier,
         maxNodes: config.maxNodes,
         maxConcurrentJobs: config.maxConcurrentJobs,
-        status:
-          subscription.status === 'active'
-            ? LicenseStatus.ACTIVE
-            : LicenseStatus.EXPIRED,
+        status: subscription.status === 'active' ? LicenseStatus.ACTIVE : LicenseStatus.EXPIRED,
       });
-      this.logger.log(
-        `Updated subscription for license ${license.id} to ${config.tier}`,
-      );
+      this.logger.log(`Updated subscription for license ${license.id} to ${config.tier}`);
     }
   }
 
   /**
    * Handle subscription cancellation
    */
-  private async handleSubscriptionDeleted(
-    subscription: Stripe.Subscription,
-  ): Promise<void> {
+  private async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
     const subscriptionId = subscription.id;
 
     const license = await this.licenseRepository.findFirstWhere({
@@ -295,9 +273,7 @@ export class StripeService {
           webhooks: false,
         },
       });
-      this.logger.log(
-        `Downgraded license ${license.id} to FREE (subscription cancelled)`,
-      );
+      this.logger.log(`Downgraded license ${license.id} to FREE (subscription cancelled)`);
     }
   }
 
@@ -321,10 +297,7 @@ export class StripeService {
   /**
    * Get customer portal URL for managing subscription
    */
-  async getCustomerPortalUrl(
-    customerId: string,
-    returnUrl: string,
-  ): Promise<string> {
+  async getCustomerPortalUrl(customerId: string, returnUrl: string): Promise<string> {
     if (!this.stripe) {
       throw new Error('Stripe is not configured');
     }
@@ -388,10 +361,7 @@ export class StripeService {
    */
   private generateLicenseKey(tier: LicenseTier): string {
     const prefix = tier.substring(0, 3).toUpperCase();
-    const random = require('crypto')
-      .randomBytes(8)
-      .toString('hex')
-      .substring(0, 10);
+    const random = require('crypto').randomBytes(8).toString('hex').substring(0, 10);
     return `${prefix}-${random}`;
   }
 }

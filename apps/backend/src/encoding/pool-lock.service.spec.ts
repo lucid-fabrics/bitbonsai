@@ -19,9 +19,7 @@ describe('PoolLockService', () => {
 
   describe('acquire and release', () => {
     it('should acquire a lock when none exists', async () => {
-      await expect(
-        service.acquire('node-1', 'worker-1'),
-      ).resolves.not.toThrow();
+      await expect(service.acquire('node-1', 'worker-1')).resolves.not.toThrow();
       service.release('node-1');
     });
 
@@ -29,9 +27,7 @@ describe('PoolLockService', () => {
       await service.acquire('node-1', 'worker-1');
       service.release('node-1');
 
-      await expect(
-        service.acquire('node-1', 'worker-2'),
-      ).resolves.not.toThrow();
+      await expect(service.acquire('node-1', 'worker-2')).resolves.not.toThrow();
       service.release('node-1');
     });
 
@@ -55,7 +51,7 @@ describe('PoolLockService', () => {
       await expect(
         service.withLock('node-2', 'failing-op', async () => {
           throw new Error('operation failed');
-        }),
+        })
       ).rejects.toThrow('operation failed');
 
       // Lock should be released - should be able to acquire again
@@ -64,11 +60,7 @@ describe('PoolLockService', () => {
     });
 
     it('should return the function result', async () => {
-      const result = await service.withLock(
-        'node-3',
-        'test-op',
-        async () => 42,
-      );
+      const result = await service.withLock('node-3', 'test-op', async () => 42);
       expect(result).toBe(42);
     });
   });
@@ -124,9 +116,9 @@ describe('PoolLockService', () => {
       await service.acquire('node-timeout', 'worker-1', 50);
 
       // Try to acquire with very short timeout — will timeout 3 times and throw
-      await expect(
-        service.acquire('node-timeout', 'worker-2', 10),
-      ).rejects.toThrow(/Failed to acquire pool lock/);
+      await expect(service.acquire('node-timeout', 'worker-2', 10)).rejects.toThrow(
+        /Failed to acquire pool lock/
+      );
 
       service.release('node-timeout');
     }, 10000);
@@ -137,9 +129,7 @@ describe('PoolLockService', () => {
       // Release asynchronously
       setTimeout(() => service.release('node-seq'), 50);
 
-      await expect(
-        service.acquire('node-seq', 'worker-2', 5000),
-      ).resolves.not.toThrow();
+      await expect(service.acquire('node-seq', 'worker-2', 5000)).resolves.not.toThrow();
       service.release('node-seq');
     });
 

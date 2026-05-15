@@ -61,7 +61,7 @@ export class PoolLockService implements OnModuleDestroy {
     nodeId: string,
     holder: string,
     timeoutMs = 30000,
-    expectedDurationMs = 0,
+    expectedDurationMs = 0
   ): Promise<void> {
     const maxRetries = 3;
     let attempt = 0;
@@ -74,8 +74,7 @@ export class PoolLockService implements OnModuleDestroy {
         const timeSinceHeartbeat = now - existingLock.lastHeartbeat;
         const age = now - existingLock.acquiredAt;
 
-        const isHeartbeatStale =
-          timeSinceHeartbeat > this.HEARTBEAT_STALE_THRESHOLD;
+        const isHeartbeatStale = timeSinceHeartbeat > this.HEARTBEAT_STALE_THRESHOLD;
         const isTimeStale = age > existingLock.staleThreshold;
 
         if (isHeartbeatStale || isTimeStale) {
@@ -83,7 +82,7 @@ export class PoolLockService implements OnModuleDestroy {
             ? `no heartbeat for ${timeSinceHeartbeat}ms (threshold: ${this.HEARTBEAT_STALE_THRESHOLD}ms)`
             : `held for ${age}ms (threshold: ${existingLock.staleThreshold}ms)`;
           this.logger.warn(
-            `Auto-releasing stale lock for node ${nodeId} (held by ${existingLock.holder}, ${reason})`,
+            `Auto-releasing stale lock for node ${nodeId} (held by ${existingLock.holder}, ${reason})`
           );
           existingLock.release();
           this.poolLocks.delete(nodeId);
@@ -91,10 +90,7 @@ export class PoolLockService implements OnModuleDestroy {
         }
 
         const timeoutPromise = new Promise<void>((_, reject) => {
-          setTimeout(
-            () => reject(new Error(`Pool lock timeout for node ${nodeId}`)),
-            timeoutMs,
-          );
+          setTimeout(() => reject(new Error(`Pool lock timeout for node ${nodeId}`)), timeoutMs);
         });
 
         try {
@@ -103,11 +99,11 @@ export class PoolLockService implements OnModuleDestroy {
           attempt++;
           if (attempt >= maxRetries) {
             throw new Error(
-              `Failed to acquire pool lock for ${nodeId} after ${maxRetries} attempts`,
+              `Failed to acquire pool lock for ${nodeId} after ${maxRetries} attempts`
             );
           }
           this.logger.warn(
-            `Lock timeout attempt ${attempt}/${maxRetries} for ${nodeId}, retrying...`,
+            `Lock timeout attempt ${attempt}/${maxRetries} for ${nodeId}, retrying...`
           );
           continue;
         }
@@ -135,9 +131,7 @@ export class PoolLockService implements OnModuleDestroy {
       return;
     }
 
-    throw new Error(
-      `Failed to acquire pool lock for ${nodeId} after ${maxRetries} retries`,
-    );
+    throw new Error(`Failed to acquire pool lock for ${nodeId} after ${maxRetries} retries`);
   }
 
   /**
@@ -159,7 +153,7 @@ export class PoolLockService implements OnModuleDestroy {
     nodeId: string,
     holder: string,
     fn: () => Promise<T>,
-    expectedDurationMs = 0,
+    expectedDurationMs = 0
   ): Promise<T> {
     await this.acquire(nodeId, holder, 30000, expectedDurationMs);
     try {
@@ -181,8 +175,7 @@ export class PoolLockService implements OnModuleDestroy {
         const age = now - lock.acquiredAt;
         const timeSinceHeartbeat = now - lock.lastHeartbeat;
 
-        const isHeartbeatStale =
-          timeSinceHeartbeat > this.HEARTBEAT_STALE_THRESHOLD;
+        const isHeartbeatStale = timeSinceHeartbeat > this.HEARTBEAT_STALE_THRESHOLD;
         const isTimeStale = age > lock.staleThreshold;
 
         if (isHeartbeatStale || isTimeStale) {
@@ -191,21 +184,19 @@ export class PoolLockService implements OnModuleDestroy {
             : `held for ${age}ms (threshold: ${lock.staleThreshold}ms)`;
 
           this.logger.error(
-            `DEADLOCK DETECTED: Pool lock for ${nodeId} held by ${lock.holder} - ${reason}. Forcibly releasing.`,
+            `DEADLOCK DETECTED: Pool lock for ${nodeId} held by ${lock.holder} - ${reason}. Forcibly releasing.`
           );
 
           lock.release();
           this.poolLocks.delete(nodeId);
 
-          this.logger.warn(
-            `Deadlock resolved for ${nodeId}, lock forcibly released`,
-          );
+          this.logger.warn(`Deadlock resolved for ${nodeId}, lock forcibly released`);
         }
       }
     }, this.WATCHDOG_INTERVAL);
 
     this.logger.log(
-      `Lock watchdog started (interval: ${this.WATCHDOG_INTERVAL}ms, heartbeat threshold: ${this.HEARTBEAT_STALE_THRESHOLD}ms)`,
+      `Lock watchdog started (interval: ${this.WATCHDOG_INTERVAL}ms, heartbeat threshold: ${this.HEARTBEAT_STALE_THRESHOLD}ms)`
     );
   }
 }

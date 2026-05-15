@@ -14,9 +14,7 @@ describe('FilesystemController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [FilesystemController],
-      providers: [
-        { provide: FilesystemService, useValue: mockFilesystemService },
-      ],
+      providers: [{ provide: FilesystemService, useValue: mockFilesystemService }],
     }).compile();
 
     controller = module.get<FilesystemController>(FilesystemController);
@@ -40,9 +38,7 @@ describe('FilesystemController', () => {
 
       const response = await controller.browseDirectories('/media');
 
-      expect(mockFilesystemService.listDirectories).toHaveBeenCalledWith(
-        '/media',
-      );
+      expect(mockFilesystemService.listDirectories).toHaveBeenCalledWith('/media');
       expect(response).toEqual(result);
     });
 
@@ -57,12 +53,8 @@ describe('FilesystemController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockFilesystemService.listDirectories.mockRejectedValue(
-        new Error('permission denied'),
-      );
-      await expect(controller.browseDirectories('/root')).rejects.toThrow(
-        'permission denied',
-      );
+      mockFilesystemService.listDirectories.mockRejectedValue(new Error('permission denied'));
+      await expect(controller.browseDirectories('/root')).rejects.toThrow('permission denied');
     });
   });
 });

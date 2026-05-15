@@ -38,9 +38,7 @@ describe('PoolLockService', () => {
 
   describe('acquire / release', () => {
     it('acquires a lock for a node', async () => {
-      await expect(
-        service.acquire('node-1', 'worker-1'),
-      ).resolves.toBeUndefined();
+      await expect(service.acquire('node-1', 'worker-1')).resolves.toBeUndefined();
     });
 
     it('releases a lock', async () => {
@@ -77,9 +75,9 @@ describe('PoolLockService', () => {
       await service.acquire('node-1', 'worker-1', 20, LARGE_EXPECTED);
 
       // worker-2 will try to acquire with 20ms timeout, fail 3 times
-      await expect(
-        service.acquire('node-1', 'worker-2', 20, LARGE_EXPECTED),
-      ).rejects.toThrow(/Failed to acquire pool lock/);
+      await expect(service.acquire('node-1', 'worker-2', 20, LARGE_EXPECTED)).rejects.toThrow(
+        /Failed to acquire pool lock/
+      );
       jest.useFakeTimers();
     });
   });
@@ -93,30 +91,22 @@ describe('PoolLockService', () => {
       });
       expect(executed).toBe(true);
       // Should be able to acquire again after release
-      await expect(
-        service.acquire('node-1', 'worker-again'),
-      ).resolves.toBeUndefined();
+      await expect(service.acquire('node-1', 'worker-again')).resolves.toBeUndefined();
     });
 
     it('releases lock even when fn throws', async () => {
       await expect(
         service.withLock('node-1', 'worker-1', async () => {
           throw new Error('fn error');
-        }),
+        })
       ).rejects.toThrow('fn error');
 
       // Lock should be released — acquire should succeed immediately
-      await expect(
-        service.acquire('node-1', 'worker-2'),
-      ).resolves.toBeUndefined();
+      await expect(service.acquire('node-1', 'worker-2')).resolves.toBeUndefined();
     });
 
     it('returns the fn return value', async () => {
-      const result = await service.withLock(
-        'node-1',
-        'worker-1',
-        async () => 'result-value',
-      );
+      const result = await service.withLock('node-1', 'worker-1', async () => 'result-value');
       expect(result).toBe('result-value');
     });
   });
@@ -129,9 +119,7 @@ describe('PoolLockService', () => {
       jest.advanceTimersByTime(65000);
 
       // Next acquire should detect stale lock and take over
-      await expect(
-        service.acquire('node-1', 'worker-2', 100),
-      ).resolves.toBeUndefined();
+      await expect(service.acquire('node-1', 'worker-2', 100)).resolves.toBeUndefined();
     });
 
     it('watchdog forcibly releases stale locks', async () => {
@@ -142,9 +130,7 @@ describe('PoolLockService', () => {
       jest.advanceTimersByTime(90000);
 
       // Lock should have been released by watchdog — acquire should succeed
-      await expect(
-        service.acquire('node-1', 'new-holder'),
-      ).resolves.toBeUndefined();
+      await expect(service.acquire('node-1', 'new-holder')).resolves.toBeUndefined();
     });
   });
 });

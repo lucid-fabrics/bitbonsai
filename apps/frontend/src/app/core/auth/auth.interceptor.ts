@@ -7,14 +7,7 @@ import {
 } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import {
-  catchError,
-  filter,
-  Observable,
-  switchMap,
-  take,
-  throwError,
-} from 'rxjs';
+import { catchError, filter, Observable, switchMap, take, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 
 /**
@@ -32,7 +25,7 @@ import { AuthService } from './auth.service';
  */
 export const authInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
-  next: HttpHandlerFn,
+  next: HttpHandlerFn
 ) => {
   const authService = inject(AuthService);
   const router = inject(Router);
@@ -46,9 +39,7 @@ export const authInterceptor: HttpInterceptorFn = (
   ];
 
   // Check if current request should be excluded from token injection
-  const isExcluded = excludedEndpoints.some((endpoint) =>
-    req.url.includes(endpoint),
-  );
+  const isExcluded = excludedEndpoints.some((endpoint) => req.url.includes(endpoint));
 
   // Clone request and add Authorization header if not excluded
   let authReq = req;
@@ -67,17 +58,14 @@ export const authInterceptor: HttpInterceptorFn = (
         return handle401Error(authReq, next, authService, router);
       }
       return throwError(() => error);
-    }),
+    })
   );
 };
 
 /**
  * Adds Authorization header to request
  */
-function addAuthHeader(
-  request: HttpRequest<unknown>,
-  token: string,
-): HttpRequest<unknown> {
+function addAuthHeader(request: HttpRequest<unknown>, token: string): HttpRequest<unknown> {
   return request.clone({
     setHeaders: {
       Authorization: `Bearer ${token}`,
@@ -96,7 +84,7 @@ function handle401Error(
   request: HttpRequest<unknown>,
   next: HttpHandlerFn,
   authService: AuthService,
-  router: Router,
+  router: Router
 ): Observable<HttpEvent<unknown>> {
   // If already refreshing, queue this request
   if (authService.isRefreshing) {
@@ -105,7 +93,7 @@ function handle401Error(
       take(1),
       switchMap((token) => {
         return next(addAuthHeader(request, token!));
-      }),
+      })
     );
   }
 
@@ -133,6 +121,6 @@ function handle401Error(
       router.navigate(['/login']);
 
       return throwError(() => error);
-    }),
+    })
   );
 }

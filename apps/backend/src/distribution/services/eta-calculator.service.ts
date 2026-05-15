@@ -20,7 +20,7 @@ export class EtaCalculatorService {
 
   constructor(
     private readonly jobRepository: JobRepository,
-    private readonly nodeRepository: NodeRepository,
+    private readonly nodeRepository: NodeRepository
   ) {}
 
   /**
@@ -32,11 +32,7 @@ export class EtaCalculatorService {
     const targetCodec = job.targetCodec?.toUpperCase() || 'HEVC';
 
     // Try historical data first
-    const historicalEstimate = await this.estimateFromHistory(
-      sourceCodec,
-      targetCodec,
-      fileSizeGB,
-    );
+    const historicalEstimate = await this.estimateFromHistory(sourceCodec, targetCodec, fileSizeGB);
     if (historicalEstimate) {
       return historicalEstimate;
     }
@@ -51,7 +47,7 @@ export class EtaCalculatorService {
   private async estimateFromHistory(
     sourceCodec: string,
     targetCodec: string,
-    fileSizeGB: number,
+    fileSizeGB: number
   ): Promise<DurationEstimate | null> {
     const rates = await this.getEncodingRates();
     const key = `${sourceCodec}->${targetCodec}`;
@@ -81,7 +77,7 @@ export class EtaCalculatorService {
   private estimateFromFileSize(
     fileSizeGB: number,
     sourceCodec: string,
-    targetCodec: string,
+    targetCodec: string
   ): DurationEstimate {
     // Default encoding rates (GB per hour)
     // These are conservative estimates for CPU encoding
@@ -122,16 +118,10 @@ export class EtaCalculatorService {
       // Get completed jobs from last 30 days
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-      const completedJobs = await this.jobRepository.findCompletedSince(
-        thirtyDaysAgo,
-        1000,
-      );
+      const completedJobs = await this.jobRepository.findCompletedSince(thirtyDaysAgo, 1000);
 
       // Group by codec pair and calculate average rate
-      const codecData = new Map<
-        string,
-        { totalGB: number; totalHours: number }
-      >();
+      const codecData = new Map<string, { totalGB: number; totalHours: number }>();
 
       for (const job of completedJobs) {
         if (!job.startedAt || !job.completedAt) continue;
@@ -139,8 +129,7 @@ export class EtaCalculatorService {
         const key = `${job.sourceCodec?.toUpperCase() || 'UNKNOWN'}->${job.targetCodec?.toUpperCase() || 'HEVC'}`;
         const sizeGB = Number(job.beforeSizeBytes) / (1024 * 1024 * 1024);
         const durationHours =
-          (job.completedAt.getTime() - job.startedAt.getTime()) /
-          (1000 * 60 * 60);
+          (job.completedAt.getTime() - job.startedAt.getTime()) / (1000 * 60 * 60);
 
         if (durationHours > 0 && sizeGB > 0) {
           const existing = codecData.get(key) || { totalGB: 0, totalHours: 0 };
@@ -157,9 +146,7 @@ export class EtaCalculatorService {
         }
       }
 
-      this.logger.debug(
-        `Calculated encoding rates for ${rates.size} codec pairs`,
-      );
+      this.logger.debug(`Calculated encoding rates for ${rates.size} codec pairs`);
     } catch (error: unknown) {
       this.logger.error('Failed to calculate encoding rates', error);
     }
@@ -241,9 +228,7 @@ export class EtaCalculatorService {
       const minTime = Math.min(...slotTimes);
       const earliestSlot = slotTimes.indexOf(minTime);
       const earliestFreeTime = slotFreeTimes[earliestSlot] || currentTime;
-      const startTime = new Date(
-        Math.max(earliestFreeTime.getTime(), currentTime.getTime()),
-      );
+      const startTime = new Date(Math.max(earliestFreeTime.getTime(), currentTime.getTime()));
 
       // Get duration
       let durationSeconds = job.estimatedDuration;
@@ -254,9 +239,7 @@ export class EtaCalculatorService {
 
       // Adjust for progress if encoding
       if (job.stage === 'ENCODING' && job.progress > 0) {
-        durationSeconds = Math.round(
-          durationSeconds * (1 - job.progress / 100),
-        );
+        durationSeconds = Math.round(durationSeconds * (1 - job.progress / 100));
       }
 
       const endTime = new Date(startTime.getTime() + durationSeconds * 1000);
@@ -273,9 +256,7 @@ export class EtaCalculatorService {
     }
 
     // Update node's estimated free time
-    const latestSlotFree = new Date(
-      Math.max(...slotFreeTimes.map((d) => d.getTime())),
-    );
+    const latestSlotFree = new Date(Math.max(...slotFreeTimes.map((d) => d.getTime())));
     await this.nodeRepository.updateById(nodeId, {
       estimatedFreeAt: latestSlotFree,
     });

@@ -110,9 +110,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
           useValue: {
             startStuckJobWatchdog: jest.fn().mockReturnValue(undefined),
             manageLoadBasedPausing: jest.fn().mockResolvedValue(undefined),
-            getSystemDiagnostics: jest
-              .fn()
-              .mockResolvedValue('System Diagnostics:\n- No issues'),
+            getSystemDiagnostics: jest.fn().mockResolvedValue('System Diagnostics:\n- No issues'),
           },
         },
       ],
@@ -148,9 +146,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       const testPolicy = await prisma.policy.findFirst();
 
       if (!testNode || !testLibrary || !testPolicy) {
-        throw new Error(
-          'Test database not seeded - please run seed script first',
-        );
+        throw new Error('Test database not seeded - please run seed script first');
       }
 
       await prisma.job.create({
@@ -193,9 +189,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       const testPolicy = await prisma.policy.findFirst();
 
       if (!testNode || !testLibrary || !testPolicy) {
-        throw new Error(
-          'Test database not seeded - please run seed script first',
-        );
+        throw new Error('Test database not seeded - please run seed script first');
       }
 
       await prisma.job.create({
@@ -235,9 +229,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       const testPolicy = await prisma.policy.findFirst();
 
       if (!testNode || !testLibrary || !testPolicy) {
-        throw new Error(
-          'Test database not seeded - please run seed script first',
-        );
+        throw new Error('Test database not seeded - please run seed script first');
       }
 
       await prisma.job.create({
@@ -275,9 +267,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       const testPolicy = await prisma.policy.findFirst();
 
       if (!testNode || !testLibrary || !testPolicy) {
-        throw new Error(
-          'Test database not seeded - please run seed script first',
-        );
+        throw new Error('Test database not seeded - please run seed script first');
       }
 
       await prisma.job.create({
@@ -307,9 +297,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       expect(healedJob).not.toBeNull();
       expect(healedJob?.stage).toBe(JobStage.QUEUED);
       expect(healedJob?.progress).toBe(0);
-      expect(healedJob?.error).toContain(
-        'Paused job reset after backend restart',
-      );
+      expect(healedJob?.error).toContain('Paused job reset after backend restart');
     });
 
     it('should NOT touch QUEUED jobs (already healthy)', async () => {
@@ -318,9 +306,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       const testPolicy = await prisma.policy.findFirst();
 
       if (!testNode || !testLibrary || !testPolicy) {
-        throw new Error(
-          'Test database not seeded - please run seed script first',
-        );
+        throw new Error('Test database not seeded - please run seed script first');
       }
 
       await prisma.job.create({
@@ -358,9 +344,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       const testPolicy = await prisma.policy.findFirst();
 
       if (!testNode || !testLibrary || !testPolicy) {
-        throw new Error(
-          'Test database not seeded - please run seed script first',
-        );
+        throw new Error('Test database not seeded - please run seed script first');
       }
 
       await prisma.job.create({
@@ -402,9 +386,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       const testPolicy = await prisma.policy.findFirst();
 
       if (!testNode || !testLibrary || !testPolicy) {
-        throw new Error(
-          'Test database not seeded - please run seed script first',
-        );
+        throw new Error('Test database not seeded - please run seed script first');
       }
 
       const orphanedJobs = [
@@ -476,9 +458,7 @@ describe('EncodingProcessorService - Auto-Heal Integration', () => {
       const testPolicy = await prisma.policy.findFirst();
 
       if (!testNode || !testLibrary || !testPolicy) {
-        throw new Error(
-          'Test database not seeded - please run seed script first',
-        );
+        throw new Error('Test database not seeded - please run seed script first');
       }
 
       await prisma.job.create({

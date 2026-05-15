@@ -54,9 +54,9 @@ describe('AuthController', () => {
     it('should propagate auth errors', async () => {
       mockAuthService.login.mockRejectedValue(new Error('Invalid credentials'));
 
-      await expect(
-        controller.login({ username: 'admin', password: 'wrong' }),
-      ).rejects.toThrow('Invalid credentials');
+      await expect(controller.login({ username: 'admin', password: 'wrong' })).rejects.toThrow(
+        'Invalid credentials'
+      );
     });
   });
 
@@ -80,13 +80,11 @@ describe('AuthController', () => {
     });
 
     it('should propagate errors for expired token', async () => {
-      mockAuthService.refreshToken.mockRejectedValue(
-        new Error('Token expired'),
-      );
+      mockAuthService.refreshToken.mockRejectedValue(new Error('Token expired'));
 
-      await expect(
-        controller.refreshToken({ refreshToken: 'expired-token' }),
-      ).rejects.toThrow('Token expired');
+      await expect(controller.refreshToken({ refreshToken: 'expired-token' })).rejects.toThrow(
+        'Token expired'
+      );
     });
   });
 

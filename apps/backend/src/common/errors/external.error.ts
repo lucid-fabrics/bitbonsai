@@ -4,22 +4,12 @@ import { BaseError } from './base.error';
  * Error thrown when an external service or dependency fails
  */
 export class ExternalServiceError extends BaseError {
-  constructor(
-    service: string,
-    reason: string,
-    context?: Record<string, unknown>,
-  ) {
-    super(
-      `External service '${service}' failed: ${reason}`,
-      503,
-      'EXTERNAL_SERVICE_ERROR',
-      true,
-      {
-        service,
-        reason,
-        ...context,
-      },
-    );
+  constructor(service: string, reason: string, context?: Record<string, unknown>) {
+    super(`External service '${service}' failed: ${reason}`, 503, 'EXTERNAL_SERVICE_ERROR', true, {
+      service,
+      reason,
+      ...context,
+    });
   }
 }
 
@@ -27,22 +17,12 @@ export class ExternalServiceError extends BaseError {
  * Error thrown when database operations fail
  */
 export class DatabaseError extends BaseError {
-  constructor(
-    operation: string,
-    reason: string,
-    context?: Record<string, unknown>,
-  ) {
-    super(
-      `Database ${operation} failed: ${reason}`,
-      500,
-      'DATABASE_ERROR',
-      false,
-      {
-        operation,
-        reason,
-        ...context,
-      },
-    );
+  constructor(operation: string, reason: string, context?: Record<string, unknown>) {
+    super(`Database ${operation} failed: ${reason}`, 500, 'DATABASE_ERROR', false, {
+      operation,
+      reason,
+      ...context,
+    });
   }
 }
 
@@ -51,17 +31,11 @@ export class DatabaseError extends BaseError {
  */
 export class FFmpegError extends BaseError {
   constructor(reason: string, context?: Record<string, unknown>) {
-    super(
-      `External service 'FFmpeg' failed: ${reason}`,
-      503,
-      'FFMPEG_ERROR',
-      true,
-      {
-        service: 'FFmpeg',
-        reason,
-        ...context,
-      },
-    );
+    super(`External service 'FFmpeg' failed: ${reason}`, 503, 'FFMPEG_ERROR', true, {
+      service: 'FFmpeg',
+      reason,
+      ...context,
+    });
   }
 }
 
@@ -69,11 +43,7 @@ export class FFmpegError extends BaseError {
  * Error thrown when network/API communication fails
  */
 export class NetworkError extends BaseError {
-  constructor(
-    endpoint: string,
-    reason: string,
-    context?: Record<string, unknown>,
-  ) {
+  constructor(endpoint: string, reason: string, context?: Record<string, unknown>) {
     super(
       `External service 'Network request to ${endpoint}' failed: ${reason}`,
       503,
@@ -84,7 +54,7 @@ export class NetworkError extends BaseError {
         endpoint,
         reason,
         ...context,
-      },
+      }
     );
   }
 }

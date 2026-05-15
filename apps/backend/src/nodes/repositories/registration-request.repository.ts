@@ -16,29 +16,24 @@ export class RegistrationRequestRepository extends BaseRepository {
   async findFirstByMac(
     mainNodeId: string,
     macAddress: string,
-    status: RegistrationRequestStatus,
+    status: RegistrationRequestStatus
   ): Promise<NodeRegistrationRequest | null> {
     return this.findFirst<NodeRegistrationRequest | null>({
       where: { mainNodeId, macAddress, status },
     });
   }
 
-  async createRequest(
-    data: Record<string, unknown>,
-  ): Promise<NodeRegistrationRequest> {
+  async createRequest(data: Record<string, unknown>): Promise<NodeRegistrationRequest> {
     return this.create<NodeRegistrationRequest>({ data });
   }
 
-  async updateById(
-    id: string,
-    data: Record<string, unknown>,
-  ): Promise<NodeRegistrationRequest> {
+  async updateById(id: string, data: Record<string, unknown>): Promise<NodeRegistrationRequest> {
     return this.update<NodeRegistrationRequest>({ where: { id }, data });
   }
 
   async updateByPairingToken(
     pairingToken: string,
-    data: Record<string, unknown>,
+    data: Record<string, unknown>
   ): Promise<NodeRegistrationRequest> {
     return this.update<NodeRegistrationRequest>({
       where: { pairingToken },
@@ -46,9 +41,7 @@ export class RegistrationRequestRepository extends BaseRepository {
     });
   }
 
-  async findManyPending(
-    mainNodeId: string,
-  ): Promise<NodeRegistrationRequest[]> {
+  async findManyPending(mainNodeId: string): Promise<NodeRegistrationRequest[]> {
     return this.findMany<NodeRegistrationRequest>({
       where: {
         mainNodeId,
@@ -60,22 +53,18 @@ export class RegistrationRequestRepository extends BaseRepository {
   }
 
   async findUniqueById(
-    id: string,
+    id: string
   ): Promise<(NodeRegistrationRequest & { mainNode: unknown }) | null> {
-    return this.findUnique<
-      (NodeRegistrationRequest & { mainNode: unknown }) | null
-    >({
+    return this.findUnique<(NodeRegistrationRequest & { mainNode: unknown }) | null>({
       where: { id },
       include: { mainNode: true },
     });
   }
 
   async findUniqueByToken(
-    pairingToken: string,
+    pairingToken: string
   ): Promise<(NodeRegistrationRequest & { mainNode: unknown }) | null> {
-    return this.findUnique<
-      (NodeRegistrationRequest & { mainNode: unknown }) | null
-    >({
+    return this.findUnique<(NodeRegistrationRequest & { mainNode: unknown }) | null>({
       where: { pairingToken },
       include: { mainNode: true },
     });
@@ -93,7 +82,7 @@ export class RegistrationRequestRepository extends BaseRepository {
 
   async deleteManyOld(
     before: Date,
-    statuses: RegistrationRequestStatus[],
+    statuses: RegistrationRequestStatus[]
   ): Promise<Prisma.BatchPayload> {
     return this.prisma.nodeRegistrationRequest.deleteMany({
       where: {
@@ -103,9 +92,7 @@ export class RegistrationRequestRepository extends BaseRepository {
     });
   }
 
-  async approveTransaction<T>(
-    fn: (tx: Prisma.TransactionClient) => Promise<T>,
-  ): Promise<T> {
+  async approveTransaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
     return this.prisma.$transaction(fn);
   }
 }

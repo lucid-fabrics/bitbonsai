@@ -21,10 +21,7 @@ export class DistributionConfigRepository extends BaseRepository {
     return this.create<DistributionConfig>({ data: { id: 'default' } });
   }
 
-  async updateById(
-    id: string,
-    data: Record<string, unknown>,
-  ): Promise<DistributionConfig> {
+  async updateById(id: string, data: Record<string, unknown>): Promise<DistributionConfig> {
     return this.update<DistributionConfig>({ where: { id }, data });
   }
 }

@@ -17,7 +17,7 @@ export function sanitizePath(path: string): string {
 
   if (dangerous.test(path)) {
     throw new Error(
-      `Path contains dangerous characters: ${path}. Only alphanumeric, -, _, /, and . are allowed.`,
+      `Path contains dangerous characters: ${path}. Only alphanumeric, -, _, /, and . are allowed.`
     );
   }
 
@@ -66,9 +66,7 @@ export function sanitizeServerAddress(address: string): string {
     return address;
   }
 
-  throw new Error(
-    `Invalid server address: ${address}. Must be a valid IP address or hostname.`,
-  );
+  throw new Error(`Invalid server address: ${address}. Must be a valid IP address or hostname.`);
 }
 
 /**
@@ -109,13 +107,11 @@ export function sanitizeMountOptions(options: string): string {
     const trimmedOpt = opt.trim();
     if (!trimmedOpt) continue;
 
-    const isAllowed = allowedPatterns.some((pattern) =>
-      pattern.test(trimmedOpt),
-    );
+    const isAllowed = allowedPatterns.some((pattern) => pattern.test(trimmedOpt));
 
     if (!isAllowed) {
       throw new Error(
-        `Mount option "${trimmedOpt}" is not allowed. Only standard mount options are permitted.`,
+        `Mount option "${trimmedOpt}" is not allowed. Only standard mount options are permitted.`
       );
     }
   }

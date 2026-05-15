@@ -16,6 +16,6 @@ export const QueueSelectors = {
   })),
 
   selectAvailableNodes: createSelector(selectQueueState, (state) =>
-    [...new Set(state.jobs.map((job) => job.nodeName))].sort(),
+    [...new Set(state.jobs.map((job) => job.nodeName))].sort()
   ),
 };

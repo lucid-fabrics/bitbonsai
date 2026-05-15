@@ -7,14 +7,7 @@ import {
   type OnDestroy,
   Renderer2,
 } from '@angular/core';
-import {
-  arrow,
-  computePosition,
-  flip,
-  offset,
-  type Placement,
-  shift,
-} from '@floating-ui/dom';
+import { arrow, computePosition, flip, offset, type Placement, shift } from '@floating-ui/dom';
 
 /**
  * Rich tooltip directive for self-documenting UI
@@ -169,7 +162,7 @@ export class RichTooltipDirective implements OnDestroy {
           shift({ padding: 8 }),
           arrow({ element: this.arrowElement }),
         ],
-      },
+      }
     );
 
     // Position tooltip

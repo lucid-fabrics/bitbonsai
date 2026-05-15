@@ -1,12 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { AsyncPipe, DecimalPipe, KeyValuePipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  inject,
-  type OnInit,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -29,10 +23,7 @@ import {
   switchMap,
 } from 'rxjs';
 import { selectCurrentNode } from '../../core/+state/current-node.selectors';
-import {
-  DistributionClient,
-  type NodeCapacity,
-} from '../../core/clients/distribution.client';
+import { DistributionClient, type NodeCapacity } from '../../core/clients/distribution.client';
 import { NodesClient } from '../../core/clients/nodes.client';
 import { QueueClient } from '../../core/clients/queue.client';
 import { SettingsClient } from '../../core/clients/settings.client';
@@ -235,10 +226,10 @@ export class QueueComponent implements OnInit {
             // Always clear loading on error
             this.loadingSubject$.next(false);
             return of(null);
-          }),
+          })
         );
       }),
-      shareReplay({ bufferSize: 1, refCount: true }),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
 
     // Use the loading subject as the loading observable
@@ -256,7 +247,7 @@ export class QueueComponent implements OnInit {
           nodeMap.set(node.id, node.name);
         }
         return nodeMap;
-      }),
+      })
     );
 
     this.availableNodesWithRole$ = nodesData$;
@@ -265,10 +256,7 @@ export class QueueComponent implements OnInit {
     this.availableLibraries$ = this.queueData$.pipe(
       map((data) => {
         const jobs = data?.jobs || [];
-        const libraryMap = new Map<
-          string,
-          { name: string; nodeName: string }
-        >();
+        const libraryMap = new Map<string, { name: string; nodeName: string }>();
         for (const job of jobs) {
           if (job.libraryId && job.libraryName && job.nodeName) {
             libraryMap.set(job.libraryId, {
@@ -278,13 +266,13 @@ export class QueueComponent implements OnInit {
           }
         }
         return libraryMap;
-      }),
+      })
     );
 
     // Check if current node is MAIN (to show/hide node filter)
     this.isMainNode$ = this.store.select(selectCurrentNode).pipe(
       map((node) => node?.role === 'MAIN'),
-      shareReplay({ bufferSize: 1, refCount: true }),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
 
     // Fetch node capacity (load, workers) - refresh every 10 seconds
@@ -303,19 +291,16 @@ export class QueueComponent implements OnInit {
               return a.nodeName.localeCompare(b.nodeName);
             });
           }),
-          catchError(() => of([])),
-        ),
+          catchError(() => of([]))
+        )
       ),
-      shareReplay({ bufferSize: 1, refCount: true }),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
 
     // Advanced mode from settings store
-    this.advancedMode = toSignal(
-      this.store.select(SettingsSelectors.selectAdvancedMode),
-      {
-        initialValue: false,
-      },
-    );
+    this.advancedMode = toSignal(this.store.select(SettingsSelectors.selectAdvancedMode), {
+      initialValue: false,
+    });
   }
 
   ngOnInit(): void {
@@ -328,11 +313,7 @@ export class QueueComponent implements OnInit {
       .select(selectCurrentNode)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((currentNode) => {
-        if (
-          currentNode &&
-          !this.selectedNodeId &&
-          currentNode.role === 'LINKED'
-        ) {
+        if (currentNode && !this.selectedNodeId && currentNode.role === 'LINKED') {
           // For LINKED nodes: auto-select current node to show only their jobs
           this.selectedNodeId = currentNode.id;
           // Trigger refresh to load jobs for the selected node
@@ -349,13 +330,9 @@ export class QueueComponent implements OnInit {
           // Apply default queue view if it's valid and no query param is set
           if (
             settings.defaultQueueView &&
-            this.statuses.includes(
-              settings.defaultQueueView as JobStatus | 'ALL',
-            )
+            this.statuses.includes(settings.defaultQueueView as JobStatus | 'ALL')
           ) {
-            this.selectedStatus = settings.defaultQueueView as
-              | JobStatus
-              | 'ALL';
+            this.selectedStatus = settings.defaultQueueView as JobStatus | 'ALL';
           }
         },
         error: () => {
@@ -364,26 +341,24 @@ export class QueueComponent implements OnInit {
       });
 
     // Restore filter state from query params (takes precedence over default setting)
-    this.route.queryParams
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((params) => {
-        if (params.status) {
-          const status = params.status;
-          // Validate the status is a valid filter option
-          if (this.statuses.includes(status as JobStatus | 'ALL')) {
-            this.selectedStatus = status as JobStatus | 'ALL';
-          }
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      if (params.status) {
+        const status = params.status;
+        // Validate the status is a valid filter option
+        if (this.statuses.includes(status as JobStatus | 'ALL')) {
+          this.selectedStatus = status as JobStatus | 'ALL';
         }
-        if (params.nodeId) {
-          this.selectedNodeId = params.nodeId;
-        }
-        if (params.libraryId) {
-          this.selectedLibraryId = params.libraryId;
-        }
-        if (params.search) {
-          this.searchQuery = params.search;
-        }
-      });
+      }
+      if (params.nodeId) {
+        this.selectedNodeId = params.nodeId;
+      }
+      if (params.libraryId) {
+        this.selectedLibraryId = params.libraryId;
+      }
+      if (params.search) {
+        this.searchQuery = params.search;
+      }
+    });
 
     this.startPolling();
   }
@@ -392,7 +367,7 @@ export class QueueComponent implements OnInit {
     // Create visibility change observable
     const visibilityChange$ = fromEvent(document, 'visibilitychange').pipe(
       startWith(null), // Emit immediately on subscription
-      map(() => document.visibilityState === 'visible'),
+      map(() => document.visibilityState === 'visible')
     );
 
     // Poll only when page is visible
@@ -402,9 +377,9 @@ export class QueueComponent implements OnInit {
           (isVisible) =>
             isVisible
               ? interval(5000).pipe(startWith(0)) // Poll immediately and every 5s when visible
-              : [], // Stop polling when hidden
+              : [] // Stop polling when hidden
         ),
-        takeUntilDestroyed(this.destroyRef),
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(() => {
         // Silent refresh for polling - don't show loading spinner
@@ -528,10 +503,7 @@ export class QueueComponent implements OnInit {
             this.jobHistoryCache.set(jobId, history);
           },
           error: (error) => {
-            this.errorLogger.error(
-              `Failed to fetch job history for ${jobId}`,
-              error,
-            );
+            this.errorLogger.error(`Failed to fetch job history for ${jobId}`, error);
             // Set empty array to prevent retrying on every expand
             this.maintainCacheSize();
             this.jobHistoryCache.set(jobId, []);
@@ -645,21 +617,19 @@ export class QueueComponent implements OnInit {
   }
 
   protected hasRecoveryHistory(job: QueueJob): boolean {
-    return (
-      (job.stuckRecoveryCount || 0) > 0 || (job.corruptedRequeueCount || 0) > 0
-    );
+    return (job.stuckRecoveryCount || 0) > 0 || (job.corruptedRequeueCount || 0) > 0;
   }
 
   protected getRecoveryTooltip(job: QueueJob): string {
     const parts: string[] = [];
     if ((job.stuckRecoveryCount || 0) > 0) {
       parts.push(
-        `${job.stuckRecoveryCount} stuck ${job.stuckRecoveryCount === 1 ? 'recovery' : 'recoveries'}`,
+        `${job.stuckRecoveryCount} stuck ${job.stuckRecoveryCount === 1 ? 'recovery' : 'recoveries'}`
       );
     }
     if ((job.corruptedRequeueCount || 0) > 0) {
       parts.push(
-        `${job.corruptedRequeueCount} corruption ${job.corruptedRequeueCount === 1 ? 'requeue' : 'requeues'}`,
+        `${job.corruptedRequeueCount} corruption ${job.corruptedRequeueCount === 1 ? 'requeue' : 'requeues'}`
       );
     }
     return parts.join(', ');
@@ -667,9 +637,7 @@ export class QueueComponent implements OnInit {
 
   protected isApproachingBlacklist(job: QueueJob): boolean {
     const totalFailures =
-      (job.retryCount || 0) +
-      (job.corruptedRequeueCount || 0) +
-      (job.stuckRecoveryCount || 0);
+      (job.retryCount || 0) + (job.corruptedRequeueCount || 0) + (job.stuckRecoveryCount || 0);
     return totalFailures >= 3;
   }
 
@@ -684,14 +652,14 @@ export class QueueComponent implements OnInit {
             this.toastService.success('Job rechecked and moved to COMPLETED');
           } else {
             this.toastService.warning(
-              'Job still FAILED after recheck - file is invalid or missing',
+              'Job still FAILED after recheck - file is invalid or missing'
             );
           }
           this.refreshQueue();
         },
         error: (err) => {
           this.toastService.error(
-            `Failed to recheck job: ${err.error?.message || 'Unknown error'}`,
+            `Failed to recheck job: ${err.error?.message || 'Unknown error'}`
           );
         },
       });
@@ -705,13 +673,9 @@ export class QueueComponent implements OnInit {
       .subscribe({
         next: (updatedJob) => {
           if (updatedJob.stage === 'QUEUED') {
-            this.toastService.success(
-              'No compression detected - job requeued for retry',
-            );
+            this.toastService.success('No compression detected - job requeued for retry');
           } else {
-            this.toastService.info(
-              'Compression was successful - no action taken',
-            );
+            this.toastService.info('Compression was successful - no action taken');
           }
           this.refreshQueue();
         },
@@ -753,26 +717,23 @@ export class QueueComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((result) => {
-        if (result === true) {
-          this.queueApi
-            .deleteJob(job.id)
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe({
-              next: () => {
-                this.toastService.success('Job deleted successfully');
-                this.refreshQueue();
-              },
-              error: (err) => {
-                const errorMessage =
-                  err?.error?.message || 'Failed to delete job';
-                this.toastService.error(errorMessage);
-              },
-            });
-        }
-      });
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      if (result === true) {
+        this.queueApi
+          .deleteJob(job.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.toastService.success('Job deleted successfully');
+              this.refreshQueue();
+            },
+            error: (err) => {
+              const errorMessage = err?.error?.message || 'Failed to delete job';
+              this.toastService.error(errorMessage);
+            },
+          });
+      }
+    });
   }
 
   protected togglePriorityMenu(jobId: string): void {
@@ -788,14 +749,11 @@ export class QueueComponent implements OnInit {
       .subscribe({
         next: () => {
           const priorityNames = ['Normal', 'High', 'Top Priority'];
-          this.toastService.success(
-            `Priority set to ${priorityNames[priority]}`,
-          );
+          this.toastService.success(`Priority set to ${priorityNames[priority]}`);
           this.refreshQueue();
         },
         error: (err) => {
-          const errorMessage =
-            err?.error?.message || 'Failed to update priority';
+          const errorMessage = err?.error?.message || 'Failed to update priority';
           this.toastService.error(errorMessage);
         },
       });
@@ -847,9 +805,7 @@ export class QueueComponent implements OnInit {
           this.refreshQueue();
         },
         error: (err) => {
-          this.toastService.error(
-            err?.error?.message || 'Failed to capture preview',
-          );
+          this.toastService.error(err?.error?.message || 'Failed to capture preview');
           this.capturingJobId = null;
         },
       });
@@ -862,9 +818,7 @@ export class QueueComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.toastService.success(
-            'Job prioritized and will start encoding within seconds',
-          );
+          this.toastService.success('Job prioritized and will start encoding within seconds');
           this.refreshQueue();
         },
         error: () => {
@@ -901,14 +855,8 @@ export class QueueComponent implements OnInit {
       title: 'Delete Original File?',
       itemName: job.fileName || 'Original file',
       itemType: 'video file',
-      willHappen: [
-        `Free up ${sizeInMB} MB of disk space`,
-        'Remove the source file permanently',
-      ],
-      wontHappen: [
-        'Affect the encoded output file',
-        'Remove the job from history',
-      ],
+      willHappen: [`Free up ${sizeInMB} MB of disk space`, 'Remove the source file permanently'],
+      wontHappen: ['Affect the encoded output file', 'Remove the job from history'],
       irreversible: true,
       confirmButtonText: 'Delete Original',
       cancelButtonText: 'Keep File',
@@ -919,30 +867,24 @@ export class QueueComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((confirmed) => {
-        if (confirmed === true) {
-          this.queueApi
-            .deleteOriginal(job.id)
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe({
-              next: (result) => {
-                const freedMB = (
-                  Number(result.freedSpace) /
-                  (1024 * 1024)
-                ).toFixed(2);
-                this.toastService.success(`Freed ${freedMB} MB of disk space`);
-                this.refreshQueue();
-              },
-              error: (err) => {
-                const errorMessage =
-                  err?.error?.message || 'Failed to delete original';
-                this.toastService.error(errorMessage);
-              },
-            });
-        }
-      });
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
+      if (confirmed === true) {
+        this.queueApi
+          .deleteOriginal(job.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (result) => {
+              const freedMB = (Number(result.freedSpace) / (1024 * 1024)).toFixed(2);
+              this.toastService.success(`Freed ${freedMB} MB of disk space`);
+              this.refreshQueue();
+            },
+            error: (err) => {
+              const errorMessage = err?.error?.message || 'Failed to delete original';
+              this.toastService.error(errorMessage);
+            },
+          });
+      }
+    });
   }
 
   protected restoreOriginal(job: QueueJob, event: Event): void {
@@ -956,8 +898,7 @@ export class QueueComponent implements OnInit {
           this.refreshQueue();
         },
         error: (err) => {
-          const errorMessage =
-            err?.error?.message || 'Failed to restore original';
+          const errorMessage = err?.error?.message || 'Failed to restore original';
           this.toastService.error(errorMessage);
         },
       });
@@ -978,9 +919,7 @@ export class QueueComponent implements OnInit {
       .subscribe({
         next: (result) => {
           const count = result.cancelledCount;
-          this.toastService.success(
-            count === 1 ? '1 job cancelled' : `${count} jobs cancelled`,
-          );
+          this.toastService.success(count === 1 ? '1 job cancelled' : `${count} jobs cancelled`);
           this.closeCancelAllDialog();
           this.refreshQueue();
         },
@@ -1012,7 +951,7 @@ export class QueueComponent implements OnInit {
             this.toastService.success(
               count === 1
                 ? '1 job marked as completed (codec already matches)'
-                : `${count} jobs marked as completed (codec already matches)`,
+                : `${count} jobs marked as completed (codec already matches)`
             );
           }
           this.closeSkipCodecMatchDialog();
@@ -1044,18 +983,14 @@ export class QueueComponent implements OnInit {
             this.toastService.info('No codec-match jobs found to re-encode');
           } else {
             this.toastService.success(
-              count === 1
-                ? '1 job queued for re-encoding'
-                : `${count} jobs queued for re-encoding`,
+              count === 1 ? '1 job queued for re-encoding' : `${count} jobs queued for re-encoding`
             );
           }
           this.closeForceEncodeCodecMatchDialog();
           this.refreshQueue();
         },
         error: () => {
-          this.toastService.error(
-            'Failed to queue codec-match jobs for re-encoding',
-          );
+          this.toastService.error('Failed to queue codec-match jobs for re-encoding');
           this.closeForceEncodeCodecMatchDialog();
         },
       });
@@ -1077,9 +1012,7 @@ export class QueueComponent implements OnInit {
         next: (result) => {
           const count = result.retriedCount;
           this.toastService.success(
-            count === 1
-              ? '1 job moved back to queue'
-              : `${count} jobs moved back to queue`,
+            count === 1 ? '1 job moved back to queue' : `${count} jobs moved back to queue`
           );
           this.closeRetryAllDialog();
           this.refreshQueue();
@@ -1111,7 +1044,7 @@ export class QueueComponent implements OnInit {
           this.toastService.success(
             count === 1
               ? '1 failed job moved back to queue'
-              : `${count} failed jobs moved back to queue`,
+              : `${count} failed jobs moved back to queue`
           );
           this.closeRetryFailedDialog();
           this.refreshQueue();
@@ -1135,16 +1068,12 @@ export class QueueComponent implements OnInit {
 
   protected confirmClearJobs(): void {
     this.queueApi
-      .clearJobs(
-        this.clearJobsStages.length > 0 ? this.clearJobsStages : undefined,
-      )
+      .clearJobs(this.clearJobsStages.length > 0 ? this.clearJobsStages : undefined)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
           const count = result.deleted;
-          this.toastService.success(
-            count === 1 ? '1 job deleted' : `${count} jobs deleted`,
-          );
+          this.toastService.success(count === 1 ? '1 job deleted' : `${count} jobs deleted`);
           this.closeClearJobsDialog();
           this.refreshQueue();
         },
@@ -1166,12 +1095,10 @@ export class QueueComponent implements OnInit {
             this.toastService.success(
               count === 1
                 ? '1 job redistributed across nodes'
-                : `${count} jobs redistributed across nodes`,
+                : `${count} jobs redistributed across nodes`
             );
           } else {
-            this.toastService.info(
-              'No rebalancing needed - jobs are already well distributed',
-            );
+            this.toastService.info('No rebalancing needed - jobs are already well distributed');
           }
           this.refreshQueue();
         },
@@ -1229,10 +1156,7 @@ export class QueueComponent implements OnInit {
             this.showJobHistoryModal = true;
           },
           error: (error) => {
-            this.errorLogger.error(
-              `Failed to fetch job history for ${job.id}`,
-              error,
-            );
+            this.errorLogger.error(`Failed to fetch job history for ${job.id}`, error);
             this.toastService.error('Failed to load job history');
             this.maintainCacheSize();
             this.jobHistoryCache.set(job.id, []);
@@ -1309,11 +1233,7 @@ export class QueueComponent implements OnInit {
     // 1. Job was auto-healed (autoHealedAt exists)
     // 2. Job had made progress before (autoHealedProgress > 0)
     // 3. But current progress is 0 (had to start fresh)
-    return (
-      !!job.autoHealedAt &&
-      (job.autoHealedProgress || 0) > 0 &&
-      job.progress === 0
-    );
+    return !!job.autoHealedAt && (job.autoHealedProgress || 0) > 0 && job.progress === 0;
   }
 
   /**
@@ -1384,9 +1304,7 @@ export class QueueComponent implements OnInit {
    * Parse decision issues JSON string into HealthCheckIssue array
    * DEEP AUDIT P2: Added schema validation for parsed JSON
    */
-  protected parseDecisionIssues(
-    decisionIssuesJson: string | null | undefined,
-  ): HealthCheckIssue[] {
+  protected parseDecisionIssues(decisionIssuesJson: string | null | undefined): HealthCheckIssue[] {
     if (!decisionIssuesJson) {
       return [];
     }
@@ -1404,7 +1322,7 @@ export class QueueComponent implements OnInit {
           issue !== null &&
           typeof issue === 'object' &&
           typeof issue.category === 'string' &&
-          typeof issue.message === 'string',
+          typeof issue.message === 'string'
       );
     } catch (error: unknown) {
       this.errorLogger.error('Failed to parse decision issues', error);
@@ -1434,7 +1352,7 @@ export class QueueComponent implements OnInit {
       // DEEP AUDIT P2: Add defaultValue to handle empty observable case
       const result = await firstValueFrom(
         this.queueApi.resolveDecision(jobId, event.action.config || {}),
-        { defaultValue: null },
+        { defaultValue: null }
       );
 
       if (result === null) {
@@ -1443,16 +1361,13 @@ export class QueueComponent implements OnInit {
       }
 
       // Show success message
-      this.toastService.success(
-        `${event.action.label} applied successfully. Job moved to queue.`,
-      );
+      this.toastService.success(`${event.action.label} applied successfully. Job moved to queue.`);
 
       // Refresh the queue to show updated job status
       this.refreshQueue();
     } catch (error: unknown) {
       this.errorLogger.error('Failed to resolve decision', error);
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.toastService.error(`Failed to apply fix: ${errorMessage}`);
     }
   }
@@ -1530,10 +1445,7 @@ export class QueueComponent implements OnInit {
   /**
    * Calculate encoding duration for completed jobs
    */
-  protected getEncodingDuration(
-    startedAt?: string,
-    completedAt?: string,
-  ): string {
+  protected getEncodingDuration(startedAt?: string, completedAt?: string): string {
     if (!startedAt || !completedAt) return '-';
 
     const start = new Date(startedAt).getTime();
@@ -1603,7 +1515,7 @@ export class QueueComponent implements OnInit {
     if (node.loadAvg1m !== undefined && node.cpuCount !== undefined) {
       const loadPercent = ((node.loadAvg1m / node.cpuCount) * 100).toFixed(0);
       lines.push(
-        `CPU Load: ${node.loadAvg1m.toFixed(1)} / ${node.cpuCount} cores (${loadPercent}%)`,
+        `CPU Load: ${node.loadAvg1m.toFixed(1)} / ${node.cpuCount} cores (${loadPercent}%)`
       );
     }
 
@@ -1612,7 +1524,7 @@ export class QueueComponent implements OnInit {
       const usedMemory = node.totalMemoryGB - node.freeMemoryGB;
       const memPercent = ((usedMemory / node.totalMemoryGB) * 100).toFixed(0);
       lines.push(
-        `Memory: ${usedMemory.toFixed(1)}GB / ${node.totalMemoryGB.toFixed(1)}GB (${memPercent}% used)`,
+        `Memory: ${usedMemory.toFixed(1)}GB / ${node.totalMemoryGB.toFixed(1)}GB (${memPercent}% used)`
       );
     } else if (node.freeMemoryGB !== undefined) {
       lines.push(`Free Memory: ${node.freeMemoryGB.toFixed(1)}GB`);
@@ -1647,11 +1559,9 @@ export class QueueComponent implements OnInit {
   protected getCodecBadgeClass(codec: string | undefined): string {
     if (!codec) return 'codec-unknown';
     const codecLower = codec.toLowerCase();
-    if (codecLower.includes('hevc') || codecLower.includes('h.265'))
-      return 'codec-hevc';
+    if (codecLower.includes('hevc') || codecLower.includes('h.265')) return 'codec-hevc';
     if (codecLower.includes('av1')) return 'codec-av1';
-    if (codecLower.includes('h.264') || codecLower.includes('avc'))
-      return 'codec-h264';
+    if (codecLower.includes('h.264') || codecLower.includes('avc')) return 'codec-h264';
     if (codecLower.includes('vp9')) return 'codec-vp9';
     return 'codec-other';
   }
@@ -1752,13 +1662,10 @@ export class QueueComponent implements OnInit {
    * Group failed jobs by error category
    */
   protected getUniqueFailureReasons(
-    data: QueueResponse,
+    data: QueueResponse
   ): Array<{ error: string; count: number; category: string }> {
     const failedJobs = this.getFailedJobs(data);
-    const categoryCounts = new Map<
-      string,
-      { count: number; originalErrors: Set<string> }
-    >();
+    const categoryCounts = new Map<string, { count: number; originalErrors: Set<string> }>();
 
     for (const job of failedJobs) {
       const originalError = job.error || 'Unknown error';
@@ -1787,7 +1694,7 @@ export class QueueComponent implements OnInit {
    */
   protected getFilteredFailedJobs(
     data: QueueResponse,
-    errorFilter: string | null,
+    errorFilter: string | null
   ): QueueResponse['jobs'] {
     const failedJobs = this.getFailedJobs(data);
     if (!errorFilter) {
@@ -1868,9 +1775,7 @@ export class QueueComponent implements OnInit {
   /**
    * Format absolute datetime for timeline (full precision)
    */
-  protected formatAbsoluteDateTime(
-    timestamp: string | null | undefined,
-  ): string {
+  protected formatAbsoluteDateTime(timestamp: string | null | undefined): string {
     if (!timestamp) return '';
 
     const date = new Date(timestamp);
@@ -1983,10 +1888,7 @@ export class QueueComponent implements OnInit {
     sourceCodec?: string;
     targetCodec?: string;
   }): number {
-    const compressionRatio = this.getCompressionRatio(
-      job.sourceCodec,
-      job.targetCodec,
-    );
+    const compressionRatio = this.getCompressionRatio(job.sourceCodec, job.targetCodec);
     return Math.round(job.originalSize * (1 - compressionRatio));
   }
 
@@ -1994,23 +1896,15 @@ export class QueueComponent implements OnInit {
    * Get estimated compression percentage
    * Returns percentage as number (e.g., 50 for 50%)
    */
-  protected getEstimatedCompression(job: {
-    sourceCodec?: string;
-    targetCodec?: string;
-  }): number {
-    return Math.round(
-      this.getCompressionRatio(job.sourceCodec, job.targetCodec) * 100,
-    );
+  protected getEstimatedCompression(job: { sourceCodec?: string; targetCodec?: string }): number {
+    return Math.round(this.getCompressionRatio(job.sourceCodec, job.targetCodec) * 100);
   }
 
   /**
    * Calculate compression ratio based on codec conversion
    * Returns ratio (e.g., 0.5 for 50% compression)
    */
-  private getCompressionRatio(
-    sourceCodec?: string,
-    targetCodec?: string,
-  ): number {
+  private getCompressionRatio(sourceCodec?: string, targetCodec?: string): number {
     if (!sourceCodec || !targetCodec) {
       return 0.4; // Default 40% compression
     }
@@ -2090,9 +1984,7 @@ export class QueueComponent implements OnInit {
     if (firstLine.length > 50) {
       // Try to extract meaningful part before common delimiters
       const meaningfulPart =
-        firstLine.split(':')[0] ||
-        firstLine.split('-')[0] ||
-        firstLine.substring(0, 50);
+        firstLine.split(':')[0] || firstLine.split('-')[0] || firstLine.substring(0, 50);
       return `${meaningfulPart.trim()}...`;
     }
 
@@ -2104,10 +1996,7 @@ export class QueueComponent implements OnInit {
    * Uses existing endpoint: GET /:id/preview/:index (1-based)
    * Returns empty array if paths are not available
    */
-  protected parsePreviewPaths(
-    paths: string | null | undefined,
-    jobId: string,
-  ): string[] {
+  protected parsePreviewPaths(paths: string | null | undefined, jobId: string): string[] {
     if (!paths) return [];
     try {
       const filePaths = JSON.parse(paths) as string[];
@@ -2144,7 +2033,7 @@ export class QueueComponent implements OnInit {
    */
   protected getStorageAccessType(
     job: { transferRequired?: boolean; nodeId?: string },
-    nodes: NodeModel[],
+    nodes: NodeModel[]
   ): 'local' | 'nfs' | 'copied' {
     if (job.transferRequired) return 'copied';
 
@@ -2157,10 +2046,7 @@ export class QueueComponent implements OnInit {
   /**
    * Convert preview paths to carousel images
    */
-  protected parsePreviewImages(
-    paths: string | null | undefined,
-    jobId: string,
-  ): CarouselImage[] {
+  protected parsePreviewImages(paths: string | null | undefined, jobId: string): CarouselImage[] {
     if (!paths) return [];
     try {
       const filePaths = JSON.parse(paths) as string[];
@@ -2180,7 +2066,7 @@ export class QueueComponent implements OnInit {
   protected openFullscreenCarousel(
     jobId: string,
     paths: string | null | undefined,
-    initialIndex = 0,
+    initialIndex = 0
   ): void {
     this.fullscreenCarouselImages = this.parsePreviewImages(paths, jobId);
     this.fullscreenCarouselInitialIndex = initialIndex;
@@ -2234,13 +2120,11 @@ export class QueueComponent implements OnInit {
       width: '600px',
     });
 
-    dialogRef.closed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((result) => {
-        if (result === true) {
-          this.toastService.success('Job delegated successfully');
-          this.refreshQueue();
-        }
-      });
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      if (result === true) {
+        this.toastService.success('Job delegated successfully');
+        this.refreshQueue();
+      }
+    });
   }
 }

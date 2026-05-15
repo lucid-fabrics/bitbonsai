@@ -29,10 +29,7 @@ describe('NodeDiscoveryService', () => {
     mockPublish.mockReturnValue({ stop: mockServiceStop });
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        NodeDiscoveryService,
-        { provide: NodeRepository, useValue: mockNodeRepository },
-      ],
+      providers: [NodeDiscoveryService, { provide: NodeRepository, useValue: mockNodeRepository }],
     }).compile();
 
     service = module.get<NodeDiscoveryService>(NodeDiscoveryService);

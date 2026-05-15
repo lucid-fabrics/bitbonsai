@@ -13,11 +13,7 @@ import {
   seedTestDatabase,
   waitForJobCompletion,
 } from '../fixtures/test-helpers';
-import {
-  cleanupFixtures,
-  generateVideo,
-  REALISTIC_FILENAMES,
-} from '../fixtures/video-generator';
+import { cleanupFixtures, generateVideo, REALISTIC_FILENAMES } from '../fixtures/video-generator';
 
 /**
  * Level 1: Basic Integration Tests
@@ -49,9 +45,7 @@ describe('Level 1: Basic Single Job Flow', () => {
 
     prisma = moduleRef.get<PrismaService>(PrismaService);
     _queueService = moduleRef.get<QueueService>(QueueService);
-    encodingProcessor = moduleRef.get<EncodingProcessorService>(
-      EncodingProcessorService,
-    );
+    encodingProcessor = moduleRef.get<EncodingProcessorService>(EncodingProcessorService);
     _ffmpegService = moduleRef.get<FfmpegService>(FfmpegService);
 
     // Initialize in-memory database
@@ -108,9 +102,7 @@ describe('Level 1: Basic Single Job Flow', () => {
       });
 
       // ACT: Process the job
-      const _processedJob = await encodingProcessor.processNextJob(
-        `${testNodeId}-worker-1`,
-      );
+      const _processedJob = await encodingProcessor.processNextJob(`${testNodeId}-worker-1`);
 
       // Wait for job to complete (with timeout)
       const completedJob = await waitForJobCompletion(prisma, job.id, 60000);
@@ -143,7 +135,7 @@ describe('Level 1: Basic Single Job Flow', () => {
       expect(completedJob?.startedAt).not.toBeNull();
       expect(completedJob?.completedAt).not.toBeNull();
       expect(completedJob?.completedAt?.getTime()).toBeGreaterThan(
-        completedJob?.startedAt?.getTime() ?? 0,
+        completedJob?.startedAt?.getTime() ?? 0
       );
     }, 120000); // 2 minute timeout
 
@@ -204,9 +196,7 @@ describe('Level 1: Basic Single Job Flow', () => {
       });
 
       // ACT: Start encoding
-      const processPromise = encodingProcessor.processNextJob(
-        `${testNodeId}-worker-1`,
-      );
+      const processPromise = encodingProcessor.processNextJob(`${testNodeId}-worker-1`);
 
       // Track progress updates
       const progressUpdates: number[] = [];
@@ -235,9 +225,7 @@ describe('Level 1: Basic Single Job Flow', () => {
 
       // Progress should increase monotonically (or stay same)
       for (let i = 1; i < progressUpdates.length; i++) {
-        expect(progressUpdates[i]).toBeGreaterThanOrEqual(
-          progressUpdates[i - 1],
-        );
+        expect(progressUpdates[i]).toBeGreaterThanOrEqual(progressUpdates[i - 1]);
       }
     }, 180000);
   });
@@ -279,9 +267,7 @@ describe('Level 1: Basic Single Job Flow', () => {
       expect(afterInode).toBeGreaterThan(0);
 
       // Verify no temp files left behind
-      const dir = fs.readdirSync(
-        videoPath.substring(0, videoPath.lastIndexOf('/')),
-      );
+      const dir = fs.readdirSync(videoPath.substring(0, videoPath.lastIndexOf('/')));
       const tempFiles = dir.filter((f) => f.includes('.tmp'));
       expect(tempFiles.length).toBe(0);
     }, 120000);

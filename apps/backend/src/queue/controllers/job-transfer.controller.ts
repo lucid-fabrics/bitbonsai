@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
 import {
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -24,7 +16,7 @@ import { FileTransferService } from '../services/file-transfer.service';
 export class JobTransferController {
   constructor(
     private readonly queueService: QueueService,
-    private readonly fileTransferService: FileTransferService,
+    private readonly fileTransferService: FileTransferService
   ) {}
 
   /**

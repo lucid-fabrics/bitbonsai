@@ -54,9 +54,7 @@ export class MetricsRepository extends BaseRepository {
     });
   }
 
-  async findCodecDistributions(
-    licenseId?: string,
-  ): Promise<Pick<Metric, 'codecDistribution'>[]> {
+  async findCodecDistributions(licenseId?: string): Promise<Pick<Metric, 'codecDistribution'>[]> {
     return this.findMany<Pick<Metric, 'codecDistribution'>>({
       where: licenseId ? { licenseId } : {},
       select: { codecDistribution: true },

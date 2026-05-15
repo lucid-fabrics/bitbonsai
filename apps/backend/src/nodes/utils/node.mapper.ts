@@ -1,7 +1,4 @@
-import type {
-  NodeRegistrationRequest,
-  Node as PrismaNode,
-} from '@prisma/client';
+import type { NodeRegistrationRequest, Node as PrismaNode } from '@prisma/client';
 import type { CurrentNodeDto } from '../dto/current-node.dto';
 import type { NodeResponseDto } from '../dto/node-response.dto';
 import type { RegistrationRequestResponseDto } from '../dto/registration/registration-request-response.dto';
@@ -62,7 +59,7 @@ export function toNodeResponseDtoArray(nodes: PrismaNode[]): NodeResponseDto[] {
  * Handles JSON hardwareSpecs field type conversion
  */
 export function toRegistrationRequestResponseDto(
-  request: NodeRegistrationRequest,
+  request: NodeRegistrationRequest
 ): RegistrationRequestResponseDto {
   return {
     id: request.id,
@@ -83,8 +80,7 @@ export function toRegistrationRequestResponseDto(
     tokenExpiresAt: request.tokenExpiresAt,
     status: request.status,
     requestedAt: request.createdAt,
-    respondedAt:
-      request.updatedAt !== request.createdAt ? request.updatedAt : undefined,
+    respondedAt: request.updatedAt !== request.createdAt ? request.updatedAt : undefined,
     message: request.message || undefined,
     rejectionReason: request.rejectionReason || undefined,
     childNodeId: request.childNodeId || undefined,
@@ -97,7 +93,7 @@ export function toRegistrationRequestResponseDto(
  * Batch converts array of NodeRegistrationRequest to RegistrationRequestResponseDto array
  */
 export function toRegistrationRequestResponseDtoArray(
-  requests: NodeRegistrationRequest[],
+  requests: NodeRegistrationRequest[]
 ): RegistrationRequestResponseDto[] {
   return requests.map(toRegistrationRequestResponseDto);
 }

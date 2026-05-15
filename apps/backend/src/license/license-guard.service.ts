@@ -50,7 +50,7 @@ export class LicenseGuardService {
   constructor(
     private readonly licenseRepository: LicenseRepository,
     private readonly nodeRepository: NodeRepository,
-    private readonly jobRepository: JobRepository,
+    private readonly jobRepository: JobRepository
   ) {}
 
   /**
@@ -239,8 +239,7 @@ export class LicenseGuardService {
 
     // Check if near limits
     const nodeUsage = capabilities.currentNodes / capabilities.maxNodes;
-    const jobUsage =
-      capabilities.currentConcurrentJobs / capabilities.maxConcurrentJobs;
+    const jobUsage = capabilities.currentConcurrentJobs / capabilities.maxConcurrentJobs;
 
     if (nodeUsage >= 0.8 || jobUsage >= 0.8) {
       const tierOrder: LicenseTier[] = [

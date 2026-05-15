@@ -113,7 +113,7 @@ describe('PoliciesService', () => {
           name: 'Standard HEVC',
           preset: PolicyPreset.BALANCED_HEVC,
           targetQuality: 23,
-        }),
+        })
       );
     });
 
@@ -299,19 +299,15 @@ describe('PoliciesService', () => {
       expect(result.id).toBe('policy123');
       expect(result.library).toEqual({ id: 'lib123', name: 'TV Shows' });
       expect(result._count.jobs).toBe(142);
-      expect(mockPolicyRepository.findByIdWithStats).toHaveBeenCalledWith(
-        'policy123',
-      );
+      expect(mockPolicyRepository.findByIdWithStats).toHaveBeenCalledWith('policy123');
     });
 
     it('should throw NotFoundException when policy does not exist', async () => {
       mockPolicyRepository.findByIdWithStats.mockResolvedValue(null);
 
+      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
       await expect(service.findOne('nonexistent')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.findOne('nonexistent')).rejects.toThrow(
-        'Policy with ID "nonexistent" not found',
+        'Policy with ID "nonexistent" not found'
       );
     });
   });
@@ -341,9 +337,7 @@ describe('PoliciesService', () => {
         updatedAt: new Date('2025-10-01T16:00:00Z'),
       };
 
-      mockPolicyRepository.findByIdWithStats.mockResolvedValue(
-        mockExistingPolicy,
-      );
+      mockPolicyRepository.findByIdWithStats.mockResolvedValue(mockExistingPolicy);
       mockPolicyRepository.update.mockResolvedValue(mockUpdatedPolicy);
 
       const result = await service.update('policy123', { targetQuality: 26 });
@@ -353,16 +347,16 @@ describe('PoliciesService', () => {
         'policy123',
         expect.objectContaining({
           targetQuality: 26,
-        }),
+        })
       );
     });
 
     it('should throw NotFoundException when updating non-existent policy', async () => {
       mockPolicyRepository.findByIdWithStats.mockResolvedValue(null);
 
-      await expect(
-        service.update('nonexistent', { name: 'New Name' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('nonexistent', { name: 'New Name' })).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -396,9 +390,7 @@ describe('PoliciesService', () => {
     it('should throw NotFoundException when deleting non-existent policy', async () => {
       mockPolicyRepository.findByIdWithStats.mockResolvedValue(null);
 
-      await expect(service.remove('nonexistent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('nonexistent')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -439,7 +431,7 @@ describe('PoliciesService', () => {
             defaultCodec: TargetCodec.HEVC,
             recommendedQuality: 23,
           }),
-        ]),
+        ])
       );
     });
 

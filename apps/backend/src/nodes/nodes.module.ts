@@ -42,11 +42,7 @@ import { SystemInfoService } from './services/system-info.service';
  */
 @Module({
   imports: [CoreModule, NotificationsModule, DistributionModule, MediaModule],
-  controllers: [
-    NodesController,
-    NodeRegistrationController,
-    StorageSharesController,
-  ],
+  controllers: [NodesController, NodeRegistrationController, StorageSharesController],
   providers: [
     NodesService,
     PrismaService,

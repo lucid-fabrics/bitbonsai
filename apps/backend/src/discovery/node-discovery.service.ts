@@ -1,18 +1,10 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { type Node, NodeRole } from '@prisma/client';
 import { Bonjour, Browser, Service } from 'bonjour-service';
 import { NodesService } from '../nodes/nodes.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import {
-  NotificationPriority,
-  NotificationType,
-} from '../notifications/types/notification.types';
+import { NotificationPriority, NotificationType } from '../notifications/types/notification.types';
 import { HardwareCapabilitiesDto } from '../system/dto/hardware-capabilities.dto';
 import { HardwareDetectionService } from '../system/hardware-detection.service';
 
@@ -69,7 +61,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
     private readonly nodesService: NodesService,
     private readonly eventEmitter: EventEmitter2,
     private readonly hardwareDetectionService: HardwareDetectionService,
-    private readonly notificationsService: NotificationsService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   /**
@@ -84,9 +76,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       const currentNode = await this.nodesService.getCurrentNode();
       this.currentNodeRole = currentNode.role;
 
-      this.logger.log(
-        `🔍 Discovery service initialized for ${this.currentNodeRole} node`,
-      );
+      this.logger.log(`🔍 Discovery service initialized for ${this.currentNodeRole} node`);
 
       // If MAIN node, start broadcasting
       if (this.currentNodeRole === NodeRole.MAIN) {
@@ -97,9 +87,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
     } catch {
       // Node doesn't exist yet (e.g., during initial setup)
       // Bonjour is already initialized, so scanning will work
-      this.logger.log(
-        '🔍 Discovery service initialized - no node configured yet',
-      );
+      this.logger.log('🔍 Discovery service initialized - no node configured yet');
     }
   }
 
@@ -123,11 +111,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
   /**
    * Start broadcasting mDNS service (MAIN node only)
    */
-  private async startBroadcast(node: {
-    id: string;
-    name: string;
-    version: string;
-  }): Promise<void> {
+  private async startBroadcast(node: { id: string; name: string; version: string }): Promise<void> {
     if (!this.bonjour) {
       throw new Error('Bonjour not initialized');
     }
@@ -162,7 +146,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`   Name: ${node.name}`);
       this.logger.log(`   Port: ${apiPort}`);
       this.logger.log(
-        `   Acceleration: ${hardware.accelerationType} (${hardware.gpus.length} GPU(s))`,
+        `   Acceleration: ${hardware.accelerationType} (${hardware.gpus.length} GPU(s))`
       );
     } catch (error: unknown) {
       this.logger.error('Failed to start mDNS broadcast:', error);
@@ -250,9 +234,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
             this.browser.stop();
             this.browser = null;
           }
-          this.logger.log(
-            `✅ Scan complete - found ${this.discoveredNodes.size} node(s)`,
-          );
+          this.logger.log(`✅ Scan complete - found ${this.discoveredNodes.size} node(s)`);
           resolve(Array.from(this.discoveredNodes.values()));
         }, 5000); // 5 second scan
 
@@ -263,7 +245,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
             const version = service.txt?.version || 'unknown';
             const apiPort = parseInt(
               service.txt?.apiPort || service.port?.toString() || '3100',
-              10,
+              10
             );
             const ipAddress = service.addresses?.[0] || 'unknown';
             const hostname = service.host || 'unknown';
@@ -282,24 +264,20 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
               // Try to fetch full hardware capabilities from the node
               try {
                 const hardwareResponse = await fetch(
-                  `http://${ipAddress}:${apiPort}/api/v1/system/hardware`,
+                  `http://${ipAddress}:${apiPort}/api/v1/system/hardware`
                 );
                 if (hardwareResponse.ok) {
                   const hardware = await hardwareResponse.json();
                   discovered.hardware = hardware;
                   this.logger.log(
-                    `   ✓ Found: ${name} (${ipAddress}:${apiPort}) - ${hardware.accelerationType}`,
+                    `   ✓ Found: ${name} (${ipAddress}:${apiPort}) - ${hardware.accelerationType}`
                   );
                 } else {
-                  this.logger.log(
-                    `   ✓ Found: ${name} (${ipAddress}:${apiPort})`,
-                  );
+                  this.logger.log(`   ✓ Found: ${name} (${ipAddress}:${apiPort})`);
                 }
               } catch {
                 // Hardware fetch failed, but node is still valid
-                this.logger.log(
-                  `   ✓ Found: ${name} (${ipAddress}:${apiPort})`,
-                );
+                this.logger.log(`   ✓ Found: ${name} (${ipAddress}:${apiPort})`);
               }
 
               this.discoveredNodes.set(nodeId, discovered);
@@ -388,23 +366,17 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
    * @param mainNodeId Node ID of the MAIN node
    * @returns Pairing token to complete pairing
    */
-  async requestPairing(
-    mainNodeUrl: string,
-    mainNodeId: string,
-  ): Promise<string> {
+  async requestPairing(mainNodeUrl: string, mainNodeId: string): Promise<string> {
     this.logger.log(`🔗 Requesting pairing with MAIN node: ${mainNodeUrl}`);
 
     try {
       // Make HTTP request to MAIN node to request pairing
-      const response = await fetch(
-        `${mainNodeUrl}/api/v1/nodes/${mainNodeId}/pairing-token`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+      const response = await fetch(`${mainNodeUrl}/api/v1/nodes/${mainNodeId}/pairing-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+      });
 
       if (!response.ok) {
         throw new Error(`Pairing request failed: ${response.statusText}`);
@@ -430,12 +402,10 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
    */
   async completePairing(
     mainNodeUrl: string,
-    pairingToken: string,
+    pairingToken: string
   ): Promise<{ nodeId: string; apiKey: string; name: string }> {
     // SECURITY: Don't log sensitive tokens - only log masked version
-    this.logger.log(
-      `🔐 Completing pairing with token: ${pairingToken.substring(0, 2)}****`,
-    );
+    this.logger.log(`🔐 Completing pairing with token: ${pairingToken.substring(0, 2)}****`);
 
     try {
       const response = await fetch(`${mainNodeUrl}/api/v1/nodes/pair`, {
@@ -452,7 +422,7 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
 
       const data = await response.json();
       this.logger.log(
-        `✅ Pairing complete - received API key: ${data.apiKey?.substring(0, 20)}...`,
+        `✅ Pairing complete - received API key: ${data.apiKey?.substring(0, 20)}...`
       );
 
       // BULLETPROOF UX FIX: Automatically configure node as LINKED and restart
@@ -491,26 +461,23 @@ export class NodeDiscoveryService implements OnModuleInit, OnModuleDestroy {
         fs.writeFileSync(envPath, envContent);
       } catch (writeError: unknown) {
         this.logger.error(
-          `Failed to write .env file at ${envPath}: ${writeError instanceof Error ? writeError.message : String(writeError)}`,
+          `Failed to write .env file at ${envPath}: ${writeError instanceof Error ? writeError.message : String(writeError)}`
         );
         throw new Error(
-          `Failed to write configuration file: ${writeError instanceof Error ? writeError.message : String(writeError)}`,
+          `Failed to write configuration file: ${writeError instanceof Error ? writeError.message : String(writeError)}`
         );
       }
       this.logger.log(`✅ Configuration written successfully`);
 
       // Return success response and trigger restart after 2 seconds
       setTimeout(() => {
-        this.logger.log(
-          `🔄 Restarting application to apply LINKED node configuration...`,
-        );
+        this.logger.log(`🔄 Restarting application to apply LINKED node configuration...`);
         process.exit(0); // PM2/systemd will automatically restart
       }, 2000);
 
       return {
         ...data,
-        message:
-          'Pairing successful! Node will restart in 2 seconds to apply configuration.',
+        message: 'Pairing successful! Node will restart in 2 seconds to apply configuration.',
         willRestart: true,
       };
     } catch (error: unknown) {

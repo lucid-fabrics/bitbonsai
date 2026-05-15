@@ -1,8 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  QualityMetrics,
-  QualityMetricsService,
-} from '../../quality-metrics.service';
+import { QualityMetrics, QualityMetricsService } from '../../quality-metrics.service';
 
 /**
  * Unit tests for Video Quality Metrics (VMAF, PSNR, SSIM)
@@ -45,7 +42,7 @@ describe('QualityMetricsService', () => {
     it('should return null for non-existent files in calculateVmaf', async () => {
       const result = await service.calculateVmaf(
         '/nonexistent/original.mp4',
-        '/nonexistent/encoded.mp4',
+        '/nonexistent/encoded.mp4'
       );
       // Should return null (or handle gracefully) for non-existent files
       expect(result === null || typeof result === 'number').toBe(true);
@@ -54,7 +51,7 @@ describe('QualityMetricsService', () => {
     it('should return null for non-existent files in calculatePsnr', async () => {
       const result = await service.calculatePsnr(
         '/nonexistent/original.mp4',
-        '/nonexistent/encoded.mp4',
+        '/nonexistent/encoded.mp4'
       );
       expect(result === null || typeof result === 'number').toBe(true);
     }, 10000);
@@ -62,7 +59,7 @@ describe('QualityMetricsService', () => {
     it('should return null for non-existent files in calculateSsim', async () => {
       const result = await service.calculateSsim(
         '/nonexistent/original.mp4',
-        '/nonexistent/encoded.mp4',
+        '/nonexistent/encoded.mp4'
       );
       expect(result === null || typeof result === 'number').toBe(true);
     }, 10000);
@@ -70,21 +67,15 @@ describe('QualityMetricsService', () => {
     it('should calculate all quality metrics without crashing', async () => {
       const result = await service.calculateAllQualityMetrics(
         '/nonexistent/original.mp4',
-        '/nonexistent/encoded.mp4',
+        '/nonexistent/encoded.mp4'
       );
 
       expect(result).not.toBeNull();
       expect(result.calculatedAt).toBeInstanceOf(Date);
       // Should return partial results even if some metrics fail
-      expect(result.vmaf === undefined || typeof result.vmaf === 'number').toBe(
-        true,
-      );
-      expect(result.psnr === undefined || typeof result.psnr === 'number').toBe(
-        true,
-      );
-      expect(result.ssim === undefined || typeof result.ssim === 'number').toBe(
-        true,
-      );
+      expect(result.vmaf === undefined || typeof result.vmaf === 'number').toBe(true);
+      expect(result.psnr === undefined || typeof result.psnr === 'number').toBe(true);
+      expect(result.ssim === undefined || typeof result.ssim === 'number').toBe(true);
     }, 30000);
   });
 

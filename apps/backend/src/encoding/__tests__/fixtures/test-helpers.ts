@@ -110,9 +110,7 @@ export async function createTestModule(): Promise<TestingModule> {
         provide: SystemInfoService,
         useValue: {
           getSystemInfo: jest.fn(),
-          collectSystemInfo: jest
-            .fn()
-            .mockResolvedValue({ ipAddress: '127.0.0.1' }),
+          collectSystemInfo: jest.fn().mockResolvedValue({ ipAddress: '127.0.0.1' }),
         },
       },
       {
@@ -154,9 +152,7 @@ export async function createTestModule(): Promise<TestingModule> {
         useValue: {
           startStuckJobWatchdog: jest.fn().mockReturnValue(undefined),
           manageLoadBasedPausing: jest.fn().mockResolvedValue(undefined),
-          getSystemDiagnostics: jest
-            .fn()
-            .mockResolvedValue('System Diagnostics:\n- No issues'),
+          getSystemDiagnostics: jest.fn().mockResolvedValue('System Diagnostics:\n- No issues'),
         },
       },
     ],
@@ -169,7 +165,7 @@ export async function createTestModule(): Promise<TestingModule> {
  * Seed test database with node, library, and policy
  */
 export async function seedTestDatabase(
-  prisma: PrismaService,
+  prisma: PrismaService
 ): Promise<{ node: Node; library: Library; policy: Policy }> {
   // Create test license
   const license = await prisma.license.create({
@@ -242,7 +238,7 @@ export async function createTestJob(
     targetCodec?: string;
     beforeSizeBytes?: bigint;
     stage?: string;
-  },
+  }
 ): Promise<Job> {
   return prisma.job.create({
     data: {
@@ -266,7 +262,7 @@ export async function waitForJobStage(
   prisma: PrismaService,
   jobId: string,
   stage: string,
-  timeoutMs = 60000,
+  timeoutMs = 60000
 ): Promise<Job | null> {
   const startTime = Date.now();
 
@@ -290,7 +286,7 @@ export async function waitForJobStage(
 export async function waitForJobCompletion(
   prisma: PrismaService,
   jobId: string,
-  timeoutMs = 120000,
+  timeoutMs = 120000
 ): Promise<Job | null> {
   const startTime = Date.now();
 
@@ -311,10 +307,7 @@ export async function waitForJobCompletion(
 /**
  * Get all jobs for a library
  */
-export async function getLibraryJobs(
-  prisma: PrismaService,
-  libraryId: string,
-): Promise<Job[]> {
+export async function getLibraryJobs(prisma: PrismaService, libraryId: string): Promise<Job[]> {
   return prisma.job.findMany({
     where: { libraryId },
     orderBy: { createdAt: 'asc' },
@@ -324,10 +317,7 @@ export async function getLibraryJobs(
 /**
  * Clean up test jobs
  */
-export async function cleanupTestJobs(
-  prisma: PrismaService,
-  libraryId: string,
-): Promise<void> {
+export async function cleanupTestJobs(prisma: PrismaService, libraryId: string): Promise<void> {
   await prisma.job.deleteMany({
     where: { libraryId },
   });

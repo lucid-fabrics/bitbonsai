@@ -39,9 +39,7 @@ export class SMBMountStrategy implements IMountStrategy {
       const credsFile = `/tmp/smb-creds-${share.id}`;
 
       // Decrypt password from database (with backward compatibility for plain text)
-      const decryptedPassword = this.encryptionService.isEncrypted(
-        share.smbPassword,
-      )
+      const decryptedPassword = this.encryptionService.isEncrypted(share.smbPassword)
         ? this.encryptionService.decrypt(share.smbPassword)
         : share.smbPassword; // Backward compat: plain text password
 
@@ -49,7 +47,7 @@ export class SMBMountStrategy implements IMountStrategy {
       await fs.writeFile(
         credsFile,
         `username=${share.smbUsername}\npassword=${decryptedPassword}`,
-        { mode: 0o600 }, // Owner read/write only
+        { mode: 0o600 } // Owner read/write only
       );
 
       options.push(`credentials=${credsFile}`);
@@ -110,9 +108,7 @@ export class SMBMountStrategy implements IMountStrategy {
       await fs.mkdir(credsDir, { recursive: true, mode: 0o755 });
 
       // Decrypt password (with backward compatibility for plain text)
-      const decryptedPassword = this.encryptionService.isEncrypted(
-        share.smbPassword,
-      )
+      const decryptedPassword = this.encryptionService.isEncrypted(share.smbPassword)
         ? this.encryptionService.decrypt(share.smbPassword)
         : share.smbPassword; // Backward compat: plain text password
 
@@ -120,7 +116,7 @@ export class SMBMountStrategy implements IMountStrategy {
       await fs.writeFile(
         credsFile,
         `username=${share.smbUsername}\npassword=${decryptedPassword}`,
-        { mode: 0o600 }, // Owner read/write only
+        { mode: 0o600 } // Owner read/write only
       );
 
       options.push(`credentials=${credsFile}`);
@@ -151,13 +147,11 @@ export class SMBMountStrategy implements IMountStrategy {
   async testConnectivity(serverAddress: string): Promise<boolean> {
     try {
       // Use smbclient to list shares
-      const { stdout } = await execAsync(
-        `smbclient -L ${serverAddress} -N 2>&1`,
-      );
+      const { stdout } = await execAsync(`smbclient -L ${serverAddress} -N 2>&1`);
       return !stdout.includes('Connection') && !stdout.includes('error');
     } catch (error: unknown) {
       this.logger.debug(
-        `SMB connectivity test failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+        `SMB connectivity test failed: ${error instanceof Error ? error.message : 'unknown error'}`
       );
       return false;
     }

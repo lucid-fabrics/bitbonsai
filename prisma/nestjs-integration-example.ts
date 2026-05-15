@@ -5,27 +5,16 @@
  * Copy these patterns into your actual NestJS services.
  */
 
-import {
-  Injectable,
-  type OnModuleDestroy,
-  type OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { JobStage, LicenseStatus, PrismaClient } from '@prisma/client';
-import type {
-  AdvancedSettings,
-  DeviceProfiles,
-  LicenseFeatures,
-} from './types';
+import type { AdvancedSettings, DeviceProfiles, LicenseFeatures } from './types';
 
 // ============================================================================
 // PRISMA SERVICE (Create in: apps/backend/src/prisma/prisma.service.ts)
 // ============================================================================
 
 @Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     await this.$connect();
     console.log('✅ Database connected');
@@ -92,11 +81,7 @@ export class LicenseService {
   /**
    * Create a new license
    */
-  async createLicense(data: {
-    tier: string;
-    email: string;
-    validUntil?: Date;
-  }) {
+  async createLicense(data: { tier: string; email: string; validUntil?: Date }) {
     const tierConfig = {
       FREE: { maxNodes: 1, maxConcurrentJobs: 2 },
       PATREON: { maxNodes: 2, maxConcurrentJobs: 5 },
@@ -324,7 +309,7 @@ export class JobService {
       afterSizeBytes: bigint;
       savedBytes: bigint;
       savedPercent: number;
-    },
+    }
   ) {
     const job = await this.prisma.job.update({
       where: { id: jobId },
@@ -371,22 +356,20 @@ export class JobService {
   async getJobStats(nodeId?: string) {
     const where = nodeId ? { nodeId } : {};
 
-    const [completed, failed, encoding, queued, totalSaved] = await Promise.all(
-      [
-        this.prisma.job.count({
-          where: { ...where, stage: JobStage.COMPLETED },
-        }),
-        this.prisma.job.count({ where: { ...where, stage: JobStage.FAILED } }),
-        this.prisma.job.count({
-          where: { ...where, stage: JobStage.ENCODING },
-        }),
-        this.prisma.job.count({ where: { ...where, stage: JobStage.QUEUED } }),
-        this.prisma.job.aggregate({
-          where: { ...where, stage: JobStage.COMPLETED },
-          _sum: { savedBytes: true },
-        }),
-      ],
-    );
+    const [completed, failed, encoding, queued, totalSaved] = await Promise.all([
+      this.prisma.job.count({
+        where: { ...where, stage: JobStage.COMPLETED },
+      }),
+      this.prisma.job.count({ where: { ...where, stage: JobStage.FAILED } }),
+      this.prisma.job.count({
+        where: { ...where, stage: JobStage.ENCODING },
+      }),
+      this.prisma.job.count({ where: { ...where, stage: JobStage.QUEUED } }),
+      this.prisma.job.aggregate({
+        where: { ...where, stage: JobStage.COMPLETED },
+        _sum: { savedBytes: true },
+      }),
+    ]);
 
     return {
       completed,
@@ -467,12 +450,7 @@ export class LibraryService {
   /**
    * Create a new library
    */
-  async createLibrary(data: {
-    name: string;
-    path: string;
-    mediaType: string;
-    nodeId: string;
-  }) {
+  async createLibrary(data: { name: string; path: string; mediaType: string; nodeId: string }) {
     return this.prisma.library.create({
       data: {
         name: data.name,

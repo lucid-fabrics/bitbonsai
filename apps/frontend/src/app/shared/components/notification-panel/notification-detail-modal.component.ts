@@ -183,9 +183,7 @@ export class NotificationDetailModalComponent {
   }
 
   requiresAction(): boolean {
-    return (
-      this.notification.type === NotificationType.NODE_REGISTRATION_REQUEST
-    );
+    return this.notification.type === NotificationType.NODE_REGISTRATION_REQUEST;
   }
 
   onTakeAction(): void {

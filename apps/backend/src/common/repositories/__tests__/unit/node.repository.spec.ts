@@ -44,10 +44,7 @@ describe('NodeRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        NodeRepository,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [NodeRepository, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
 
     repository = module.get<NodeRepository>(NodeRepository);
@@ -180,9 +177,7 @@ describe('NodeRepository', () => {
     it('should propagate errors', async () => {
       mockPrismaNode.update.mockRejectedValue(new Error('Record not found'));
 
-      await expect(repository.updateStatus('ghost', 'OFFLINE')).rejects.toThrow(
-        'Record not found',
-      );
+      await expect(repository.updateStatus('ghost', 'OFFLINE')).rejects.toThrow('Record not found');
     });
   });
 
@@ -263,12 +258,10 @@ describe('NodeRepository', () => {
     });
 
     it('should propagate errors on duplicate', async () => {
-      mockPrismaNode.create.mockRejectedValue(
-        new Error('Unique constraint failed'),
-      );
+      mockPrismaNode.create.mockRejectedValue(new Error('Unique constraint failed'));
 
       await expect(repository.createNode({ name: 'Dup' })).rejects.toThrow(
-        'Unique constraint failed',
+        'Unique constraint failed'
       );
     });
   });
@@ -288,9 +281,7 @@ describe('NodeRepository', () => {
     it('should propagate errors when not found', async () => {
       mockPrismaNode.delete.mockRejectedValue(new Error('Record not found'));
 
-      await expect(repository.deleteById('ghost')).rejects.toThrow(
-        'Record not found',
-      );
+      await expect(repository.deleteById('ghost')).rejects.toThrow('Record not found');
     });
   });
 
@@ -384,17 +375,14 @@ describe('NodeRepository', () => {
         expect.objectContaining({
           where: { status: 'ONLINE' },
           include: expect.objectContaining({ _count: expect.anything() }),
-        }),
+        })
       );
     });
   });
 
   describe('findOnlineIds', () => {
     it('should return only id fields for online nodes', async () => {
-      mockPrismaNode.findMany.mockResolvedValue([
-        { id: 'node-1' },
-        { id: 'node-2' },
-      ]);
+      mockPrismaNode.findMany.mockResolvedValue([{ id: 'node-1' }, { id: 'node-2' }]);
 
       const result = await repository.findOnlineIds();
 
@@ -403,7 +391,7 @@ describe('NodeRepository', () => {
         expect.objectContaining({
           where: { status: 'ONLINE' },
           select: { id: true },
-        }),
+        })
       );
     });
   });
@@ -442,10 +430,7 @@ describe('NodeRepository', () => {
     it('should return first node matching any of the ip addresses', async () => {
       mockPrismaNode.findFirst.mockResolvedValue(mockNode);
 
-      const result = await repository.findFirstByIpAddresses([
-        '192.168.1.100',
-        '192.168.1.101',
-      ]);
+      const result = await repository.findFirstByIpAddresses(['192.168.1.100', '192.168.1.101']);
 
       expect(result).toEqual(mockNode);
       expect(mockPrismaNode.findFirst).toHaveBeenCalledWith({

@@ -221,9 +221,7 @@ describe('DiscoveryController', () => {
     });
 
     it('should return ERROR when service throws', async () => {
-      mockRegistrationRequestService.getRequest.mockRejectedValue(
-        new Error('Request not found'),
-      );
+      mockRegistrationRequestService.getRequest.mockRejectedValue(new Error('Request not found'));
 
       const result = await controller.getPairingStatus('bad-id');
 
@@ -305,9 +303,7 @@ describe('DiscoveryController', () => {
 
     it('should still return success even if sync fails (background)', async () => {
       mockDiscoveryService.approveNode.mockResolvedValue({ id: 'node-1' });
-      mockSyncService.syncToChildNode.mockRejectedValue(
-        new Error('Sync failed'),
-      );
+      mockSyncService.syncToChildNode.mockRejectedValue(new Error('Sync failed'));
 
       const result = await controller.approveNode('node-1');
 

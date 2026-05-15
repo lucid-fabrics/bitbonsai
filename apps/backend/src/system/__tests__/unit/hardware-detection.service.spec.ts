@@ -1,9 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import * as os from 'os';
-import {
-  AccelerationType,
-  GPUVendor,
-} from '../../dto/hardware-capabilities.dto';
+import { AccelerationType, GPUVendor } from '../../dto/hardware-capabilities.dto';
 import { HardwareDetectionService } from '../../hardware-detection.service';
 
 jest.mock('os');
@@ -60,15 +57,9 @@ describe('HardwareDetectionService', () => {
     it('should detect memory information', async () => {
       const result = await service.detectHardware();
 
-      expect(result.memory.total).toBe(
-        Math.floor((32 * 1024 * 1024 * 1024) / (1024 * 1024)),
-      );
-      expect(result.memory.free).toBe(
-        Math.floor((16 * 1024 * 1024 * 1024) / (1024 * 1024)),
-      );
-      expect(result.memory.used).toBe(
-        Math.floor((16 * 1024 * 1024 * 1024) / (1024 * 1024)),
-      );
+      expect(result.memory.total).toBe(Math.floor((32 * 1024 * 1024 * 1024) / (1024 * 1024)));
+      expect(result.memory.free).toBe(Math.floor((16 * 1024 * 1024 * 1024) / (1024 * 1024)));
+      expect(result.memory.used).toBe(Math.floor((16 * 1024 * 1024 * 1024) / (1024 * 1024)));
     });
 
     it('should fall back to CPU when no GPUs detected', async () => {
@@ -102,9 +93,7 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should throw on detection failure', async () => {
-      jest
-        .spyOn(service as any, 'detectGPUs')
-        .mockRejectedValue(new Error('Detection failed'));
+      jest.spyOn(service as any, 'detectGPUs').mockRejectedValue(new Error('Detection failed'));
 
       await expect(service.detectHardware()).rejects.toThrow();
     });
@@ -266,9 +255,7 @@ describe('HardwareDetectionService', () => {
     });
 
     it('should return null when executeCommand throws', async () => {
-      jest
-        .spyOn(service as any, 'executeCommand')
-        .mockRejectedValue(new Error('not found'));
+      jest.spyOn(service as any, 'executeCommand').mockRejectedValue(new Error('not found'));
 
       const result = await (service as any).detectNvidiaGPU();
 
@@ -297,7 +284,7 @@ describe('HardwareDetectionService', () => {
         .spyOn(service as any, 'executeCommand')
         .mockResolvedValueOnce('renderD128 renderD129') // ls /dev/dri/
         .mockResolvedValueOnce(
-          'vainfo: VA-API version: 1.16\nDriver version: intel-media-driver 23.1\nVA-API driver: iHD\nIntel VA-API driver',
+          'vainfo: VA-API version: 1.16\nDriver version: intel-media-driver 23.1\nVA-API driver: iHD\nIntel VA-API driver'
         ); // vainfo
 
       const result = await (service as any).detectIntelGPU();
@@ -329,9 +316,7 @@ describe('HardwareDetectionService', () => {
         value: 'linux',
         configurable: true,
       });
-      jest
-        .spyOn(service as any, 'executeCommand')
-        .mockResolvedValueOnce('card0 card1');
+      jest.spyOn(service as any, 'executeCommand').mockResolvedValueOnce('card0 card1');
 
       const result = await (service as any).detectIntelGPU();
 
@@ -386,7 +371,7 @@ describe('HardwareDetectionService', () => {
       jest
         .spyOn(service as any, 'executeCommand')
         .mockResolvedValue(
-          '0000:01:00.0 VGA compatible controller: AMD/ATI Navi 21 [Radeon RX 6800 XT] (rev c1)',
+          '0000:01:00.0 VGA compatible controller: AMD/ATI Navi 21 [Radeon RX 6800 XT] (rev c1)'
         );
 
       const result = await (service as any).detectAMDGPU();
@@ -427,9 +412,7 @@ describe('HardwareDetectionService', () => {
         value: 'linux',
         configurable: true,
       });
-      jest
-        .spyOn(service as any, 'executeCommand')
-        .mockRejectedValue(new Error('lspci fail'));
+      jest.spyOn(service as any, 'executeCommand').mockRejectedValue(new Error('lspci fail'));
 
       const result = await (service as any).detectAMDGPU();
 
@@ -539,9 +522,7 @@ describe('HardwareDetectionService', () => {
       (os.totalmem as jest.Mock).mockReturnValue(32 * 1024 * 1024 * 1024);
       (os.freemem as jest.Mock).mockReturnValue(16 * 1024 * 1024 * 1024);
 
-      jest
-        .spyOn(service as any, 'detectNvidiaGPU')
-        .mockRejectedValue(new Error('critical fail'));
+      jest.spyOn(service as any, 'detectNvidiaGPU').mockRejectedValue(new Error('critical fail'));
       // Let others resolve normally
       jest.spyOn(service as any, 'detectIntelGPU').mockResolvedValue(null);
       jest.spyOn(service as any, 'detectAMDGPU').mockResolvedValue(null);

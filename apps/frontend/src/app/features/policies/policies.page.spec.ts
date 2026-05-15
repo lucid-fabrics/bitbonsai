@@ -1,9 +1,6 @@
 import { Dialog, type DialogRef } from '@angular/cdk/dialog';
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
@@ -152,9 +149,7 @@ describe('PoliciesComponent', () => {
       expect(formData.targetCodec).toBe(TargetCodec.HEVC);
       expect(formData.targetQuality).toBe(23);
       expect(formData.libraryId).toBe('lib-1');
-      expect(formData.deviceProfiles).toEqual(
-        new Set([DeviceProfile.APPLE_TV, DeviceProfile.WEB]),
-      );
+      expect(formData.deviceProfiles).toEqual(new Set([DeviceProfile.APPLE_TV, DeviceProfile.WEB]));
       expect(formData.ffmpegFlags).toBe('-preset medium');
       expect(formData.audioHandling).toBe(AudioHandling.COPY);
       expect(component.showFormModal).toBe(true);
@@ -203,9 +198,7 @@ describe('PoliciesComponent', () => {
 
       component.toggleDeviceProfile(DeviceProfile.APPLE_TV);
 
-      expect(
-        component.formData.deviceProfiles.has(DeviceProfile.APPLE_TV),
-      ).toBe(true);
+      expect(component.formData.deviceProfiles.has(DeviceProfile.APPLE_TV)).toBe(true);
     });
 
     it('should remove profile if present', () => {
@@ -215,9 +208,7 @@ describe('PoliciesComponent', () => {
 
       component.toggleDeviceProfile(DeviceProfile.APPLE_TV);
 
-      expect(
-        component.formData.deviceProfiles.has(DeviceProfile.APPLE_TV),
-      ).toBe(false);
+      expect(component.formData.deviceProfiles.has(DeviceProfile.APPLE_TV)).toBe(false);
     });
   });
 
@@ -274,9 +265,7 @@ describe('PoliciesComponent', () => {
       const isValid = component.validateForm();
 
       expect(isValid).toBe(false);
-      expect(component.formErrors.name).toBe(
-        'Name must be 50 characters or less',
-      );
+      expect(component.formErrors.name).toBe('Name must be 50 characters or less');
     });
 
     it('should validate quality range', () => {
@@ -289,9 +278,7 @@ describe('PoliciesComponent', () => {
       const isValid = component.validateForm();
 
       expect(isValid).toBe(false);
-      expect(component.formErrors.targetQuality).toBe(
-        'Quality must be between 0 and 51',
-      );
+      expect(component.formErrors.targetQuality).toBe('Quality must be between 0 and 51');
     });
 
     it('should validate device profiles', () => {
@@ -305,7 +292,7 @@ describe('PoliciesComponent', () => {
 
       expect(isValid).toBe(false);
       expect(component.formErrors.deviceProfiles).toBe(
-        'At least one device profile must be selected',
+        'At least one device profile must be selected'
       );
     });
 
@@ -331,10 +318,7 @@ describe('PoliciesComponent', () => {
       formData.targetCodec = TargetCodec.HEVC;
       formData.targetQuality = 23;
       formData.libraryId = 'lib-1';
-      formData.deviceProfiles = new Set([
-        DeviceProfile.APPLE_TV,
-        DeviceProfile.WEB,
-      ]);
+      formData.deviceProfiles = new Set([DeviceProfile.APPLE_TV, DeviceProfile.WEB]);
       formData.ffmpegFlags = '-preset medium';
       formData.audioHandling = AudioHandling.COPY;
       component.formData = formData;
@@ -376,7 +360,7 @@ describe('PoliciesComponent', () => {
               audioHandling: AudioHandling.COPY,
             },
           }),
-        }),
+        })
       );
       expect(component.showFormModal).toBe(false);
     });
@@ -394,7 +378,7 @@ describe('PoliciesComponent', () => {
           request: expect.objectContaining({
             name: 'New Policy',
           }),
-        }),
+        })
       );
       expect(component.showFormModal).toBe(false);
     });
@@ -427,7 +411,7 @@ describe('PoliciesComponent', () => {
             itemName: 'Test Policy',
             irreversible: true,
           }),
-        }),
+        })
       );
     });
 
@@ -440,9 +424,7 @@ describe('PoliciesComponent', () => {
 
       component.confirmDelete(mockPolicy);
 
-      expect(dispatchSpy).toHaveBeenCalledWith(
-        PoliciesActions.deletePolicy({ id: '1' }),
-      );
+      expect(dispatchSpy).toHaveBeenCalledWith(PoliciesActions.deletePolicy({ id: '1' }));
     });
 
     it('should not dispatch deletePolicy when cancelled', () => {
@@ -467,24 +449,18 @@ describe('PoliciesComponent', () => {
 
   describe('getDeviceProfileExplanation', () => {
     it('should return correct explanations', () => {
-      expect(
-        component.getDeviceProfileExplanation(DeviceProfile.APPLE_TV),
-      ).toContain('Apple TV');
-      expect(
-        component.getDeviceProfileExplanation(DeviceProfile.ROKU),
-      ).toContain('Roku');
-      expect(
-        component.getDeviceProfileExplanation(DeviceProfile.WEB),
-      ).toContain('web browser');
-      expect(
-        component.getDeviceProfileExplanation(DeviceProfile.CHROMECAST),
-      ).toContain('Chromecast');
+      expect(component.getDeviceProfileExplanation(DeviceProfile.APPLE_TV)).toContain('Apple TV');
+      expect(component.getDeviceProfileExplanation(DeviceProfile.ROKU)).toContain('Roku');
+      expect(component.getDeviceProfileExplanation(DeviceProfile.WEB)).toContain('web browser');
+      expect(component.getDeviceProfileExplanation(DeviceProfile.CHROMECAST)).toContain(
+        'Chromecast'
+      );
     });
 
     it('should return default for unknown profile', () => {
-      expect(
-        component.getDeviceProfileExplanation('UNKNOWN' as DeviceProfile),
-      ).toContain('Device-specific');
+      expect(component.getDeviceProfileExplanation('UNKNOWN' as DeviceProfile)).toContain(
+        'Device-specific'
+      );
     });
   });
 
@@ -493,9 +469,7 @@ describe('PoliciesComponent', () => {
       expect(component.getPresetIcon(PolicyPreset.BALANCED_HEVC)).toBe('⚖️');
       expect(component.getPresetIcon(PolicyPreset.FAST_HEVC)).toBe('⚡');
       expect(component.getPresetIcon(PolicyPreset.QUALITY_AV1)).toBe('💎');
-      expect(component.getPresetIcon(PolicyPreset.COPY_IF_COMPLIANT)).toBe(
-        '✅',
-      );
+      expect(component.getPresetIcon(PolicyPreset.COPY_IF_COMPLIANT)).toBe('✅');
       expect(component.getPresetIcon(PolicyPreset.CUSTOM)).toBe('🔧');
     });
 

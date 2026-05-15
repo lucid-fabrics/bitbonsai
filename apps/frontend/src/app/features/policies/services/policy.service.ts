@@ -22,9 +22,7 @@ export class PolicyService {
   }
 
   getPolicy(id: string): Observable<PolicyBo> {
-    return this.policyClient
-      .getPolicy(id)
-      .pipe(map((policy) => new PolicyBo(policy)));
+    return this.policyClient.getPolicy(id).pipe(map((policy) => new PolicyBo(policy)));
   }
 
   getPresets(): Observable<PresetInfoModel[]> {
@@ -32,15 +30,11 @@ export class PolicyService {
   }
 
   createPolicy(request: CreatePolicyRequest): Observable<PolicyBo> {
-    return this.policyClient
-      .createPolicy(request)
-      .pipe(map((policy) => new PolicyBo(policy)));
+    return this.policyClient.createPolicy(request).pipe(map((policy) => new PolicyBo(policy)));
   }
 
   updatePolicy(id: string, request: UpdatePolicyRequest): Observable<PolicyBo> {
-    return this.policyClient
-      .updatePolicy(id, request)
-      .pipe(map((policy) => new PolicyBo(policy)));
+    return this.policyClient.updatePolicy(id, request).pipe(map((policy) => new PolicyBo(policy)));
   }
 
   deletePolicy(id: string): Observable<void> {

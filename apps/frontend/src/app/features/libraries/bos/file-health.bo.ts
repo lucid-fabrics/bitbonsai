@@ -41,9 +41,7 @@ export class FileHealthBo {
    * Check if file is selectable (healthy or warning, not corrupted)
    */
   static isFileSelectable(status: FileHealthStatus): boolean {
-    return (
-      status === FileHealthStatus.HEALTHY || status === FileHealthStatus.WARNING
-    );
+    return status === FileHealthStatus.HEALTHY || status === FileHealthStatus.WARNING;
   }
 
   /**

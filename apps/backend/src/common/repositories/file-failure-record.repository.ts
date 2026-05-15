@@ -12,7 +12,7 @@ export class FileFailureRecordRepository extends BaseRepository {
   async isBlacklisted(
     filePath: string,
     libraryId: string,
-    contentFingerprint?: string,
+    contentFingerprint?: string
   ): Promise<boolean> {
     const orConditions: Record<string, unknown>[] = [{ filePath, libraryId }];
 
@@ -31,10 +31,7 @@ export class FileFailureRecordRepository extends BaseRepository {
     return !!match;
   }
 
-  async getBlacklistedPaths(
-    filePaths: string[],
-    libraryId: string,
-  ): Promise<Set<string>> {
+  async getBlacklistedPaths(filePaths: string[], libraryId: string): Promise<Set<string>> {
     if (filePaths.length === 0) return new Set();
 
     const records = await this.findMany<Pick<FileFailureRecord, 'filePath'>>({
@@ -57,10 +54,7 @@ export class FileFailureRecordRepository extends BaseRepository {
   }
 
   async getFailureCount(filePath: string, libraryId: string): Promise<number> {
-    const record = await this.findUnique<Pick<
-      FileFailureRecord,
-      'totalFailures'
-    > | null>({
+    const record = await this.findUnique<Pick<FileFailureRecord, 'totalFailures'> | null>({
       where: { filePath_libraryId: { filePath, libraryId } },
       select: { totalFailures: true },
     });

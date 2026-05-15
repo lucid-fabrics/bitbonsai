@@ -2,11 +2,7 @@ import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
-import {
-  faDiscord,
-  faDocker,
-  faGithub,
-} from '@fortawesome/free-brands-svg-icons';
+import { faDiscord, faDocker, faGithub } from '@fortawesome/free-brands-svg-icons';
 import {
   faBook,
   faBox,
@@ -253,14 +249,12 @@ export class DownloadComponent {
   -v /path/to/media:/media \\
   -v /path/to/config:/config \\
   ghcr.io/bitbonsai/bitbonsai:latest`,
-      notes:
-        'Replace /path/to/media and /path/to/config with your actual paths',
+      notes: 'Replace /path/to/media and /path/to/config with your actual paths',
     },
     {
       name: 'Unraid',
       faIcon: faServer,
-      description:
-        'Install from Community Applications with pre-configured template',
+      description: 'Install from Community Applications with pre-configured template',
       command: `1. Open Unraid WebUI
 2. Go to Apps tab
 3. Search for "BitBonsai"
