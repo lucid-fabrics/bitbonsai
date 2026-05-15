@@ -13,7 +13,7 @@ clone:
       lfs: false
 
 steps:
-  - name: check-affected
+  - name: check_affected
     image: node:22
     commands:
       - |
@@ -21,17 +21,17 @@ steps:
         echo "$CHANGED" | grep -qE "^apps/backend/|^libs/|^prisma/" || { echo "backend not affected, skipping"; exit 0; }
 
         npm ci --legacy-peer-deps
-        AFFECTED=$(npx nx show projects --affected --base=${CI_COMMIT_BEFORE_SHA:-HEAD~1} --head=${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "all")
+        AFFECTED=$(npx nx show projects --affected --base=${CI_COMMIT_BEFORE_SHA:-HEAD~1} --head=${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "backend")
         echo "Affected: $AFFECTED"
         echo "$AFFECTED" | grep -q "backend" || { echo "backend not in nx affected, skipping"; exit 0; }
 
         npx prisma generate
         npx nx run-many --target=test --projects=backend --passWithNoTests
         npx nx build backend --configuration=production --skip-nx-cache
-        touch /tmp/backend_built
+        touch $CI_WORKSPACE/.backend_built
 
   - name: notify_result
-    image: bash
+    image: alpine
     when:
       - status: [success, failure]
     environment:
@@ -42,7 +42,7 @@ steps:
     commands:
       - apk add --no-cache curl
       - |
-        if [ "$CI_PIPELINE_STATUS" = "success" ] && [ ! -f /tmp/backend_built ]; then
+        if [ "$CI_PIPELINE_STATUS" = "success" ] && [ ! -f $CI_WORKSPACE/.backend_built ]; then
           echo "Skipping notification: backend not affected"
           exit 0
         fi

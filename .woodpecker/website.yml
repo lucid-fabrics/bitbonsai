@@ -26,16 +26,16 @@ steps:
         echo "$CHANGED" | grep -qE "^apps/website/|^libs/" || { echo "website not affected, skipping"; exit 0; }
 
         npm ci --legacy-peer-deps
-        AFFECTED=$(npx nx show projects --affected --base=${CI_COMMIT_BEFORE_SHA:-HEAD~1} --head=${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "all")
+        AFFECTED=$(npx nx show projects --affected --base=${CI_COMMIT_BEFORE_SHA:-HEAD~1} --head=${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "website")
         echo "Affected: $AFFECTED"
         echo "$AFFECTED" | grep -q "website" || { echo "website not in nx affected, skipping"; exit 0; }
 
         npx nx build website --configuration=production --skip-nx-cache
         npx wrangler pages deploy dist/apps/website/browser --project-name=bitbonsai-website
-        touch /tmp/website_deployed
+        touch $CI_WORKSPACE/.website_deployed
 
   - name: notify_result
-    image: bash
+    image: alpine
     when:
       - status: [success, failure]
     environment:
@@ -46,7 +46,7 @@ steps:
     commands:
       - apk add --no-cache curl
       - |
-        if [ "$CI_PIPELINE_STATUS" = "success" ] && [ ! -f /tmp/website_deployed ]; then
+        if [ "$CI_PIPELINE_STATUS" = "success" ] && [ ! -f $CI_WORKSPACE/.website_deployed ]; then
           echo "Skipping notification: website not affected"
           exit 0
         fi

@@ -21,16 +21,16 @@ steps:
         echo "$CHANGED" | grep -qE "^apps/frontend/|^libs/" || { echo "frontend not affected, skipping"; exit 0; }
 
         npm ci --legacy-peer-deps
-        AFFECTED=$(npx nx show projects --affected --base=${CI_COMMIT_BEFORE_SHA:-HEAD~1} --head=${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "all")
+        AFFECTED=$(npx nx show projects --affected --base=${CI_COMMIT_BEFORE_SHA:-HEAD~1} --head=${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "frontend")
         echo "Affected: $AFFECTED"
         echo "$AFFECTED" | grep -q "frontend" || { echo "frontend not in nx affected, skipping"; exit 0; }
 
         npx prisma generate
         npx nx build frontend --configuration=production --skip-nx-cache
-        touch /tmp/frontend_built
+        touch $CI_WORKSPACE/.frontend_built
 
   - name: notify_result
-    image: bash
+    image: alpine
     when:
       - status: [success, failure]
     environment:
@@ -41,7 +41,7 @@ steps:
     commands:
       - apk add --no-cache curl
       - |
-        if [ "$CI_PIPELINE_STATUS" = "success" ] && [ ! -f /tmp/frontend_built ]; then
+        if [ "$CI_PIPELINE_STATUS" = "success" ] && [ ! -f $CI_WORKSPACE/.frontend_built ]; then
           echo "Skipping notification: frontend not affected"
           exit 0
         fi

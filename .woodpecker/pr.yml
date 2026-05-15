@@ -22,35 +22,25 @@ steps:
         npx prettier --write "**/*.{ts,json,md,scss,html}" || true
         npx biome check . || true
 
-  - name: test-attempt-1
+  - name: test
     image: node:22
     commands:
       - |
         npm ci --legacy-peer-deps
         npx prisma generate
-        npx nx run-many --target=test --all --passWithNoTests && touch /tmp/tests_passed || true
-
-  - name: test-attempt-2
-    image: node:22
-    when:
-      - evaluate: '!CI_STEP_PREVIOUS_RESULT_test-attempt-1 || CI_STEP_PREVIOUS_RESULT_test-attempt-1 == "failure"'
-    commands:
-      - |
-        [ -f /tmp/tests_passed ] && echo "Tests already passed, skipping" && exit 0
-        npm ci --legacy-peer-deps
-        npx prisma generate
-        npx nx run-many --target=test --all --passWithNoTests && touch /tmp/tests_passed || true
-
-  - name: test-attempt-3
-    image: node:22
-    when:
-      - evaluate: '!CI_STEP_PREVIOUS_RESULT_test-attempt-2 || CI_STEP_PREVIOUS_RESULT_test-attempt-2 == "failure"'
-    commands:
-      - |
-        [ -f /tmp/tests_passed ] && echo "Tests already passed, skipping" && exit 0
-        npm ci --legacy-peer-deps
-        npx prisma generate
-        npx nx run-many --target=test --all --passWithNoTests
+        PASSED=false
+        for ATTEMPT in 1 2 3; do
+          echo "Test attempt $ATTEMPT/3"
+          if npx nx run-many --target=test --all --passWithNoTests; then
+            PASSED=true
+            break
+          fi
+          echo "Attempt $ATTEMPT failed, retrying..."
+        done
+        if [ "$PASSED" = "false" ]; then
+          echo "All 3 test attempts failed"
+          exit 1
+        fi
 
   - name: build
     image: node:22
@@ -63,7 +53,7 @@ steps:
         npx nx build website --configuration=production --skip-nx-cache
 
   - name: notify_result
-    image: bash
+    image: alpine
     when:
       - status: [success, failure]
     environment:
