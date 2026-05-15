@@ -34,7 +34,7 @@ export class StorageSharesController {
   constructor(
     private readonly storageShareService: StorageShareService,
     private readonly storageMountService: StorageMountService,
-    private readonly nfsAutoExportService: NFSAutoExportService,
+    private readonly nfsAutoExportService: NFSAutoExportService
   ) {}
 
   /**
@@ -107,10 +107,7 @@ export class StorageSharesController {
   @ApiParam({ name: 'id', description: 'Storage share ID' })
   @ApiOkResponse({ description: 'Storage share updated successfully' })
   @ApiNotFoundResponse({ description: 'Storage share not found' })
-  async update(
-    @Param('id') id: string,
-    @Body() updateDto: UpdateStorageShareDto,
-  ) {
+  async update(@Param('id') id: string, @Body() updateDto: UpdateStorageShareDto) {
     return this.storageShareService.update(id, updateDto);
   }
 
@@ -121,8 +118,7 @@ export class StorageSharesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete storage share',
-    description:
-      'Remove a storage share configuration (must be unmounted first)',
+    description: 'Remove a storage share configuration (must be unmounted first)',
   })
   @ApiParam({ name: 'id', description: 'Storage share ID' })
   @ApiOkResponse({ description: 'Storage share deleted successfully' })
@@ -168,8 +164,7 @@ export class StorageSharesController {
   @Post(':id/remount')
   @ApiOperation({
     summary: 'Remount a storage share',
-    description:
-      'Unmount and remount a storage share (useful for refreshing connection)',
+    description: 'Unmount and remount a storage share (useful for refreshing connection)',
   })
   @ApiParam({ name: 'id', description: 'Storage share ID' })
   @ApiOkResponse({ description: 'Storage share remounted successfully' })
@@ -188,10 +183,7 @@ export class StorageSharesController {
   })
   @ApiOkResponse({ description: 'Connectivity test completed' })
   async testConnectivity(@Body() body: TestConnectivityDto) {
-    return this.storageMountService.testConnectivity(
-      body.serverAddress,
-      body.protocol,
-    );
+    return this.storageMountService.testConnectivity(body.serverAddress, body.protocol);
   }
 
   /**
@@ -214,8 +206,7 @@ export class StorageSharesController {
   @Post('node/:nodeId/auto-detect')
   @ApiOperation({
     summary: 'Auto-detect available storage shares',
-    description:
-      'Discover storage shares advertised by other nodes on the network',
+    description: 'Discover storage shares advertised by other nodes on the network',
   })
   @ApiParam({ name: 'nodeId', description: 'Node ID' })
   @ApiOkResponse({ description: 'Auto-detection completed' })
@@ -229,8 +220,7 @@ export class StorageSharesController {
   @Post('node/:nodeId/auto-detect-and-mount')
   @ApiOperation({
     summary: 'Auto-detect and mount storage shares',
-    description:
-      'Discover storage shares from main node and automatically create/mount them',
+    description: 'Discover storage shares from main node and automatically create/mount them',
   })
   @ApiParam({ name: 'nodeId', description: 'Node ID' })
   @ApiOkResponse({ description: 'Auto-detection and mounting completed' })

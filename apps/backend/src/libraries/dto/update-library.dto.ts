@@ -31,8 +31,7 @@ export class UpdateLibraryDto extends PartialType(CreateLibraryDto) {
   totalSizeBytes?: bigint;
 
   @ApiProperty({
-    description:
-      'Default encoding policy ID for this library (auto-selected during scans)',
+    description: 'Default encoding policy ID for this library (auto-selected during scans)',
     example: 'clq8x9z8x0001qh8x9z8x0001',
     required: false,
     nullable: true,

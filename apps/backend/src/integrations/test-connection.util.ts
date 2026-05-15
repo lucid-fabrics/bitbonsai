@@ -35,7 +35,7 @@ export interface TestConnectionOptions {
  */
 export async function testIntegrationConnection(
   httpService: HttpService,
-  options: TestConnectionOptions,
+  options: TestConnectionOptions
 ): Promise<TestConnectionResult> {
   const { url, path, headers, timeout = 10000, axiosConfig } = options;
   const normalizedUrl = url.replace(/\/$/, '');
@@ -46,7 +46,7 @@ export async function testIntegrationConnection(
         ...axiosConfig,
         headers,
         timeout,
-      }),
+      })
     );
 
     return {

@@ -24,9 +24,7 @@ describe('QueueManagementController', () => {
       providers: [{ provide: QueueService, useValue: mockQueueService }],
     }).compile();
 
-    controller = module.get<QueueManagementController>(
-      QueueManagementController,
-    );
+    controller = module.get<QueueManagementController>(QueueManagementController);
   });
 
   it('should be defined', () => {
@@ -111,9 +109,7 @@ describe('QueueManagementController', () => {
     it('should retry all failed jobs when no error filter provided', async () => {
       const response = {
         retriedCount: 4,
-        jobs: [
-          { id: 'job-1', fileLabel: 'movie.mkv', error: 'FFmpeg exit code 1' },
-        ],
+        jobs: [{ id: 'job-1', fileLabel: 'movie.mkv', error: 'FFmpeg exit code 1' }],
       };
       mockQueueService.retryAllFailed.mockResolvedValue(response);
 
@@ -138,9 +134,7 @@ describe('QueueManagementController', () => {
 
       const result = await controller.retryAllFailed('FFmpeg Error Code 255');
 
-      expect(mockQueueService.retryAllFailed).toHaveBeenCalledWith(
-        'FFmpeg Error Code 255',
-      );
+      expect(mockQueueService.retryAllFailed).toHaveBeenCalledWith('FFmpeg Error Code 255');
       expect(result).toEqual(response);
     });
 
@@ -225,19 +219,13 @@ describe('QueueManagementController', () => {
 
       const result = await controller.forceEncodeAllCodecMatch();
 
-      expect(mockQueueService.forceEncodeAllCodecMatch).toHaveBeenCalledTimes(
-        1,
-      );
+      expect(mockQueueService.forceEncodeAllCodecMatch).toHaveBeenCalledTimes(1);
       expect(result).toEqual(response);
     });
 
     it('should propagate service errors', async () => {
-      mockQueueService.forceEncodeAllCodecMatch.mockRejectedValue(
-        new Error('db error'),
-      );
-      await expect(controller.forceEncodeAllCodecMatch()).rejects.toThrow(
-        'db error',
-      );
+      mockQueueService.forceEncodeAllCodecMatch.mockRejectedValue(new Error('db error'));
+      await expect(controller.forceEncodeAllCodecMatch()).rejects.toThrow('db error');
     });
   });
 
@@ -259,10 +247,7 @@ describe('QueueManagementController', () => {
 
       const result = await controller.clearJobs('COMPLETED,FAILED');
 
-      expect(mockQueueService.clearJobs).toHaveBeenCalledWith([
-        'COMPLETED',
-        'FAILED',
-      ]);
+      expect(mockQueueService.clearJobs).toHaveBeenCalledWith(['COMPLETED', 'FAILED']);
       expect(result).toEqual({ deleted: 10 });
     });
 
@@ -271,11 +256,7 @@ describe('QueueManagementController', () => {
 
       await controller.clearJobs('COMPLETED, FAILED , CANCELLED');
 
-      expect(mockQueueService.clearJobs).toHaveBeenCalledWith([
-        'COMPLETED',
-        'FAILED',
-        'CANCELLED',
-      ]);
+      expect(mockQueueService.clearJobs).toHaveBeenCalledWith(['COMPLETED', 'FAILED', 'CANCELLED']);
     });
 
     it('should return deleted count of zero when no matching jobs', async () => {
@@ -320,12 +301,8 @@ describe('QueueManagementController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockQueueService.rebalanceJobs.mockRejectedValue(
-        new Error('rebalance failed'),
-      );
-      await expect(controller.rebalanceJobs()).rejects.toThrow(
-        'rebalance failed',
-      );
+      mockQueueService.rebalanceJobs.mockRejectedValue(new Error('rebalance failed'));
+      await expect(controller.rebalanceJobs()).rejects.toThrow('rebalance failed');
     });
   });
 
@@ -357,9 +334,7 @@ describe('QueueManagementController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockQueueService.fixStuckTransfers.mockRejectedValue(
-        new Error('db error'),
-      );
+      mockQueueService.fixStuckTransfers.mockRejectedValue(new Error('db error'));
       await expect(controller.fixStuckTransfers()).rejects.toThrow('db error');
     });
   });

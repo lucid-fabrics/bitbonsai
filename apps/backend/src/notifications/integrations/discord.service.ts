@@ -54,7 +54,7 @@ export class DiscordNotificationService {
 
   constructor(
     private readonly settingsRepository: SettingsRepository,
-    private readonly httpService: HttpService,
+    private readonly httpService: HttpService
   ) {}
 
   /**
@@ -69,9 +69,7 @@ export class DiscordNotificationService {
     const webhookUrl = await this.getWebhookUrl();
     if (!webhookUrl) return;
 
-    const savedGB = job.savedBytes
-      ? (Number(job.savedBytes) / 1024 ** 3).toFixed(2)
-      : '0';
+    const savedGB = job.savedBytes ? (Number(job.savedBytes) / 1024 ** 3).toFixed(2) : '0';
     const savedPercent = job.savedPercent?.toFixed(1) || '0';
 
     const embed: DiscordEmbed = {
@@ -151,9 +149,7 @@ export class DiscordNotificationService {
 
     const successRate =
       stats.completed + stats.failed > 0
-        ? ((stats.completed / (stats.completed + stats.failed)) * 100).toFixed(
-            1,
-          )
+        ? ((stats.completed / (stats.completed + stats.failed)) * 100).toFixed(1)
         : '0';
 
     const embed: DiscordEmbed = {
@@ -190,10 +186,7 @@ export class DiscordNotificationService {
     const embed: DiscordEmbed = {
       title: alert.severity === 'critical' ? '🚨 Critical Alert' : '⚠️ Warning',
       description: alert.message,
-      color:
-        alert.severity === 'critical'
-          ? DISCORD_COLORS.ERROR
-          : DISCORD_COLORS.WARNING,
+      color: alert.severity === 'critical' ? DISCORD_COLORS.ERROR : DISCORD_COLORS.WARNING,
       fields: [{ name: 'Type', value: alert.type, inline: true }],
       timestamp: new Date().toISOString(),
     };
@@ -215,8 +208,7 @@ export class DiscordNotificationService {
 
     const embed: DiscordEmbed = {
       title: '📈 System Status',
-      color:
-        status.nodesOffline > 0 ? DISCORD_COLORS.WARNING : DISCORD_COLORS.INFO,
+      color: status.nodesOffline > 0 ? DISCORD_COLORS.WARNING : DISCORD_COLORS.INFO,
       fields: [
         { name: 'Nodes Online', value: `${status.nodesOnline}`, inline: true },
         {
@@ -236,9 +228,7 @@ export class DiscordNotificationService {
   /**
    * Test webhook connection
    */
-  async testWebhook(
-    webhookUrl: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  async testWebhook(webhookUrl: string): Promise<{ success: boolean; error?: string }> {
     try {
       const embed: DiscordEmbed = {
         title: '🧪 BitBonsai Test',
@@ -272,14 +262,10 @@ export class DiscordNotificationService {
   /**
    * Send webhook with retry logic
    */
-  private async sendWebhook(
-    url: string,
-    payload: DiscordWebhookPayload,
-  ): Promise<void> {
+  private async sendWebhook(url: string, payload: DiscordWebhookPayload): Promise<void> {
     // Add BitBonsai branding
     payload.username = payload.username || 'BitBonsai';
-    payload.avatar_url =
-      payload.avatar_url || 'https://avatars.githubusercontent.com/u/bitbonsai';
+    payload.avatar_url = payload.avatar_url || 'https://avatars.githubusercontent.com/u/bitbonsai';
 
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
       try {
@@ -287,7 +273,7 @@ export class DiscordNotificationService {
           this.httpService.post(url, payload, {
             headers: { 'Content-Type': 'application/json' },
             timeout: 10000,
-          }),
+          })
         );
         this.logger.debug('Discord webhook sent successfully');
         return;

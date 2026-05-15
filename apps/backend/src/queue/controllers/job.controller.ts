@@ -48,7 +48,7 @@ export class JobController {
   constructor(
     private readonly queueService: QueueService,
     private readonly jobHistoryService: JobHistoryService,
-    private readonly nodeConfig: NodeConfigService,
+    private readonly nodeConfig: NodeConfigService
   ) {}
 
   /**
@@ -149,8 +149,7 @@ export class JobController {
     example: 'clq8x9z8x0003qh8x9z8x0003',
   })
   @ApiOkResponse({
-    description:
-      'Job history timeline retrieved successfully (ordered newest to oldest)',
+    description: 'Job history timeline retrieved successfully (ordered newest to oldest)',
     schema: {
       type: 'array',
       items: {
@@ -159,14 +158,7 @@ export class JobController {
           id: { type: 'string', example: 'clq8x9z8x0004qh8x9z8x0004' },
           eventType: {
             type: 'string',
-            enum: [
-              'FAILED',
-              'CANCELLED',
-              'RESTARTED',
-              'AUTO_HEALED',
-              'BACKEND_RESTART',
-              'TIMEOUT',
-            ],
+            enum: ['FAILED', 'CANCELLED', 'RESTARTED', 'AUTO_HEALED', 'BACKEND_RESTART', 'TIMEOUT'],
           },
           stage: { type: 'string', example: 'ENCODING' },
           progress: { type: 'number', example: 45.3 },
@@ -238,10 +230,7 @@ export class JobController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while updating job',
   })
-  async update(
-    @Param('id') id: string,
-    @Body() updateJobDto: UpdateJobDto,
-  ): Promise<Job> {
+  async update(@Param('id') id: string, @Body() updateJobDto: UpdateJobDto): Promise<Job> {
     // MULTI-NODE SECURITY: Validate that the requesting node owns the job
     // This prevents cross-node status pollution (e.g., zombie FFmpeg from Node B
     // sending PATCH requests that mark Node A's jobs as FAILED)
@@ -261,10 +250,10 @@ export class JobController {
     const isJobOwner = !job.nodeId || job.nodeId === currentNodeId;
     if (!isMainNode && !isJobOwner) {
       this.logger.warn(
-        `⚠️ Cross-node update rejected: Node ${currentNodeId} attempted to update job ${id} owned by node ${job.nodeId}`,
+        `⚠️ Cross-node update rejected: Node ${currentNodeId} attempted to update job ${id} owned by node ${job.nodeId}`
       );
       throw new ForbiddenException(
-        `Node ${currentNodeId} cannot update job ${id} - job is assigned to node ${job.nodeId}`,
+        `Node ${currentNodeId} cannot update job ${id} - job is assigned to node ${job.nodeId}`
       );
     }
 
@@ -305,7 +294,7 @@ export class JobController {
   })
   async updateJobProgress(
     @Param('id') id: string,
-    @Body() body: { progress: number; etaSeconds: number },
+    @Body() body: { progress: number; etaSeconds: number }
   ): Promise<Job> {
     return this.queueService.updateProgress(id, {
       progress: body.progress,
@@ -341,10 +330,7 @@ export class JobController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while updating job',
   })
-  async updateJobStage(
-    @Param('id') id: string,
-    @Body() body: UpdateJobDto,
-  ): Promise<Job> {
+  async updateJobStage(@Param('id') id: string, @Body() body: UpdateJobDto): Promise<Job> {
     return this.queueService.updateProgress(id, body);
   }
 
@@ -391,7 +377,7 @@ export class JobController {
   })
   async updatePriority(
     @Param('id') id: string,
-    @Body() updatePriorityDto: UpdatePriorityDto,
+    @Body() updatePriorityDto: UpdatePriorityDto
   ): Promise<Job> {
     return this.queueService.updateJobPriority(id, updatePriorityDto.priority);
   }
@@ -466,10 +452,7 @@ export class JobController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while completing job',
   })
-  async complete(
-    @Param('id') id: string,
-    @Body() completeJobDto: CompleteJobDto,
-  ): Promise<Job> {
+  async complete(@Param('id') id: string, @Body() completeJobDto: CompleteJobDto): Promise<Job> {
     return this.queueService.completeJob(id, completeJobDto);
   }
 
@@ -511,10 +494,7 @@ export class JobController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while failing job',
   })
-  async fail(
-    @Param('id') id: string,
-    @Body() failJobDto: FailJobDto,
-  ): Promise<Job> {
+  async fail(@Param('id') id: string, @Body() failJobDto: FailJobDto): Promise<Job> {
     return this.queueService.failJob(id, failJobDto.error);
   }
 
@@ -554,10 +534,7 @@ export class JobController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while cancelling job',
   })
-  async cancel(
-    @Param('id') id: string,
-    @Body() cancelJobDto: CancelJobDto,
-  ): Promise<Job> {
+  async cancel(@Param('id') id: string, @Body() cancelJobDto: CancelJobDto): Promise<Job> {
     return this.queueService.cancelJob(id, cancelJobDto.blacklist ?? false);
   }
 
@@ -854,12 +831,9 @@ export class JobController {
   })
   async resolveDecision(
     @Param('id') id: string,
-    @Body() resolveDecisionDto: ResolveDecisionDto,
+    @Body() resolveDecisionDto: ResolveDecisionDto
   ): Promise<Job> {
-    return this.queueService.resolveDecision(
-      id,
-      resolveDecisionDto.decisionData,
-    );
+    return this.queueService.resolveDecision(id, resolveDecisionDto.decisionData);
   }
 
   /**
@@ -940,10 +914,7 @@ export class JobController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while delegating job',
   })
-  async delegateJob(
-    @Param('id') id: string,
-    @Body() delegateDto: DelegateJobDto,
-  ): Promise<Job> {
+  async delegateJob(@Param('id') id: string, @Body() delegateDto: DelegateJobDto): Promise<Job> {
     return this.queueService.delegateJob(id, delegateDto.targetNodeId);
   }
 
@@ -980,8 +951,7 @@ export class JobController {
     description: 'Job is not in ENCODING stage',
   })
   @ApiInternalServerErrorResponse({
-    description:
-      'Internal server error occurred while requesting keep original',
+    description: 'Internal server error occurred while requesting keep original',
   })
   async keepOriginal(@Param('id') id: string): Promise<Job> {
     return this.queueService.requestKeepOriginal(id);
@@ -1024,12 +994,9 @@ export class JobController {
     description: 'No original backup exists for this job',
   })
   @ApiInternalServerErrorResponse({
-    description:
-      'Internal server error occurred while deleting original backup',
+    description: 'Internal server error occurred while deleting original backup',
   })
-  async deleteOriginal(
-    @Param('id') id: string,
-  ): Promise<{ freedSpace: string }> {
+  async deleteOriginal(@Param('id') id: string): Promise<{ freedSpace: string }> {
     const result = await this.queueService.deleteOriginalBackup(id);
     return { freedSpace: result.freedSpace.toString() };
   }

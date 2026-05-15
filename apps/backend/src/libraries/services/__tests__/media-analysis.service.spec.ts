@@ -23,27 +23,19 @@ function mockExecFileResult(stdout: string, stderr = ''): void {
       _cmd: string,
       _args: string[],
       _opts: unknown,
-      cb?: (
-        err: Error | null,
-        result: { stdout: string; stderr: string },
-      ) => void,
+      cb?: (err: Error | null, result: { stdout: string; stderr: string }) => void
     ) => {
       // promisify calls execFile with a callback as last arg
       if (typeof cb === 'function') {
         cb(null, { stdout, stderr });
       } else if (typeof _opts === 'function') {
         // When called with 3 args (cmd, args, callback)
-        (
-          _opts as (
-            err: Error | null,
-            result: { stdout: string; stderr: string },
-          ) => void
-        )(null, {
+        (_opts as (err: Error | null, result: { stdout: string; stderr: string }) => void)(null, {
           stdout,
           stderr,
         });
       }
-    },
+    }
   );
 }
 
@@ -56,17 +48,14 @@ function mockExecFileError(message: string): void {
       _cmd: string,
       _args: string[],
       _opts: unknown,
-      cb?: (
-        err: Error | null,
-        result: { stdout: string; stderr: string },
-      ) => void,
+      cb?: (err: Error | null, result: { stdout: string; stderr: string }) => void
     ) => {
       if (typeof cb === 'function') {
         cb(new Error(message), { stdout: '', stderr: '' });
       } else if (typeof _opts === 'function') {
         (_opts as (err: Error | null) => void)(new Error(message));
       }
-    },
+    }
   );
 }
 
@@ -137,7 +126,7 @@ describe('MediaAnalysisService', () => {
         JSON.stringify({
           format: { format_name: 'mp3', duration: '180' },
           streams: [{ codec_type: 'audio', codec_name: 'aac' }],
-        }),
+        })
       );
 
       const result = await service.validateFileIntegrity('/path/to/audio.mp3');
@@ -151,12 +140,10 @@ describe('MediaAnalysisService', () => {
         JSON.stringify({
           format: { format_name: 'matroska', duration: '0' },
           streams: [{ codec_type: 'video', codec_name: 'h264' }],
-        }),
+        })
       );
 
-      const result = await service.validateFileIntegrity(
-        '/path/to/incomplete.mkv',
-      );
+      const result = await service.validateFileIntegrity('/path/to/incomplete.mkv');
 
       expect(result.status).toBe(FileHealthStatus.WARNING);
       expect(result.message).toContain('Invalid or missing duration');
@@ -165,9 +152,7 @@ describe('MediaAnalysisService', () => {
     it('should return CORRUPTED when ffprobe command fails', async () => {
       mockExecFileError('Command failed: ffprobe');
 
-      const result = await service.validateFileIntegrity(
-        '/path/to/missing.mkv',
-      );
+      const result = await service.validateFileIntegrity('/path/to/missing.mkv');
 
       expect(result.status).toBe(FileHealthStatus.CORRUPTED);
       expect(result.message).toContain('Integrity check failed');
@@ -212,10 +197,7 @@ describe('MediaAnalysisService', () => {
           _cmd: string,
           _args: string[],
           _opts: unknown,
-          cb?: (
-            err: Error | null,
-            result: { stdout: string; stderr: string },
-          ) => void,
+          cb?: (err: Error | null, result: { stdout: string; stderr: string }) => void
         ) => {
           if (typeof cb === 'function') {
             cb(null, {
@@ -223,7 +205,7 @@ describe('MediaAnalysisService', () => {
               stderr: '',
             });
           }
-        },
+        }
       );
 
       const result = await service.probeVideoFile('/path/to/corrupted.mkv');
@@ -244,10 +226,7 @@ describe('MediaAnalysisService', () => {
           _cmd: string,
           _args: string[],
           _opts: unknown,
-          cb?: (
-            err: Error | null,
-            result: { stdout: string; stderr: string },
-          ) => void,
+          cb?: (err: Error | null, result: { stdout: string; stderr: string }) => void
         ) => {
           callCount++;
           if (typeof cb === 'function') {
@@ -256,7 +235,7 @@ describe('MediaAnalysisService', () => {
               stderr: '',
             });
           }
-        },
+        }
       );
 
       const result = await service.probeVideoFile('/path/to/video.mkv');
@@ -280,10 +259,7 @@ describe('MediaAnalysisService', () => {
           _cmd: string,
           _args: string[],
           _opts: unknown,
-          cb?: (
-            err: Error | null,
-            result: { stdout: string; stderr: string },
-          ) => void,
+          cb?: (err: Error | null, result: { stdout: string; stderr: string }) => void
         ) => {
           callCount++;
           if (typeof cb === 'function') {
@@ -292,7 +268,7 @@ describe('MediaAnalysisService', () => {
               stderr: '',
             });
           }
-        },
+        }
       );
 
       const result = await service.probeVideoFile('/path/to/audio.mp3');
@@ -316,10 +292,7 @@ describe('MediaAnalysisService', () => {
           _cmd: string,
           _args: string[],
           _opts: unknown,
-          cb?: (
-            err: Error | null,
-            result: { stdout: string; stderr: string },
-          ) => void,
+          cb?: (err: Error | null, result: { stdout: string; stderr: string }) => void
         ) => {
           callCount++;
           if (typeof cb === 'function') {
@@ -328,7 +301,7 @@ describe('MediaAnalysisService', () => {
               stderr: '',
             });
           }
-        },
+        }
       );
 
       const result = await service.probeVideoFile('/path/to/video.mp4');
@@ -397,29 +370,20 @@ describe('MediaAnalysisService', () => {
           _cmd: string,
           args: string[],
           _opts: unknown,
-          cb?: (
-            err: Error | null,
-            result: { stdout: string; stderr: string },
-          ) => void,
+          cb?: (err: Error | null, result: { stdout: string; stderr: string }) => void
         ) => {
           // Distinguish integrity check vs probe by args: integrity uses -show_entries format=format_name,...
-          const isIntegrityCheck = args.some((a: string) =>
-            a.includes('format_name'),
-          );
+          const isIntegrityCheck = args.some((a: string) => a.includes('format_name'));
           if (typeof cb === 'function') {
             cb(null, {
               stdout: isIntegrityCheck ? healthyOutput : probeOutput,
               stderr: '',
             });
           }
-        },
+        }
       );
 
-      const result = await service.analyzeFiles(
-        ['/path/a.mkv', '/path/b.mkv'],
-        'HEVC',
-        5,
-      );
+      const result = await service.analyzeFiles(['/path/a.mkv', '/path/b.mkv'], 'HEVC', 5);
 
       expect(result.totalFiles).toBe(2);
       expect(result.totalSizeBytes).toBe(BigInt(2000));
@@ -438,10 +402,7 @@ describe('MediaAnalysisService', () => {
           _cmd: string,
           _args: string[],
           _opts: unknown,
-          cb?: (
-            err: Error | null,
-            result: { stdout: string; stderr: string },
-          ) => void,
+          cb?: (err: Error | null, result: { stdout: string; stderr: string }) => void
         ) => {
           callCount++;
           const isIntegrityCheck = callCount % 2 === 1;
@@ -451,21 +412,16 @@ describe('MediaAnalysisService', () => {
                 ? healthyOutput
                 : JSON.stringify({
                     format: { duration: '60', size: '500' },
-                    streams: [
-                      { codec_name: 'hevc', width: 1920, height: 1080 },
-                    ],
+                    streams: [{ codec_name: 'hevc', width: 1920, height: 1080 }],
                   }),
               stderr: '',
             });
           }
-        },
+        }
       );
 
       // Target is HEVC and file is already HEVC — should still be in needsEncoding
-      const result = await service.analyzeFiles(
-        ['/path/already-hevc.mkv'],
-        'HEVC',
-      );
+      const result = await service.analyzeFiles(['/path/already-hevc.mkv'], 'HEVC');
 
       expect(result.needsEncoding).toHaveLength(1);
       expect(result.alreadyOptimized).toHaveLength(0);

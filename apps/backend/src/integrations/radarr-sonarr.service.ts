@@ -99,7 +99,7 @@ export class RadarrSonarrIntegrationService {
 
   constructor(
     private readonly settingsRepository: SettingsRepository,
-    private readonly httpService: HttpService,
+    private readonly httpService: HttpService
   ) {}
 
   /**
@@ -114,7 +114,7 @@ export class RadarrSonarrIntegrationService {
         this.httpService.get(`${config.url}/api/v3/movie`, {
           headers: { 'X-Api-Key': config.apiKey },
           timeout: 30000,
-        }),
+        })
       );
 
       return ((response.data as RadarrMovieResponse[]) || []).map((m) => ({
@@ -144,7 +144,7 @@ export class RadarrSonarrIntegrationService {
         this.httpService.get(`${config.url}/api/v3/series`, {
           headers: { 'X-Api-Key': config.apiKey },
           timeout: 30000,
-        }),
+        })
       );
 
       return ((response.data as SonarrSeriesResponse[]) || []).map((s) => ({
@@ -175,7 +175,7 @@ export class RadarrSonarrIntegrationService {
         this.httpService.get(`${config.url}/api/v3/movie`, {
           headers: { 'X-Api-Key': config.apiKey },
           timeout: 30000,
-        }),
+        })
       );
 
       for (const movie of response.data || []) {
@@ -215,8 +215,8 @@ export class RadarrSonarrIntegrationService {
           {
             headers: { 'X-Api-Key': config.apiKey },
             timeout: 10000,
-          },
-        ),
+          }
+        )
       );
 
       this.logger.log(`🎬 Triggered Radarr rescan for movie ${movieId}`);
@@ -243,8 +243,8 @@ export class RadarrSonarrIntegrationService {
           {
             headers: { 'X-Api-Key': config.apiKey },
             timeout: 10000,
-          },
-        ),
+          }
+        )
       );
 
       this.logger.log(`📺 Triggered Sonarr rescan for series ${seriesId}`);
@@ -304,11 +304,7 @@ export class RadarrSonarrIntegrationService {
       if (movieFile?.mediaInfo?.videoCodec) {
         const codec = movieFile.mediaInfo.videoCodec.toLowerCase();
         // Skip if already HEVC or AV1
-        if (
-          codec.includes('hevc') ||
-          codec.includes('h265') ||
-          codec.includes('av1')
-        ) {
+        if (codec.includes('hevc') || codec.includes('h265') || codec.includes('av1')) {
           return {
             skip: true,
             reason: `Already ${movieFile.mediaInfo.videoCodec} (Radarr)`,
@@ -323,9 +319,7 @@ export class RadarrSonarrIntegrationService {
   /**
    * Get quality profiles from Radarr
    */
-  async getRadarrQualityProfiles(): Promise<
-    Array<{ id: number; name: string }>
-  > {
+  async getRadarrQualityProfiles(): Promise<Array<{ id: number; name: string }>> {
     const config = await this.getConfig(MediaServerType.RADARR);
     if (!config) return [];
 
@@ -334,7 +328,7 @@ export class RadarrSonarrIntegrationService {
         this.httpService.get(`${config.url}/api/v3/qualityprofile`, {
           headers: { 'X-Api-Key': config.apiKey },
           timeout: 10000,
-        }),
+        })
       );
 
       return ((response.data as QualityProfileResponse[]) || []).map((p) => ({
@@ -349,9 +343,7 @@ export class RadarrSonarrIntegrationService {
   /**
    * Get quality profiles from Sonarr
    */
-  async getSonarrQualityProfiles(): Promise<
-    Array<{ id: number; name: string }>
-  > {
+  async getSonarrQualityProfiles(): Promise<Array<{ id: number; name: string }>> {
     const config = await this.getConfig(MediaServerType.SONARR);
     if (!config) return [];
 
@@ -360,7 +352,7 @@ export class RadarrSonarrIntegrationService {
         this.httpService.get(`${config.url}/api/v3/qualityprofile`, {
           headers: { 'X-Api-Key': config.apiKey },
           timeout: 10000,
-        }),
+        })
       );
 
       return ((response.data as QualityProfileResponse[]) || []).map((p) => ({
@@ -378,7 +370,7 @@ export class RadarrSonarrIntegrationService {
   async testConnection(
     _type: MediaServerType,
     url: string,
-    apiKey: string,
+    apiKey: string
   ): Promise<{ success: boolean; version?: string; error?: string }> {
     const result = await testIntegrationConnection(this.httpService, {
       url,
@@ -452,7 +444,7 @@ export class RadarrSonarrIntegrationService {
    */
   async registerWebhooks(
     type: MediaServerType,
-    callbackUrl: string,
+    callbackUrl: string
   ): Promise<{ success: boolean; error?: string }> {
     const config = await this.getConfig(type);
     if (!config) {
@@ -465,12 +457,12 @@ export class RadarrSonarrIntegrationService {
         this.httpService.get(`${config.url}/api/v3/notification`, {
           headers: { 'X-Api-Key': config.apiKey },
           timeout: 10000,
-        }),
+        })
       );
 
-      const existing = (
-        (listResponse.data as NotificationResponse[]) || []
-      ).find((n) => n.name === 'BitBonsai');
+      const existing = ((listResponse.data as NotificationResponse[]) || []).find(
+        (n) => n.name === 'BitBonsai'
+      );
 
       const webhookConfig = {
         name: 'BitBonsai',
@@ -501,20 +493,16 @@ export class RadarrSonarrIntegrationService {
             {
               headers: { 'X-Api-Key': config.apiKey },
               timeout: 10000,
-            },
-          ),
+            }
+          )
         );
       } else {
         // Create new webhook
         await firstValueFrom(
-          this.httpService.post(
-            `${config.url}/api/v3/notification`,
-            webhookConfig,
-            {
-              headers: { 'X-Api-Key': config.apiKey },
-              timeout: 10000,
-            },
-          ),
+          this.httpService.post(`${config.url}/api/v3/notification`, webhookConfig, {
+            headers: { 'X-Api-Key': config.apiKey },
+            timeout: 10000,
+          })
         );
       }
 
@@ -523,8 +511,7 @@ export class RadarrSonarrIntegrationService {
     } catch (error: unknown) {
       return {
         success: false,
-        error:
-          error instanceof Error ? error.message : 'Failed to register webhook',
+        error: error instanceof Error ? error.message : 'Failed to register webhook',
       };
     }
   }

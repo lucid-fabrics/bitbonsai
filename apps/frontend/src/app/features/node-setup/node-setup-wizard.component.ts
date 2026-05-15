@@ -16,10 +16,7 @@ import type { CapabilityTestResult } from '../../core/models/capability-test.mod
 import { NodeBo } from '../nodes/bos/node.bo';
 import { CapabilityResultsComponent } from './components/capability-results/capability-results.component';
 import { CapabilityTestComponent } from './components/capability-test/capability-test.component';
-import type {
-  DiscoveredNode,
-  HardwareDetection,
-} from './models/discovery.model';
+import type { DiscoveredNode, HardwareDetection } from './models/discovery.model';
 import { PairingStatus } from './models/discovery.model';
 import { NodeSetupService } from './services/node-setup.service';
 
@@ -124,9 +121,7 @@ export class NodeSetupWizardComponent implements OnInit {
 
   // Completion state
   readonly hardwareDetection = signal<HardwareDetection | null>(null);
-  readonly connectedMainNode = signal<{ id: string; name: string } | null>(
-    null,
-  );
+  readonly connectedMainNode = signal<{ id: string; name: string } | null>(null);
 
   // Computed values
   readonly selectedNode = computed(() => {
@@ -250,7 +245,7 @@ export class NodeSetupWizardComponent implements OnInit {
 
           if (result.nodes.length === 0) {
             this.errorMessage.set(
-              'No main nodes detected. Make sure your main node is running on the same network.',
+              'No main nodes detected. Make sure your main node is running on the same network.'
             );
           } else {
             setTimeout(() => {
@@ -338,10 +333,7 @@ export class NodeSetupWizardComponent implements OnInit {
     }, 1000);
 
     this.nodeSetupService
-      .initiatePairing(
-        { mainNodeId: selectedNodeId, childNodeName },
-        mainNodeUrl,
-      )
+      .initiatePairing({ mainNodeId: selectedNodeId, childNodeName }, mainNodeUrl)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
@@ -357,14 +349,11 @@ export class NodeSetupWizardComponent implements OnInit {
             this.handlePairingRejected(response);
           } else if (response.status === PairingStatus.ERROR) {
             this.handlePairingError(response);
-          } else if (
-            response.status === PairingStatus.WAITING_APPROVAL &&
-            response.requestId
-          ) {
+          } else if (response.status === PairingStatus.WAITING_APPROVAL && response.requestId) {
             this.nodeSetupService.savePendingPairingState(
               response.requestId,
               response.pairingCode || '',
-              mainNodeUrl,
+              mainNodeUrl
             );
             this.startPollingPairingStatus(response.requestId);
           }
@@ -372,10 +361,7 @@ export class NodeSetupWizardComponent implements OnInit {
         error: (error) => {
           this.isLoading.set(false);
           this.stopPairingTimer();
-          this.handleError(
-            error,
-            'Failed to initiate pairing. Please try again.',
-          );
+          this.handleError(error, 'Failed to initiate pairing. Please try again.');
         },
       });
   }
@@ -411,10 +397,7 @@ export class NodeSetupWizardComponent implements OnInit {
             }
           },
           error: (error) => {
-            this.handleError(
-              error,
-              'Failed to finalize setup. Please refresh and try again.',
-            );
+            this.handleError(error, 'Failed to finalize setup. Please refresh and try again.');
           },
         });
     } else {
@@ -440,8 +423,7 @@ export class NodeSetupWizardComponent implements OnInit {
     this.stopPairingTimer();
     this.nodeSetupService.clearPendingPairingState();
     this.errorMessage.set(
-      response.message ||
-        'Connection was rejected by the main node. Please try again.',
+      response.message || 'Connection was rejected by the main node. Please try again.'
     );
   }
 
@@ -451,7 +433,7 @@ export class NodeSetupWizardComponent implements OnInit {
   private handlePairingError(response: { message?: string }): void {
     this.stopPairingTimer();
     this.errorMessage.set(
-      response.message || 'An error occurred during pairing. Please try again.',
+      response.message || 'An error occurred during pairing. Please try again.'
     );
   }
 
@@ -483,16 +465,13 @@ export class NodeSetupWizardComponent implements OnInit {
           } else if (response.status === PairingStatus.TIMEOUT) {
             this.stopPairingTimer();
             this.errorMessage.set(
-              'Pairing request timed out. Please try again or contact the main node administrator.',
+              'Pairing request timed out. Please try again or contact the main node administrator.'
             );
           }
         },
         error: (error) => {
           this.stopPairingTimer();
-          this.handleError(
-            error,
-            'Error checking pairing status. Please try again.',
-          );
+          this.handleError(error, 'Error checking pairing status. Please try again.');
         },
       });
   }
@@ -542,17 +521,12 @@ export class NodeSetupWizardComponent implements OnInit {
    * Handle capability results complete
    * Finalizes setup and proceeds to completion screen
    */
-  handleCapabilityResultsComplete(config: {
-    maxWorkers: number;
-    cpuLimit: number;
-  }): void {
+  handleCapabilityResultsComplete(config: { maxWorkers: number; cpuLimit: number }): void {
     const mainNodeUrl = this.nodeSetupService.getMainNodeUrl();
     const nodeId = this.approvedNodeId();
 
     if (!mainNodeUrl || !nodeId) {
-      this.errorMessage.set(
-        'Configuration save failed: missing connection information',
-      );
+      this.errorMessage.set('Configuration save failed: missing connection information');
       return;
     }
 
@@ -566,7 +540,7 @@ export class NodeSetupWizardComponent implements OnInit {
         },
         error: (err) => {
           this.errorMessage.set(
-            `Failed to save configuration: ${err?.error?.message || err?.message || 'Unknown error'}`,
+            `Failed to save configuration: ${err?.error?.message || err?.message || 'Unknown error'}`
           );
         },
       });
@@ -590,9 +564,7 @@ export class NodeSetupWizardComponent implements OnInit {
       };
 
       if (httpError.status === 0) {
-        this.errorMessage.set(
-          'Unable to connect to server. Please check your network connection.',
-        );
+        this.errorMessage.set('Unable to connect to server. Please check your network connection.');
       } else if (httpError.status >= 500) {
         this.errorMessage.set('Server error. Please try again later.');
       } else if (httpError.error?.message) {

@@ -1,9 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TranslocoModule } from '@ngneat/transloco';
-import {
-  JobEventType,
-  type JobHistoryEvent,
-} from '../../models/job-history-event.model';
+import { JobEventType, type JobHistoryEvent } from '../../models/job-history-event.model';
 
 @Component({
   selector: 'app-job-history-modal',
@@ -123,17 +120,11 @@ export class JobHistoryModalComponent {
       return 'The video file appears to be corrupted or incomplete. The file may have been damaged during transfer or recording.';
     }
 
-    if (
-      combinedError.includes('no such file or directory') ||
-      combinedError.includes('enoent')
-    ) {
+    if (combinedError.includes('no such file or directory') || combinedError.includes('enoent')) {
       return 'The source video file could not be found. It may have been moved, deleted, or the path is incorrect.';
     }
 
-    if (
-      combinedError.includes('permission denied') ||
-      combinedError.includes('eacces')
-    ) {
+    if (combinedError.includes('permission denied') || combinedError.includes('eacces')) {
       return 'BitBonsai does not have permission to access the video file or output directory.';
     }
 
@@ -144,17 +135,11 @@ export class JobHistoryModalComponent {
       return 'The disk is full. Free up space on the destination drive to continue encoding.';
     }
 
-    if (
-      combinedError.includes('codec') &&
-      combinedError.includes('not supported')
-    ) {
+    if (combinedError.includes('codec') && combinedError.includes('not supported')) {
       return 'The video uses an unsupported codec. The file may need to be re-encoded with different settings.';
     }
 
-    if (
-      combinedError.includes('timeout') ||
-      combinedError.includes('timed out')
-    ) {
+    if (combinedError.includes('timeout') || combinedError.includes('timed out')) {
       return 'The encoding process took too long and was stopped. This may indicate a problem with the video file or encoding settings.';
     }
 
@@ -182,17 +167,11 @@ export class JobHistoryModalComponent {
       return 'The encoding process was interrupted while writing output. This may indicate a disk write error or insufficient space.';
     }
 
-    if (
-      combinedError.includes('invalid argument') ||
-      combinedError.includes('invalid option')
-    ) {
+    if (combinedError.includes('invalid argument') || combinedError.includes('invalid option')) {
       return 'The encoding settings contain an invalid configuration. The encoding profile may need to be adjusted.';
     }
 
-    if (
-      combinedError.includes('decoder') &&
-      combinedError.includes('not found')
-    ) {
+    if (combinedError.includes('decoder') && combinedError.includes('not found')) {
       return 'The required video decoder is missing or not available. The video format may not be supported.';
     }
 
@@ -227,7 +206,7 @@ Stage: ${event.stage}
 Progress: ${event.progress.toFixed(1)}%
 ${event.errorMessage ? `Error: ${event.errorMessage}` : ''}
 ${event.errorDetails ? `Details: ${event.errorDetails}` : ''}
----`,
+---`
   )
   .join('\n')}`;
 

@@ -55,9 +55,7 @@ export async function setupTestDatabase(): Promise<PrismaClient> {
 /**
  * Setup a file-based test database (for tests that need persistence)
  */
-export async function setupFileTestDatabase(
-  dbName = 'test.db',
-): Promise<PrismaClient> {
+export async function setupFileTestDatabase(dbName = 'test.db'): Promise<PrismaClient> {
   const testDbDir = path.join(process.cwd(), 'test-data');
   if (!fs.existsSync(testDbDir)) {
     fs.mkdirSync(testDbDir, { recursive: true });

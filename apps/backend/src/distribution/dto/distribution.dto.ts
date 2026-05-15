@@ -1,17 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsBoolean,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class AssignJobDto {
   @ApiPropertyOptional({
-    description:
-      'Target node ID. If not provided, optimal node will be selected automatically.',
+    description: 'Target node ID. If not provided, optimal node will be selected automatically.',
   })
   @IsString()
   @IsOptional()

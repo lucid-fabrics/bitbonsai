@@ -41,10 +41,7 @@ export class QualityMetricsService {
    * @param encodedPath - Path to encoded video file
    * @returns VMAF score or null if calculation fails
    */
-  async calculateVmaf(
-    originalPath: string,
-    encodedPath: string,
-  ): Promise<number | null> {
+  async calculateVmaf(originalPath: string, encodedPath: string): Promise<number | null> {
     return new Promise((resolve) => {
       // Check if VMAF models exist (FFmpeg looks for them in default paths)
       // Use libvmaf for VMAF calculation
@@ -63,7 +60,7 @@ export class QualityMetricsService {
         ],
         {
           stdio: ['ignore', 'pipe', 'pipe'],
-        },
+        }
       );
 
       let stderr = '';
@@ -91,7 +88,7 @@ export class QualityMetricsService {
         if (vmafMatch) {
           const vmafScore = parseFloat(vmafMatch[1]);
           this.logger.log(
-            `VMAF score: ${vmafScore.toFixed(2)} (quality: ${this.qualifyVmafScore(vmafScore)})`,
+            `VMAF score: ${vmafScore.toFixed(2)} (quality: ${this.qualifyVmafScore(vmafScore)})`
           );
           resolve(vmafScore);
         } else {
@@ -116,7 +113,7 @@ export class QualityMetricsService {
    */
   private async calculateVmafSimple(
     originalPath: string,
-    encodedPath: string,
+    encodedPath: string
   ): Promise<number | null> {
     return new Promise((resolve) => {
       const ffmpeg = spawn(
@@ -134,7 +131,7 @@ export class QualityMetricsService {
         ],
         {
           stdio: ['ignore', 'pipe', 'pipe'],
-        },
+        }
       );
 
       let stderr = '';
@@ -166,27 +163,14 @@ export class QualityMetricsService {
    * @param encodedPath - Path to encoded video
    * @returns PSNR score or null if calculation fails
    */
-  async calculatePsnr(
-    originalPath: string,
-    encodedPath: string,
-  ): Promise<number | null> {
+  async calculatePsnr(originalPath: string, encodedPath: string): Promise<number | null> {
     return new Promise((resolve) => {
       const ffmpeg = spawn(
         'ffmpeg',
-        [
-          '-i',
-          originalPath,
-          '-i',
-          encodedPath,
-          '-lavfi',
-          'psnr',
-          '-f',
-          'null',
-          '-',
-        ],
+        ['-i', originalPath, '-i', encodedPath, '-lavfi', 'psnr', '-f', 'null', '-'],
         {
           stdio: ['ignore', 'pipe', 'pipe'],
-        },
+        }
       );
 
       let stderr = '';
@@ -226,27 +210,14 @@ export class QualityMetricsService {
    * @param encodedPath - Path to encoded video
    * @returns SSIM score or null if calculation fails
    */
-  async calculateSsim(
-    originalPath: string,
-    encodedPath: string,
-  ): Promise<number | null> {
+  async calculateSsim(originalPath: string, encodedPath: string): Promise<number | null> {
     return new Promise((resolve) => {
       const ffmpeg = spawn(
         'ffmpeg',
-        [
-          '-i',
-          originalPath,
-          '-i',
-          encodedPath,
-          '-lavfi',
-          'ssim',
-          '-f',
-          'null',
-          '-',
-        ],
+        ['-i', originalPath, '-i', encodedPath, '-lavfi', 'ssim', '-f', 'null', '-'],
         {
           stdio: ['ignore', 'pipe', 'pipe'],
-        },
+        }
       );
 
       let stderr = '';
@@ -283,7 +254,7 @@ export class QualityMetricsService {
    */
   async calculateAllQualityMetrics(
     originalPath: string,
-    encodedPath: string,
+    encodedPath: string
   ): Promise<QualityMetrics> {
     this.logger.log(`Calculating quality metrics for ${encodedPath}...`);
 
@@ -304,7 +275,7 @@ export class QualityMetricsService {
     this.logger.log(
       `Quality metrics: VMAF=${metrics.vmaf?.toFixed(2) ?? 'N/A'}, ` +
         `PSNR=${metrics.psnr?.toFixed(2) ?? 'N/A'} dB, ` +
-        `SSIM=${metrics.ssim?.toFixed(4) ?? 'N/A'}`,
+        `SSIM=${metrics.ssim?.toFixed(4) ?? 'N/A'}`
     );
 
     return metrics;

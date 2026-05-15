@@ -135,15 +135,13 @@ export class ScanPreviewDto {
   alreadyOptimizedCount = 0;
 
   @ApiProperty({
-    description:
-      'Files that need encoding (limited to first 100 for performance)',
+    description: 'Files that need encoding (limited to first 100 for performance)',
     type: [VideoFileDto],
   })
   needsEncoding: VideoFileDto[] = [];
 
   @ApiProperty({
-    description:
-      'Files already optimized (limited to first 100 for performance)',
+    description: 'Files already optimized (limited to first 100 for performance)',
     type: [VideoFileDto],
   })
   alreadyOptimized: VideoFileDto[] = [];

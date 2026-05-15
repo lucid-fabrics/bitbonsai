@@ -1,10 +1,5 @@
 import { NgClass } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  input,
-  output,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { TranslocoModule } from '@ngneat/transloco';
 import { RichTooltipDirective } from '../../../../shared/directives/rich-tooltip.directive';
 import type { Library } from '../../models/library.model';

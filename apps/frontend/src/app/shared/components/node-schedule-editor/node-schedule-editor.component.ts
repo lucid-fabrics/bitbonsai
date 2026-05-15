@@ -1,23 +1,8 @@
 import { Dialog } from '@angular/cdk/dialog';
-import {
-  Component,
-  forwardRef,
-  Input,
-  inject,
-  OnInit,
-  signal,
-  ViewChild,
-} from '@angular/core';
-import {
-  ControlValueAccessor,
-  FormsModule,
-  NG_VALUE_ACCESSOR,
-} from '@angular/forms';
+import { Component, forwardRef, Input, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import {
-  FullCalendarComponent,
-  FullCalendarModule,
-} from '@fullcalendar/angular';
+import { FullCalendarComponent, FullCalendarModule } from '@fullcalendar/angular';
 import type {
   CalendarOptions,
   DateSelectArg,
@@ -64,12 +49,7 @@ export interface TimeWindow {
 @Component({
   selector: 'app-node-schedule-editor',
   standalone: true,
-  imports: [
-    FormsModule,
-    FontAwesomeModule,
-    FullCalendarModule,
-    TranslocoModule,
-  ],
+  imports: [FormsModule, FontAwesomeModule, FullCalendarModule, TranslocoModule],
   templateUrl: './node-schedule-editor.component.html',
   styleUrl: './node-schedule-editor.component.scss',
   providers: [
@@ -80,9 +60,7 @@ export interface TimeWindow {
     },
   ],
 })
-export class NodeScheduleEditorComponent
-  implements OnInit, ControlValueAccessor
-{
+export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor {
   private readonly dialog = inject(Dialog);
 
   @ViewChild('calendar') calendarComponent!: FullCalendarComponent;
@@ -194,9 +172,7 @@ export class NodeScheduleEditorComponent
 
       // Remove from windows array
       const currentWindows = this.windows();
-      const updatedWindows = currentWindows.filter(
-        (_, index) => index !== windowIndex,
-      );
+      const updatedWindows = currentWindows.filter((_, index) => index !== windowIndex);
       this.windows.set(updatedWindows);
       this.updateEvents();
       this.emitChange();
@@ -337,10 +313,7 @@ export class NodeScheduleEditorComponent
         'Remove all encoding time slots',
         'Node will be available 24/7 (no restrictions)',
       ],
-      wontHappen: [
-        "Change the node's active status",
-        'Affect encoding jobs in progress',
-      ],
+      wontHappen: ["Change the node's active status", 'Affect encoding jobs in progress'],
       irreversible: false,
       confirmButtonText: 'Clear All',
       cancelButtonText: 'Keep Windows',

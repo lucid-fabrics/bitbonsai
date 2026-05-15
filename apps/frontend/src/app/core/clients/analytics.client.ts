@@ -62,19 +62,13 @@ export class AnalyticsClient {
   getSpaceSavings(period?: TimePeriod): Observable<SpaceSavingsDataPoint[]> {
     const params: Record<string, string> = {};
     if (period) params.period = period;
-    return this.http.get<SpaceSavingsDataPoint[]>(
-      `${this.apiUrl}/space-savings`,
-      { params },
-    );
+    return this.http.get<SpaceSavingsDataPoint[]>(`${this.apiUrl}/space-savings`, { params });
   }
 
   getEncodingSpeed(period?: TimePeriod): Observable<EncodingSpeedDataPoint[]> {
     const params: Record<string, string> = {};
     if (period) params.period = period;
-    return this.http.get<EncodingSpeedDataPoint[]>(
-      `${this.apiUrl}/encoding-speed`,
-      { params },
-    );
+    return this.http.get<EncodingSpeedDataPoint[]>(`${this.apiUrl}/encoding-speed`, { params });
   }
 
   getCostSavings(provider?: string): Observable<CostSavingsEstimate> {
@@ -96,10 +90,7 @@ export class AnalyticsClient {
   getCodecPerformance(period?: TimePeriod): Observable<CodecPerformance[]> {
     const params: Record<string, string> = {};
     if (period) params.period = period;
-    return this.http.get<CodecPerformance[]>(
-      `${this.apiUrl}/codec-performance`,
-      { params },
-    );
+    return this.http.get<CodecPerformance[]>(`${this.apiUrl}/codec-performance`, { params });
   }
 
   getSummary(period?: TimePeriod): Observable<AnalyticsSummary> {

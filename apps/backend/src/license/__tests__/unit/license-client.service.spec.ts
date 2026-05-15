@@ -111,7 +111,7 @@ describe('LicenseClientService', () => {
 
       expect(mockLicenseRepo.updateByKey).toHaveBeenCalledWith(
         'BB-TEST-1234',
-        expect.objectContaining({ updatedAt: expect.any(Date) }),
+        expect.objectContaining({ updatedAt: expect.any(Date) })
       );
     });
 
@@ -119,7 +119,7 @@ describe('LicenseClientService', () => {
       mockLicenseRepo.findByKey.mockResolvedValue(null);
 
       await expect(service.setLicenseKey('BB-NEW-KEY')).rejects.toThrow(
-        'License must be validated via API before use',
+        'License must be validated via API before use'
       );
     });
   });
@@ -150,7 +150,7 @@ describe('LicenseClientService', () => {
             maxConcurrentJobs: 3,
             expiresAt: null,
           },
-        }),
+        })
       );
 
       const result = await service.verifyLicense();
@@ -176,7 +176,7 @@ describe('LicenseClientService', () => {
             maxConcurrentJobs: 3,
             expiresAt: null,
           },
-        }),
+        })
       );
 
       await service.verifyLicense();
@@ -205,7 +205,7 @@ describe('LicenseClientService', () => {
             maxConcurrentJobs: 3,
             expiresAt: null,
           },
-        }),
+        })
       );
       await service.verifyLicense();
 
@@ -213,9 +213,7 @@ describe('LicenseClientService', () => {
       (service as any).lastVerification = new Date('2020-01-01');
 
       // Second call - API fails
-      mockHttpService.post.mockReturnValue(
-        throwError(() => new Error('Network error')),
-      );
+      mockHttpService.post.mockReturnValue(throwError(() => new Error('Network error')));
 
       const result = await service.verifyLicense();
       expect(result.tier).toBe('SUPPORTER');
@@ -232,9 +230,7 @@ describe('LicenseClientService', () => {
         maxConcurrentJobs: 3,
         validUntil: null,
       });
-      mockHttpService.post.mockReturnValue(
-        throwError(() => new Error('Network error')),
-      );
+      mockHttpService.post.mockReturnValue(throwError(() => new Error('Network error')));
 
       const result = await service.verifyLicense();
 
@@ -245,13 +241,9 @@ describe('LicenseClientService', () => {
     it('should throw UnauthorizedException when all fallbacks fail', async () => {
       mockLicenseRepo.findFirst.mockResolvedValue({ key: 'BB-TEST' });
       mockLicenseRepo.findFirstActiveDesc.mockResolvedValue(null);
-      mockHttpService.post.mockReturnValue(
-        throwError(() => new Error('Network error')),
-      );
+      mockHttpService.post.mockReturnValue(throwError(() => new Error('Network error')));
 
-      await expect(service.verifyLicense()).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.verifyLicense()).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw when API returns empty response', async () => {
@@ -259,9 +251,7 @@ describe('LicenseClientService', () => {
       mockLicenseRepo.findFirstActiveDesc.mockResolvedValue(null);
       mockHttpService.post.mockReturnValue(of({ data: null }));
 
-      await expect(service.verifyLicense()).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.verifyLicense()).rejects.toThrow(UnauthorizedException);
     });
   });
 
@@ -287,7 +277,7 @@ describe('LicenseClientService', () => {
               expiresAt: null,
             },
           },
-        }),
+        })
       );
 
       mockLicenseRepo.transactionFindFirstAndUpsert.mockResolvedValue({
@@ -300,10 +290,7 @@ describe('LicenseClientService', () => {
         validUntil: null,
       });
 
-      const result = await service.activateLicense(
-        'BB-ACTIVATE-KEY',
-        'user@test.com',
-      );
+      const result = await service.activateLicense('BB-ACTIVATE-KEY', 'user@test.com');
 
       expect(result.email).toBe('user@test.com');
       expect(result.key).toContain('****');
@@ -316,12 +303,10 @@ describe('LicenseClientService', () => {
             valid: false,
             error: 'Invalid license key',
           },
-        }),
+        })
       );
 
-      await expect(service.activateLicense('BAD-KEY')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.activateLicense('BAD-KEY')).rejects.toThrow(BadRequestException);
     });
 
     it('should throw ServiceUnavailableException on network error', async () => {
@@ -331,19 +316,15 @@ describe('LicenseClientService', () => {
       networkError.code = 'ECONNREFUSED';
       mockHttpService.post.mockReturnValue(throwError(() => networkError));
 
-      await expect(service.activateLicense('BB-KEY')).rejects.toThrow(
-        ServiceUnavailableException,
-      );
+      await expect(service.activateLicense('BB-KEY')).rejects.toThrow(ServiceUnavailableException);
     });
 
     it('should re-throw BadRequestException from validation', async () => {
       mockHttpService.post.mockReturnValue(
-        throwError(() => new BadRequestException('Already activated')),
+        throwError(() => new BadRequestException('Already activated'))
       );
 
-      await expect(service.activateLicense('BB-KEY')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.activateLicense('BB-KEY')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -361,14 +342,14 @@ describe('LicenseClientService', () => {
               expiresAt: null,
             },
           },
-        }),
+        })
       );
 
       const result = await service.lookupLicenseByEmail('user@test.com');
 
       expect(result.found).toBe(true);
       expect(result.license).toEqual(
-        expect.objectContaining({ tier: 'PATREON_SUPPORTER', maxNodes: 2 }),
+        expect.objectContaining({ tier: 'PATREON_SUPPORTER', maxNodes: 2 })
       );
     });
 
@@ -381,9 +362,7 @@ describe('LicenseClientService', () => {
     });
 
     it('should return not found on API error (graceful degradation)', async () => {
-      mockHttpService.post.mockReturnValue(
-        throwError(() => new Error('API error')),
-      );
+      mockHttpService.post.mockReturnValue(throwError(() => new Error('API error')));
 
       const result = await service.lookupLicenseByEmail('user@test.com');
 

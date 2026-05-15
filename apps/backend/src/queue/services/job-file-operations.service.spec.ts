@@ -84,54 +84,38 @@ describe('JobFileOperationsService', () => {
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ keepOriginalRequested: true }),
+        expect.objectContaining({ keepOriginalRequested: true })
       );
     });
 
     it('should throw BadRequestException when job is not encoding', async () => {
-      mockJobCrudService.findOne.mockResolvedValue(
-        makeJob({ stage: JobStage.COMPLETED }) as any,
-      );
+      mockJobCrudService.findOne.mockResolvedValue(makeJob({ stage: JobStage.COMPLETED }) as any);
 
-      await expect(service.requestKeepOriginal('job-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.requestKeepOriginal('job-1')).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('deleteOriginalBackup', () => {
     it('should throw BadRequestException when no backup exists', async () => {
-      mockJobCrudService.findOne.mockResolvedValue(
-        makeJob({ originalBackupPath: null }) as any,
-      );
+      mockJobCrudService.findOne.mockResolvedValue(makeJob({ originalBackupPath: null }) as any);
 
-      await expect(service.deleteOriginalBackup('job-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.deleteOriginalBackup('job-1')).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('restoreOriginal', () => {
     it('should throw BadRequestException when no backup to restore', async () => {
-      mockJobCrudService.findOne.mockResolvedValue(
-        makeJob({ originalBackupPath: null }) as any,
-      );
+      mockJobCrudService.findOne.mockResolvedValue(makeJob({ originalBackupPath: null }) as any);
 
-      await expect(service.restoreOriginal('job-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.restoreOriginal('job-1')).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('recheckFailedJob', () => {
     it('should throw BadRequestException when job is not FAILED', async () => {
-      mockJobCrudService.findOne.mockResolvedValue(
-        makeJob({ stage: JobStage.ENCODING }) as any,
-      );
+      mockJobCrudService.findOne.mockResolvedValue(makeJob({ stage: JobStage.ENCODING }) as any);
 
-      await expect(service.recheckFailedJob('job-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.recheckFailedJob('job-1')).rejects.toThrow(BadRequestException);
     });
 
     it('should update error message when file does not exist', async () => {
@@ -145,29 +129,25 @@ describe('JobFileOperationsService', () => {
       // File does not exist (fs.stat will throw ENOENT)
       jest
         .spyOn(require('fs/promises'), 'stat')
-        .mockRejectedValue(
-          Object.assign(new Error('ENOENT'), { code: 'ENOENT' }),
-        );
+        .mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
 
       const _result = await service.recheckFailedJob('job-1');
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
         expect.objectContaining({
           error: expect.stringContaining('RECHECK FAILED'),
-        }),
+        })
       );
     });
   });
 
   describe('detectAndRequeueIfUncompressed', () => {
     it('should throw BadRequestException when job is not COMPLETED', async () => {
-      mockJobCrudService.findOne.mockResolvedValue(
-        makeJob({ stage: JobStage.FAILED }) as any,
-      );
+      mockJobCrudService.findOne.mockResolvedValue(makeJob({ stage: JobStage.FAILED }) as any);
 
-      await expect(
-        service.detectAndRequeueIfUncompressed('job-1'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.detectAndRequeueIfUncompressed('job-1')).rejects.toThrow(
+        BadRequestException
+      );
     });
 
     it('should throw BadRequestException when file was compressed', async () => {
@@ -177,9 +157,9 @@ describe('JobFileOperationsService', () => {
       });
       mockJobCrudService.findOne.mockResolvedValue(job as any);
 
-      await expect(
-        service.detectAndRequeueIfUncompressed('job-1'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.detectAndRequeueIfUncompressed('job-1')).rejects.toThrow(
+        BadRequestException
+      );
     });
 
     it('should requeue job when no compression detected', async () => {
@@ -195,7 +175,7 @@ describe('JobFileOperationsService', () => {
       expect(mockJobRepository.updateByIdWithInclude).toHaveBeenCalledWith(
         'job-1',
         expect.objectContaining({ stage: JobStage.QUEUED }),
-        expect.anything(),
+        expect.anything()
       );
     });
   });
@@ -222,7 +202,7 @@ describe('JobFileOperationsService', () => {
         expect.objectContaining({
           originalBackupPath: null,
           originalSizeBytes: null,
-        }),
+        })
       );
     });
 
@@ -250,9 +230,7 @@ describe('JobFileOperationsService', () => {
         .spyOn(require('fs/promises'), 'unlink')
         .mockRejectedValue(new Error('Permission denied'));
 
-      await expect(service.deleteOriginalBackup('job-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.deleteOriginalBackup('job-1')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -274,7 +252,7 @@ describe('JobFileOperationsService', () => {
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ replacementAction: 'KEPT_BOTH' }),
+        expect.objectContaining({ replacementAction: 'KEPT_BOTH' })
       );
     });
 
@@ -285,9 +263,7 @@ describe('JobFileOperationsService', () => {
         .spyOn(require('fs/promises'), 'rename')
         .mockRejectedValue(new Error('ENOENT: no such file'));
 
-      await expect(service.restoreOriginal('job-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.restoreOriginal('job-1')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -312,15 +288,13 @@ describe('JobFileOperationsService', () => {
         stage: JobStage.COMPLETED,
         savedPercent: 30,
       };
-      mockPrisma.$transaction.mockImplementation(
-        async (cb: (tx: any) => Promise<any>) => {
-          return cb({
-            job: {
-              update: jest.fn().mockResolvedValue(completedJob),
-            },
-          });
-        },
-      );
+      mockPrisma.$transaction.mockImplementation(async (cb: (tx: any) => Promise<any>) => {
+        return cb({
+          job: {
+            update: jest.fn().mockResolvedValue(completedJob),
+          },
+        });
+      });
 
       const _result = await service.recheckFailedJob('job-1');
 
@@ -351,7 +325,7 @@ describe('JobFileOperationsService', () => {
         'job-1',
         expect.objectContaining({
           error: expect.stringContaining('failed health check'),
-        }),
+        })
       );
     });
 
@@ -379,10 +353,8 @@ describe('JobFileOperationsService', () => {
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
         expect.objectContaining({
-          error: expect.stringContaining(
-            'RECHECK FAILED: Encoding did not compress',
-          ),
-        }),
+          error: expect.stringContaining('RECHECK FAILED: Encoding did not compress'),
+        })
       );
     });
   });
@@ -404,7 +376,7 @@ describe('JobFileOperationsService', () => {
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ originalSizeBytes: BigInt(2_000_000_000) }),
+        expect.objectContaining({ originalSizeBytes: BigInt(2_000_000_000) })
       );
     });
   });

@@ -40,10 +40,7 @@ describe('LicenseRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        LicenseRepository,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [LicenseRepository, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
 
     repository = module.get<LicenseRepository>(LicenseRepository);
@@ -120,12 +117,9 @@ describe('LicenseRepository', () => {
       const withUser = { ...mockLicense, user: { id: 'u-1' } };
       mockPrismaLicense.findUnique.mockResolvedValue(withUser);
 
-      const result = await repository.findByKeyWithInclude<typeof withUser>(
-        'KEY-ABC-123',
-        {
-          user: true,
-        },
-      );
+      const result = await repository.findByKeyWithInclude<typeof withUser>('KEY-ABC-123', {
+        user: true,
+      });
 
       expect(result).toEqual(withUser);
       expect(mockPrismaLicense.findUnique).toHaveBeenCalledWith({
@@ -294,7 +288,7 @@ describe('LicenseRepository', () => {
       const result = await repository.upsertByEmail(
         'user@example.com',
         { maxNodes: 2 },
-        createData,
+        createData
       );
 
       expect(result).toEqual(mockLicense);
@@ -314,9 +308,7 @@ describe('LicenseRepository', () => {
         create: jest.fn(),
       };
       const tx = { license: txLicense };
-      mockPrisma.$transaction.mockImplementation(
-        (cb: (tx: unknown) => Promise<unknown>) => cb(tx),
-      );
+      mockPrisma.$transaction.mockImplementation((cb: (tx: unknown) => Promise<unknown>) => cb(tx));
 
       const result = await repository.transactionFindFirstAndUpsert({
         status: LicenseStatus.ACTIVE,
@@ -336,9 +328,7 @@ describe('LicenseRepository', () => {
         create: jest.fn().mockResolvedValue(mockLicense),
       };
       const tx = { license: txLicense };
-      mockPrisma.$transaction.mockImplementation(
-        (cb: (tx: unknown) => Promise<unknown>) => cb(tx),
-      );
+      mockPrisma.$transaction.mockImplementation((cb: (tx: unknown) => Promise<unknown>) => cb(tx));
 
       const result = await repository.transactionFindFirstAndUpsert({
         key: 'KEY-NEW',

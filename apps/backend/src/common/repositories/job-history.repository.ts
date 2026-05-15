@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  type JobEventType,
-  type JobHistory,
-  type Prisma,
-} from '@prisma/client';
+import { type JobEventType, type JobHistory, type Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BaseRepository } from './base.repository';
 
@@ -13,9 +9,7 @@ export class JobHistoryRepository extends BaseRepository {
     super(prisma, 'jobHistory');
   }
 
-  async createEntry(
-    data: Prisma.JobHistoryUncheckedCreateInput,
-  ): Promise<JobHistory> {
+  async createEntry(data: Prisma.JobHistoryUncheckedCreateInput): Promise<JobHistory> {
     return this.prisma.jobHistory.create({ data });
   }
 
@@ -26,10 +20,7 @@ export class JobHistoryRepository extends BaseRepository {
     });
   }
 
-  async countByJobId(
-    jobId: string,
-    eventTypes: JobEventType[],
-  ): Promise<number> {
+  async countByJobId(jobId: string, eventTypes: JobEventType[]): Promise<number> {
     return this.prisma.jobHistory.count({
       where: {
         jobId,

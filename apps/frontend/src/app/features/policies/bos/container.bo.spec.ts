@@ -168,12 +168,7 @@ describe('ContainerBo', () => {
 
   describe('getRemuxExplanation', () => {
     it('should explain fast remux when codec matches and container changes', () => {
-      const explanation = ContainerBo.getRemuxExplanation(
-        'h264',
-        'h264',
-        'mp4',
-        'mkv',
-      );
+      const explanation = ContainerBo.getRemuxExplanation('h264', 'h264', 'mp4', 'mkv');
       expect(explanation).toContain('Fast remux');
       expect(explanation).toContain('MP4');
       expect(explanation).toContain('MKV');
@@ -182,23 +177,13 @@ describe('ContainerBo', () => {
     });
 
     it('should explain skip when codec and container both match', () => {
-      const explanation = ContainerBo.getRemuxExplanation(
-        'hevc',
-        'hevc',
-        'mkv',
-        'mkv',
-      );
+      const explanation = ContainerBo.getRemuxExplanation('hevc', 'hevc', 'mkv', 'mkv');
       expect(explanation).toContain('already matches target');
       expect(explanation).toContain('skipped');
     });
 
     it('should explain full transcode when codec differs', () => {
-      const explanation = ContainerBo.getRemuxExplanation(
-        'h264',
-        'hevc',
-        'mp4',
-        'mkv',
-      );
+      const explanation = ContainerBo.getRemuxExplanation('h264', 'hevc', 'mp4', 'mkv');
       expect(explanation).toContain('Full transcode');
       expect(explanation).toContain('h264');
       expect(explanation).toContain('hevc');
@@ -207,30 +192,15 @@ describe('ContainerBo', () => {
     });
 
     it('should handle case insensitivity in codec comparison', () => {
-      const explanation1 = ContainerBo.getRemuxExplanation(
-        'H264',
-        'h264',
-        'mp4',
-        'mkv',
-      );
+      const explanation1 = ContainerBo.getRemuxExplanation('H264', 'h264', 'mp4', 'mkv');
       expect(explanation1).toContain('Fast remux');
 
-      const explanation2 = ContainerBo.getRemuxExplanation(
-        'HEVC',
-        'hevc',
-        'mkv',
-        'mkv',
-      );
+      const explanation2 = ContainerBo.getRemuxExplanation('HEVC', 'hevc', 'mkv', 'mkv');
       expect(explanation2).toContain('already matches target');
     });
 
     it('should explain skip when target container is null', () => {
-      const explanation = ContainerBo.getRemuxExplanation(
-        'hevc',
-        'hevc',
-        'mkv',
-        null,
-      );
+      const explanation = ContainerBo.getRemuxExplanation('hevc', 'hevc', 'mkv', null);
       expect(explanation).toContain('already matches target');
       expect(explanation).toContain('skipped');
     });

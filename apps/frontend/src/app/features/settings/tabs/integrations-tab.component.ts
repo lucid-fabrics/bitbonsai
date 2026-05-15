@@ -1,10 +1,4 @@
-import {
-  Component,
-  DestroyRef,
-  inject,
-  type OnInit,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { TranslocoModule } from '@ngneat/transloco';

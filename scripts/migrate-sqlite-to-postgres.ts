@@ -15,17 +15,12 @@ import {
   PrismaClient as PrismaClientSQLite,
 } from '@prisma/client';
 
-const SQLITE_URL =
-  process.env.SQLITE_DATABASE_URL || 'file:./prisma/bitbonsai.db';
+const SQLITE_URL = process.env.SQLITE_DATABASE_URL || 'file:./prisma/bitbonsai.db';
 const POSTGRES_URL = process.env.DATABASE_URL;
 
 if (!POSTGRES_URL || POSTGRES_URL.startsWith('file:')) {
-  console.error(
-    '❌ ERROR: DATABASE_URL must be set to PostgreSQL connection string',
-  );
-  console.error(
-    'Example: DATABASE_URL="postgresql://user:password@host:5432/database"',
-  );
+  console.error('❌ ERROR: DATABASE_URL must be set to PostgreSQL connection string');
+  console.error('Example: DATABASE_URL="postgresql://user:password@host:5432/database"');
   process.exit(1);
 }
 
@@ -71,9 +66,7 @@ async function migrateData() {
 
         // @ts-expect-error - Dynamic table access
         const records =
-          await sqliteClient[
-            table.charAt(0).toLowerCase() + table.slice(1)
-          ].findMany();
+          await sqliteClient[table.charAt(0).toLowerCase() + table.slice(1)].findMany();
 
         if (records.length === 0) {
           console.log(`   ⏭️  No records to migrate`);
@@ -81,19 +74,14 @@ async function migrateData() {
         }
 
         // @ts-expect-error - Dynamic table access
-        await postgresClient[
-          table.charAt(0).toLowerCase() + table.slice(1)
-        ].createMany({
+        await postgresClient[table.charAt(0).toLowerCase() + table.slice(1)].createMany({
           data: records,
           skipDuplicates: true,
         });
 
         console.log(`   ✅ Migrated ${records.length} ${table} records`);
       } catch (error: unknown) {
-        console.error(
-          `   ❌ Failed to migrate ${table}:`,
-          (error as Error).message,
-        );
+        console.error(`   ❌ Failed to migrate ${table}:`, (error as Error).message);
         throw error;
       }
     }

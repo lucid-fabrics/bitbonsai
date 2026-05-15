@@ -20,7 +20,7 @@ export class EncodingOutputVerificationService {
    */
   async verifyEncodedFile(tmpPath: string): Promise<void> {
     this.logger.log(
-      `ROCK SOLID: Waiting 5 seconds for filesystem flush after FFmpeg completion...`,
+      `ROCK SOLID: Waiting 5 seconds for filesystem flush after FFmpeg completion...`
     );
     await this.sleep(5000);
 
@@ -31,9 +31,7 @@ export class EncodingOutputVerificationService {
 
       if (result.isValid) {
         if (attempt > 1) {
-          this.logger.log(
-            `✓ ROCK SOLID: File verified successfully after ${attempt} attempt(s)`,
-          );
+          this.logger.log(`✓ ROCK SOLID: File verified successfully after ${attempt} attempt(s)`);
         }
         return; // Success!
       }
@@ -43,13 +41,13 @@ export class EncodingOutputVerificationService {
         const backoffMs = Math.min(2000 * 2 ** (attempt - 1), 32000);
         this.logger.warn(
           `ROCK SOLID: Verification attempt ${attempt}/${maxRetries} failed: ${result.error}. ` +
-            `Retrying in ${backoffMs}ms...`,
+            `Retrying in ${backoffMs}ms...`
         );
         await this.sleep(backoffMs);
       } else {
         // Final attempt failed
         throw new Error(
-          `ROCK SOLID: Verification failed after ${maxRetries} attempts. Last error: ${result.error || 'File is not playable'}`,
+          `ROCK SOLID: Verification failed after ${maxRetries} attempts. Last error: ${result.error || 'File is not playable'}`
         );
       }
     }
@@ -71,14 +69,14 @@ export class EncodingOutputVerificationService {
   async validateOutputDuration(
     outputPath: string,
     originalDuration: number,
-    originalPath: string,
+    originalPath: string
   ): Promise<void> {
     // AUDIT FIX: Reject if original duration is the 3600s fallback value
     // This indicates ffprobe failed - we can't safely validate
     if (originalDuration === FALLBACK_DURATION_SECONDS) {
       this.logger.warn(
         `Original duration is exactly 3600s (ffprobe fallback value). ` +
-          `This may indicate ffprobe failed. Proceeding with caution.`,
+          `This may indicate ffprobe failed. Proceeding with caution.`
       );
       // Don't skip - still validate, but log the warning
     }
@@ -88,7 +86,7 @@ export class EncodingOutputVerificationService {
     // Clips 1-60s use absolute tolerance (±1s) instead of percentage
     if (originalDuration < 1) {
       this.logger.log(
-        `Skipping duration validation for sub-second clip (${originalDuration.toFixed(2)}s)`,
+        `Skipping duration validation for sub-second clip (${originalDuration.toFixed(2)}s)`
       );
       return;
     }
@@ -97,8 +95,7 @@ export class EncodingOutputVerificationService {
     // NFS cache could return stale data for recently written files
     await this.sleep(2000);
 
-    const outputDuration =
-      await this.ffmpegService.getVideoDuration(outputPath);
+    const outputDuration = await this.ffmpegService.getVideoDuration(outputPath);
 
     // AUDIT FIX: Reject if output duration is the 3600s fallback value
     // This indicates ffprobe failed on output - file may be corrupt
@@ -110,7 +107,7 @@ export class EncodingOutputVerificationService {
         `CRITICAL: Cannot determine output file duration (ffprobe returned fallback value).\n` +
           `This usually means the output file is corrupt or incomplete.\n` +
           `The original file will NOT be replaced to prevent data loss.\n\n` +
-          `File: ${originalPath}`,
+          `File: ${originalPath}`
       );
     }
 
@@ -123,8 +120,7 @@ export class EncodingOutputVerificationService {
     // Longer files: adaptive percentage (prevents losing content)
     const useAbsoluteTolerance = originalDuration <= 60;
     const absoluteToleranceSeconds = 1.0; // ±1 second for short clips
-    const tolerancePercent =
-      this.getAdaptiveDurationTolerance(originalDuration);
+    const tolerancePercent = this.getAdaptiveDurationTolerance(originalDuration);
 
     const toleranceExceeded = useAbsoluteTolerance
       ? durationDiff > absoluteToleranceSeconds
@@ -164,7 +160,7 @@ export class EncodingOutputVerificationService {
 
     this.logger.log(
       `✓ Duration validation passed: output=${outputDuration.toFixed(2)}s, ` +
-        `original=${originalDuration.toFixed(2)}s, ${toleranceLogStr}`,
+        `original=${originalDuration.toFixed(2)}s, ${toleranceLogStr}`
     );
   }
 

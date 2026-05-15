@@ -100,12 +100,8 @@ describe('JobController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockQueueService.create.mockRejectedValue(
-        new NotFoundException('Node not found'),
-      );
-      await expect(controller.create({} as CreateJobDto)).rejects.toThrow(
-        NotFoundException,
-      );
+      mockQueueService.create.mockRejectedValue(new NotFoundException('Node not found'));
+      await expect(controller.create({} as CreateJobDto)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -124,12 +120,8 @@ describe('JobController', () => {
     });
 
     it('should propagate NotFoundException for unknown id', async () => {
-      mockQueueService.findOne.mockRejectedValue(
-        new NotFoundException('Job not found'),
-      );
-      await expect(controller.findOne('missing')).rejects.toThrow(
-        NotFoundException,
-      );
+      mockQueueService.findOne.mockRejectedValue(new NotFoundException('Job not found'));
+      await expect(controller.findOne('missing')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -151,12 +143,8 @@ describe('JobController', () => {
     });
 
     it('should throw if job does not exist', async () => {
-      mockQueueService.findOne.mockRejectedValue(
-        new NotFoundException('Job not found'),
-      );
-      await expect(controller.getJobHistory('missing')).rejects.toThrow(
-        NotFoundException,
-      );
+      mockQueueService.findOne.mockRejectedValue(new NotFoundException('Job not found'));
+      await expect(controller.getJobHistory('missing')).rejects.toThrow(NotFoundException);
       expect(mockJobHistoryService.getJobHistory).not.toHaveBeenCalled();
     });
   });
@@ -214,9 +202,9 @@ describe('JobController', () => {
       mockNodeConfig.isMainNode.mockReturnValue(false);
       mockQueueService.findOne.mockResolvedValue(job);
 
-      await expect(
-        controller.update('job-1', {} as UpdateJobDto),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(controller.update('job-1', {} as UpdateJobDto)).rejects.toThrow(
+        ForbiddenException
+      );
       expect(mockQueueService.update).not.toHaveBeenCalled();
     });
   });
@@ -253,10 +241,7 @@ describe('JobController', () => {
 
       const result = await controller.updateJobStage('job-1', dto);
 
-      expect(mockQueueService.updateProgress).toHaveBeenCalledWith(
-        'job-1',
-        dto,
-      );
+      expect(mockQueueService.updateProgress).toHaveBeenCalledWith('job-1', dto);
       expect(result).toEqual(updated);
     });
   });
@@ -273,21 +258,16 @@ describe('JobController', () => {
         priority: 2,
       } as UpdatePriorityDto);
 
-      expect(mockQueueService.updateJobPriority).toHaveBeenCalledWith(
-        'job-1',
-        2,
-      );
+      expect(mockQueueService.updateJobPriority).toHaveBeenCalledWith('job-1', 2);
       expect(result).toEqual(updated);
     });
 
     it('should propagate errors (e.g. max top priority exceeded)', async () => {
-      mockQueueService.updateJobPriority.mockRejectedValue(
-        new Error('max 3 top priority jobs'),
-      );
+      mockQueueService.updateJobPriority.mockRejectedValue(new Error('max 3 top priority jobs'));
       await expect(
         controller.updatePriority('job-1', {
           priority: 2,
-        } as UpdatePriorityDto),
+        } as UpdatePriorityDto)
       ).rejects.toThrow('max 3 top priority jobs');
     });
   });
@@ -305,12 +285,8 @@ describe('JobController', () => {
     });
 
     it('should propagate NotFoundException', async () => {
-      mockQueueService.remove.mockRejectedValue(
-        new NotFoundException('Job not found'),
-      );
-      await expect(controller.remove('missing')).rejects.toThrow(
-        NotFoundException,
-      );
+      mockQueueService.remove.mockRejectedValue(new NotFoundException('Job not found'));
+      await expect(controller.remove('missing')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -345,10 +321,7 @@ describe('JobController', () => {
 
       const result = await controller.fail('job-1', dto);
 
-      expect(mockQueueService.failJob).toHaveBeenCalledWith(
-        'job-1',
-        'FFmpeg exit code 1',
-      );
+      expect(mockQueueService.failJob).toHaveBeenCalledWith('job-1', 'FFmpeg exit code 1');
       expect(result).toEqual(failed);
     });
   });
@@ -381,9 +354,7 @@ describe('JobController', () => {
 
     it('should default blacklist to false when undefined', async () => {
       const dto: CancelJobDto = {};
-      mockQueueService.cancelJob.mockResolvedValue(
-        makeJob({ stage: 'CANCELLED' }),
-      );
+      mockQueueService.cancelJob.mockResolvedValue(makeJob({ stage: 'CANCELLED' }));
 
       await controller.cancel('job-1', dto);
 
@@ -509,10 +480,7 @@ describe('JobController', () => {
 
       const result = await controller.resolveDecision('job-1', dto);
 
-      expect(mockQueueService.resolveDecision).toHaveBeenCalledWith(
-        'job-1',
-        dto.decisionData,
-      );
+      expect(mockQueueService.resolveDecision).toHaveBeenCalledWith('job-1', dto.decisionData);
       expect(result).toEqual(queued);
     });
   });
@@ -523,15 +491,11 @@ describe('JobController', () => {
   describe('detectAndRequeue', () => {
     it('should requeue a completed job with no compression', async () => {
       const requeued = makeJob({ stage: 'QUEUED' });
-      mockQueueService.detectAndRequeueIfUncompressed.mockResolvedValue(
-        requeued,
-      );
+      mockQueueService.detectAndRequeueIfUncompressed.mockResolvedValue(requeued);
 
       const result = await controller.detectAndRequeue('job-1');
 
-      expect(
-        mockQueueService.detectAndRequeueIfUncompressed,
-      ).toHaveBeenCalledWith('job-1');
+      expect(mockQueueService.detectAndRequeueIfUncompressed).toHaveBeenCalledWith('job-1');
       expect(result).toEqual(requeued);
     });
   });
@@ -547,21 +511,16 @@ describe('JobController', () => {
 
       const result = await controller.delegateJob('job-1', dto);
 
-      expect(mockQueueService.delegateJob).toHaveBeenCalledWith(
-        'job-1',
-        'node-2',
-      );
+      expect(mockQueueService.delegateJob).toHaveBeenCalledWith('job-1', 'node-2');
       expect(result).toEqual(delegated);
     });
 
     it('should propagate NotFoundException when target node not found', async () => {
-      mockQueueService.delegateJob.mockRejectedValue(
-        new NotFoundException('Node not found'),
-      );
+      mockQueueService.delegateJob.mockRejectedValue(new NotFoundException('Node not found'));
       await expect(
         controller.delegateJob('job-1', {
           targetNodeId: 'bad-node',
-        } as DelegateJobDto),
+        } as DelegateJobDto)
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -576,9 +535,7 @@ describe('JobController', () => {
 
       const result = await controller.keepOriginal('job-1');
 
-      expect(mockQueueService.requestKeepOriginal).toHaveBeenCalledWith(
-        'job-1',
-      );
+      expect(mockQueueService.requestKeepOriginal).toHaveBeenCalledWith('job-1');
       expect(result).toEqual(job);
     });
   });
@@ -594,9 +551,7 @@ describe('JobController', () => {
 
       const result = await controller.deleteOriginal('job-1');
 
-      expect(mockQueueService.deleteOriginalBackup).toHaveBeenCalledWith(
-        'job-1',
-      );
+      expect(mockQueueService.deleteOriginalBackup).toHaveBeenCalledWith('job-1');
       expect(result).toEqual({ freedSpace: '524288000' });
     });
   });

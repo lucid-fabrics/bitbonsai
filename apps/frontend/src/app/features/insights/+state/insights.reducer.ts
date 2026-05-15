@@ -100,5 +100,5 @@ export const insightsReducer = createReducer(
   on(InsightsActions.updateTimeRange, (state, { days }) => ({
     ...state,
     selectedTimeRange: days,
-  })),
+  }))
 );

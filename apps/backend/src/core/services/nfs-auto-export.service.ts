@@ -36,7 +36,7 @@ export class NFSAutoExportService {
     private readonly nodeRepository: NodeRepository,
     @Inject('IStorageShareRepository')
     private readonly storageShareRepository: IStorageShareRepository,
-    private readonly volumeDetector: DockerVolumeDetectorService,
+    private readonly volumeDetector: DockerVolumeDetectorService
   ) {}
 
   /**
@@ -57,8 +57,7 @@ export class NFSAutoExportService {
       }
 
       // Clean up old auto-managed shares first
-      const deletedCount =
-        await this.storageShareRepository.deleteAllAutoManaged();
+      const deletedCount = await this.storageShareRepository.deleteAllAutoManaged();
       if (deletedCount > 0) {
         this.logger.log(`Cleaned up ${deletedCount} old auto-managed shares`);
       }
@@ -82,14 +81,13 @@ export class NFSAutoExportService {
 
       for (const volume of volumes) {
         const isExported = exportedPaths.some(
-          (exp) =>
-            volume.source.startsWith(exp) || exp.startsWith(volume.source),
+          (exp) => volume.source.startsWith(exp) || exp.startsWith(volume.source)
         );
 
         if (!isExported) {
           this.logger.warn(
             `⚠️  Volume ${volume.source} is NOT exported via NFS on host. ` +
-              `Child nodes won't be able to mount it.`,
+              `Child nodes won't be able to mount it.`
           );
           missingExportCount++;
         }
@@ -103,47 +101,33 @@ export class NFSAutoExportService {
 
       if (missingExportCount > 0) {
         this.logger.warn('');
-        this.logger.warn(
-          '═══════════════════════════════════════════════════════════════',
-        );
+        this.logger.warn('═══════════════════════════════════════════════════════════════');
         this.logger.warn('  NFS SETUP REQUIRED FOR MULTI-NODE OPERATION');
-        this.logger.warn(
-          '═══════════════════════════════════════════════════════════════',
-        );
+        this.logger.warn('═══════════════════════════════════════════════════════════════');
         this.logger.warn('');
-        this.logger.warn(
-          '  Some Docker volumes are not exported via NFS on the host.',
-        );
-        this.logger.warn(
-          '  Child nodes will fall back to slower file transfers (rsync).',
-        );
+        this.logger.warn('  Some Docker volumes are not exported via NFS on the host.');
+        this.logger.warn('  Child nodes will fall back to slower file transfers (rsync).');
         this.logger.warn('');
         this.logger.warn('  To enable zero-copy shared storage:');
         this.logger.warn('');
         this.logger.warn('  UNRAID:');
         this.logger.warn('    1. Go to Settings → NFS');
         this.logger.warn('    2. Set "Enable NFS" to Yes');
-        this.logger.warn(
-          '    3. Add export rules for /mnt/user/media, /mnt/user/Downloads',
-        );
+        this.logger.warn('    3. Add export rules for /mnt/user/media, /mnt/user/Downloads');
         this.logger.warn('    4. Apply and restart NFS');
         this.logger.warn('');
         this.logger.warn('  OTHER LINUX:');
         this.logger.warn('    1. Edit /etc/exports on HOST (not in Docker)');
-        this.logger.warn(
-          '    2. Add: /path/to/media 192.168.1.0/24(rw,sync,no_subtree_check)',
-        );
+        this.logger.warn('    2. Add: /path/to/media 192.168.1.0/24(rw,sync,no_subtree_check)');
         this.logger.warn('    3. Run: exportfs -ra');
         this.logger.warn('');
-        this.logger.warn(
-          '═══════════════════════════════════════════════════════════════',
-        );
+        this.logger.warn('═══════════════════════════════════════════════════════════════');
         this.logger.warn('');
       }
     } catch (error: unknown) {
       this.logger.error(
         'Failed to detect Docker volumes',
-        error instanceof Error ? error.stack : error,
+        error instanceof Error ? error.stack : error
       );
     }
   }
@@ -159,12 +143,9 @@ export class NFSAutoExportService {
 
       for (const host of hostAddresses) {
         try {
-          const { stdout } = await execAsync(
-            `showmount -e ${host} 2>/dev/null`,
-            {
-              timeout: 5000,
-            },
-          );
+          const { stdout } = await execAsync(`showmount -e ${host} 2>/dev/null`, {
+            timeout: 5000,
+          });
 
           // Parse showmount output: "/path/to/export 192.168.1.0/24"
           const exports = stdout
@@ -174,25 +155,21 @@ export class NFSAutoExportService {
             .filter((path) => path?.startsWith('/'));
 
           if (exports.length > 0) {
-            this.logger.debug(
-              `Found ${exports.length} NFS exports on host (${host})`,
-            );
+            this.logger.debug(`Found ${exports.length} NFS exports on host (${host})`);
             return exports;
           }
         } catch (error: unknown) {
           this.logger.warn(
-            `[getHostNFSExports] showmount failed for ${host}: ${error instanceof Error ? error.message : String(error)}`,
+            `[getHostNFSExports] showmount failed for ${host}: ${error instanceof Error ? error.message : String(error)}`
           );
         }
       }
 
-      this.logger.debug(
-        'Could not query host NFS exports - assuming none configured',
-      );
+      this.logger.debug('Could not query host NFS exports - assuming none configured');
       return [];
     } catch (error: unknown) {
       this.logger.warn(
-        `[getHostNFSExports] Failed to query NFS exports: ${error instanceof Error ? error.message : String(error)}`,
+        `[getHostNFSExports] Failed to query NFS exports: ${error instanceof Error ? error.message : String(error)}`
       );
       return [];
     }
@@ -204,26 +181,19 @@ export class NFSAutoExportService {
   private async createShareRecord(
     volume: DockerVolumeMount,
     mainNodeId: string,
-    isExportedOnHost: boolean,
+    isExportedOnHost: boolean
   ): Promise<void> {
     try {
       // Check if already exists
-      const existing = await this.storageShareRepository.findBySharePath(
-        mainNodeId,
-        volume.source,
-      );
+      const existing = await this.storageShareRepository.findBySharePath(mainNodeId, volume.source);
 
       if (existing) {
-        this.logger.debug(
-          `Volume ${volume.source} already has StorageShare record`,
-        );
+        this.logger.debug(`Volume ${volume.source} already has StorageShare record`);
         return;
       }
 
       // Generate share name from destination path (container mount point)
-      const shareName = this.volumeDetector.getSuggestedShareName(
-        volume.destination,
-      );
+      const shareName = this.volumeDetector.getSuggestedShareName(volume.destination);
 
       // Get main node's IP address
       const serverAddress = await this.getMainNodeIP();
@@ -232,9 +202,7 @@ export class NFSAutoExportService {
       const exportPath = `${serverAddress}:${volume.source}`;
 
       // Status depends on whether HOST has NFS export configured
-      const status = isExportedOnHost
-        ? StorageShareStatus.AVAILABLE
-        : StorageShareStatus.ERROR;
+      const status = isExportedOnHost ? StorageShareStatus.AVAILABLE : StorageShareStatus.ERROR;
 
       await this.storageShareRepository.create({
         nodeId: mainNodeId,
@@ -260,12 +228,12 @@ export class NFSAutoExportService {
 
       const statusIcon = isExportedOnHost ? '✓' : '⚠️';
       this.logger.log(
-        `${statusIcon} Created share record: ${volume.destination} → ${volume.source}`,
+        `${statusIcon} Created share record: ${volume.destination} → ${volume.source}`
       );
     } catch (error: unknown) {
       this.logger.error(
         `Failed to create share record for ${volume.destination}`,
-        error instanceof Error ? error.stack : error,
+        error instanceof Error ? error.stack : error
       );
     }
   }
@@ -277,13 +245,11 @@ export class NFSAutoExportService {
   async removeAutoManagedExports(): Promise<void> {
     try {
       const deleted = await this.storageShareRepository.deleteAllAutoManaged();
-      this.logger.log(
-        `✓ Removed ${deleted} auto-managed StorageShare record(s)`,
-      );
+      this.logger.log(`✓ Removed ${deleted} auto-managed StorageShare record(s)`);
     } catch (error: unknown) {
       this.logger.error(
         'Failed to remove auto-managed shares',
-        error instanceof Error ? error.stack : error,
+        error instanceof Error ? error.stack : error
       );
     }
   }
@@ -295,7 +261,7 @@ export class NFSAutoExportService {
     try {
       // Get primary non-loopback IP
       const { stdout } = await execAsync(
-        "ip -4 addr show | grep 'inet ' | grep -v '127.0.0.1' | head -1 | awk '{print $2}' | cut -d/ -f1",
+        "ip -4 addr show | grep 'inet ' | grep -v '127.0.0.1' | head -1 | awk '{print $2}' | cut -d/ -f1"
       );
 
       const ip = stdout.trim();
@@ -308,7 +274,7 @@ export class NFSAutoExportService {
       return ip;
     } catch (error: unknown) {
       this.logger.warn(
-        `[getMainNodeIP] Failed to get main node IP, using localhost: ${error instanceof Error ? error.message : String(error)}`,
+        `[getMainNodeIP] Failed to get main node IP, using localhost: ${error instanceof Error ? error.message : String(error)}`
       );
       return 'localhost';
     }

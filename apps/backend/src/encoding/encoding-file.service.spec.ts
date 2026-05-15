@@ -70,10 +70,7 @@ describe('EncodingFileService', () => {
 
   describe('calculateSavings', () => {
     it('should calculate savings correctly', () => {
-      const result = service.calculateSavings(
-        BigInt(1_000_000),
-        BigInt(600_000),
-      );
+      const result = service.calculateSavings(BigInt(1_000_000), BigInt(600_000));
       expect(result.savedBytes).toBe(BigInt(400_000));
       expect(result.savedPercent).toBeCloseTo(40);
     });
@@ -106,8 +103,8 @@ describe('EncodingFileService', () => {
           BigInt(2_000_000_000), // 2GB original
           BigInt(1_000), // 1KB output - way too small
           3600, // 1 hour video
-          '/media/movie.mkv',
-        ),
+          '/media/movie.mkv'
+        )
       ).toThrow('suspiciously small');
     });
 
@@ -117,8 +114,8 @@ describe('EncodingFileService', () => {
           BigInt(3_000_000_000), // 3GB original
           BigInt(95_000_000), // 95MB output (96.8% reduction, above min 90MB threshold)
           3600,
-          '/media/movie.mkv',
-        ),
+          '/media/movie.mkv'
+        )
       ).toThrow('Extreme compression');
     });
 
@@ -128,8 +125,8 @@ describe('EncodingFileService', () => {
           BigInt(2_000_000_000), // 2GB original
           BigInt(1_000_000_000), // 1GB output (50% reduction)
           3600,
-          '/media/movie.mkv',
-        ),
+          '/media/movie.mkv'
+        )
       ).not.toThrow();
     });
   });
@@ -137,23 +134,19 @@ describe('EncodingFileService', () => {
   describe('validateOutputDuration', () => {
     it('should pass for matching durations within tolerance', async () => {
       mockFfmpegService.getVideoDuration.mockResolvedValue(3600);
-      jest
-        .spyOn(service.outputVerification, 'sleep')
-        .mockResolvedValue(undefined);
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
 
       await expect(
-        service.validateOutputDuration('/output.mkv', 3600, '/input.mkv'),
+        service.validateOutputDuration('/output.mkv', 3600, '/input.mkv')
       ).resolves.not.toThrow();
     });
 
     it('should throw for sub-second clips (skip validation)', async () => {
       // Sub-second clips should pass without calling getVideoDuration
-      jest
-        .spyOn(service.outputVerification, 'sleep')
-        .mockResolvedValue(undefined);
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
 
       await expect(
-        service.validateOutputDuration('/output.mkv', 0.5, '/input.mkv'),
+        service.validateOutputDuration('/output.mkv', 0.5, '/input.mkv')
       ).resolves.not.toThrow();
       expect(mockFfmpegService.getVideoDuration).not.toHaveBeenCalled();
     });
@@ -161,12 +154,10 @@ describe('EncodingFileService', () => {
     it('should throw when output duration is significantly shorter', async () => {
       // original = 3600s, output = 1800s (50% truncated)
       mockFfmpegService.getVideoDuration.mockResolvedValue(1800);
-      jest
-        .spyOn(service.outputVerification, 'sleep')
-        .mockResolvedValue(undefined);
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
 
       await expect(
-        service.validateOutputDuration('/output.mkv', 3600, '/input.mkv'),
+        service.validateOutputDuration('/output.mkv', 3600, '/input.mkv')
       ).rejects.toThrow('duration mismatch');
     });
   });
@@ -251,9 +242,7 @@ describe('EncodingFileService — extended coverage', () => {
 
     service = module.get<EncodingFileService>(EncodingFileService);
     jest.spyOn(service, 'sleep').mockResolvedValue(undefined);
-    jest
-      .spyOn(service.outputVerification, 'sleep')
-      .mockResolvedValue(undefined);
+    jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
     jest.spyOn(service.fileReplacement, 'sleep').mockResolvedValue(undefined);
   });
 
@@ -262,9 +251,7 @@ describe('EncodingFileService — extended coverage', () => {
   describe('checkTempFileWithRetry', () => {
     it('returns true immediately when file exists on first attempt', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      const result = await service.checkTempFileWithRetry(
-        '/tmp/some.mkv.tmp-123',
-      );
+      const result = await service.checkTempFileWithRetry('/tmp/some.mkv.tmp-123');
       expect(result).toBe(true);
     });
 
@@ -320,28 +307,28 @@ describe('EncodingFileService — extended coverage', () => {
     it('warns but does not throw when originalDuration is exactly 3600 (fallback value)', async () => {
       mockFfmpegService.getVideoDuration.mockResolvedValue(3600);
       await expect(
-        service.validateOutputDuration('/output.mkv', 3600, '/input.mkv'),
+        service.validateOutputDuration('/output.mkv', 3600, '/input.mkv')
       ).resolves.not.toThrow();
     });
 
     it('throws "Cannot determine output file duration" when output duration is 3600 fallback but original is not', async () => {
       mockFfmpegService.getVideoDuration.mockResolvedValue(3600);
       await expect(
-        service.validateOutputDuration('/output.mkv', 1200, '/input.mkv'),
+        service.validateOutputDuration('/output.mkv', 1200, '/input.mkv')
       ).rejects.toThrow('Cannot determine output file duration');
     });
 
     it('throws for short clip (30s) with >1s absolute difference', async () => {
       mockFfmpegService.getVideoDuration.mockResolvedValue(27); // 3s short
-      await expect(
-        service.validateOutputDuration('/output.mkv', 30, '/input.mkv'),
-      ).rejects.toThrow('duration mismatch');
+      await expect(service.validateOutputDuration('/output.mkv', 30, '/input.mkv')).rejects.toThrow(
+        'duration mismatch'
+      );
     });
 
     it('passes for short clip (30s) within ±1s absolute tolerance', async () => {
       mockFfmpegService.getVideoDuration.mockResolvedValue(29.5);
       await expect(
-        service.validateOutputDuration('/output.mkv', 30, '/input.mkv'),
+        service.validateOutputDuration('/output.mkv', 30, '/input.mkv')
       ).resolves.not.toThrow();
     });
 
@@ -349,7 +336,7 @@ describe('EncodingFileService — extended coverage', () => {
       // 7200s video, output 7195s — 0.07% diff, within 1.5%
       mockFfmpegService.getVideoDuration.mockResolvedValue(7195);
       await expect(
-        service.validateOutputDuration('/output.mkv', 7200, '/input.mkv'),
+        service.validateOutputDuration('/output.mkv', 7200, '/input.mkv')
       ).resolves.not.toThrow();
     });
   });
@@ -366,8 +353,8 @@ describe('EncodingFileService — extended coverage', () => {
           BigInt(200_000_000), // 200MB original
           BigInt(10_000_000), // 10MB output — above 1.5MB min floor for 60s video
           60,
-          '/media/short.mkv',
-        ),
+          '/media/short.mkv'
+        )
       ).not.toThrow();
     });
 
@@ -378,8 +365,8 @@ describe('EncodingFileService — extended coverage', () => {
           BigInt(100_000_000),
           BigInt(15_000_001), // just above minimum
           600,
-          '/media/ok.mkv',
-        ),
+          '/media/ok.mkv'
+        )
       ).not.toThrow();
     });
   });
@@ -389,9 +376,7 @@ describe('EncodingFileService — extended coverage', () => {
   describe('verifyEncodedFile', () => {
     it('returns without error on first successful verification', async () => {
       mockFfmpegService.verifyFile.mockResolvedValue({ isValid: true });
-      await expect(
-        service.verifyEncodedFile('/tmp/out.mkv'),
-      ).resolves.not.toThrow();
+      await expect(service.verifyEncodedFile('/tmp/out.mkv')).resolves.not.toThrow();
       expect(mockFfmpegService.verifyFile).toHaveBeenCalledTimes(1);
     });
 
@@ -399,9 +384,7 @@ describe('EncodingFileService — extended coverage', () => {
       mockFfmpegService.verifyFile
         .mockResolvedValueOnce({ isValid: false, error: 'not ready' })
         .mockResolvedValue({ isValid: true });
-      await expect(
-        service.verifyEncodedFile('/tmp/out.mkv'),
-      ).resolves.not.toThrow();
+      await expect(service.verifyEncodedFile('/tmp/out.mkv')).resolves.not.toThrow();
       expect(mockFfmpegService.verifyFile).toHaveBeenCalledTimes(2);
     });
 
@@ -411,7 +394,7 @@ describe('EncodingFileService — extended coverage', () => {
         error: 'corrupt',
       });
       await expect(service.verifyEncodedFile('/tmp/out.mkv')).rejects.toThrow(
-        'Verification failed',
+        'Verification failed'
       );
       expect(mockFfmpegService.verifyFile).toHaveBeenCalledTimes(10);
     });
@@ -441,10 +424,7 @@ describe('EncodingFileService — extended coverage', () => {
     it('calls fs.renameSync on same filesystem', () => {
       (fs.renameSync as jest.Mock).mockImplementation(() => undefined);
       service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv');
-      expect(fs.renameSync).toHaveBeenCalledWith(
-        '/src/file.mkv',
-        '/dst/file.mkv',
-      );
+      expect(fs.renameSync).toHaveBeenCalledWith('/src/file.mkv', '/dst/file.mkv');
     });
 
     it('falls back to copy+delete when rename fails with EXDEV', () => {
@@ -459,10 +439,7 @@ describe('EncodingFileService — extended coverage', () => {
 
       service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv');
 
-      expect(fs.copyFileSync).toHaveBeenCalledWith(
-        '/src/file.mkv',
-        '/dst/file.mkv',
-      );
+      expect(fs.copyFileSync).toHaveBeenCalledWith('/src/file.mkv', '/dst/file.mkv');
       expect(fs.unlinkSync).toHaveBeenCalledWith('/src/file.mkv');
     });
 
@@ -478,9 +455,9 @@ describe('EncodingFileService — extended coverage', () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.unlinkSync as jest.Mock).mockImplementation(() => undefined);
 
-      expect(() =>
-        service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv'),
-      ).toThrow('Cross-filesystem move failed');
+      expect(() => service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv')).toThrow(
+        'Cross-filesystem move failed'
+      );
     });
 
     it('re-throws non-EXDEV rename errors', () => {
@@ -488,9 +465,9 @@ describe('EncodingFileService — extended coverage', () => {
       (fs.renameSync as jest.Mock).mockImplementationOnce(() => {
         throw permError;
       });
-      expect(() =>
-        service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv'),
-      ).toThrow('EPERM');
+      expect(() => service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv')).toThrow(
+        'EPERM'
+      );
     });
   });
 
@@ -512,9 +489,7 @@ describe('EncodingFileService — extended coverage', () => {
 
     it('does not throw when librariesService.findOne rejects', async () => {
       mockLibrariesService.findOne.mockRejectedValue(new Error('DB error'));
-      await expect(
-        service.updateLibraryStats('lib-1', BigInt(100)),
-      ).resolves.not.toThrow();
+      await expect(service.updateLibraryStats('lib-1', BigInt(100))).resolves.not.toThrow();
     });
   });
 
@@ -540,8 +515,8 @@ describe('EncodingFileService — extended coverage', () => {
           '/media/video.mkv',
           '/tmp/video.mkv.tmp',
           BigInt(1_000_000_000),
-          BigInt(700_000_000),
-        ),
+          BigInt(700_000_000)
+        )
       ).resolves.not.toThrow();
     });
 
@@ -549,19 +524,17 @@ describe('EncodingFileService — extended coverage', () => {
       // Simulate the internal error being raised (e.g. by the availability check inside the method)
       // then verify it propagates — achieved by spying on the method itself for this one path.
       const diskError = new Error(
-        'Insufficient disk space for atomic file replacement on /media\n\nAvailable: 0.00 GB',
+        'Insufficient disk space for atomic file replacement on /media\n\nAvailable: 0.00 GB'
       );
-      jest
-        .spyOn(service, 'verifyDiskSpaceForReplacement')
-        .mockRejectedValueOnce(diskError);
+      jest.spyOn(service, 'verifyDiskSpaceForReplacement').mockRejectedValueOnce(diskError);
 
       await expect(
         service.verifyDiskSpaceForReplacement(
           '/media/video.mkv',
           '/tmp/video.mkv.tmp',
           BigInt(5_000_000_000),
-          BigInt(3_000_000_000),
-        ),
+          BigInt(3_000_000_000)
+        )
       ).rejects.toThrow('Insufficient disk space');
     });
 
@@ -573,8 +546,8 @@ describe('EncodingFileService — extended coverage', () => {
           '/media/video.mkv',
           '/tmp/video.mkv.tmp',
           BigInt(1_000_000_000),
-          BigInt(700_000_000),
-        ),
+          BigInt(700_000_000)
+        )
       ).resolves.not.toThrow();
     });
 
@@ -584,8 +557,8 @@ describe('EncodingFileService — extended coverage', () => {
         .spyOn(service, 'verifyDiskSpaceForReplacement')
         .mockRejectedValueOnce(
           new Error(
-            'Insufficient disk space for atomic file replacement on /media\n\nAvailable: 0.00 GB',
-          ),
+            'Insufficient disk space for atomic file replacement on /media\n\nAvailable: 0.00 GB'
+          )
         );
 
       await expect(
@@ -593,8 +566,8 @@ describe('EncodingFileService — extended coverage', () => {
           '/media/video.mkv',
           '/tmp/video.mkv.tmp',
           BigInt(1_000_000_000),
-          BigInt(700_000_000),
-        ),
+          BigInt(700_000_000)
+        )
       ).rejects.toThrow('Insufficient disk space');
 
       spy.mockRestore();
@@ -611,10 +584,7 @@ describe('EncodingFileService — extended coverage', () => {
       mockFfmpegService.verifyFile.mockResolvedValue({ isValid: true });
 
       await expect(
-        service.atomicReplaceFileWithVerification(
-          '/media/video.mkv',
-          '/tmp/video.mkv.tmp',
-        ),
+        service.atomicReplaceFileWithVerification('/media/video.mkv', '/tmp/video.mkv.tmp')
       ).resolves.not.toThrow();
 
       expect(fs.unlinkSync).toHaveBeenCalledWith('/media/video.mkv.backup');
@@ -623,7 +593,7 @@ describe('EncodingFileService — extended coverage', () => {
     it('rolls back to backup when post-replacement verification fails', async () => {
       (fs.renameSync as jest.Mock).mockImplementation(() => undefined);
       (fs.existsSync as jest.Mock).mockImplementation((p: string) =>
-        p.endsWith('.backup') ? true : p === '/media/video.mkv',
+        p.endsWith('.backup') ? true : p === '/media/video.mkv'
       );
       (fs.unlinkSync as jest.Mock).mockImplementation(() => undefined);
       mockFfmpegService.verifyFile.mockResolvedValue({
@@ -632,10 +602,7 @@ describe('EncodingFileService — extended coverage', () => {
       });
 
       await expect(
-        service.atomicReplaceFileWithVerification(
-          '/media/video.mkv',
-          '/tmp/video.mkv.tmp',
-        ),
+        service.atomicReplaceFileWithVerification('/media/video.mkv', '/tmp/video.mkv.tmp')
       ).rejects.toThrow('Post-replacement verification failed');
 
       // unlinkSync called to remove the bad encoded file before restoring backup
@@ -649,14 +616,11 @@ describe('EncodingFileService — extended coverage', () => {
         if (renameCount === 2) throw new Error('rename failed');
       });
       (fs.existsSync as jest.Mock).mockImplementation(
-        (p: string) => p.endsWith('.backup') && !p.includes('original'),
+        (p: string) => p.endsWith('.backup') && !p.includes('original')
       );
 
       await expect(
-        service.atomicReplaceFileWithVerification(
-          '/media/video.mkv',
-          '/tmp/video.mkv.tmp',
-        ),
+        service.atomicReplaceFileWithVerification('/media/video.mkv', '/tmp/video.mkv.tmp')
       ).rejects.toThrow('rename failed');
     });
   });
@@ -680,12 +644,12 @@ describe('EncodingFileService — extended coverage', () => {
       mockQueueService.update.mockResolvedValue({} as never);
 
       await expect(
-        service.replaceFile(makeJob(true), '/tmp/video.mkv.tmp', true),
+        service.replaceFile(makeJob(true), '/tmp/video.mkv.tmp', true)
       ).resolves.not.toThrow();
 
       expect(mockQueueService.update).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ replacementAction: 'KEPT_BOTH' }),
+        expect.objectContaining({ replacementAction: 'KEPT_BOTH' })
       );
     });
 
@@ -698,9 +662,9 @@ describe('EncodingFileService — extended coverage', () => {
         error: 'corrupt',
       });
 
-      await expect(
-        service.replaceFile(makeJob(true), '/tmp/video.mkv.tmp', true),
-      ).rejects.toThrow('Post-replacement verification failed');
+      await expect(service.replaceFile(makeJob(true), '/tmp/video.mkv.tmp', true)).rejects.toThrow(
+        'Post-replacement verification failed'
+      );
     });
 
     it('replaces file atomically when keepOriginalRequested=false', async () => {
@@ -711,12 +675,12 @@ describe('EncodingFileService — extended coverage', () => {
       mockQueueService.update.mockResolvedValue({} as never);
 
       await expect(
-        service.replaceFile(makeJob(false, true), '/tmp/video.mkv.tmp', true),
+        service.replaceFile(makeJob(false, true), '/tmp/video.mkv.tmp', true)
       ).resolves.not.toThrow();
 
       expect(mockQueueService.update).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ replacementAction: 'REPLACED' }),
+        expect.objectContaining({ replacementAction: 'REPLACED' })
       );
     });
 
@@ -727,12 +691,12 @@ describe('EncodingFileService — extended coverage', () => {
       mockQueueService.update.mockResolvedValue({} as never);
 
       await expect(
-        service.replaceFile(makeJob(false, false), '/tmp/video.mkv.tmp', false),
+        service.replaceFile(makeJob(false, false), '/tmp/video.mkv.tmp', false)
       ).resolves.not.toThrow();
 
       expect(mockQueueService.update).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ replacementAction: 'REPLACED' }),
+        expect.objectContaining({ replacementAction: 'REPLACED' })
       );
     });
   });
@@ -747,9 +711,9 @@ describe('EncodingFileService — extended coverage', () => {
         policy: null,
       } as unknown as Parameters<typeof service.performEncoding>[0];
 
-      await expect(
-        service.performEncoding(job, '/tmp/out.mkv', undefined),
-      ).rejects.toThrow('Policy is required for encoding');
+      await expect(service.performEncoding(job, '/tmp/out.mkv', undefined)).rejects.toThrow(
+        'Policy is required for encoding'
+      );
     });
 
     it('calls ffmpegService.encode with correct parameters', async () => {
@@ -774,7 +738,7 @@ describe('EncodingFileService — extended coverage', () => {
           inputPath: '/media/video.mkv',
           outputPath: '/tmp/out.mkv',
           startedFromSeconds: 120,
-        }),
+        })
       );
     });
 
@@ -796,7 +760,7 @@ describe('EncodingFileService — extended coverage', () => {
 
       expect(mockFfmpegService.encode).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ hwAccel: 'auto' }),
+        expect.objectContaining({ hwAccel: 'auto' })
       );
     });
   });
@@ -813,9 +777,9 @@ describe('EncodingFileService — extended coverage', () => {
       (fs.copyFileSync as jest.Mock).mockImplementation(() => undefined);
       (fs.existsSync as jest.Mock).mockReturnValue(false); // dest not created
 
-      expect(() =>
-        service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv'),
-      ).toThrow('Cross-filesystem move failed');
+      expect(() => service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv')).toThrow(
+        'Cross-filesystem move failed'
+      );
     });
   });
 
@@ -826,7 +790,7 @@ describe('EncodingFileService — extended coverage', () => {
       // 200s original, output 193s: diff = 7s, pct = 3.5% > 5% tolerance? No: 3.5 < 5 ✓
       mockFfmpegService.getVideoDuration.mockResolvedValue(193);
       await expect(
-        service.validateOutputDuration('/output.mkv', 200, '/input.mkv'),
+        service.validateOutputDuration('/output.mkv', 200, '/input.mkv')
       ).resolves.not.toThrow();
     });
 
@@ -834,13 +798,13 @@ describe('EncodingFileService — extended coverage', () => {
       // 200s original, output 185s: diff = 15s, pct = 7.5% > 5% tolerance → throw
       mockFfmpegService.getVideoDuration.mockResolvedValue(185);
       await expect(
-        service.validateOutputDuration('/output.mkv', 200, '/input.mkv'),
+        service.validateOutputDuration('/output.mkv', 200, '/input.mkv')
       ).rejects.toThrow('duration mismatch');
     });
 
     it('returns early for sub-1-second video without calling getVideoDuration', async () => {
       await expect(
-        service.validateOutputDuration('/output.mkv', 0.9, '/input.mkv'),
+        service.validateOutputDuration('/output.mkv', 0.9, '/input.mkv')
       ).resolves.not.toThrow();
       expect(mockFfmpegService.getVideoDuration).not.toHaveBeenCalled();
     });
@@ -853,12 +817,7 @@ describe('EncodingFileService — extended coverage', () => {
       // original 200MB, output 5MB = 97.5% reduction from <1GB source — only warning path
       // 5MB > 200kbps*60s/8 = 1.5MB minimum floor
       expect(() =>
-        service.validateOutputSize(
-          BigInt(200_000_000),
-          BigInt(5_000_000),
-          60,
-          '/media/short.mkv',
-        ),
+        service.validateOutputSize(BigInt(200_000_000), BigInt(5_000_000), 60, '/media/short.mkv')
       ).not.toThrow();
     });
   });
@@ -886,9 +845,7 @@ describe('EncodingFileService — extended coverage', () => {
       } as never);
       mockLibrariesService.update.mockRejectedValue(new Error('update failed'));
 
-      await expect(
-        service.updateLibraryStats('lib-1', BigInt(100)),
-      ).resolves.not.toThrow();
+      await expect(service.updateLibraryStats('lib-1', BigInt(100))).resolves.not.toThrow();
     });
   });
 });

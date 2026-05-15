@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Job, Library, Node } from '@prisma/client';
 import {
@@ -17,10 +12,7 @@ import type { CacheMetadataDto } from './dto/cache-metadata.dto';
 import type { CreateLibraryDto } from './dto/create-library.dto';
 import type { LibraryFilesDto } from './dto/library-files.dto';
 import type { LibraryStatsDto } from './dto/library-stats.dto';
-import type {
-  BulkJobCreationResultDto,
-  ScanPreviewDto,
-} from './dto/scan-preview.dto';
+import type { BulkJobCreationResultDto, ScanPreviewDto } from './dto/scan-preview.dto';
 import type { UpdateLibraryDto } from './dto/update-library.dto';
 import { LibraryScannerService } from './library-scanner.service';
 
@@ -38,7 +30,7 @@ export class LibrariesService {
     private eventEmitter: EventEmitter2,
     private readonly libraryScanner: LibraryScannerService,
     private readonly libraryRepository: LibraryRepository,
-    private readonly nodeRepository: NodeRepository,
+    private readonly nodeRepository: NodeRepository
   ) {}
 
   /**
@@ -56,9 +48,7 @@ export class LibrariesService {
     this.logger.log(`Creating library: ${createLibraryDto.name}`);
 
     // SECURITY: Validate and sanitize path
-    const sanitizedPath = this.libraryScanner.validateLibraryPath(
-      createLibraryDto.path,
-    );
+    const sanitizedPath = this.libraryScanner.validateLibraryPath(createLibraryDto.path);
 
     // Auto-assign to first available node if nodeId not provided
     let nodeId = createLibraryDto.nodeId;
@@ -69,7 +59,7 @@ export class LibrariesService {
 
       if (!firstNode) {
         throw new NotFoundException(
-          'No nodes available. Please register a node before creating libraries.',
+          'No nodes available. Please register a node before creating libraries.'
         );
       }
 
@@ -92,7 +82,7 @@ export class LibrariesService {
 
     if (existingLibrary) {
       throw new ConflictException(
-        `Library with path "${sanitizedPath}" already exists on node "${node.name}"`,
+        `Library with path "${sanitizedPath}" already exists on node "${node.name}"`
       );
     }
 
@@ -163,14 +153,12 @@ export class LibrariesService {
    */
   async getAllLibraryPaths(nodeId?: string): Promise<string[]> {
     const libraries = await this.libraryRepository.findAllLibraries(
-      nodeId ? { nodeId } : undefined,
+      nodeId ? { nodeId } : undefined
     );
 
     // Return unique paths
     const paths = [...new Set(libraries.map((lib) => lib.path))];
-    this.logger.debug(
-      `Retrieved ${paths.length} library path(s) from database`,
-    );
+    this.logger.debug(`Retrieved ${paths.length} library path(s) from database`);
     return paths;
   }
 
@@ -214,7 +202,7 @@ export class LibrariesService {
             jobs: true,
           },
         },
-      },
+      }
     );
 
     if (!library) {
@@ -232,10 +220,7 @@ export class LibrariesService {
    * @returns Updated library
    * @throws NotFoundException if library does not exist
    */
-  async update(
-    id: string,
-    updateLibraryDto: UpdateLibraryDto,
-  ): Promise<Library> {
+  async update(id: string, updateLibraryDto: UpdateLibraryDto): Promise<Library> {
     this.logger.log(`Updating library: ${id}`);
 
     // Check if library exists
@@ -254,35 +239,31 @@ export class LibrariesService {
         if (updateLibraryDto.watchEnabled) {
           this.eventEmitter.emit(
             LibraryWatcherEnableEvent.event,
-            new LibraryWatcherEnableEvent(id),
+            new LibraryWatcherEnableEvent(id)
           );
         } else {
           this.eventEmitter.emit(
             LibraryWatcherDisableEvent.event,
-            new LibraryWatcherDisableEvent(id),
+            new LibraryWatcherDisableEvent(id)
           );
         }
       }
 
-      const library = await this.libraryRepository.updateWithInclude(
-        { id },
-        updateLibraryDto,
-        {
-          node: {
-            select: {
-              id: true,
-              name: true,
-              status: true,
-            },
-          },
-          _count: {
-            select: {
-              jobs: true,
-              policies: true,
-            },
+      const library = await this.libraryRepository.updateWithInclude({ id }, updateLibraryDto, {
+        node: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
           },
         },
-      );
+        _count: {
+          select: {
+            jobs: true,
+            policies: true,
+          },
+        },
+      });
 
       this.logger.log(`Library updated: ${id}`);
       return library;
@@ -312,10 +293,7 @@ export class LibrariesService {
     try {
       // Stop file watcher if active (fire-and-forget via event)
       if (existingLibrary.watchEnabled) {
-        this.eventEmitter.emit(
-          LibraryWatcherStopEvent.event,
-          new LibraryWatcherStopEvent(id),
-        );
+        this.eventEmitter.emit(LibraryWatcherStopEvent.event, new LibraryWatcherStopEvent(id));
       }
 
       await this.libraryRepository.deleteLibrary({ id });
@@ -340,19 +318,12 @@ export class LibrariesService {
   async createJobsFromScan(
     libraryId: string,
     policyId?: string,
-    filePaths?: string[],
+    filePaths?: string[]
   ): Promise<{ jobsCreated: number; jobs: Job[] }> {
-    return this.libraryScanner.createJobsFromScan(
-      libraryId,
-      policyId,
-      filePaths,
-    );
+    return this.libraryScanner.createJobsFromScan(libraryId, policyId, filePaths);
   }
 
-  async createAllJobs(
-    libraryId: string,
-    policyId: string,
-  ): Promise<BulkJobCreationResultDto> {
+  async createAllJobs(libraryId: string, policyId: string): Promise<BulkJobCreationResultDto> {
     return this.libraryScanner.createAllJobs(libraryId, policyId);
   }
 

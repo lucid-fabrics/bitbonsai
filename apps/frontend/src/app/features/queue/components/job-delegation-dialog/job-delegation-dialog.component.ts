@@ -55,9 +55,7 @@ export class JobDelegationDialogComponent implements OnInit {
       .subscribe({
         next: (nodes) => {
           // Filter to online nodes only, excluding the current node (can't delegate to itself)
-          this.nodes = nodes.filter(
-            (n) => n.status === 'ONLINE' && n.id !== this.data.job.nodeId,
-          );
+          this.nodes = nodes.filter((n) => n.status === 'ONLINE' && n.id !== this.data.job.nodeId);
           this.isLoading = false;
         },
         error: (err) => {
@@ -131,21 +129,16 @@ export class JobDelegationDialogComponent implements OnInit {
       message: 'This node is currently outside its scheduled encoding window.',
     };
 
-    const conflictDialogRef = this.dialog.open(
-      ScheduleConflictDialogComponent,
-      {
-        data: dialogData,
-        disableClose: false,
-      },
-    );
+    const conflictDialogRef = this.dialog.open(ScheduleConflictDialogComponent, {
+      data: dialogData,
+      disableClose: false,
+    });
 
-    conflictDialogRef.closed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((confirmed) => {
-        if (confirmed === true) {
-          this.performDelegation();
-        }
-      });
+    conflictDialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
+      if (confirmed === true) {
+        this.performDelegation();
+      }
+    });
   }
 
   /**

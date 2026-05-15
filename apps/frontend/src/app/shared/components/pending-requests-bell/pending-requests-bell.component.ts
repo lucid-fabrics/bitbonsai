@@ -60,7 +60,7 @@ export class PendingRequestsBellComponent implements OnInit {
     interval(30000)
       .pipe(
         switchMap(() => this.nodesClient.getPendingRequests()),
-        takeUntilDestroyed(this.destroyRef),
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: (requests: RegistrationRequest[]) => {

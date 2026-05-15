@@ -157,9 +157,7 @@ describe('SettingsController', () => {
     it('should return success message', async () => {
       const result = await controller.resetToDefaults();
 
-      expect(result.message).toBe(
-        'System settings reset to defaults successfully',
-      );
+      expect(result.message).toBe('System settings reset to defaults successfully');
     });
   });
 
@@ -399,10 +397,7 @@ describe('SettingsController', () => {
 
       expect(result.success).toBe(true);
       expect(result.serverName).toBe('My Jellyfin');
-      expect(jellyfinService.testConnection).toHaveBeenCalledWith(
-        'http://jf:8096',
-        'key-123',
-      );
+      expect(jellyfinService.testConnection).toHaveBeenCalledWith('http://jf:8096', 'key-123');
     });
 
     it('should fall back to stored credentials when not provided', async () => {
@@ -423,7 +418,7 @@ describe('SettingsController', () => {
       expect(result.success).toBe(true);
       expect(jellyfinService.testConnection).toHaveBeenCalledWith(
         'http://stored:8096',
-        'stored-key',
+        'stored-key'
       );
     });
 
@@ -454,10 +449,7 @@ describe('SettingsController', () => {
         jellyfinUrl: 'http://new:8096',
       });
 
-      expect(jellyfinService.testConnection).toHaveBeenCalledWith(
-        'http://new:8096',
-        'stored-key',
-      );
+      expect(jellyfinService.testConnection).toHaveBeenCalledWith('http://new:8096', 'stored-key');
     });
 
     it('should return error when URL provided but no API key anywhere', async () => {
@@ -490,7 +482,7 @@ describe('SettingsController', () => {
       expect(result.success).toBe(true);
       expect(jellyfinService.testConnection).toHaveBeenCalledWith(
         'http://stored:8096',
-        'provided-key',
+        'provided-key'
       );
     });
 
@@ -515,45 +507,35 @@ describe('SettingsController', () => {
   // ==========================================================================
   describe('error propagation', () => {
     it('should propagate error when getSecuritySettings throws', async () => {
-      settingsService.getSecuritySettings.mockRejectedValue(
-        new Error('DB unavailable'),
-      );
+      settingsService.getSecuritySettings.mockRejectedValue(new Error('DB unavailable'));
 
-      await expect(controller.getSecuritySettings()).rejects.toThrow(
-        'DB unavailable',
-      );
+      await expect(controller.getSecuritySettings()).rejects.toThrow('DB unavailable');
     });
 
     it('should propagate error when updateSecuritySettings throws', async () => {
-      settingsService.updateSecuritySettings.mockRejectedValue(
-        new Error('Validation failed'),
-      );
+      settingsService.updateSecuritySettings.mockRejectedValue(new Error('Validation failed'));
 
       await expect(
         controller.updateSecuritySettings({
           allowLocalNetworkWithoutAuth: true,
-        }),
+        })
       ).rejects.toThrow('Validation failed');
     });
 
     it('should propagate error when getEnvironmentInfo throws', async () => {
       environmentService.getEnvironmentInfo.mockRejectedValue(
-        new Error('Environment detection failed'),
+        new Error('Environment detection failed')
       );
 
-      await expect(controller.getEnvironmentInfo()).rejects.toThrow(
-        'Environment detection failed',
-      );
+      await expect(controller.getEnvironmentInfo()).rejects.toThrow('Environment detection failed');
     });
 
     it('should propagate error when updateJellyfinSettings throws', async () => {
-      settingsService.updateJellyfinSettings.mockRejectedValue(
-        new Error('Invalid Jellyfin URL'),
-      );
+      settingsService.updateJellyfinSettings.mockRejectedValue(new Error('Invalid Jellyfin URL'));
 
-      await expect(
-        controller.updateJellyfinSettings({ jellyfinUrl: 'bad-url' }),
-      ).rejects.toThrow('Invalid Jellyfin URL');
+      await expect(controller.updateJellyfinSettings({ jellyfinUrl: 'bad-url' })).rejects.toThrow(
+        'Invalid Jellyfin URL'
+      );
     });
   });
 });

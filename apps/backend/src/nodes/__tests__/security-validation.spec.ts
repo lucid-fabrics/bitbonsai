@@ -131,12 +131,7 @@ describe('Security Validation Tests', () => {
       const nodes = await controller.findAll();
 
       nodes.forEach((node) => {
-        const sensitiveFields = [
-          'apiKey',
-          'pairingToken',
-          'pairingExpiresAt',
-          'licenseId',
-        ];
+        const sensitiveFields = ['apiKey', 'pairingToken', 'pairingExpiresAt', 'licenseId'];
         sensitiveFields.forEach((field) => {
           expect(node).not.toHaveProperty(field);
         });

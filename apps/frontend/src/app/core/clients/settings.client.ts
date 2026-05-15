@@ -43,54 +43,33 @@ export class SettingsClient {
   private readonly apiUrl = '/api/v1/settings';
 
   getDefaultQueueView(): Observable<DefaultQueueViewSettings> {
-    return this.http.get<DefaultQueueViewSettings>(
-      `${this.apiUrl}/default-queue-view`,
-    );
+    return this.http.get<DefaultQueueViewSettings>(`${this.apiUrl}/default-queue-view`);
   }
 
-  updateDefaultQueueView(
-    defaultQueueView: string,
-  ): Observable<DefaultQueueViewSettings> {
-    return this.http.patch<DefaultQueueViewSettings>(
-      `${this.apiUrl}/default-queue-view`,
-      {
-        defaultQueueView,
-      },
-    );
+  updateDefaultQueueView(defaultQueueView: string): Observable<DefaultQueueViewSettings> {
+    return this.http.patch<DefaultQueueViewSettings>(`${this.apiUrl}/default-queue-view`, {
+      defaultQueueView,
+    });
   }
 
   getReadyFilesCacheTtl(): Observable<ReadyFilesCacheTtlSettings> {
-    return this.http.get<ReadyFilesCacheTtlSettings>(
-      `${this.apiUrl}/ready-files-cache-ttl`,
-    );
+    return this.http.get<ReadyFilesCacheTtlSettings>(`${this.apiUrl}/ready-files-cache-ttl`);
   }
 
-  updateReadyFilesCacheTtl(
-    ttlMinutes: number,
-  ): Observable<ReadyFilesCacheTtlSettings> {
-    return this.http.patch<ReadyFilesCacheTtlSettings>(
-      `${this.apiUrl}/ready-files-cache-ttl`,
-      {
-        readyFilesCacheTtlMinutes: ttlMinutes,
-      },
-    );
+  updateReadyFilesCacheTtl(ttlMinutes: number): Observable<ReadyFilesCacheTtlSettings> {
+    return this.http.patch<ReadyFilesCacheTtlSettings>(`${this.apiUrl}/ready-files-cache-ttl`, {
+      readyFilesCacheTtlMinutes: ttlMinutes,
+    });
   }
 
   getAutoHealRetryLimit(): Observable<AutoHealRetryLimitSettings> {
-    return this.http.get<AutoHealRetryLimitSettings>(
-      `${this.apiUrl}/auto-heal-retry-limit`,
-    );
+    return this.http.get<AutoHealRetryLimitSettings>(`${this.apiUrl}/auto-heal-retry-limit`);
   }
 
-  updateAutoHealRetryLimit(
-    maxRetries: number,
-  ): Observable<AutoHealRetryLimitSettings> {
-    return this.http.patch<AutoHealRetryLimitSettings>(
-      `${this.apiUrl}/auto-heal-retry-limit`,
-      {
-        maxAutoHealRetries: maxRetries,
-      },
-    );
+  updateAutoHealRetryLimit(maxRetries: number): Observable<AutoHealRetryLimitSettings> {
+    return this.http.patch<AutoHealRetryLimitSettings>(`${this.apiUrl}/auto-heal-retry-limit`, {
+      maxAutoHealRetries: maxRetries,
+    });
   }
 
   // Jellyfin integration
@@ -98,22 +77,12 @@ export class SettingsClient {
     return this.http.get<JellyfinSettings>(`${this.apiUrl}/jellyfin`);
   }
 
-  updateJellyfinSettings(
-    settings: JellyfinSettings,
-  ): Observable<JellyfinSettings> {
-    return this.http.patch<JellyfinSettings>(
-      `${this.apiUrl}/jellyfin`,
-      settings,
-    );
+  updateJellyfinSettings(settings: JellyfinSettings): Observable<JellyfinSettings> {
+    return this.http.patch<JellyfinSettings>(`${this.apiUrl}/jellyfin`, settings);
   }
 
-  testJellyfinConnection(
-    settings: JellyfinSettings,
-  ): Observable<JellyfinTestResult> {
-    return this.http.post<JellyfinTestResult>(
-      `${this.apiUrl}/jellyfin/test`,
-      settings,
-    );
+  testJellyfinConnection(settings: JellyfinSettings): Observable<JellyfinTestResult> {
+    return this.http.post<JellyfinTestResult>(`${this.apiUrl}/jellyfin/test`, settings);
   }
 
   // Advanced Mode (UI Simplification)
@@ -122,27 +91,19 @@ export class SettingsClient {
   }
 
   updateAdvancedMode(enabled: boolean): Observable<AdvancedModeSettings> {
-    return this.http.patch<AdvancedModeSettings>(
-      `${this.apiUrl}/advanced-mode`,
-      {
-        advancedModeEnabled: enabled,
-      },
-    );
+    return this.http.patch<AdvancedModeSettings>(`${this.apiUrl}/advanced-mode`, {
+      advancedModeEnabled: enabled,
+    });
   }
 
   // Quality Metrics (VMAF/PSNR/SSIM)
   getQualityMetrics(): Observable<QualityMetricsSettings> {
-    return this.http.get<QualityMetricsSettings>(
-      `${this.apiUrl}/quality-metrics`,
-    );
+    return this.http.get<QualityMetricsSettings>(`${this.apiUrl}/quality-metrics`);
   }
 
   updateQualityMetrics(enabled: boolean): Observable<QualityMetricsSettings> {
-    return this.http.patch<QualityMetricsSettings>(
-      `${this.apiUrl}/quality-metrics`,
-      {
-        qualityMetricsEnabled: enabled,
-      },
-    );
+    return this.http.patch<QualityMetricsSettings>(`${this.apiUrl}/quality-metrics`, {
+      qualityMetricsEnabled: enabled,
+    });
   }
 }

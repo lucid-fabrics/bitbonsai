@@ -166,10 +166,10 @@ async function main() {
   });
   console.log(`  ✅ Default settings created`);
   console.log(
-    `     Setup Status: ${defaultSettings.isSetupComplete ? 'COMPLETE ✓' : 'INCOMPLETE'}`,
+    `     Setup Status: ${defaultSettings.isSetupComplete ? 'COMPLETE ✓' : 'INCOMPLETE'}`
   );
   console.log(
-    `     Local Network Bypass: ${defaultSettings.allowLocalNetworkWithoutAuth ? 'ENABLED ⚠️' : 'DISABLED ✓'}\n`,
+    `     Local Network Bypass: ${defaultSettings.allowLocalNetworkWithoutAuth ? 'ENABLED ⚠️' : 'DISABLED ✓'}\n`
   );
 
   // ============================================================================

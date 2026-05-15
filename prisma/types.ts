@@ -258,9 +258,7 @@ export const DEFAULT_ADVANCED_SETTINGS: AdvancedSettings = {
 /**
  * Helper function to merge partial device profiles with defaults
  */
-export function mergeDeviceProfiles(
-  custom: Partial<DeviceProfiles>,
-): DeviceProfiles {
+export function mergeDeviceProfiles(custom: Partial<DeviceProfiles>): DeviceProfiles {
   return {
     ...DEFAULT_DEVICE_PROFILES,
     ...custom,
@@ -270,9 +268,7 @@ export function mergeDeviceProfiles(
 /**
  * Helper function to merge partial advanced settings with defaults
  */
-export function mergeAdvancedSettings(
-  custom: Partial<AdvancedSettings>,
-): AdvancedSettings {
+export function mergeAdvancedSettings(custom: Partial<AdvancedSettings>): AdvancedSettings {
   return {
     ...DEFAULT_ADVANCED_SETTINGS,
     ...custom,
@@ -289,15 +285,11 @@ export function totalCodecPercentage(distribution: CodecDistribution): number {
 /**
  * Get the dominant codec from distribution
  */
-export function getDominantCodec(
-  distribution: CodecDistribution,
-): string | null {
+export function getDominantCodec(distribution: CodecDistribution): string | null {
   const entries = Object.entries(distribution);
   if (entries.length === 0) return null;
 
-  return entries.reduce((max, [codec, count]) =>
-    count > max[1] ? [codec, count] : max,
-  )[0];
+  return entries.reduce((max, [codec, count]) => (count > max[1] ? [codec, count] : max))[0];
 }
 
 /**

@@ -16,9 +16,7 @@ describe('MediaStatsController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [MediaStatsController],
-      providers: [
-        { provide: MediaStatsService, useValue: mockMediaStatsService },
-      ],
+      providers: [{ provide: MediaStatsService, useValue: mockMediaStatsService }],
     }).compile();
 
     controller = module.get<MediaStatsController>(MediaStatsController);
@@ -47,9 +45,7 @@ describe('MediaStatsController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockMediaStatsService.getMediaStats.mockRejectedValue(
-        new Error('scan error'),
-      );
+      mockMediaStatsService.getMediaStats.mockRejectedValue(new Error('scan error'));
       await expect(controller.getStats()).rejects.toThrow('scan error');
     });
   });
@@ -65,12 +61,8 @@ describe('MediaStatsController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockMediaStatsService.triggerScan.mockRejectedValue(
-        new Error('no paths configured'),
-      );
-      await expect(controller.triggerScan()).rejects.toThrow(
-        'no paths configured',
-      );
+      mockMediaStatsService.triggerScan.mockRejectedValue(new Error('no paths configured'));
+      await expect(controller.triggerScan()).rejects.toThrow('no paths configured');
     });
   });
 
@@ -92,10 +84,7 @@ describe('MediaStatsController', () => {
 
       const response = await controller.getFolderFiles('Movies', 'h264');
 
-      expect(mockMediaStatsService.getFolderFiles).toHaveBeenCalledWith(
-        'Movies',
-        'h264',
-      );
+      expect(mockMediaStatsService.getFolderFiles).toHaveBeenCalledWith('Movies', 'h264');
       expect(response).toEqual(result);
     });
 
@@ -105,20 +94,15 @@ describe('MediaStatsController', () => {
 
       const response = await controller.getFolderFiles('TV', undefined);
 
-      expect(mockMediaStatsService.getFolderFiles).toHaveBeenCalledWith(
-        'TV',
-        undefined,
-      );
+      expect(mockMediaStatsService.getFolderFiles).toHaveBeenCalledWith('TV', undefined);
       expect(response).toEqual(result);
     });
 
     it('should propagate service errors', async () => {
-      mockMediaStatsService.getFolderFiles.mockRejectedValue(
-        new Error('folder not found'),
+      mockMediaStatsService.getFolderFiles.mockRejectedValue(new Error('folder not found'));
+      await expect(controller.getFolderFiles('Unknown', 'h264')).rejects.toThrow(
+        'folder not found'
       );
-      await expect(
-        controller.getFolderFiles('Unknown', 'h264'),
-      ).rejects.toThrow('folder not found');
     });
   });
 });

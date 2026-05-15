@@ -1,16 +1,6 @@
 import { HttpService } from '@nestjs/axios';
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  FileHealthStatus,
-  type Job,
-  JobEventType,
-  JobStage,
-} from '@prisma/client';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { FileHealthStatus, type Job, JobEventType, JobStage } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import { JobRepository } from '../../common/repositories/job.repository';
 import { NodeConfigService } from '../../core/services/node-config.service';
@@ -50,7 +40,7 @@ export class QueueJobStateService {
     private fileFailureTracking: FileFailureTrackingService,
     private readonly jobMetricsService: JobMetricsService,
     private readonly jobBulkOperationsService: JobBulkOperationsService,
-    private readonly jobFileOperationsService: JobFileOperationsService,
+    private readonly jobFileOperationsService: JobFileOperationsService
   ) {}
 
   /**
@@ -64,21 +54,16 @@ export class QueueJobStateService {
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
       const url = `${mainApiUrl}/api/v1/queue/${id}/complete`;
-      this.logger.debug(
-        `🔍 MULTI-NODE: LINKED node proxying job completion to MAIN: ${url}`,
-      );
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying job completion to MAIN: ${url}`);
 
       try {
         const response = await firstValueFrom(
-          this.httpService.post(url, completeJobDto, { timeout: 30000 }),
+          this.httpService.post(url, completeJobDto, { timeout: 30000 })
         );
         this.logger.debug(`✅ MULTI-NODE: Job completion successful for ${id}`);
         return response.data;
       } catch (error: unknown) {
-        this.logger.error(
-          `❌ MULTI-NODE: Failed to proxy job completion to MAIN:`,
-          error,
-        );
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job completion to MAIN:`, error);
         throw error;
       }
     }
@@ -98,9 +83,7 @@ export class QueueJobStateService {
         }
 
         if (existingJob.stage === JobStage.COMPLETED) {
-          this.logger.warn(
-            `Job ${id} already completed - skipping to prevent double metrics`,
-          );
+          this.logger.warn(`Job ${id} already completed - skipping to prevent double metrics`);
           return tx.job.findUnique({
             where: { id },
             include: { node: { include: { license: true } } },
@@ -155,14 +138,11 @@ export class QueueJobStateService {
       });
     } catch (txError: unknown) {
       this.logger.error(`Transaction failed for job ${id}:`, txError);
-      const errorMessage =
-        txError instanceof Error ? txError.message : String(txError);
+      const errorMessage = txError instanceof Error ? txError.message : String(txError);
       throw new Error(`Failed to mark job as completed: ${errorMessage}`);
     }
 
-    this.logger.log(
-      `Job completed: ${id} (saved ${completeJobDto.savedPercent}%)`,
-    );
+    this.logger.log(`Job completed: ${id} (saved ${completeJobDto.savedPercent}%)`);
     return job;
   }
 
@@ -177,21 +157,16 @@ export class QueueJobStateService {
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
       const url = `${mainApiUrl}/api/v1/queue/${id}/fail`;
-      this.logger.debug(
-        `🔍 MULTI-NODE: LINKED node proxying job failure to MAIN: ${url}`,
-      );
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying job failure to MAIN: ${url}`);
 
       try {
         const response = await firstValueFrom(
-          this.httpService.post(url, { error }, { timeout: 30000 }),
+          this.httpService.post(url, { error }, { timeout: 30000 })
         );
         this.logger.debug(`✅ MULTI-NODE: Job failure recorded for ${id}`);
         return response.data;
       } catch (err: unknown) {
-        this.logger.error(
-          `❌ MULTI-NODE: Failed to proxy job failure to MAIN:`,
-          err,
-        );
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job failure to MAIN:`, err);
         throw err;
       }
     }
@@ -203,9 +178,7 @@ export class QueueJobStateService {
     }
 
     if (existingJob.stage === JobStage.FAILED) {
-      this.logger.warn(
-        `Job ${id} is already FAILED - skipping duplicate failure event`,
-      );
+      this.logger.warn(`Job ${id} is already FAILED - skipping duplicate failure event`);
       return existingJob;
     }
 
@@ -234,21 +207,17 @@ export class QueueJobStateService {
         existingJob.filePath,
         existingJob.libraryId,
         error,
-        existingJob.contentFingerprint ?? undefined,
+        existingJob.contentFingerprint ?? undefined
       );
 
       if (wasBlacklisted) {
-        this.logger.warn(
-          `File auto-blacklisted after repeated failures: ${existingJob.fileLabel}`,
-        );
+        this.logger.warn(`File auto-blacklisted after repeated failures: ${existingJob.fileLabel}`);
       }
     } catch (trackingError: unknown) {
       // Non-critical: don't let tracking failure break the main flow
       this.logger.error(
         'Failed to record file failure tracking',
-        trackingError instanceof Error
-          ? trackingError.stack
-          : String(trackingError),
+        trackingError instanceof Error ? trackingError.stack : String(trackingError)
       );
     }
 
@@ -265,23 +234,16 @@ export class QueueJobStateService {
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
       const url = `${mainApiUrl}/api/v1/queue/${id}/cancel`;
-      this.logger.debug(
-        `🔍 MULTI-NODE: LINKED node proxying job cancellation to MAIN: ${url}`,
-      );
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying job cancellation to MAIN: ${url}`);
 
       try {
         const response = await firstValueFrom(
-          this.httpService.post(url, { blacklist }, { timeout: 30000 }),
+          this.httpService.post(url, { blacklist }, { timeout: 30000 })
         );
-        this.logger.debug(
-          `✅ MULTI-NODE: Job cancellation successful for ${id}`,
-        );
+        this.logger.debug(`✅ MULTI-NODE: Job cancellation successful for ${id}`);
         return response.data;
       } catch (error: unknown) {
-        this.logger.error(
-          `❌ MULTI-NODE: Failed to proxy job cancellation to MAIN:`,
-          error,
-        );
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job cancellation to MAIN:`, error);
         throw error;
       }
     }
@@ -325,9 +287,7 @@ export class QueueJobStateService {
           await this.fileTransferService.cleanupRemoteTempFile(id);
           this.logger.log(`Cleaned up remote temp file for job ${id}`);
         } catch (error: unknown) {
-          this.logger.warn(
-            `Failed to cleanup remote temp file for job ${id}: ${error}`,
-          );
+          this.logger.warn(`Failed to cleanup remote temp file for job ${id}: ${error}`);
         }
       }
     }
@@ -381,10 +341,7 @@ export class QueueJobStateService {
 
     // Clear cross-job failure tracking so the file can be retried fresh
     try {
-      await this.fileFailureTracking.clearBlacklist(
-        existingJob.filePath,
-        existingJob.libraryId,
-      );
+      await this.fileFailureTracking.clearBlacklist(existingJob.filePath, existingJob.libraryId);
     } catch (trackingError: unknown) {
       this.logger.error('Failed to clear file failure tracking', trackingError);
     }
@@ -454,7 +411,7 @@ export class QueueJobStateService {
 
     if (!resumed) {
       this.logger.warn(
-        `FFmpeg process not found for job ${id} - resetting to QUEUED to restart encoding`,
+        `FFmpeg process not found for job ${id} - resetting to QUEUED to restart encoding`
       );
 
       const job = await this.jobRepository.updateById(id, {
@@ -489,18 +446,12 @@ export class QueueJobStateService {
       throw new NotFoundException(`Job with ID "${id}" not found`);
     }
 
-    if (
-      existingJob.stage !== JobStage.FAILED &&
-      existingJob.stage !== JobStage.CANCELLED
-    ) {
-      throw new BadRequestException(
-        'Only failed or cancelled jobs can be retried',
-      );
+    if (existingJob.stage !== JobStage.FAILED && existingJob.stage !== JobStage.CANCELLED) {
+      throw new BadRequestException('Only failed or cancelled jobs can be retried');
     }
 
     const { existsSync } = await import('fs');
-    const hasTempFile =
-      existingJob.tempFilePath && existsSync(existingJob.tempFilePath);
+    const hasTempFile = existingJob.tempFilePath && existsSync(existingJob.tempFilePath);
     const canResume = hasTempFile && existingJob.resumeTimestamp;
 
     let historyMessage: string;
@@ -509,16 +460,14 @@ export class QueueJobStateService {
       const retryMessage = `will resume from ${(existingJob.progress || 0).toFixed(1)}%`;
       historyMessage = `Manual retry: Will resume encoding from ${(existingJob.progress || 0).toFixed(1)}% (temp file preserved)`;
       this.logger.log(
-        `✅ Retrying job: ${existingJob.fileLabel} (retry ${existingJob.retryCount + 1}, ${retryMessage})`,
+        `✅ Retrying job: ${existingJob.fileLabel} (retry ${existingJob.retryCount + 1}, ${retryMessage})`
       );
     } else {
-      const reason = existingJob.tempFilePath
-        ? 'temp file deleted'
-        : 'no temp file';
+      const reason = existingJob.tempFilePath ? 'temp file deleted' : 'no temp file';
       const retryMessage = `starting fresh (${reason})`;
       historyMessage = `Manual retry: Temp file not available, starting encoding from scratch (was at ${(existingJob.progress || 0).toFixed(1)}%)`;
       this.logger.log(
-        `⚠️  Retrying job: ${existingJob.fileLabel} (retry ${existingJob.retryCount + 1}, ${retryMessage})`,
+        `⚠️  Retrying job: ${existingJob.fileLabel} (retry ${existingJob.retryCount + 1}, ${retryMessage})`
       );
     }
 
@@ -563,12 +512,9 @@ export class QueueJobStateService {
       throw new NotFoundException(`Job with ID "${id}" not found`);
     }
 
-    if (
-      existingJob.stage !== JobStage.QUEUED &&
-      existingJob.stage !== JobStage.DETECTED
-    ) {
+    if (existingJob.stage !== JobStage.QUEUED && existingJob.stage !== JobStage.DETECTED) {
       throw new BadRequestException(
-        `Only queued or detected jobs can be force-started (current stage: ${existingJob.stage})`,
+        `Only queued or detected jobs can be force-started (current stage: ${existingJob.stage})`
       );
     }
 
@@ -578,7 +524,7 @@ export class QueueJobStateService {
     });
 
     this.logger.log(
-      `Job force-started: ${id} - moved to DETECTED stage (will be picked up immediately)`,
+      `Job force-started: ${id} - moved to DETECTED stage (will be picked up immediately)`
     );
     return job;
   }
@@ -611,7 +557,7 @@ export class QueueJobStateService {
     });
 
     this.logger.log(
-      `Job health check cleared: ${id} - reset to DETECTED stage (will be rechecked immediately)`,
+      `Job health check cleared: ${id} - reset to DETECTED stage (will be rechecked immediately)`
     );
     return job;
   }
@@ -636,19 +582,14 @@ export class QueueJobStateService {
       const topPriorityCount = await this.jobRepository.countWhere({
         priority: 2,
         stage: {
-          in: [
-            JobStage.DETECTED,
-            JobStage.HEALTH_CHECK,
-            JobStage.QUEUED,
-            JobStage.ENCODING,
-          ],
+          in: [JobStage.DETECTED, JobStage.HEALTH_CHECK, JobStage.QUEUED, JobStage.ENCODING],
         },
         id: { not: id },
       });
 
       if (topPriorityCount >= 3) {
         throw new BadRequestException(
-          'Maximum 3 jobs can have top priority at once. Please lower priority of another job first.',
+          'Maximum 3 jobs can have top priority at once. Please lower priority of another job first.'
         );
       }
     }
@@ -661,12 +602,10 @@ export class QueueJobStateService {
     if (existingJob.stage === JobStage.ENCODING) {
       try {
         await this.ffmpegService.reniceProcess(id, priority);
-        this.logger.log(
-          `Reniced FFmpeg process for job ${id} to priority ${priority}`,
-        );
+        this.logger.log(`Reniced FFmpeg process for job ${id} to priority ${priority}`);
       } catch (error: unknown) {
         this.logger.warn(
-          `Failed to renice FFmpeg process for job ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Failed to renice FFmpeg process for job ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
     }
@@ -678,10 +617,7 @@ export class QueueJobStateService {
   /**
    * Resolve a user decision for a job in NEEDS_DECISION stage
    */
-  async resolveDecision(
-    id: string,
-    decisionData?: Record<string, unknown>,
-  ): Promise<Job> {
+  async resolveDecision(id: string, decisionData?: Record<string, unknown>): Promise<Job> {
     this.logger.log(`Resolving decision for job: ${id}`);
 
     const existingJob = await this.jobRepository.findById(id);
@@ -692,7 +628,7 @@ export class QueueJobStateService {
 
     if (existingJob.stage !== JobStage.NEEDS_DECISION) {
       throw new BadRequestException(
-        `Can only resolve decisions for jobs in NEEDS_DECISION stage (current stage: ${existingJob.stage})`,
+        `Can only resolve decisions for jobs in NEEDS_DECISION stage (current stage: ${existingJob.stage})`
       );
     }
 
@@ -711,9 +647,7 @@ export class QueueJobStateService {
           progress: 100,
           healthMessage: '✅ Skipped - file already in target codec',
         });
-        this.logger.log(
-          `Decision resolved for job ${id} - SKIPPED (codec already matches target)`,
-        );
+        this.logger.log(`Decision resolved for job ${id} - SKIPPED (codec already matches target)`);
         return job;
       }
 
@@ -726,7 +660,7 @@ export class QueueJobStateService {
           decisionData: JSON.stringify(decisionData),
         });
         this.logger.log(
-          `Decision resolved for job ${id} - CANCELLED by user (reason: ${config.reason || 'user_requested'})`,
+          `Decision resolved for job ${id} - CANCELLED by user (reason: ${config.reason || 'user_requested'})`
         );
         return job;
       }
@@ -758,16 +692,14 @@ export class QueueJobStateService {
 
       if (config.action === 'force_encode') {
         updateData.type = 'ENCODE';
-        this.logger.log(
-          `Setting job type to ENCODE (force re-encode same codec)`,
-        );
+        this.logger.log(`Setting job type to ENCODE (force re-encode same codec)`);
       }
     }
 
     const job = await this.jobRepository.updateRaw(id, updateData);
 
     this.logger.log(
-      `Decision resolved for job ${id} - moved to QUEUED stage (container: ${job.targetContainer}, type: ${job.type})`,
+      `Decision resolved for job ${id} - moved to QUEUED stage (container: ${job.targetContainer}, type: ${job.type})`
     );
     return job;
   }

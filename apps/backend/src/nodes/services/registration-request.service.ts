@@ -79,7 +79,7 @@ export class RegistrationRequestService {
     private readonly notificationsGateway: NotificationsGateway,
     private readonly sshKeyService: SshKeyService,
     private readonly storageShareService: StorageShareService,
-    private readonly nodeRepository: NodeRepository,
+    private readonly nodeRepository: NodeRepository
   ) {}
 
   /**
@@ -88,23 +88,22 @@ export class RegistrationRequestService {
    * System information is now provided by the CHILD node in the DTO
    */
   async createRegistrationRequest(
-    data: CreateRegistrationRequestDto,
+    data: CreateRegistrationRequestDto
   ): Promise<NodeRegistrationRequest> {
     // System information is now provided by the CHILD node in the DTO
     // No longer collecting it on the MAIN node
 
     // Check if a pending request already exists from this machine
     if (data.macAddress) {
-      const existingRequest =
-        await this.registrationRequestRepository.findFirstByMac(
-          data.mainNodeId,
-          data.macAddress,
-          RegistrationRequestStatus.PENDING,
-        );
+      const existingRequest = await this.registrationRequestRepository.findFirstByMac(
+        data.mainNodeId,
+        data.macAddress,
+        RegistrationRequestStatus.PENDING
+      );
 
       if (existingRequest) {
         this.logger.log(
-          `🔄 Resetting TTL for existing request from ${data.hostname} (${data.macAddress})`,
+          `🔄 Resetting TTL for existing request from ${data.hostname} (${data.macAddress})`
         );
         return this.resetRequestTTL(existingRequest.id);
       }
@@ -112,9 +111,7 @@ export class RegistrationRequestService {
 
     // Generate pairing token
     const pairingToken = this.generatePairingToken();
-    const tokenExpiresAt = new Date(
-      Date.now() + this.TTL_HOURS * 60 * 60 * 1000,
-    );
+    const tokenExpiresAt = new Date(Date.now() + this.TTL_HOURS * 60 * 60 * 1000);
 
     // Get app version
     const childVersion = process.env.APP_VERSION || '1.0.0';
@@ -137,7 +134,7 @@ export class RegistrationRequestService {
     });
 
     this.logger.log(
-      `📨 Registration request created: ${data.hostname} (${data.ipAddress}) → MAIN node (Token: ${pairingToken}, Expires: ${tokenExpiresAt.toISOString()})`,
+      `📨 Registration request created: ${data.hostname} (${data.ipAddress}) → MAIN node (Token: ${pairingToken}, Expires: ${tokenExpiresAt.toISOString()})`
     );
 
     // Emit NODE_REGISTRATION_REQUEST notification
@@ -164,18 +161,15 @@ export class RegistrationRequestService {
   async resetRequestTTL(requestId: string): Promise<NodeRegistrationRequest> {
     const newExpiresAt = new Date(Date.now() + this.TTL_HOURS * 60 * 60 * 1000);
 
-    const request = await this.registrationRequestRepository.updateById(
-      requestId,
-      {
-        tokenExpiresAt: newExpiresAt,
-        tokenGeneratedAt: new Date(),
-        requestedAt: new Date(), // Reset requested timestamp too
-        status: RegistrationRequestStatus.PENDING, // Reset status if it was expired
-      },
-    );
+    const request = await this.registrationRequestRepository.updateById(requestId, {
+      tokenExpiresAt: newExpiresAt,
+      tokenGeneratedAt: new Date(),
+      requestedAt: new Date(), // Reset requested timestamp too
+      status: RegistrationRequestStatus.PENDING, // Reset status if it was expired
+    });
 
     this.logger.log(
-      `⏱️  TTL reset for request ${requestId} (new expiry: ${newExpiresAt.toISOString()})`,
+      `⏱️  TTL reset for request ${requestId} (new expiry: ${newExpiresAt.toISOString()})`
     );
 
     return request;
@@ -184,9 +178,7 @@ export class RegistrationRequestService {
   /**
    * Get all pending registration requests for a MAIN node
    */
-  async getPendingRequests(
-    mainNodeId: string,
-  ): Promise<NodeRegistrationRequest[]> {
+  async getPendingRequests(mainNodeId: string): Promise<NodeRegistrationRequest[]> {
     return this.registrationRequestRepository.findManyPending(mainNodeId);
   }
 
@@ -194,20 +186,14 @@ export class RegistrationRequestService {
    * Get a specific registration request by ID
    */
   async getRequest(requestId: string): Promise<NodeRegistrationRequest> {
-    const request =
-      await this.registrationRequestRepository.findUniqueById(requestId);
+    const request = await this.registrationRequestRepository.findUniqueById(requestId);
 
     if (!request) {
-      throw new NotFoundException(
-        `Registration request ${requestId} not found`,
-      );
+      throw new NotFoundException(`Registration request ${requestId} not found`);
     }
 
     // If request is APPROVED, fetch the child node's API key
-    if (
-      request.status === RegistrationRequestStatus.APPROVED &&
-      request.childNodeId
-    ) {
+    if (request.status === RegistrationRequestStatus.APPROVED && request.childNodeId) {
       const childNode = await this.nodeRepository.findUnique<{
         apiKey: string;
       } | null>({
@@ -230,11 +216,8 @@ export class RegistrationRequestService {
   /**
    * Get a registration request by pairing token
    */
-  async getRequestByToken(
-    pairingToken: string,
-  ): Promise<NodeRegistrationRequest> {
-    const request =
-      await this.registrationRequestRepository.findUniqueByToken(pairingToken);
+  async getRequestByToken(pairingToken: string): Promise<NodeRegistrationRequest> {
+    const request = await this.registrationRequestRepository.findUniqueByToken(pairingToken);
 
     if (!request) {
       throw new NotFoundException(`Invalid pairing token`);
@@ -256,173 +239,155 @@ export class RegistrationRequestService {
    */
   async approveRequest(
     requestId: string,
-    approveDto?: ApproveRequestDto,
+    approveDto?: ApproveRequestDto
   ): Promise<NodeRegistrationRequest> {
     // RACE CONDITION FIX: Move all validation and creation inside transaction
     // This prevents race conditions where multiple approval requests arrive simultaneously
-    const result = await this.registrationRequestRepository.approveTransaction(
-      async (tx) => {
-        // Fetch request within transaction to get latest state
-        const request = await tx.nodeRegistrationRequest.findUnique({
-          where: { id: requestId },
-          include: { mainNode: true },
-        });
+    const result = await this.registrationRequestRepository.approveTransaction(async (tx) => {
+      // Fetch request within transaction to get latest state
+      const request = await tx.nodeRegistrationRequest.findUnique({
+        where: { id: requestId },
+        include: { mainNode: true },
+      });
 
-        if (!request) {
-          throw new NotFoundException(
-            `Registration request ${requestId} not found`,
-          );
-        }
+      if (!request) {
+        throw new NotFoundException(`Registration request ${requestId} not found`);
+      }
 
-        // Validate request is in PENDING state (atomic check)
-        if (request.status !== RegistrationRequestStatus.PENDING) {
-          throw new BadRequestException(
-            `Request is not in PENDING state (current: ${request.status})`,
-          );
-        }
+      // Validate request is in PENDING state (atomic check)
+      if (request.status !== RegistrationRequestStatus.PENDING) {
+        throw new BadRequestException(
+          `Request is not in PENDING state (current: ${request.status})`
+        );
+      }
 
-        // Check if expired
-        if (request.tokenExpiresAt < new Date()) {
-          throw new BadRequestException(`Request has expired`);
-        }
+      // Check if expired
+      if (request.tokenExpiresAt < new Date()) {
+        throw new BadRequestException(`Request has expired`);
+      }
 
-        // Get MAIN node's license (within transaction)
-        const mainNode = await tx.node.findUnique({
-          where: { id: request.mainNodeId },
-          include: {
-            license: {
-              include: {
-                _count: { select: { nodes: true } },
-              },
+      // Get MAIN node's license (within transaction)
+      const mainNode = await tx.node.findUnique({
+        where: { id: request.mainNodeId },
+        include: {
+          license: {
+            include: {
+              _count: { select: { nodes: true } },
             },
           },
-        });
+        },
+      });
 
-        if (!mainNode) {
-          throw new NotFoundException(
-            `MAIN node ${request.mainNodeId} not found`,
-          );
-        }
+      if (!mainNode) {
+        throw new NotFoundException(`MAIN node ${request.mainNodeId} not found`);
+      }
 
-        // Check license node limit
-        if (mainNode.license._count.nodes >= mainNode.license.maxNodes) {
-          throw new ConflictException(
-            `Maximum nodes (${mainNode.license.maxNodes}) reached for this license`,
-          );
-        }
+      // Check license node limit
+      if (mainNode.license._count.nodes >= mainNode.license.maxNodes) {
+        throw new ConflictException(
+          `Maximum nodes (${mainNode.license.maxNodes}) reached for this license`
+        );
+      }
 
-        // DUPLICATE PREVENTION: Check if a node with this IP or MAC address already exists
-        const duplicateNode = await tx.node.findFirst({
-          where: {
-            role: NodeRole.LINKED,
-            OR: [
-              { ipAddress: request.ipAddress },
-              ...(request.macAddress
-                ? [
-                    {
-                      id: {
-                        in: await tx.nodeRegistrationRequest
-                          .findMany({
-                            where: {
-                              macAddress: request.macAddress,
-                              status: RegistrationRequestStatus.APPROVED,
-                              childNodeId: { not: null },
-                            },
-                            select: { childNodeId: true },
-                          })
-                          .then(
-                            (reqs) =>
-                              reqs
-                                .map((r) => r.childNodeId)
-                                .filter(Boolean) as string[],
-                          ),
-                      },
+      // DUPLICATE PREVENTION: Check if a node with this IP or MAC address already exists
+      const duplicateNode = await tx.node.findFirst({
+        where: {
+          role: NodeRole.LINKED,
+          OR: [
+            { ipAddress: request.ipAddress },
+            ...(request.macAddress
+              ? [
+                  {
+                    id: {
+                      in: await tx.nodeRegistrationRequest
+                        .findMany({
+                          where: {
+                            macAddress: request.macAddress,
+                            status: RegistrationRequestStatus.APPROVED,
+                            childNodeId: { not: null },
+                          },
+                          select: { childNodeId: true },
+                        })
+                        .then((reqs) => reqs.map((r) => r.childNodeId).filter(Boolean) as string[]),
                     },
-                  ]
-                : []),
-            ],
-          },
-        });
+                  },
+                ]
+              : []),
+          ],
+        },
+      });
 
-        if (duplicateNode) {
-          throw new ConflictException(
-            `A child node with IP address ${request.ipAddress} already exists (Node: "${duplicateNode.name}", ID: ${duplicateNode.id}). Please remove the existing node first or use a different child node.`,
-          );
-        }
-
-        // Detect node capabilities before creating the node
-        this.logger.log('🔍 Detecting node capabilities...');
-        const capabilities = await this.capabilityDetector.detectCapabilities(
-          request.id, // Use request ID temporarily
-          request.ipAddress,
+      if (duplicateNode) {
+        throw new ConflictException(
+          `A child node with IP address ${request.ipAddress} already exists (Node: "${duplicateNode.name}", ID: ${duplicateNode.id}). Please remove the existing node first or use a different child node.`
         );
+      }
 
-        this.logger.log(
-          `📊 Capabilities detected: ${JSON.stringify(capabilities, null, 2)}`,
-        );
+      // Detect node capabilities before creating the node
+      this.logger.log('🔍 Detecting node capabilities...');
+      const capabilities = await this.capabilityDetector.detectCapabilities(
+        request.id, // Use request ID temporarily
+        request.ipAddress
+      );
 
-        // Extract hardware specs from request
-        const hardwareSpecs = request.hardwareSpecs as Record<string, unknown>;
-        const cpuCores =
-          (hardwareSpecs?.cpuCores as number) || os.cpus().length;
-        const ramGB =
-          (hardwareSpecs?.ramGb as number) ||
-          Math.round(os.totalmem() / 1024 ** 3);
+      this.logger.log(`📊 Capabilities detected: ${JSON.stringify(capabilities, null, 2)}`);
 
-        // Create CHILD node with capability data
-        const newNode = await tx.node.create({
-          data: {
-            name: request.childNodeName,
-            role: NodeRole.LINKED,
-            status: 'ONLINE',
-            version: request.childVersion,
-            acceleration: request.acceleration,
-            apiKey: this.generateApiKey(),
-            lastHeartbeat: new Date(),
-            maxWorkers: approveDto?.maxWorkers || 2,
-            cpuLimit: approveDto?.cpuLimit || 80,
-            licenseId: mainNode.licenseId,
-            // Hybrid architecture fields
-            networkLocation: capabilities.networkLocation,
-            hasSharedStorage: capabilities.hasSharedStorage,
-            storageBasePath: capabilities.storageBasePath,
-            ipAddress: request.ipAddress, // Store IP for future capability tests
-            latencyMs: capabilities.latencyMs,
-            cpuCores,
-            ramGB,
-          },
-        });
+      // Extract hardware specs from request
+      const hardwareSpecs = request.hardwareSpecs as Record<string, unknown>;
+      const cpuCores = (hardwareSpecs?.cpuCores as number) || os.cpus().length;
+      const ramGB = (hardwareSpecs?.ramGb as number) || Math.round(os.totalmem() / 1024 ** 3);
 
-        // Update request status atomically
-        const updatedReq = await tx.nodeRegistrationRequest.update({
-          where: { id: requestId },
-          data: {
-            status: RegistrationRequestStatus.APPROVED,
-            respondedAt: new Date(),
-            childNodeId: newNode.id,
-          },
-        });
+      // Create CHILD node with capability data
+      const newNode = await tx.node.create({
+        data: {
+          name: request.childNodeName,
+          role: NodeRole.LINKED,
+          status: 'ONLINE',
+          version: request.childVersion,
+          acceleration: request.acceleration,
+          apiKey: this.generateApiKey(),
+          lastHeartbeat: new Date(),
+          maxWorkers: approveDto?.maxWorkers || 2,
+          cpuLimit: approveDto?.cpuLimit || 80,
+          licenseId: mainNode.licenseId,
+          // Hybrid architecture fields
+          networkLocation: capabilities.networkLocation,
+          hasSharedStorage: capabilities.hasSharedStorage,
+          storageBasePath: capabilities.storageBasePath,
+          ipAddress: request.ipAddress, // Store IP for future capability tests
+          latencyMs: capabilities.latencyMs,
+          cpuCores,
+          ramGB,
+        },
+      });
 
-        return { request, newNode, updatedReq };
-      },
-    );
+      // Update request status atomically
+      const updatedReq = await tx.nodeRegistrationRequest.update({
+        where: { id: requestId },
+        data: {
+          status: RegistrationRequestStatus.APPROVED,
+          respondedAt: new Date(),
+          childNodeId: newNode.id,
+        },
+      });
+
+      return { request, newNode, updatedReq };
+    });
 
     this.logger.log(
-      `✅ Registration request approved: ${result.request.childNodeName} (${result.request.ipAddress}) → Node ID: ${result.newNode.id}`,
+      `✅ Registration request approved: ${result.request.childNodeName} (${result.request.ipAddress}) → Node ID: ${result.newNode.id}`
     );
 
     // SSH KEY EXCHANGE: Setup passwordless authentication for file transfers
     let mainNodePublicKey: string | undefined;
     if (result.request.sshPublicKey) {
       try {
-        this.logger.log(
-          '🔑 Setting up SSH keys for passwordless file transfers...',
-        );
+        this.logger.log('🔑 Setting up SSH keys for passwordless file transfers...');
 
         // Add CHILD's public key to MAIN's authorized_keys
         this.sshKeyService.addAuthorizedKey(
           result.request.sshPublicKey,
-          `bitbonsai-child-${result.newNode.id}`,
+          `bitbonsai-child-${result.newNode.id}`
         );
 
         // Get MAIN's public key to send to CHILD
@@ -438,36 +403,27 @@ export class RegistrationRequestService {
     // AUTOMATIC STORAGE SETUP: Create storage shares for main node's libraries
     // so child nodes can auto-detect and mount them
     try {
-      this.logger.log(
-        '🗄️  Setting up automatic storage sharing for new child node...',
-      );
+      this.logger.log('🗄️  Setting up automatic storage sharing for new child node...');
 
       // Get the main node ID
       const mainNode = await this.nodeRepository.findMain();
 
       if (mainNode) {
         // Create storage shares for all main node libraries
-        const shares =
-          await this.storageShareService.autoCreateSharesForLibraries(
-            mainNode.id,
-          );
+        const shares = await this.storageShareService.autoCreateSharesForLibraries(mainNode.id);
 
         if (shares.length > 0) {
-          this.logger.log(
-            `✅ Created ${shares.length} storage shares for child node to access`,
-          );
+          this.logger.log(`✅ Created ${shares.length} storage shares for child node to access`);
 
           // Update child node's hasSharedStorage flag if shares were created
           await this.nodeRepository.updateData(result.newNode.id, {
             hasSharedStorage: true,
           });
 
-          this.logger.log(
-            `✅ Child node marked as having shared storage access`,
-          );
+          this.logger.log(`✅ Child node marked as having shared storage access`);
         } else {
           this.logger.warn(
-            'No storage shares created - main node may not have any libraries configured yet',
+            'No storage shares created - main node may not have any libraries configured yet'
           );
         }
       }
@@ -506,28 +462,23 @@ export class RegistrationRequestService {
    */
   async rejectRequest(
     requestId: string,
-    rejectDto: RejectRequestDto,
+    rejectDto: RejectRequestDto
   ): Promise<NodeRegistrationRequest> {
     const request = await this.getRequest(requestId);
 
     // Validate request is in PENDING state
     if (request.status !== RegistrationRequestStatus.PENDING) {
-      throw new BadRequestException(
-        `Request is not in PENDING state (current: ${request.status})`,
-      );
+      throw new BadRequestException(`Request is not in PENDING state (current: ${request.status})`);
     }
 
-    const updatedRequest = await this.registrationRequestRepository.updateById(
-      requestId,
-      {
-        status: RegistrationRequestStatus.REJECTED,
-        respondedAt: new Date(),
-        rejectionReason: rejectDto.reason,
-      },
-    );
+    const updatedRequest = await this.registrationRequestRepository.updateById(requestId, {
+      status: RegistrationRequestStatus.REJECTED,
+      respondedAt: new Date(),
+      rejectionReason: rejectDto.reason,
+    });
 
     this.logger.log(
-      `❌ Registration request rejected: ${request.childNodeName} (${request.ipAddress}) - Reason: ${rejectDto.reason}`,
+      `❌ Registration request rejected: ${request.childNodeName} (${request.ipAddress}) - Reason: ${rejectDto.reason}`
     );
 
     return updatedRequest;
@@ -542,20 +493,17 @@ export class RegistrationRequestService {
     // Only allow cancelling PENDING requests
     if (request.status !== RegistrationRequestStatus.PENDING) {
       throw new BadRequestException(
-        `Can only cancel PENDING requests (current: ${request.status})`,
+        `Can only cancel PENDING requests (current: ${request.status})`
       );
     }
 
-    const updatedRequest = await this.registrationRequestRepository.updateById(
-      requestId,
-      {
-        status: RegistrationRequestStatus.CANCELLED,
-        respondedAt: new Date(),
-      },
-    );
+    const updatedRequest = await this.registrationRequestRepository.updateById(requestId, {
+      status: RegistrationRequestStatus.CANCELLED,
+      respondedAt: new Date(),
+    });
 
     this.logger.log(
-      `🚫 Registration request cancelled: ${request.childNodeName} (${request.ipAddress})`,
+      `🚫 Registration request cancelled: ${request.childNodeName} (${request.ipAddress})`
     );
 
     return updatedRequest;
@@ -564,9 +512,7 @@ export class RegistrationRequestService {
   /**
    * Cancel a request by pairing token (alternative method for CHILD nodes)
    */
-  async cancelRequestByToken(
-    pairingToken: string,
-  ): Promise<NodeRegistrationRequest> {
+  async cancelRequestByToken(pairingToken: string): Promise<NodeRegistrationRequest> {
     const request = await this.getRequestByToken(pairingToken);
     return this.cancelRequest(request.id);
   }
@@ -580,13 +526,10 @@ export class RegistrationRequestService {
     try {
       const now = new Date();
 
-      const result =
-        await this.registrationRequestRepository.updateManyExpired(now);
+      const result = await this.registrationRequestRepository.updateManyExpired(now);
 
       if (result.count > 0) {
-        this.logger.log(
-          `🧹 Marked ${result.count} expired registration request(s)`,
-        );
+        this.logger.log(`🧹 Marked ${result.count} expired registration request(s)`);
       }
     } catch (error: unknown) {
       this.logger.error('Failed to cleanup expired requests', error);
@@ -602,20 +545,15 @@ export class RegistrationRequestService {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-      const result = await this.registrationRequestRepository.deleteManyOld(
-        thirtyDaysAgo,
-        [
-          RegistrationRequestStatus.APPROVED,
-          RegistrationRequestStatus.REJECTED,
-          RegistrationRequestStatus.EXPIRED,
-          RegistrationRequestStatus.CANCELLED,
-        ],
-      );
+      const result = await this.registrationRequestRepository.deleteManyOld(thirtyDaysAgo, [
+        RegistrationRequestStatus.APPROVED,
+        RegistrationRequestStatus.REJECTED,
+        RegistrationRequestStatus.EXPIRED,
+        RegistrationRequestStatus.CANCELLED,
+      ]);
 
       if (result.count > 0) {
-        this.logger.log(
-          `🗑️  Deleted ${result.count} old registration request(s)`,
-        );
+        this.logger.log(`🗑️  Deleted ${result.count} old registration request(s)`);
       }
     } catch (error: unknown) {
       this.logger.error('Failed to delete old requests', error);

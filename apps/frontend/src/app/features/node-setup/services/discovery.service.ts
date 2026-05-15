@@ -1,14 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
-import {
-  BehaviorSubject,
-  interval,
-  map,
-  switchMap,
-  takeWhile,
-  tap,
-} from 'rxjs';
+import { BehaviorSubject, interval, map, switchMap, takeWhile, tap } from 'rxjs';
 import type { RegistrationRequest } from '../../nodes/models/registration-request.model';
 import type {
   DiscoveredNode,
@@ -45,14 +38,11 @@ export class DiscoveryService {
   public readonly scanning$ = this.scanningSubject.asObservable();
 
   // Discovered nodes state
-  private readonly discoveredNodesSubject = new BehaviorSubject<
-    DiscoveredNode[]
-  >([]);
+  private readonly discoveredNodesSubject = new BehaviorSubject<DiscoveredNode[]>([]);
   public readonly discoveredNodes$ = this.discoveredNodesSubject.asObservable();
 
   // Pairing state
-  private readonly pairingStatusSubject =
-    new BehaviorSubject<PairingStatus | null>(null);
+  private readonly pairingStatusSubject = new BehaviorSubject<PairingStatus | null>(null);
   public readonly pairingStatus$ = this.pairingStatusSubject.asObservable();
 
   // Main node URL for polling (child node polls main node, not itself)
@@ -72,7 +62,7 @@ export class DiscoveryService {
       tap((result) => {
         this.discoveredNodesSubject.next(result.nodes);
         this.scanningSubject.next(false);
-      }),
+      })
     );
   }
 
@@ -91,10 +81,7 @@ export class DiscoveryService {
    * @param request - Pairing request with main node ID and child node name
    * @param mainNodeUrl - URL of the main node (for polling)
    */
-  initiatePairing(
-    request: PairingRequest,
-    mainNodeUrl?: string,
-  ): Observable<PairingResponse> {
+  initiatePairing(request: PairingRequest, mainNodeUrl?: string): Observable<PairingResponse> {
     this.pairingStatusSubject.next(PairingStatus.PENDING);
 
     // Store main node URL for polling
@@ -105,7 +92,7 @@ export class DiscoveryService {
     return this.http.post<PairingResponse>(`${this.apiUrl}/pair`, request).pipe(
       tap((response) => {
         this.pairingStatusSubject.next(response.status);
-      }),
+      })
     );
   }
 
@@ -151,7 +138,7 @@ export class DiscoveryService {
         }
 
         return true;
-      }, true), // Include the final value
+      }, true) // Include the final value
     );
   }
 
@@ -159,7 +146,7 @@ export class DiscoveryService {
    * Map registration request response to pairing response
    */
   private mapToPairingResponse(
-    registrationRequest: RegistrationRequestResponse | null,
+    registrationRequest: RegistrationRequestResponse | null
   ): PairingResponse {
     if (!registrationRequest || !registrationRequest.status) {
       return {
@@ -200,9 +187,7 @@ export class DiscoveryService {
       case 'REJECTED':
         return {
           status: PairingStatus.REJECTED,
-          message:
-            registrationRequest.rejectionReason ||
-            'Pairing request was rejected',
+          message: registrationRequest.rejectionReason || 'Pairing request was rejected',
         };
 
       case 'EXPIRED':
@@ -241,7 +226,7 @@ export class DiscoveryService {
    */
   completeSetup(
     connectionToken: string,
-    mainNodeInfo: { id: string; name: string },
+    mainNodeInfo: { id: string; name: string }
   ): Observable<void> {
     localStorage.setItem('bitbonsai_connection_token', connectionToken);
     localStorage.setItem('bitbonsai_main_node', JSON.stringify(mainNodeInfo));
@@ -284,12 +269,9 @@ export class DiscoveryService {
    * @param mainNodeUrl - URL of the main node
    * @param requestId - Registration request ID
    */
-  getRegistrationRequest(
-    mainNodeUrl: string,
-    requestId: string,
-  ): Observable<RegistrationRequest> {
+  getRegistrationRequest(mainNodeUrl: string, requestId: string): Observable<RegistrationRequest> {
     return this.http.get<RegistrationRequest>(
-      `${mainNodeUrl}/api/v1/nodes/registration-requests/${requestId}`,
+      `${mainNodeUrl}/api/v1/nodes/registration-requests/${requestId}`
     );
   }
 
@@ -303,7 +285,7 @@ export class DiscoveryService {
   updateNodeConfig(
     mainNodeUrl: string,
     nodeId: string,
-    config: { maxWorkers: number; cpuLimit: number },
+    config: { maxWorkers: number; cpuLimit: number }
   ): Observable<unknown> {
     return this.http.patch(`${mainNodeUrl}/api/v1/nodes/${nodeId}`, config);
   }

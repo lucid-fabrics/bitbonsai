@@ -1,8 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
@@ -57,9 +54,7 @@ describe('OverviewComponent', () => {
     fixture = TestBed.createComponent(OverviewComponent);
     component = fixture.componentInstance;
     _store = TestBed.inject(MockStore);
-    _overviewClient = TestBed.inject(
-      OverviewClient,
-    ) as jest.Mocked<OverviewClient>;
+    _overviewClient = TestBed.inject(OverviewClient) as jest.Mocked<OverviewClient>;
     httpMock = TestBed.inject(HttpTestingController);
 
     jest.clearAllMocks();

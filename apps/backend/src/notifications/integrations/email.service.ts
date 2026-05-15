@@ -49,9 +49,7 @@ export class EmailNotificationService {
     const config = await this.getEmailConfig();
     if (!config) return;
 
-    const savedGB = job.savedBytes
-      ? (Number(job.savedBytes) / 1024 ** 3).toFixed(2)
-      : '0';
+    const savedGB = job.savedBytes ? (Number(job.savedBytes) / 1024 ** 3).toFixed(2) : '0';
     const savedPercent = job.savedPercent?.toFixed(1) || '0';
     const durationStr = job.duration
       ? `${Math.floor(job.duration / 60)}m ${job.duration % 60}s`
@@ -132,9 +130,7 @@ export class EmailNotificationService {
 
     const successRate =
       stats.completed + stats.failed > 0
-        ? ((stats.completed / (stats.completed + stats.failed)) * 100).toFixed(
-            1,
-          )
+        ? ((stats.completed / (stats.completed + stats.failed)) * 100).toFixed(1)
         : '0';
 
     const topFilesHtml = stats.topFiles
@@ -144,7 +140,7 @@ export class EmailNotificationService {
           <td style="padding: 8px; border-bottom: 1px solid #ddd;">${f.name}</td>
           <td style="padding: 8px; border-bottom: 1px solid #ddd;">${f.savedPercent.toFixed(1)}%</td>
         </tr>
-      `,
+      `
       )
       .join('');
 
@@ -196,7 +192,7 @@ export class EmailNotificationService {
     await this.sendEmail(
       config,
       `📊 Daily Summary: ${stats.completed} encoded, ${stats.totalSavedGB.toFixed(1)} GB saved`,
-      html,
+      html
     );
   }
 
@@ -230,9 +226,7 @@ export class EmailNotificationService {
     `;
 
     const subject =
-      alert.severity === 'critical'
-        ? `🚨 CRITICAL: ${alert.type}`
-        : `⚠️ Warning: ${alert.type}`;
+      alert.severity === 'critical' ? `🚨 CRITICAL: ${alert.type}` : `⚠️ Warning: ${alert.type}`;
 
     await this.sendEmail(config, subject, html);
   }
@@ -240,9 +234,7 @@ export class EmailNotificationService {
   /**
    * Test email configuration
    */
-  async testEmail(
-    config: EmailConfig,
-  ): Promise<{ success: boolean; error?: string }> {
+  async testEmail(config: EmailConfig): Promise<{ success: boolean; error?: string }> {
     try {
       const transporter = this.createTransporter(config);
       await transporter.verify();
@@ -313,11 +305,7 @@ export class EmailNotificationService {
   /**
    * Send email
    */
-  private async sendEmail(
-    config: EmailConfig,
-    subject: string,
-    html: string,
-  ): Promise<void> {
+  private async sendEmail(config: EmailConfig, subject: string, html: string): Promise<void> {
     try {
       const transporter = this.createTransporter(config);
 

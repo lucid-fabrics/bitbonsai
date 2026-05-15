@@ -1,17 +1,7 @@
 import { DecimalPipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  type OnInit,
-} from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, type OnInit } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import {
-  faChartLine,
-  faCheckCircle,
-  faGauge,
-  faSave,
-} from '@fortawesome/pro-solid-svg-icons';
+import { faChartLine, faCheckCircle, faGauge, faSave } from '@fortawesome/pro-solid-svg-icons';
 import { TranslocoModule } from '@ngneat/transloco';
 import { Chart, type ChartConfiguration, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
@@ -39,12 +29,7 @@ interface NodePerformanceDataset {
 @Component({
   selector: 'app-insights',
   standalone: true,
-  imports: [
-    DecimalPipe,
-    BaseChartDirective,
-    FontAwesomeModule,
-    TranslocoModule,
-  ],
+  imports: [DecimalPipe, BaseChartDirective, FontAwesomeModule, TranslocoModule],
   templateUrl: './insights.page.html',
   styleUrls: ['./insights.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -101,9 +86,7 @@ export class InsightsComponent implements OnInit {
         callbacks: {
           label: (context) => {
             const yValue = context.parsed.y;
-            return yValue !== null
-              ? `Saved: ${yValue.toFixed(2)} GB`
-              : 'Saved: 0.00 GB';
+            return yValue !== null ? `Saved: ${yValue.toFixed(2)} GB` : 'Saved: 0.00 GB';
           },
         },
       },
@@ -225,13 +208,9 @@ export class InsightsComponent implements OnInit {
         callbacks: {
           label: (context) => {
             const dataIndex = context.dataIndex;
-            const dataset = context.chart.data
-              .datasets[0] as NodePerformanceDataset;
+            const dataset = context.chart.data.datasets[0] as NodePerformanceDataset;
             const successRate = dataset._rawData?.[dataIndex]?.successRate || 0;
-            return [
-              `Jobs: ${context.parsed.y}`,
-              `Success Rate: ${successRate.toFixed(1)}%`,
-            ];
+            return [`Jobs: ${context.parsed.y}`, `Success Rate: ${successRate.toFixed(1)}%`];
           },
         },
       },
@@ -266,7 +245,7 @@ export class InsightsComponent implements OnInit {
 
   constructor(
     private readonly insightsService: InsightsService,
-    private readonly cdr: ChangeDetectorRef,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -296,9 +275,7 @@ export class InsightsComponent implements OnInit {
   private async loadSavingsTrend(): Promise<void> {
     try {
       const days = this.selectedTimeRange;
-      const data = await lastValueFrom(
-        this.insightsService.getSavingsTrend(days),
-      );
+      const data = await lastValueFrom(this.insightsService.getSavingsTrend(days));
 
       if (data) {
         const currentData = this.savingsTrendData;
@@ -319,9 +296,7 @@ export class InsightsComponent implements OnInit {
 
   private async loadCodecDistribution(): Promise<void> {
     try {
-      const data = await lastValueFrom(
-        this.insightsService.getCodecDistribution(),
-      );
+      const data = await lastValueFrom(this.insightsService.getCodecDistribution());
 
       if (data) {
         const currentData = this.codecDistributionData;
@@ -342,9 +317,7 @@ export class InsightsComponent implements OnInit {
 
   private async loadNodePerformance(): Promise<void> {
     try {
-      const data = await lastValueFrom(
-        this.insightsService.getNodePerformance(),
-      );
+      const data = await lastValueFrom(this.insightsService.getNodePerformance());
 
       if (data) {
         const currentData = this.nodePerformanceData;
@@ -352,9 +325,7 @@ export class InsightsComponent implements OnInit {
         currentData.datasets[0].data = data.map((d) => d.jobsCompleted);
 
         // Color bars based on success rate using BO logic
-        currentData.datasets[0].backgroundColor = data.map(
-          (d) => d.statusColor,
-        );
+        currentData.datasets[0].backgroundColor = data.map((d) => d.statusColor);
 
         // Store raw data for tooltip
         currentData.datasets[0]._rawData = data;
