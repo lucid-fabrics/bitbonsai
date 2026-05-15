@@ -1,6 +1,12 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { AsyncPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  type OnInit,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -54,7 +60,13 @@ interface PolicyFormData {
 @Component({
   selector: 'app-policies',
   standalone: true,
-  imports: [AsyncPipe, FontAwesomeModule, FormsModule, TranslocoModule, RichTooltipDirective],
+  imports: [
+    AsyncPipe,
+    FontAwesomeModule,
+    FormsModule,
+    TranslocoModule,
+    RichTooltipDirective,
+  ],
   templateUrl: './policies.page.html',
   styleUrls: ['./policies.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -210,7 +222,9 @@ export class PoliciesComponent implements OnInit {
       targetContainer: this.formData.targetContainer ?? 'mkv',
       skipReencoding: this.formData.skipReencoding ?? true,
       allowSameCodec: this.formData.allowSameCodec ?? false,
-      minSavingsPercent: this.formData.allowSameCodec ? (this.formData.minSavingsPercent ?? 0) : 0,
+      minSavingsPercent: this.formData.allowSameCodec
+        ? (this.formData.minSavingsPercent ?? 0)
+        : 0,
       libraryId: this.formData.libraryId || undefined,
       deviceProfiles: {
         appleTV: this.formData.deviceProfiles.has(DeviceProfile.APPLE_TV),
@@ -228,7 +242,9 @@ export class PoliciesComponent implements OnInit {
       const policyId = this.editingPolicyId;
       if (!policyId) return;
 
-      this.store.dispatch(PoliciesActions.updatePolicy({ id: policyId, request }));
+      this.store.dispatch(
+        PoliciesActions.updatePolicy({ id: policyId, request }),
+      );
     } else {
       this.store.dispatch(PoliciesActions.createPolicy({ request }));
     }
@@ -262,11 +278,13 @@ export class PoliciesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
-      if (result === true) {
-        this.store.dispatch(PoliciesActions.deletePolicy({ id: policy.id }));
-      }
-    });
+    dialogRef.closed
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result === true) {
+          this.store.dispatch(PoliciesActions.deletePolicy({ id: policy.id }));
+        }
+      });
   }
 
   getDeviceIcon(_profile: DeviceProfile) {

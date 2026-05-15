@@ -53,7 +53,8 @@ export class UpdateNodeDto {
   maxWorkers?: number;
 
   @ApiProperty({
-    description: 'Maximum CPU usage percentage (reserves resources for host system)',
+    description:
+      'Maximum CPU usage percentage (reserves resources for host system)',
     example: 80,
     minimum: 10,
     maximum: 100,
@@ -67,7 +68,8 @@ export class UpdateNodeDto {
   cpuLimit?: number;
 
   @ApiProperty({
-    description: 'Public URL for accessing this node (required for LINKED nodes)',
+    description:
+      'Public URL for accessing this node (required for LINKED nodes)',
     example: 'http://192.168.1.121:3100',
     required: false,
   })

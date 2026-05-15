@@ -26,7 +26,9 @@ describe('LibrariesController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [LibrariesController],
-      providers: [{ provide: LibrariesService, useValue: mockLibrariesService }],
+      providers: [
+        { provide: LibrariesService, useValue: mockLibrariesService },
+      ],
     }).compile();
 
     controller = module.get<LibrariesController>(LibrariesController);
@@ -54,8 +56,12 @@ describe('LibrariesController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLibrariesService.create.mockRejectedValue(new Error('node not found'));
-      await expect(controller.create({} as any)).rejects.toThrow('node not found');
+      mockLibrariesService.create.mockRejectedValue(
+        new Error('node not found'),
+      );
+      await expect(controller.create({} as any)).rejects.toThrow(
+        'node not found',
+      );
     });
   });
 
@@ -71,8 +77,12 @@ describe('LibrariesController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLibrariesService.getAllReadyFiles.mockRejectedValue(new Error('scan failed'));
-      await expect(controller.getAllReadyFiles()).rejects.toThrow('scan failed');
+      mockLibrariesService.getAllReadyFiles.mockRejectedValue(
+        new Error('scan failed'),
+      );
+      await expect(controller.getAllReadyFiles()).rejects.toThrow(
+        'scan failed',
+      );
     });
   });
 
@@ -88,8 +98,12 @@ describe('LibrariesController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLibrariesService.getCacheMetadata.mockRejectedValue(new Error('cache error'));
-      await expect(controller.getReadyCacheMetadata()).rejects.toThrow('cache error');
+      mockLibrariesService.getCacheMetadata.mockRejectedValue(
+        new Error('cache error'),
+      );
+      await expect(controller.getReadyCacheMetadata()).rejects.toThrow(
+        'cache error',
+      );
     });
   });
 
@@ -97,7 +111,9 @@ describe('LibrariesController', () => {
     it('should invalidate cache and return success message', async () => {
       const result = await controller.refreshReadyCache();
 
-      expect(mockLibrariesService.invalidateReadyFilesCache).toHaveBeenCalledTimes(1);
+      expect(
+        mockLibrariesService.invalidateReadyFilesCache,
+      ).toHaveBeenCalledTimes(1);
       expect(result).toEqual({
         message: 'Ready files cache invalidated successfully',
       });
@@ -156,8 +172,12 @@ describe('LibrariesController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLibrariesService.getLibraryFiles.mockRejectedValue(new Error('scan error'));
-      await expect(controller.getLibraryFiles('lib1')).rejects.toThrow('scan error');
+      mockLibrariesService.getLibraryFiles.mockRejectedValue(
+        new Error('scan error'),
+      );
+      await expect(controller.getLibraryFiles('lib1')).rejects.toThrow(
+        'scan error',
+      );
     });
   });
 
@@ -175,7 +195,9 @@ describe('LibrariesController', () => {
 
     it('should propagate service errors', async () => {
       mockLibrariesService.update.mockRejectedValue(new Error('update failed'));
-      await expect(controller.update('lib1', {} as any)).rejects.toThrow('update failed');
+      await expect(controller.update('lib1', {} as any)).rejects.toThrow(
+        'update failed',
+      );
     });
   });
 
@@ -206,7 +228,9 @@ describe('LibrariesController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLibrariesService.scan.mockRejectedValue(new Error('library disabled'));
+      mockLibrariesService.scan.mockRejectedValue(
+        new Error('library disabled'),
+      );
       await expect(controller.scan('lib1')).rejects.toThrow('library disabled');
     });
   });
@@ -226,7 +250,9 @@ describe('LibrariesController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockLibrariesService.scanPreview.mockRejectedValue(new Error('no policy'));
+      mockLibrariesService.scanPreview.mockRejectedValue(
+        new Error('no policy'),
+      );
       await expect(controller.scanPreview('lib1')).rejects.toThrow('no policy');
     });
   });
@@ -242,7 +268,7 @@ describe('LibrariesController', () => {
       expect(mockLibrariesService.createJobsFromScan).toHaveBeenCalledWith(
         'lib1',
         dto.policyId,
-        dto.filePaths
+        dto.filePaths,
       );
       expect(result).toEqual(response);
     });
@@ -257,14 +283,16 @@ describe('LibrariesController', () => {
       expect(mockLibrariesService.createJobsFromScan).toHaveBeenCalledWith(
         'lib1',
         'pol1',
-        undefined
+        undefined,
       );
     });
 
     it('should propagate service errors', async () => {
-      mockLibrariesService.createJobsFromScan.mockRejectedValue(new Error('policy not found'));
+      mockLibrariesService.createJobsFromScan.mockRejectedValue(
+        new Error('policy not found'),
+      );
       await expect(
-        controller.createJobsFromScan('lib1', { policyId: 'bad' } as any)
+        controller.createJobsFromScan('lib1', { policyId: 'bad' } as any),
       ).rejects.toThrow('policy not found');
     });
   });
@@ -277,15 +305,20 @@ describe('LibrariesController', () => {
 
       const res = await controller.createAllJobs('lib1', dto as any);
 
-      expect(mockLibrariesService.createAllJobs).toHaveBeenCalledWith('lib1', 'pol1');
+      expect(mockLibrariesService.createAllJobs).toHaveBeenCalledWith(
+        'lib1',
+        'pol1',
+      );
       expect(res).toEqual(result);
     });
 
     it('should propagate service errors', async () => {
-      mockLibrariesService.createAllJobs.mockRejectedValue(new Error('library not found'));
-      await expect(controller.createAllJobs('lib1', { policyId: 'pol1' } as any)).rejects.toThrow(
-        'library not found'
+      mockLibrariesService.createAllJobs.mockRejectedValue(
+        new Error('library not found'),
       );
+      await expect(
+        controller.createAllJobs('lib1', { policyId: 'pol1' } as any),
+      ).rejects.toThrow('library not found');
     });
   });
 });

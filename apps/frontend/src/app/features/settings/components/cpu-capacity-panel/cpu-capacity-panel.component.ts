@@ -44,7 +44,11 @@ export class CpuCapacityPanelComponent implements OnInit {
 
   getWorkerPercentage(): number {
     if (!this.resources) return 0;
-    return (this.resources.cpu.configuredWorkers / this.resources.cpu.theoreticalMaxWorkers) * 100;
+    return (
+      (this.resources.cpu.configuredWorkers /
+        this.resources.cpu.theoreticalMaxWorkers) *
+      100
+    );
   }
 
   getRiskClass(risk: string): string {

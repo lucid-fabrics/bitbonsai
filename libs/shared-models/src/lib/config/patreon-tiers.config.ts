@@ -117,9 +117,13 @@ export const PATREON_TIER_NAME_MAP: Record<string, LicenseTier> = {
  * Map pledge amount (cents) to license tier
  * Finds highest tier that pledge amount qualifies for
  */
-export function getLicenseTierFromPledgeAmount(amountCents: number): LicenseTier {
+export function getLicenseTierFromPledgeAmount(
+  amountCents: number,
+): LicenseTier {
   // Sort tiers by amount descending
-  const sortedTiers = [...PATREON_TIERS].sort((a, b) => b.amountCents - a.amountCents);
+  const sortedTiers = [...PATREON_TIERS].sort(
+    (a, b) => b.amountCents - a.amountCents,
+  );
 
   // Find highest tier that amount qualifies for
   for (const tier of sortedTiers) {
@@ -135,16 +139,22 @@ export function getLicenseTierFromPledgeAmount(amountCents: number): LicenseTier
 /**
  * Get tier configuration by license tier
  */
-export function getPatreonTierConfig(licenseTier: LicenseTier): PatreonTierConfig | null {
+export function getPatreonTierConfig(
+  licenseTier: LicenseTier,
+): PatreonTierConfig | null {
   return PATREON_TIERS.find((t) => t.licenseTier === licenseTier) || null;
 }
 
 /**
  * Get tier configuration by tier name (case-insensitive)
  */
-export function getPatreonTierByName(tierName: string): PatreonTierConfig | null {
+export function getPatreonTierByName(
+  tierName: string,
+): PatreonTierConfig | null {
   const normalized = tierName.toLowerCase();
-  return PATREON_TIERS.find((t) => t.tierName.toLowerCase() === normalized) || null;
+  return (
+    PATREON_TIERS.find((t) => t.tierName.toLowerCase() === normalized) || null
+  );
 }
 
 /**

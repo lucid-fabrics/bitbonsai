@@ -74,7 +74,9 @@ describe('SystemInfoService', () => {
       // Mock exec for disk space and GPU detection
 
       const { exec } = require('child_process');
-      exec.mockImplementation((_cmd: string, cb: any) => cb(null, { stdout: '0G', stderr: '' }));
+      exec.mockImplementation((_cmd: string, cb: any) =>
+        cb(null, { stdout: '0G', stderr: '' }),
+      );
 
       const result = await service.collectSystemInfo();
 
@@ -134,12 +136,16 @@ describe('SystemInfoService', () => {
       osMock.totalmem.mockReturnValue(16 * 1024 ** 3);
 
       const { exec } = require('child_process');
-      exec.mockImplementation((_cmd: string, cb: any) => cb(new Error('command not found'), null));
+      exec.mockImplementation((_cmd: string, cb: any) =>
+        cb(new Error('command not found'), null),
+      );
 
       const result = await service.collectSystemInfo();
 
       // On darwin arm64, acceleration should be APPLE_M (if nvidia not found)
-      expect([AccelerationType.APPLE_M, AccelerationType.CPU]).toContain(result.acceleration);
+      expect([AccelerationType.APPLE_M, AccelerationType.CPU]).toContain(
+        result.acceleration,
+      );
     });
   });
 
@@ -168,7 +174,9 @@ describe('SystemInfoService', () => {
         return Promise.reject(new Error('not found'));
       });
       fsMock.readFile.mockResolvedValue('');
-      exec.mockImplementation((_cmd: string, cb: any) => cb(null, { stdout: '0G', stderr: '' }));
+      exec.mockImplementation((_cmd: string, cb: any) =>
+        cb(null, { stdout: '0G', stderr: '' }),
+      );
 
       const result = await service.collectSystemInfo();
       expect(result.containerType).toBe(ContainerType.DOCKER);
@@ -178,10 +186,13 @@ describe('SystemInfoService', () => {
       setupBaseOsMocks();
       fsMock.access.mockRejectedValue(new Error('not found')); // no .dockerenv
       fsMock.readFile.mockImplementation((path: string) => {
-        if (path === '/proc/1/cgroup') return Promise.resolve('12:devices:/lxc/container1');
+        if (path === '/proc/1/cgroup')
+          return Promise.resolve('12:devices:/lxc/container1');
         return Promise.resolve('');
       });
-      exec.mockImplementation((_cmd: string, cb: any) => cb(null, { stdout: '0G', stderr: '' }));
+      exec.mockImplementation((_cmd: string, cb: any) =>
+        cb(null, { stdout: '0G', stderr: '' }),
+      );
 
       const result = await service.collectSystemInfo();
       expect(result.containerType).toBe(ContainerType.LXC);
@@ -505,7 +516,10 @@ describe('SystemInfoService', () => {
       let _callCount = 0;
       exec.mockImplementation((_cmd: string, cb: any) => {
         _callCount++;
-        if (typeof _cmd === 'string' && _cmd.includes('nvidia-smi --query-gpu')) {
+        if (
+          typeof _cmd === 'string' &&
+          _cmd.includes('nvidia-smi --query-gpu')
+        ) {
           return cb(null, { stdout: 'NVIDIA GeForce RTX 3090', stderr: '' });
         }
         return cb(null, { stdout: '100G', stderr: '' });
@@ -520,7 +534,10 @@ describe('SystemInfoService', () => {
       fsMock.access.mockRejectedValue(new Error('not found'));
       fsMock.readFile.mockResolvedValue('');
       exec.mockImplementation((_cmd: string, cb: any) => {
-        if (typeof _cmd === 'string' && _cmd.includes('nvidia-smi --query-gpu')) {
+        if (
+          typeof _cmd === 'string' &&
+          _cmd.includes('nvidia-smi --query-gpu')
+        ) {
           return cb(new Error('command not found'), null);
         }
         if (typeof _cmd === 'string' && _cmd.includes('lspci | grep -i vga')) {
@@ -541,7 +558,10 @@ describe('SystemInfoService', () => {
       fsMock.access.mockRejectedValue(new Error('not found'));
       fsMock.readFile.mockResolvedValue('');
       exec.mockImplementation((_cmd: string, cb: any) => {
-        if (typeof _cmd === 'string' && _cmd.includes('nvidia-smi --query-gpu')) {
+        if (
+          typeof _cmd === 'string' &&
+          _cmd.includes('nvidia-smi --query-gpu')
+        ) {
           return cb(new Error('not found'), null);
         }
         if (typeof _cmd === 'string' && _cmd.includes('lspci | grep -i vga')) {

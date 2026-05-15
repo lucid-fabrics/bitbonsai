@@ -32,7 +32,7 @@ export class InsightsService {
           return [];
         }
         return dtos.map(SavingsTrendBO.fromDto);
-      })
+      }),
     );
   }
 
@@ -47,7 +47,7 @@ export class InsightsService {
           return [];
         }
         return dtos.map(CodecDistributionBO.fromDto);
-      })
+      }),
     );
   }
 
@@ -62,7 +62,7 @@ export class InsightsService {
           return [];
         }
         return dtos.map(NodePerformanceBO.fromDto);
-      })
+      }),
     );
   }
 

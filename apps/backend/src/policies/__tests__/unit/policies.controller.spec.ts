@@ -49,7 +49,9 @@ describe('PoliciesController', () => {
 
     it('should propagate service errors', async () => {
       mockPoliciesService.create.mockRejectedValue(new Error('create failed'));
-      await expect(controller.create({} as never)).rejects.toThrow('create failed');
+      await expect(controller.create({} as never)).rejects.toThrow(
+        'create failed',
+      );
     });
   });
 
@@ -101,7 +103,9 @@ describe('PoliciesController', () => {
 
     it('should propagate not-found errors', async () => {
       mockPoliciesService.findOne.mockRejectedValue(new Error('not found'));
-      await expect(controller.findOne('missing-id')).rejects.toThrow('not found');
+      await expect(controller.findOne('missing-id')).rejects.toThrow(
+        'not found',
+      );
     });
   });
 
@@ -120,7 +124,9 @@ describe('PoliciesController', () => {
 
     it('should propagate service errors', async () => {
       mockPoliciesService.update.mockRejectedValue(new Error('update failed'));
-      await expect(controller.update('p1', {} as never)).rejects.toThrow('update failed');
+      await expect(controller.update('p1', {} as never)).rejects.toThrow(
+        'update failed',
+      );
     });
   });
 

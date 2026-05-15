@@ -41,9 +41,11 @@ describe('BackupCleanupWorker', () => {
   describe('onModuleInit', () => {
     it('should call start', async () => {
       // Mock start to prevent infinite loop
-      const startSpy = jest.spyOn(worker as any, 'start').mockImplementation(() => {
-        /* noop */
-      });
+      const startSpy = jest
+        .spyOn(worker as any, 'start')
+        .mockImplementation(() => {
+          /* noop */
+        });
 
       await worker.onModuleInit();
 
@@ -101,7 +103,9 @@ describe('BackupCleanupWorker', () => {
 
       await (worker as any).cleanupOrphanedBackups();
 
-      expect(fsMock.unlink).toHaveBeenCalledWith('/media/movies/movie.mkv.backup');
+      expect(fsMock.unlink).toHaveBeenCalledWith(
+        '/media/movies/movie.mkv.backup',
+      );
     });
 
     it('should skip recent backup files', async () => {
@@ -171,7 +175,9 @@ describe('BackupCleanupWorker', () => {
 
       await (worker as any).cleanupOrphanedBackups();
 
-      expect(fsMock.unlink).toHaveBeenCalledWith('/media/movies/subfolder/deep.mkv.backup');
+      expect(fsMock.unlink).toHaveBeenCalledWith(
+        '/media/movies/subfolder/deep.mkv.backup',
+      );
     });
 
     it('should continue on individual file errors', async () => {

@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsOptional, IsString, IsUrl } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUrl,
+} from 'class-validator';
 import { LogLevel } from '../../common/enums';
 
 export class UpdateSystemSettingsDto {
@@ -38,6 +44,9 @@ export class UpdateSystemSettingsDto {
     required: false,
   })
   @IsOptional()
-  @IsUrl({ protocols: ['https'] }, { message: 'Webhook URL must use HTTPS protocol' })
+  @IsUrl(
+    { protocols: ['https'] },
+    { message: 'Webhook URL must use HTTPS protocol' },
+  )
   webhookUrl?: string;
 }

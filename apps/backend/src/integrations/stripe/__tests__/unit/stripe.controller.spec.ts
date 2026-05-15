@@ -48,7 +48,7 @@ describe('StripeController', () => {
         expect.objectContaining({
           email: 'user@example.com',
           priceId: 'price_abc123',
-        })
+        }),
       );
       expect(result).toEqual(session);
     });
@@ -82,7 +82,7 @@ describe('StripeController', () => {
         controller.createCheckout({
           email: 'user@example.com',
           priceId: 'price_123',
-        })
+        }),
       ).rejects.toThrow(BadRequestException);
 
       expect(mockStripeService.createCheckoutSession).not.toHaveBeenCalled();
@@ -90,49 +90,60 @@ describe('StripeController', () => {
 
     it('should propagate service errors', async () => {
       mockStripeService.isConfigured.mockReturnValue(true);
-      mockStripeService.createCheckoutSession.mockRejectedValue(new Error('stripe api error'));
-
-      await expect(controller.createCheckout({ email: 'u@x.com', priceId: 'p' })).rejects.toThrow(
-        'stripe api error'
+      mockStripeService.createCheckoutSession.mockRejectedValue(
+        new Error('stripe api error'),
       );
+
+      await expect(
+        controller.createCheckout({ email: 'u@x.com', priceId: 'p' }),
+      ).rejects.toThrow('stripe api error');
     });
   });
 
   describe('handleWebhook', () => {
-    const buildRequest = (rawBody: Buffer | undefined): RawBodyRequest<Request> =>
-      ({ rawBody }) as RawBodyRequest<Request>;
+    const buildRequest = (
+      rawBody: Buffer | undefined,
+    ): RawBodyRequest<Request> => ({ rawBody }) as RawBodyRequest<Request>;
 
     it('should process webhook and return { received: true }', async () => {
       mockStripeService.handleWebhook.mockResolvedValue(undefined);
       const rawBody = Buffer.from('raw-body');
 
-      const result = await controller.handleWebhook('sig_test', buildRequest(rawBody));
+      const result = await controller.handleWebhook(
+        'sig_test',
+        buildRequest(rawBody),
+      );
 
-      expect(mockStripeService.handleWebhook).toHaveBeenCalledWith('sig_test', rawBody);
+      expect(mockStripeService.handleWebhook).toHaveBeenCalledWith(
+        'sig_test',
+        rawBody,
+      );
       expect(result).toEqual({ received: true });
     });
 
     it('should throw BadRequestException when signature is missing', async () => {
-      await expect(controller.handleWebhook('', buildRequest(Buffer.from('body')))).rejects.toThrow(
-        BadRequestException
-      );
+      await expect(
+        controller.handleWebhook('', buildRequest(Buffer.from('body'))),
+      ).rejects.toThrow(BadRequestException);
 
       expect(mockStripeService.handleWebhook).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException when rawBody is missing', async () => {
-      await expect(controller.handleWebhook('sig_test', buildRequest(undefined))).rejects.toThrow(
-        BadRequestException
-      );
+      await expect(
+        controller.handleWebhook('sig_test', buildRequest(undefined)),
+      ).rejects.toThrow(BadRequestException);
 
       expect(mockStripeService.handleWebhook).not.toHaveBeenCalled();
     });
 
     it('should propagate service errors', async () => {
-      mockStripeService.handleWebhook.mockRejectedValue(new Error('invalid signature'));
+      mockStripeService.handleWebhook.mockRejectedValue(
+        new Error('invalid signature'),
+      );
 
       await expect(
-        controller.handleWebhook('bad-sig', buildRequest(Buffer.from('body')))
+        controller.handleWebhook('bad-sig', buildRequest(Buffer.from('body'))),
       ).rejects.toThrow('invalid signature');
     });
   });
@@ -188,7 +199,7 @@ describe('StripeController', () => {
     it('should call getCustomerPortalUrl and return url', async () => {
       mockStripeService.isConfigured.mockReturnValue(true);
       mockStripeService.getCustomerPortalUrl.mockResolvedValue(
-        'https://billing.stripe.com/session/123'
+        'https://billing.stripe.com/session/123',
       );
 
       const body = {
@@ -199,7 +210,7 @@ describe('StripeController', () => {
 
       expect(mockStripeService.getCustomerPortalUrl).toHaveBeenCalledWith(
         'cus_abc123',
-        'https://myapp.com/settings'
+        'https://myapp.com/settings',
       );
       expect(result).toEqual({ url: 'https://billing.stripe.com/session/123' });
     });
@@ -207,36 +218,38 @@ describe('StripeController', () => {
     it('should use default returnUrl when not provided', async () => {
       mockStripeService.isConfigured.mockReturnValue(true);
       mockStripeService.getCustomerPortalUrl.mockResolvedValue(
-        'https://billing.stripe.com/session/456'
+        'https://billing.stripe.com/session/456',
       );
 
       await controller.getPortalUrl({ customerId: 'cus_xyz' });
 
       expect(mockStripeService.getCustomerPortalUrl).toHaveBeenCalledWith(
         'cus_xyz',
-        expect.stringContaining('/settings?tab=license')
+        expect.stringContaining('/settings?tab=license'),
       );
     });
 
     it('should throw BadRequestException when Stripe is not configured', async () => {
       mockStripeService.isConfigured.mockReturnValue(false);
 
-      await expect(controller.getPortalUrl({ customerId: 'cus_abc' })).rejects.toThrow(
-        BadRequestException
-      );
+      await expect(
+        controller.getPortalUrl({ customerId: 'cus_abc' }),
+      ).rejects.toThrow(BadRequestException);
 
       expect(mockStripeService.getCustomerPortalUrl).not.toHaveBeenCalled();
     });
 
     it('should propagate service errors', async () => {
       mockStripeService.isConfigured.mockReturnValue(true);
-      mockStripeService.getCustomerPortalUrl.mockRejectedValue(new Error('portal error'));
+      mockStripeService.getCustomerPortalUrl.mockRejectedValue(
+        new Error('portal error'),
+      );
 
       await expect(
         controller.getPortalUrl({
           customerId: 'cus_abc',
           returnUrl: 'https://app.com',
-        })
+        }),
       ).rejects.toThrow('portal error');
     });
   });

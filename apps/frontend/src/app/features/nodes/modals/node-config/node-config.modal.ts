@@ -9,7 +9,12 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { TranslocoModule } from '@ngneat/transloco';
 import type { OptimalConfig } from '../../../../core/clients/nodes.client';
@@ -34,7 +39,12 @@ export interface NodeConfigModalData {
 @Component({
   selector: 'app-node-config-modal',
   standalone: true,
-  imports: [FontAwesomeModule, ReactiveFormsModule, NodeScheduleEditorComponent, TranslocoModule],
+  imports: [
+    FontAwesomeModule,
+    ReactiveFormsModule,
+    NodeScheduleEditorComponent,
+    TranslocoModule,
+  ],
   templateUrl: './node-config.modal.html',
   styleUrls: ['./node-config.modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,7 +66,11 @@ export class NodeConfigModalComponent implements OnInit {
     this.form = this.fb.group({
       name: [
         this.data.node.name,
-        [Validators.required, Validators.minLength(1), Validators.maxLength(255)],
+        [
+          Validators.required,
+          Validators.minLength(1),
+          Validators.maxLength(255),
+        ],
       ],
       maxWorkers: [
         this.data.node.maxWorkers,
@@ -171,7 +185,9 @@ export class NodeConfigModalComponent implements OnInit {
         error: (err) => {
           this.testingCapabilities.set(false);
           this.cdr.markForCheck();
-          alert(`Failed to test capabilities: ${err?.error?.message || 'Unknown error'}`);
+          alert(
+            `Failed to test capabilities: ${err?.error?.message || 'Unknown error'}`,
+          );
         },
       });
   }

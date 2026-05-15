@@ -127,7 +127,7 @@ describe('QueueDelegationService', () => {
 
       expect(jobStateService.failJob).toHaveBeenCalledWith(
         'job-1',
-        expect.stringContaining('retry attempts')
+        expect.stringContaining('retry attempts'),
       );
     });
 
@@ -150,7 +150,7 @@ describe('QueueDelegationService', () => {
           stage: JobStage.DETECTED,
           transferRetryCount: 2,
           transferProgress: 0,
-        })
+        }),
       );
     });
 
@@ -171,7 +171,7 @@ describe('QueueDelegationService', () => {
         'job-1',
         expect.objectContaining({
           transferRetryCount: 1,
-        })
+        }),
       );
     });
 
@@ -203,12 +203,14 @@ describe('QueueDelegationService', () => {
     });
 
     it('should catch and log errors without throwing', async () => {
-      jobRepository.findManyWithInclude.mockRejectedValue(new Error('DB error'));
+      jobRepository.findManyWithInclude.mockRejectedValue(
+        new Error('DB error'),
+      );
 
       await expect(service.cleanupStuckTransfers()).resolves.toBeUndefined();
       expect((service as any).logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to cleanup stuck transfers'),
-        expect.anything()
+        expect.anything(),
       );
     });
   });
@@ -216,7 +218,11 @@ describe('QueueDelegationService', () => {
   // ─── delegateJob ─────────────────────────────────────────────────────────────
 
   describe('delegateJob', () => {
-    const setupTx = (jobOverrides = {}, targetNodeOverrides = {}, sourceNodeOverrides = {}) => {
+    const setupTx = (
+      jobOverrides = {},
+      targetNodeOverrides = {},
+      sourceNodeOverrides = {},
+    ) => {
       const job = makeDbJob(jobOverrides);
       const targetNode = makeNode(targetNodeOverrides);
       const sourceNode = makeNode({
@@ -228,7 +234,10 @@ describe('QueueDelegationService', () => {
       prisma.$transaction.mockImplementation(async (fn: (tx: any) => any) => {
         const tx = {
           job: {
-            findUnique: jest.fn().mockResolvedValueOnce(job).mockResolvedValueOnce(job),
+            findUnique: jest
+              .fn()
+              .mockResolvedValueOnce(job)
+              .mockResolvedValueOnce(job),
             updateMany: jest.fn().mockResolvedValue({ count: 1 }),
           },
           node: {
@@ -252,21 +261,25 @@ describe('QueueDelegationService', () => {
         });
       });
 
-      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(NotFoundException);
+      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException when job is already on target node', async () => {
       prisma.$transaction.mockImplementation(async (fn: (tx: any) => any) => {
         return fn({
           job: {
-            findUnique: jest.fn().mockResolvedValue(makeDbJob({ nodeId: 'node-2' })),
+            findUnique: jest
+              .fn()
+              .mockResolvedValue(makeDbJob({ nodeId: 'node-2' })),
           },
           node: { findUnique: jest.fn() },
         });
       });
 
       await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
-        'Job is already assigned to this node'
+        'Job is already assigned to this node',
       );
     });
 
@@ -274,14 +287,16 @@ describe('QueueDelegationService', () => {
       prisma.$transaction.mockImplementation(async (fn: (tx: any) => any) => {
         return fn({
           job: {
-            findUnique: jest.fn().mockResolvedValue(makeDbJob({ stage: 'COMPLETED' })),
+            findUnique: jest
+              .fn()
+              .mockResolvedValue(makeDbJob({ stage: 'COMPLETED' })),
           },
           node: { findUnique: jest.fn() },
         });
       });
 
       await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
-        'Cannot delegate job in COMPLETED stage'
+        'Cannot delegate job in COMPLETED stage',
       );
     });
 
@@ -293,7 +308,9 @@ describe('QueueDelegationService', () => {
         });
       });
 
-      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(NotFoundException);
+      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException when target node is not ONLINE', async () => {
@@ -301,13 +318,15 @@ describe('QueueDelegationService', () => {
         return fn({
           job: { findUnique: jest.fn().mockResolvedValue(makeDbJob()) },
           node: {
-            findUnique: jest.fn().mockResolvedValue(makeNode({ status: 'OFFLINE' })),
+            findUnique: jest
+              .fn()
+              .mockResolvedValue(makeNode({ status: 'OFFLINE' })),
           },
         });
       });
 
       await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
-        'not available for job assignment'
+        'not available for job assignment',
       );
     });
 
@@ -325,7 +344,9 @@ describe('QueueDelegationService', () => {
         return fn(tx);
       });
 
-      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(NotFoundException);
+      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should set transferRequired=false and translate path when shared storage is accessible', async () => {
@@ -390,7 +411,10 @@ describe('QueueDelegationService', () => {
       prisma.$transaction.mockImplementation(async (fn: (tx: any) => any) => {
         const tx = {
           job: {
-            findUnique: jest.fn().mockResolvedValueOnce(job).mockResolvedValueOnce(job),
+            findUnique: jest
+              .fn()
+              .mockResolvedValueOnce(job)
+              .mockResolvedValueOnce(job),
             updateMany: jest.fn().mockResolvedValue({ count: 1 }),
           },
           node: {
@@ -409,7 +433,7 @@ describe('QueueDelegationService', () => {
       await service.delegateJob('job-1', 'node-2');
 
       expect((service as any).logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Shared storage verification failed')
+        expect.stringContaining('Shared storage verification failed'),
       );
     });
 
@@ -424,7 +448,7 @@ describe('QueueDelegationService', () => {
           findUnique: jest
             .fn()
             .mockResolvedValueOnce(
-              makeDbJob({ stage: 'FAILED', error: 'old error', retryCount: 2 })
+              makeDbJob({ stage: 'FAILED', error: 'old error', retryCount: 2 }),
             )
             .mockResolvedValueOnce(makeDbJob({ stage: 'QUEUED' })),
           updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -445,7 +469,7 @@ describe('QueueDelegationService', () => {
             error: null,
             retryCount: 0,
           }),
-        })
+        }),
       );
       expect(result).not.toBeNull();
     });
@@ -467,7 +491,7 @@ describe('QueueDelegationService', () => {
       });
 
       await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
-        'Job stage changed during delegation'
+        'Job stage changed during delegation',
       );
     });
 
@@ -514,7 +538,7 @@ describe('QueueDelegationService', () => {
       expect(captureTx.job.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ stage: 'PAUSED' }),
-        })
+        }),
       );
     });
   });
@@ -587,7 +611,7 @@ describe('QueueDelegationService', () => {
         expect.objectContaining({
           transferRequired: false, // !hasSharedStorage = !true = false
           stage: 'QUEUED',
-        })
+        }),
       );
     });
 
@@ -609,12 +633,14 @@ describe('QueueDelegationService', () => {
         'job-b',
         expect.objectContaining({
           transferRequired: true,
-        })
+        }),
       );
     });
 
     it('should handle null node gracefully (transferRequired=true by default)', async () => {
-      const stuckJobs = [{ id: 'job-c', fileLabel: 'c.mkv', nodeId: null, node: null }];
+      const stuckJobs = [
+        { id: 'job-c', fileLabel: 'c.mkv', nodeId: null, node: null },
+      ];
       jobRepository.findManyWithInclude.mockResolvedValue(stuckJobs);
       jobRepository.updateById.mockResolvedValue(undefined as any);
 
@@ -624,7 +650,7 @@ describe('QueueDelegationService', () => {
         'job-c',
         expect.objectContaining({
           transferRequired: true, // !null?.hasSharedStorage = !undefined = true
-        })
+        }),
       );
     });
   });

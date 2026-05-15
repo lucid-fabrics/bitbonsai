@@ -61,24 +61,31 @@ describe('SharedStorageVerifierService', () => {
     mockExecImpl.mockImplementation(
       (
         _cmd: string,
-        callback: (err: Error | null, result: { stdout: string; stderr: string }) => void
+        callback: (
+          err: Error | null,
+          result: { stdout: string; stderr: string },
+        ) => void,
       ) => {
         callback(null, { stdout, stderr: '' });
-      }
+      },
     );
   }
 
   function mockExecError(error: Error) {
-    mockExecImpl.mockImplementation((_cmd: string, callback: (err: Error) => void) => {
-      callback(error);
-    });
+    mockExecImpl.mockImplementation(
+      (_cmd: string, callback: (err: Error) => void) => {
+        callback(error);
+      },
+    );
   }
 
   beforeEach(async () => {
     jest.clearAllMocks();
 
     // Dynamic import to get the class after mocks are set up
-    const { SharedStorageVerifierService } = require('../shared-storage-verifier.service');
+    const {
+      SharedStorageVerifierService,
+    } = require('../shared-storage-verifier.service');
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -129,7 +136,7 @@ describe('SharedStorageVerifierService', () => {
         expect.objectContaining({
           isMounted: false,
           status: 'UNMOUNTED',
-        })
+        }),
       );
     });
 
@@ -153,7 +160,7 @@ describe('SharedStorageVerifierService', () => {
 
       expect(mockStorageShareRepository.update).toHaveBeenCalledWith(
         'share-1',
-        expect.objectContaining({ lastHealthCheckAt: expect.any(Date) })
+        expect.objectContaining({ lastHealthCheckAt: expect.any(Date) }),
       );
     });
 
@@ -178,7 +185,7 @@ describe('SharedStorageVerifierService', () => {
 
       expect(mockNodeRepository.updateData).toHaveBeenCalledWith(
         'node-1',
-        expect.objectContaining({ hasSharedStorage: false })
+        expect.objectContaining({ hasSharedStorage: false }),
       );
     });
 
@@ -203,7 +210,7 @@ describe('SharedStorageVerifierService', () => {
 
       expect(mockNodeRepository.updateData).toHaveBeenCalledWith(
         'node-1',
-        expect.objectContaining({ hasSharedStorage: true })
+        expect.objectContaining({ hasSharedStorage: true }),
       );
     });
 
@@ -219,7 +226,11 @@ describe('SharedStorageVerifierService', () => {
       const target = createMockNode({ hasSharedStorage: false });
       const source = createMockNode({ id: 'src-1' });
 
-      const result = await service.verifyFileAccess('/path/file.mkv', target, source);
+      const result = await service.verifyFileAccess(
+        '/path/file.mkv',
+        target,
+        source,
+      );
 
       expect(result.isAccessible).toBe(false);
       expect(result.error).toContain('does not have shared storage');
@@ -242,7 +253,7 @@ describe('SharedStorageVerifierService', () => {
       const result = await service.verifyFileAccess(
         '/mnt/nfs/media/Movies/test.mkv',
         target,
-        source
+        source,
       );
 
       expect(result.isAccessible).toBe(true);
@@ -256,7 +267,11 @@ describe('SharedStorageVerifierService', () => {
       mockExecResult('');
       mockStorageShareRepository.findMountedByNodeId.mockResolvedValue([]);
 
-      const result = await service.verifyFileAccess('/path/file.mkv', target, source);
+      const result = await service.verifyFileAccess(
+        '/path/file.mkv',
+        target,
+        source,
+      );
 
       expect(result.isAccessible).toBe(false);
       expect(result.isMounted).toBe(false);
@@ -268,7 +283,11 @@ describe('SharedStorageVerifierService', () => {
 
       mockExecError(new Error('exec failed'));
 
-      const result = await service.verifyFileAccess('/path/file.mkv', target, source);
+      const result = await service.verifyFileAccess(
+        '/path/file.mkv',
+        target,
+        source,
+      );
 
       expect(result.isAccessible).toBe(false);
       expect(result.error).toContain('exec failed');
@@ -308,7 +327,9 @@ describe('SharedStorageVerifierService', () => {
       const result = await service.verifyNFSMount(node);
 
       expect(result.isMounted).toBe(false);
-      expect(result.error).toContain('No storage shares or base path configured');
+      expect(result.error).toContain(
+        'No storage shares or base path configured',
+      );
     });
 
     it('should handle mount command failure', async () => {

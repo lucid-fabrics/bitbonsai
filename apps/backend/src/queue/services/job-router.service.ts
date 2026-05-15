@@ -31,11 +31,12 @@ export class JobRouterService {
 
   // File size thresholds
   private readonly LARGE_FILE_THRESHOLD_GB = 10; // Files >10GB are "large"
-  private readonly LARGE_FILE_BYTES = this.LARGE_FILE_THRESHOLD_GB * 1024 * 1024 * 1024;
+  private readonly LARGE_FILE_BYTES =
+    this.LARGE_FILE_THRESHOLD_GB * 1024 * 1024 * 1024;
 
   constructor(
     private readonly nodeRepository: NodeRepository,
-    private readonly jobRepository: JobRepository
+    private readonly jobRepository: JobRepository,
   ) {}
 
   /**
@@ -52,9 +53,12 @@ export class JobRouterService {
    * @param fileSizeBytes - File size in bytes
    * @returns Best node ID or null
    */
-  async findBestNodeForJob(jobId: string, fileSizeBytes: bigint): Promise<string | null> {
+  async findBestNodeForJob(
+    jobId: string,
+    fileSizeBytes: bigint,
+  ): Promise<string | null> {
     this.logger.log(
-      `🎯 Finding best node for job ${jobId} (size: ${this.formatBytes(fileSizeBytes)})`
+      `🎯 Finding best node for job ${jobId} (size: ${this.formatBytes(fileSizeBytes)})`,
     );
 
     // Get all online nodes with their capabilities
@@ -86,7 +90,7 @@ export class JobRouterService {
             },
           },
         },
-      }
+      },
     );
 
     if (nodes.length === 0) {
@@ -104,7 +108,10 @@ export class JobRouterService {
       let canHandle = true;
 
       // BASE SCORE: Network location + storage access
-      if (node.networkLocation === NetworkLocation.LOCAL && node.hasSharedStorage) {
+      if (
+        node.networkLocation === NetworkLocation.LOCAL &&
+        node.hasSharedStorage
+      ) {
         score += 1000;
         reasons.push('LOCAL with shared storage (optimal: zero-copy)');
       } else if (node.networkLocation === NetworkLocation.LOCAL) {
@@ -122,7 +129,9 @@ export class JobRouterService {
       const loadPercentage = (activeJobs / maxWorkers) * 100;
       const loadPenalty = Math.floor(loadPercentage * 2); // 2 points per 1% load
       score -= loadPenalty;
-      reasons.push(`Load: ${activeJobs}/${node.maxWorkers} workers (-${loadPenalty} points)`);
+      reasons.push(
+        `Load: ${activeJobs}/${node.maxWorkers} workers (-${loadPenalty} points)`,
+      );
 
       // PENALTY: Large file + remote node (transfer will be slow)
       if (isLargeFile && node.networkLocation === NetworkLocation.REMOTE) {
@@ -134,7 +143,7 @@ export class JobRouterService {
       if (fileSizeMB > node.maxTransferSizeMB) {
         canHandle = false;
         reasons.push(
-          `File too large: ${fileSizeMB.toFixed(2)}MB > ${node.maxTransferSizeMB}MB limit`
+          `File too large: ${fileSizeMB.toFixed(2)}MB > ${node.maxTransferSizeMB}MB limit`,
         );
       }
 
@@ -161,7 +170,7 @@ export class JobRouterService {
     for (const score of scores) {
       const status = score.canHandle ? '✅' : '❌';
       this.logger.log(
-        `  ${status} ${score.nodeName}: ${score.score} points - ${score.reasons.join(', ')}`
+        `  ${status} ${score.nodeName}: ${score.score} points - ${score.reasons.join(', ')}`,
       );
     }
 
@@ -173,7 +182,9 @@ export class JobRouterService {
       return null;
     }
 
-    this.logger.log(`✅ Selected ${bestNode.nodeName} (score: ${bestNode.score})`);
+    this.logger.log(
+      `✅ Selected ${bestNode.nodeName} (score: ${bestNode.score})`,
+    );
 
     return bestNode.nodeId;
   }
@@ -276,7 +287,7 @@ export class JobRouterService {
         name: true,
         maxWorkers: true,
         _count: { select: { jobs: { where: { stage: { in: ['QUEUED'] } } } } },
-      }
+      },
     );
 
     if (nodes.length < 2) {
@@ -301,7 +312,7 @@ export class JobRouterService {
     // STEP 5: Check if rebalancing is needed
     if (overloaded.length === 0 || underutilized.length === 0) {
       this.logger.log(
-        `No rebalancing needed - Overloaded: ${overloaded.length}, Underutilized: ${underutilized.length}`
+        `No rebalancing needed - Overloaded: ${overloaded.length}, Underutilized: ${underutilized.length}`,
       );
       return 0;
     }
@@ -314,7 +325,10 @@ export class JobRouterService {
       const jobsToMove = await this.jobRepository.findManySelect<{
         id: string;
         fileLabel: string;
-      }>({ nodeId: overloadedNode.id, stage: 'QUEUED' }, { id: true, fileLabel: true });
+      }>(
+        { nodeId: overloadedNode.id, stage: 'QUEUED' },
+        { id: true, fileLabel: true },
+      );
       const limitedJobs = jobsToMove.slice(0, 5); // Limit batch size to prevent overwhelming target nodes
 
       for (const job of limitedJobs) {
@@ -325,7 +339,7 @@ export class JobRouterService {
         await this.jobRepository.updateById(job.id, { nodeId: targetNode.id });
 
         this.logger.log(
-          `Moved job ${job.fileLabel} from ${overloadedNode.name} to ${targetNode.name}`
+          `Moved job ${job.fileLabel} from ${overloadedNode.name} to ${targetNode.name}`,
         );
 
         movedCount++;

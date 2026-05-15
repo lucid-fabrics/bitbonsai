@@ -601,8 +601,12 @@ export class CapabilityResultsComponent {
   cpuLimit = 80;
 
   // Computed properties
-  readonly isLocal = computed(() => this.results().networkLocation === NetworkLocation.LOCAL);
-  readonly isRemote = computed(() => this.results().networkLocation === NetworkLocation.REMOTE);
+  readonly isLocal = computed(
+    () => this.results().networkLocation === NetworkLocation.LOCAL,
+  );
+  readonly isRemote = computed(
+    () => this.results().networkLocation === NetworkLocation.REMOTE,
+  );
 
   onBack(): void {
     this.back.emit();

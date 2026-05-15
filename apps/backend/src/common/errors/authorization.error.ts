@@ -4,7 +4,10 @@ import { BaseError } from './base.error';
  * Error thrown when authentication is required but not provided
  */
 export class UnauthorizedError extends BaseError {
-  constructor(message = 'Authentication required', context?: Record<string, unknown>) {
+  constructor(
+    message = 'Authentication required',
+    context?: Record<string, unknown>,
+  ) {
     super(message, 401, 'UNAUTHORIZED', true, context);
   }
 }
@@ -15,7 +18,7 @@ export class UnauthorizedError extends BaseError {
 export class ForbiddenError extends BaseError {
   constructor(
     message = 'Insufficient permissions to access this resource',
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
   ) {
     super(message, 403, 'FORBIDDEN', true, context);
   }
@@ -26,7 +29,9 @@ export class ForbiddenError extends BaseError {
  */
 export class InvalidLicenseError extends BaseError {
   constructor(reason?: string) {
-    const message = reason ? `Invalid license: ${reason}` : 'Invalid or expired license';
+    const message = reason
+      ? `Invalid license: ${reason}`
+      : 'Invalid or expired license';
     super(message, 403, 'INVALID_LICENSE', true);
   }
 }
@@ -41,7 +46,7 @@ export class FeatureNotLicensedError extends BaseError {
       403,
       'FEATURE_NOT_LICENSED',
       true,
-      { feature: featureName }
+      { feature: featureName },
     );
   }
 }

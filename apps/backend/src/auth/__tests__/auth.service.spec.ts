@@ -54,7 +54,8 @@ describe('AuthService', () => {
       const mockUser = {
         id: 'user-1',
         username: 'admin',
-        passwordHash: '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ12',
+        passwordHash:
+          '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ12',
         role: 'ADMIN',
         isActive: true,
         createdAt: new Date(),
@@ -80,8 +81,12 @@ describe('AuthService', () => {
 
       mockUserRepository.findByUsername.mockResolvedValue(null);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
-      await expect(service.login(loginDto)).rejects.toThrow('Invalid credentials');
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'Invalid credentials',
+      );
       expect(mockJwtService.sign).not.toHaveBeenCalled();
     });
 
@@ -94,7 +99,8 @@ describe('AuthService', () => {
       const mockUser = {
         id: 'user-1',
         username: 'admin',
-        passwordHash: '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ12',
+        passwordHash:
+          '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ12',
         role: 'ADMIN',
         isActive: true,
         createdAt: new Date(),
@@ -102,10 +108,16 @@ describe('AuthService', () => {
       };
 
       mockUserRepository.findByUsername.mockResolvedValue(mockUser);
-      jest.spyOn(require('bcrypt'), 'compare').mockResolvedValue(false as never);
+      jest
+        .spyOn(require('bcrypt'), 'compare')
+        .mockResolvedValue(false as never);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
-      await expect(service.login(loginDto)).rejects.toThrow('Invalid credentials');
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'Invalid credentials',
+      );
       expect(mockJwtService.sign).not.toHaveBeenCalled();
     });
 
@@ -118,7 +130,8 @@ describe('AuthService', () => {
       const mockUser = {
         id: 'user-1',
         username: 'admin',
-        passwordHash: '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ12',
+        passwordHash:
+          '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ12',
         role: 'ADMIN',
         isActive: false,
         createdAt: new Date(),
@@ -127,8 +140,12 @@ describe('AuthService', () => {
 
       mockUserRepository.findByUsername.mockResolvedValue(mockUser);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
-      await expect(service.login(loginDto)).rejects.toThrow('Account is disabled');
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'Account is disabled',
+      );
     });
   });
 
@@ -154,8 +171,12 @@ describe('AuthService', () => {
         throw new Error('Invalid token');
       });
 
-      await expect(service.validateToken('invalid-token')).rejects.toThrow(UnauthorizedException);
-      await expect(service.validateToken('invalid-token')).rejects.toThrow('Invalid token');
+      await expect(service.validateToken('invalid-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.validateToken('invalid-token')).rejects.toThrow(
+        'Invalid token',
+      );
     });
 
     it('should throw UnauthorizedException for expired token', async () => {
@@ -163,7 +184,9 @@ describe('AuthService', () => {
         throw new Error('Token expired');
       });
 
-      await expect(service.validateToken('expired-token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.validateToken('expired-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });

@@ -4,7 +4,11 @@ import { BaseError } from './base.error';
  * Error thrown when a requested resource is not found
  */
 export class NotFoundError extends BaseError {
-  constructor(resource: string, identifier?: string | number, context?: Record<string, unknown>) {
+  constructor(
+    resource: string,
+    identifier?: string | number,
+    context?: Record<string, unknown>,
+  ) {
     const message = identifier
       ? `${resource} with identifier '${identifier}' not found`
       : `${resource} not found`;
@@ -22,10 +26,16 @@ export class NotFoundError extends BaseError {
  */
 export class LibraryNotFoundError extends BaseError {
   constructor(libraryId: string) {
-    super(`Library with identifier '${libraryId}' not found`, 404, 'LIBRARY_NOT_FOUND', true, {
-      resource: 'Library',
-      identifier: libraryId,
-    });
+    super(
+      `Library with identifier '${libraryId}' not found`,
+      404,
+      'LIBRARY_NOT_FOUND',
+      true,
+      {
+        resource: 'Library',
+        identifier: libraryId,
+      },
+    );
   }
 }
 
@@ -34,10 +44,16 @@ export class LibraryNotFoundError extends BaseError {
  */
 export class NodeNotFoundError extends BaseError {
   constructor(nodeId: string) {
-    super(`Node with identifier '${nodeId}' not found`, 404, 'NODE_NOT_FOUND', true, {
-      resource: 'Node',
-      identifier: nodeId,
-    });
+    super(
+      `Node with identifier '${nodeId}' not found`,
+      404,
+      'NODE_NOT_FOUND',
+      true,
+      {
+        resource: 'Node',
+        identifier: nodeId,
+      },
+    );
   }
 }
 
@@ -46,10 +62,16 @@ export class NodeNotFoundError extends BaseError {
  */
 export class PolicyNotFoundError extends BaseError {
   constructor(policyId: string) {
-    super(`Policy with identifier '${policyId}' not found`, 404, 'POLICY_NOT_FOUND', true, {
-      resource: 'Policy',
-      identifier: policyId,
-    });
+    super(
+      `Policy with identifier '${policyId}' not found`,
+      404,
+      'POLICY_NOT_FOUND',
+      true,
+      {
+        resource: 'Policy',
+        identifier: policyId,
+      },
+    );
   }
 }
 
@@ -58,10 +80,16 @@ export class PolicyNotFoundError extends BaseError {
  */
 export class JobNotFoundError extends BaseError {
   constructor(jobId: string) {
-    super(`Job with identifier '${jobId}' not found`, 404, 'JOB_NOT_FOUND', true, {
-      resource: 'Job',
-      identifier: jobId,
-    });
+    super(
+      `Job with identifier '${jobId}' not found`,
+      404,
+      'JOB_NOT_FOUND',
+      true,
+      {
+        resource: 'Job',
+        identifier: jobId,
+      },
+    );
   }
 }
 

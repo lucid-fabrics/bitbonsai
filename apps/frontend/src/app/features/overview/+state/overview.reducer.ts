@@ -59,12 +59,15 @@ export const overviewReducer = createReducer(
     ...state,
     error: null,
   })),
-  on(OverviewActions.loadEnvironmentInfoSuccess, (state, { environmentInfo }) => ({
-    ...state,
-    environmentInfo,
-  })),
+  on(
+    OverviewActions.loadEnvironmentInfoSuccess,
+    (state, { environmentInfo }) => ({
+      ...state,
+      environmentInfo,
+    }),
+  ),
   on(OverviewActions.loadEnvironmentInfoFailure, (state, { error }) => ({
     ...state,
     error,
-  }))
+  })),
 );

@@ -1,7 +1,12 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faDiscord, faGithub, faReddit, faTwitter } from '@fortawesome/free-brands-svg-icons';
+import {
+  faDiscord,
+  faGithub,
+  faReddit,
+  faTwitter,
+} from '@fortawesome/free-brands-svg-icons';
 import { faSeedling } from '@fortawesome/free-solid-svg-icons';
 
 @Component({

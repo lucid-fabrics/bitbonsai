@@ -6,7 +6,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { HealthDashboardService, type SystemDashboard } from './health-dashboard.service';
+import {
+  HealthDashboardService,
+  type SystemDashboard,
+} from './health-dashboard.service';
 
 @ApiTags('system')
 @Controller('system/dashboard')
@@ -137,7 +140,8 @@ export class DashboardController {
   @Get('health')
   @ApiOperation({
     summary: 'Get health checks',
-    description: 'Returns only health check results without full dashboard data.',
+    description:
+      'Returns only health check results without full dashboard data.',
   })
   @ApiOkResponse({ description: 'Health check results' })
   @ApiInternalServerErrorResponse({

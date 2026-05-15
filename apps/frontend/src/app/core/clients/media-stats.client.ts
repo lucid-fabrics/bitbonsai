@@ -17,8 +17,14 @@ export class MediaStatsClient {
     return this.http.post<void>(`${this.apiUrl}/scan`, {});
   }
 
-  getFolderFiles(folderName: string, codec?: string): Observable<FolderFilesModel> {
+  getFolderFiles(
+    folderName: string,
+    codec?: string,
+  ): Observable<FolderFilesModel> {
     const options = codec ? { params: { codec } } : {};
-    return this.http.get<FolderFilesModel>(`${this.apiUrl}/folders/${folderName}/files`, options);
+    return this.http.get<FolderFilesModel>(
+      `${this.apiUrl}/folders/${folderName}/files`,
+      options,
+    );
   }
 }

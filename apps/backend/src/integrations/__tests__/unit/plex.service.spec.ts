@@ -79,7 +79,7 @@ describe('PlexIntegrationService', () => {
               ],
             },
           },
-        })
+        }),
       );
 
       const result = await service.isPlaybackActive();
@@ -106,7 +106,7 @@ describe('PlexIntegrationService', () => {
               ],
             },
           },
-        })
+        }),
       );
 
       const result = await service.isPlaybackActive();
@@ -119,7 +119,9 @@ describe('PlexIntegrationService', () => {
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
       });
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('Connection refused')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('Connection refused')),
+      );
 
       const result = await service.isPlaybackActive();
 
@@ -156,7 +158,7 @@ describe('PlexIntegrationService', () => {
               ],
             },
           },
-        })
+        }),
       );
 
       const result = await service.getActiveSessions();
@@ -176,7 +178,9 @@ describe('PlexIntegrationService', () => {
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
       });
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('API error')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('API error')),
+      );
 
       const result = await service.getActiveSessions();
 
@@ -206,7 +210,7 @@ describe('PlexIntegrationService', () => {
         'http://plex:32400/library/sections/5/refresh',
         expect.objectContaining({
           headers: { 'X-Plex-Token': 'token-123' },
-        })
+        }),
       );
     });
 
@@ -221,7 +225,7 @@ describe('PlexIntegrationService', () => {
 
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'http://plex:32400/library/sections/all/refresh',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -230,7 +234,9 @@ describe('PlexIntegrationService', () => {
         plexUrl: 'http://plex:32400',
         plexToken: 'token-123',
       });
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('timeout')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('timeout')),
+      );
 
       await expect(service.refreshLibrary()).resolves.not.toThrow();
     });
@@ -287,19 +293,27 @@ describe('PlexIntegrationService', () => {
           data: {
             MediaContainer: { friendlyName: 'My Plex Server' },
           },
-        })
+        }),
       );
 
-      const result = await service.testConnection('http://plex:32400', 'token-123');
+      const result = await service.testConnection(
+        'http://plex:32400',
+        'token-123',
+      );
 
       expect(result.success).toBe(true);
       expect(result.serverName).toBe('My Plex Server');
     });
 
     it('should return error on connection failure', async () => {
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('Connection refused')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('Connection refused')),
+      );
 
-      const result = await service.testConnection('http://plex:32400', 'bad-token');
+      const result = await service.testConnection(
+        'http://plex:32400',
+        'bad-token',
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Connection refused');
@@ -308,7 +322,10 @@ describe('PlexIntegrationService', () => {
     it('should return success without serverName when MediaContainer is absent', async () => {
       mockHttpService.get.mockReturnValue(of({ data: {} }));
 
-      const result = await service.testConnection('http://plex:32400', 'token-123');
+      const result = await service.testConnection(
+        'http://plex:32400',
+        'token-123',
+      );
 
       expect(result.success).toBe(true);
       expect(result.serverName).toBeUndefined();
@@ -336,7 +353,7 @@ describe('PlexIntegrationService', () => {
               ],
             },
           },
-        })
+        }),
       );
 
       const result = await service.getActiveSessions();
@@ -363,7 +380,7 @@ describe('PlexIntegrationService', () => {
               ],
             },
           },
-        })
+        }),
       );
 
       const result = await service.getActiveSessions();
@@ -389,7 +406,7 @@ describe('PlexIntegrationService', () => {
               ],
             },
           },
-        })
+        }),
       );
 
       const result = await service.getActiveSessions();
@@ -410,7 +427,7 @@ describe('PlexIntegrationService', () => {
 
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'http://plex:32400/library/sections/2/refresh',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -437,7 +454,7 @@ describe('PlexIntegrationService', () => {
                 ],
               },
             },
-          })
+          }),
         )
         // refreshLibrary HTTP response
         .mockReturnValueOnce(of({ data: {} }));
@@ -446,7 +463,7 @@ describe('PlexIntegrationService', () => {
 
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'http://plex:32400/library/sections/3/refresh',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -470,7 +487,7 @@ describe('PlexIntegrationService', () => {
                 ],
               },
             },
-          })
+          }),
         )
         .mockReturnValueOnce(of({ data: {} }));
 
@@ -478,7 +495,7 @@ describe('PlexIntegrationService', () => {
 
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'http://plex:32400/library/sections/all/refresh',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -505,7 +522,7 @@ describe('PlexIntegrationService', () => {
               ],
             },
           },
-        })
+        }),
       );
       mockJobRepository.updateManyWhere.mockResolvedValue({ count: 2 });
 
@@ -513,7 +530,7 @@ describe('PlexIntegrationService', () => {
 
       expect(mockJobRepository.updateManyWhere).toHaveBeenCalledWith(
         expect.objectContaining({ stage: expect.anything() }),
-        expect.objectContaining({ error: 'Paused: Plex playback detected' })
+        expect.objectContaining({ error: 'Paused: Plex playback detected' }),
       );
     });
 
@@ -539,13 +556,15 @@ describe('PlexIntegrationService', () => {
               ],
             },
           },
-        })
+        }),
       );
       mockJobRepository.updateManyWhere.mockResolvedValue({ count: 1 });
       await service.checkPlaybackAndPause();
 
       // Second call: playback stopped → should resume
-      mockHttpService.get.mockReturnValueOnce(of({ data: { MediaContainer: { Metadata: [] } } }));
+      mockHttpService.get.mockReturnValueOnce(
+        of({ data: { MediaContainer: { Metadata: [] } } }),
+      );
       mockJobRepository.updateManyWhere.mockResolvedValue({ count: 1 });
       await service.checkPlaybackAndPause();
 
@@ -555,7 +574,7 @@ describe('PlexIntegrationService', () => {
             contains: 'Plex playback detected',
           }),
         }),
-        expect.objectContaining({ error: null })
+        expect.objectContaining({ error: null }),
       );
     });
 
@@ -565,7 +584,9 @@ describe('PlexIntegrationService', () => {
         plexToken: 'token-123',
         plexPauseDuringPlayback: true,
       });
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('Plex down')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('Plex down')),
+      );
 
       await expect(service.checkPlaybackAndPause()).resolves.not.toThrow();
     });
@@ -599,7 +620,9 @@ describe('PlexIntegrationService', () => {
 
   describe('getPlexConfig - error path', () => {
     it('should return null when findFirst throws', async () => {
-      mockSettingsRepository.findFirst.mockRejectedValue(new Error('DB connection lost'));
+      mockSettingsRepository.findFirst.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
       // isPlaybackActive calls getPlexConfig which catches and returns null → returns false
       const result = await service.isPlaybackActive();
@@ -613,7 +636,9 @@ describe('PlexIntegrationService', () => {
         plexToken: 'token-123',
         // plexPauseDuringPlayback intentionally absent → defaults to true
       });
-      mockHttpService.get.mockReturnValue(of({ data: { MediaContainer: { Metadata: [] } } }));
+      mockHttpService.get.mockReturnValue(
+        of({ data: { MediaContainer: { Metadata: [] } } }),
+      );
       mockJobRepository.updateManyWhere.mockResolvedValue({ count: 0 });
 
       // Should not throw - defaults apply
@@ -628,7 +653,9 @@ describe('PlexIntegrationService', () => {
       });
       // findLibrarySection call
       mockHttpService.get
-        .mockReturnValueOnce(of({ data: { MediaContainer: { Directory: [] } } }))
+        .mockReturnValueOnce(
+          of({ data: { MediaContainer: { Directory: [] } } }),
+        )
         // refreshLibrary all call
         .mockReturnValueOnce(of({ data: {} }));
 
@@ -636,7 +663,7 @@ describe('PlexIntegrationService', () => {
 
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'http://plex:32400/library/sections/all/refresh',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -658,7 +685,7 @@ describe('PlexIntegrationService', () => {
       // Falls back to refresh all since section not found
       expect(mockHttpService.get).toHaveBeenCalledWith(
         'http://plex:32400/library/sections/all/refresh',
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -695,7 +722,9 @@ describe('PlexIntegrationService', () => {
       // Second call: still playing, wasPlaybackActive already true → no action
       await service.checkPlaybackAndPause();
 
-      expect(mockJobRepository.updateManyWhere.mock.calls.length).toBe(callCount);
+      expect(mockJobRepository.updateManyWhere.mock.calls.length).toBe(
+        callCount,
+      );
     });
 
     it('should not resume when playback was not active and still not active', async () => {
@@ -704,7 +733,9 @@ describe('PlexIntegrationService', () => {
         plexToken: 'token-123',
         plexPauseDuringPlayback: true,
       });
-      mockHttpService.get.mockReturnValue(of({ data: { MediaContainer: { Metadata: [] } } }));
+      mockHttpService.get.mockReturnValue(
+        of({ data: { MediaContainer: { Metadata: [] } } }),
+      );
 
       // wasPlaybackActive starts false, playback not active → no action
       await service.checkPlaybackAndPause();
@@ -733,7 +764,7 @@ describe('PlexIntegrationService', () => {
               ],
             },
           },
-        })
+        }),
       );
 
       const result = await service.getActiveSessions();

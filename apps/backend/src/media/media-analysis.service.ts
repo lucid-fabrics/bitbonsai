@@ -88,7 +88,7 @@ export class MediaAnalysisService {
           'json',
           filePath,
         ],
-        { timeout: 5000 } // 5 second timeout for quick check
+        { timeout: 5000 }, // 5 second timeout for quick check
       );
 
       // If ffprobe returns errors in stderr, file may be problematic
@@ -105,7 +105,9 @@ export class MediaAnalysisService {
       try {
         data = JSON.parse(stdout) as FFprobeResponse;
       } catch (parseError: unknown) {
-        this.logger.error(`Failed to parse FFprobe JSON for ${filePath}: ${parseError}`);
+        this.logger.error(
+          `Failed to parse FFprobe JSON for ${filePath}: ${parseError}`,
+        );
         return {
           status: FileHealthStatus.CORRUPTED,
           message: 'Failed to parse media file metadata',
@@ -161,7 +163,10 @@ export class MediaAnalysisService {
    * @param validateIntegrity - Whether to validate file integrity before probing (default: true)
    * @returns Video codec information with health status
    */
-  async probeVideoFile(filePath: string, validateIntegrity = true): Promise<VideoCodecInfo | null> {
+  async probeVideoFile(
+    filePath: string,
+    validateIntegrity = true,
+  ): Promise<VideoCodecInfo | null> {
     let healthResult: FileHealthResult = {
       status: FileHealthStatus.UNKNOWN,
       message: 'Not validated',
@@ -195,7 +200,7 @@ export class MediaAnalysisService {
           'json',
           filePath,
         ],
-        { timeout: 10000 } // 10 second timeout per file
+        { timeout: 10000 }, // 10 second timeout per file
       );
 
       // MEDIUM #8 FIX: Safe JSON parsing with try-catch
@@ -203,7 +208,9 @@ export class MediaAnalysisService {
       try {
         probeData = JSON.parse(stdout) as FFprobeResponse;
       } catch (parseError: unknown) {
-        this.logger.error(`Failed to parse FFprobe JSON for ${filePath}: ${parseError}`);
+        this.logger.error(
+          `Failed to parse FFprobe JSON for ${filePath}: ${parseError}`,
+        );
         return null;
       }
 
@@ -261,9 +268,11 @@ export class MediaAnalysisService {
   async analyzeFiles(
     filePaths: string[],
     targetCodec: string,
-    concurrency = 3
+    concurrency = 3,
   ): Promise<ScanAnalysis> {
-    this.logger.log(`Analyzing ${filePaths.length} files (target: ${targetCodec})`);
+    this.logger.log(
+      `Analyzing ${filePaths.length} files (target: ${targetCodec})`,
+    );
 
     const analysis: ScanAnalysis = {
       totalFiles: 0,
@@ -282,10 +291,11 @@ export class MediaAnalysisService {
             const info = await this.probeVideoFile(filePath);
             return { filePath, info, error: null };
           } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
             return { filePath, info: null, error: errorMessage };
           }
-        })
+        }),
       );
 
       // Add all valid files to needsEncoding array (no codec filtering)
@@ -311,7 +321,7 @@ export class MediaAnalysisService {
     }
 
     this.logger.log(
-      `Analysis complete: ${analysis.needsEncoding.length} total files, ${analysis.errors.length} errors`
+      `Analysis complete: ${analysis.needsEncoding.length} total files, ${analysis.errors.length} errors`,
     );
 
     return analysis;

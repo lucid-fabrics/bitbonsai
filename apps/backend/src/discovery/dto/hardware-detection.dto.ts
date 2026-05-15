@@ -10,7 +10,8 @@ import { AccelerationType } from '@prisma/client';
  */
 export class HardwareDetectionDto {
   @ApiProperty({
-    description: 'Acceleration type (NVIDIA, Intel QSV, AMD, Apple M-Series, or CPU)',
+    description:
+      'Acceleration type (NVIDIA, Intel QSV, AMD, Apple M-Series, or CPU)',
     enum: AccelerationType,
     example: AccelerationType.NVIDIA,
   })

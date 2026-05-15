@@ -35,7 +35,7 @@ describe('OverviewController (E2E)', () => {
         whitelist: true,
         forbidNonWhitelisted: true,
         transform: true,
-      })
+      }),
     );
 
     await app.init();
@@ -149,8 +149,12 @@ describe('OverviewController (E2E)', () => {
         .get('/api/v1/overview')
         .expect(200)
         .expect((res) => {
-          expect(res.body.system_health.active_nodes.current).toBeGreaterThanOrEqual(1);
-          expect(res.body.system_health.active_nodes.total).toBeGreaterThanOrEqual(1);
+          expect(
+            res.body.system_health.active_nodes.current,
+          ).toBeGreaterThanOrEqual(1);
+          expect(
+            res.body.system_health.active_nodes.total,
+          ).toBeGreaterThanOrEqual(1);
         });
     });
 
@@ -250,10 +254,14 @@ describe('OverviewController (E2E)', () => {
           expect(res.body.recent_activity[0]).toHaveProperty('library');
           expect(res.body.recent_activity[0]).toHaveProperty('codec_change');
           expect(res.body.recent_activity[0]).toHaveProperty('savings_gb');
-          expect(res.body.recent_activity[0]).toHaveProperty('duration_seconds');
+          expect(res.body.recent_activity[0]).toHaveProperty(
+            'duration_seconds',
+          );
           expect(res.body.recent_activity[0]).toHaveProperty('completed_at');
 
-          expect(res.body.recent_activity[0].file_name).toBe('The Matrix (1999).mkv');
+          expect(res.body.recent_activity[0].file_name).toBe(
+            'The Matrix (1999).mkv',
+          );
           expect(res.body.recent_activity[0].library).toBe(testLibrary.name);
           expect(res.body.recent_activity[0].codec_change).toBe('H.264 → HEVC');
         });
@@ -317,8 +325,12 @@ describe('OverviewController (E2E)', () => {
         .expect(200)
         .expect((res) => {
           // 10 jobs * 100GB = 1000GB = ~0.93TB
-          expect(res.body.system_health.storage_saved.total_tb).toBeGreaterThan(0.9);
-          expect(res.body.system_health.storage_saved.total_tb).toBeLessThan(1.0);
+          expect(res.body.system_health.storage_saved.total_tb).toBeGreaterThan(
+            0.9,
+          );
+          expect(res.body.system_health.storage_saved.total_tb).toBeLessThan(
+            1.0,
+          );
         });
     });
 
@@ -360,7 +372,10 @@ describe('OverviewController (E2E)', () => {
         .expect(200)
         .expect((res) => {
           // 95 completed / 100 total = 95% success rate
-          expect(res.body.system_health.success_rate.percentage).toBeCloseTo(95, 0);
+          expect(res.body.system_health.success_rate.percentage).toBeCloseTo(
+            95,
+            0,
+          );
         });
     });
   });

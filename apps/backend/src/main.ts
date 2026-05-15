@@ -23,7 +23,7 @@ async function bootstrap() {
     if (process.env.NODE_ENV === 'production') {
       Logger.error(
         'JWT_SECRET not set in production! Set JWT_SECRET environment variable.',
-        'Bootstrap'
+        'Bootstrap',
       );
       Logger.error('Generate one with: openssl rand -base64 32', 'Bootstrap');
       throw new Error('JWT_SECRET is required in production mode');
@@ -36,30 +36,32 @@ async function bootstrap() {
     try {
       fs.appendFileSync(
         envPath,
-        `\n# Auto-generated JWT secret (${new Date().toISOString()})\nJWT_SECRET=${secret}\n`
+        `\n# Auto-generated JWT secret (${new Date().toISOString()})\nJWT_SECRET=${secret}\n`,
       );
       process.env.JWT_SECRET = secret;
       Logger.warn(
         `⚠️  Generated new JWT_SECRET and saved to .env: ${secret.substring(0, 8)}...`,
-        'Bootstrap'
+        'Bootstrap',
       );
       Logger.warn(
         '⚠️  For production, ensure .env is properly secured and not committed to git',
-        'Bootstrap'
+        'Bootstrap',
       );
     } catch {
       Logger.error(
         'Failed to save JWT_SECRET to .env file. Set JWT_SECRET environment variable manually.',
-        'Bootstrap'
+        'Bootstrap',
       );
-      throw new Error(`JWT_SECRET must be set. Generate one with: openssl rand -base64 32`);
+      throw new Error(
+        `JWT_SECRET must be set. Generate one with: openssl rand -base64 32`,
+      );
     }
   }
 
   // Validate JWT_SECRET length
   if (process.env.JWT_SECRET.length < 32) {
     throw new Error(
-      'JWT_SECRET must be at least 32 characters. Generate a new one with: openssl rand -base64 32'
+      'JWT_SECRET must be at least 32 characters. Generate a new one with: openssl rand -base64 32',
     );
   }
 
@@ -80,7 +82,11 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'], // Allow Font Awesome
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            'https://cdnjs.cloudflare.com',
+          ], // Allow Font Awesome
           scriptSrc: ["'self'"],
           imgSrc: ["'self'", 'data:', 'https:'],
           connectSrc: ["'self'", 'http://*:3100', 'ws://*:3000'], // Allow backend API and WebSocket connections
@@ -102,7 +108,7 @@ async function bootstrap() {
       referrerPolicy: {
         policy: 'strict-origin-when-cross-origin',
       },
-    })
+    }),
   );
 
   // Serve static frontend files from production build
@@ -121,7 +127,7 @@ async function bootstrap() {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
       },
-    })
+    }),
   );
 
   app.setGlobalPrefix('api/v1');
@@ -131,7 +137,7 @@ async function bootstrap() {
   app.enableCors({
     origin: (
       origin: string | undefined,
-      callback: (err: Error | null, allow?: boolean) => void
+      callback: (err: Error | null, allow?: boolean) => void,
     ) => {
       // Allow requests with no origin (mobile apps, curl, Postman)
       if (!origin) {
@@ -214,7 +220,7 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true, // Convert primitive types automatically
       },
-    })
+    }),
   );
 
   // Swagger API Documentation Configuration
@@ -233,7 +239,7 @@ async function bootstrap() {
         description: 'Enter JWT token',
         in: 'header',
       },
-      'JWT-auth'
+      'JWT-auth',
     )
     .addTag('Authentication', 'User authentication and JWT token management')
     .addTag('health', 'Health check and monitoring endpoints')
@@ -258,7 +264,10 @@ async function bootstrap() {
       showCommonExtensions: true,
     },
   });
-  Logger.log('📚 Swagger API documentation available at /api/docs', 'Bootstrap');
+  Logger.log(
+    '📚 Swagger API documentation available at /api/docs',
+    'Bootstrap',
+  );
 
   // Catch-all route to serve index.html for Angular routing
   // Must be AFTER all API routes and Swagger setup
@@ -276,7 +285,9 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   const logger = new Logger('Bootstrap');
   logger.log(`🚀 BitBonsai API running on: http://0.0.0.0:${port}/api/v1`);
-  logger.log(`📚 Swagger API Docs available at: http://0.0.0.0:${port}/api/docs`);
+  logger.log(
+    `📚 Swagger API Docs available at: http://0.0.0.0:${port}/api/docs`,
+  );
   logger.log(`🌐 Frontend available at: http://0.0.0.0:${port}/`);
 }
 

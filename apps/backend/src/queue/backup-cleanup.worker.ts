@@ -38,9 +38,12 @@ export class BackupCleanupWorker implements OnModuleInit {
   // Configuration
   private readonly INTERVAL_MS = parseInt(
     process.env.BACKUP_CLEANUP_INTERVAL_MS || `${60 * 60 * 1000}`,
-    10
+    10,
   ); // 1 hour
-  private readonly RETENTION_HOURS = parseInt(process.env.BACKUP_RETENTION_HOURS || '24', 10);
+  private readonly RETENTION_HOURS = parseInt(
+    process.env.BACKUP_RETENTION_HOURS || '24',
+    10,
+  );
 
   constructor(private readonly libraryRepository: LibraryRepository) {}
 
@@ -49,7 +52,7 @@ export class BackupCleanupWorker implements OnModuleInit {
    */
   async onModuleInit(): Promise<void> {
     this.logger.log(
-      `Starting BackupCleanupWorker (interval: ${this.INTERVAL_MS / 1000 / 60}min, retention: ${this.RETENTION_HOURS}h)`
+      `Starting BackupCleanupWorker (interval: ${this.INTERVAL_MS / 1000 / 60}min, retention: ${this.RETENTION_HOURS}h)`,
     );
     this.start();
   }
@@ -75,7 +78,8 @@ export class BackupCleanupWorker implements OnModuleInit {
       try {
         await this.cleanupOrphanedBackups();
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         this.logger.error(`Backup cleanup worker error: ${errorMessage}`);
       }
 
@@ -110,19 +114,21 @@ export class BackupCleanupWorker implements OnModuleInit {
         const { cleaned, sizeFreed } = await this.cleanupBackupsInPath(
           library.path,
           cutoffTime,
-          library.name
+          library.name,
         );
         totalCleaned += cleaned;
         totalSizeFreed += sizeFreed;
       } catch (error: unknown) {
-        this.logger.warn(`Failed to cleanup backups in library "${library.name}": ${error}`);
+        this.logger.warn(
+          `Failed to cleanup backups in library "${library.name}": ${error}`,
+        );
       }
     }
 
     if (totalCleaned > 0) {
       const sizeMB = (totalSizeFreed / 1024 / 1024).toFixed(2);
       this.logger.log(
-        `✅ Cleanup complete: Removed ${totalCleaned} orphaned backup file(s), freed ${sizeMB} MB`
+        `✅ Cleanup complete: Removed ${totalCleaned} orphaned backup file(s), freed ${sizeMB} MB`,
       );
     } else {
       this.logger.debug('No orphaned backup files found');
@@ -140,7 +146,7 @@ export class BackupCleanupWorker implements OnModuleInit {
   private async cleanupBackupsInPath(
     dirPath: string,
     cutoffTime: number,
-    libraryName: string
+    libraryName: string,
   ): Promise<{ cleaned: number; sizeFreed: number }> {
     let cleaned = 0;
     let sizeFreed = 0;
@@ -159,7 +165,11 @@ export class BackupCleanupWorker implements OnModuleInit {
 
         if (entry.isDirectory()) {
           // Recursively scan subdirectories
-          const result = await this.cleanupBackupsInPath(fullPath, cutoffTime, libraryName);
+          const result = await this.cleanupBackupsInPath(
+            fullPath,
+            cutoffTime,
+            libraryName,
+          );
           cleaned += result.cleaned;
           sizeFreed += result.sizeFreed;
         } else if (entry.isFile() && entry.name.endsWith('.backup')) {
@@ -174,18 +184,20 @@ export class BackupCleanupWorker implements OnModuleInit {
               await fs.unlink(fullPath);
 
               this.logger.log(
-                `🗑️  Removed old backup: ${entry.name} (${fileSizeMB} MB, age: ${Math.floor(fileAge / 1000 / 60 / 60)}h) from "${libraryName}"`
+                `🗑️  Removed old backup: ${entry.name} (${fileSizeMB} MB, age: ${Math.floor(fileAge / 1000 / 60 / 60)}h) from "${libraryName}"`,
               );
 
               cleaned++;
               sizeFreed += stats.size;
             } else {
               this.logger.debug(
-                `Skipping recent backup: ${entry.name} (age: ${Math.floor(fileAge / 1000 / 60)}min)`
+                `Skipping recent backup: ${entry.name} (age: ${Math.floor(fileAge / 1000 / 60)}min)`,
               );
             }
           } catch (error: unknown) {
-            this.logger.warn(`Failed to cleanup backup file ${fullPath}: ${error}`);
+            this.logger.warn(
+              `Failed to cleanup backup file ${fullPath}: ${error}`,
+            );
           }
         }
       }

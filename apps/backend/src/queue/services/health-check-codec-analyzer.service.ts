@@ -12,7 +12,10 @@ import {
 export class HealthCheckCodecAnalyzerService {
   constructor(private readonly ffmpegService: FfmpegService) {}
 
-  checkCodecMatch(sourceCodec: string, targetCodec: string): HealthCheckIssue | null {
+  checkCodecMatch(
+    sourceCodec: string,
+    targetCodec: string,
+  ): HealthCheckIssue | null {
     const normalizedSource = this.ffmpegService.normalizeCodec(sourceCodec);
     const normalizedTarget = this.ffmpegService.normalizeCodec(targetCodec);
 
@@ -109,7 +112,7 @@ Re-encoding a file to the same codec offers no benefit and may actually increase
   calculateExpectedSavingsPercent(
     sourceCodec: string,
     targetCodec: string,
-    _beforeSizeBytes: bigint
+    _beforeSizeBytes: bigint,
   ): number {
     const normalizedSource = this.ffmpegService.normalizeCodec(sourceCodec);
     const normalizedTarget = this.ffmpegService.normalizeCodec(targetCodec);
@@ -154,7 +157,7 @@ Re-encoding a file to the same codec offers no benefit and may actually increase
     sourceCodec: string,
     targetCodec: string,
     expectedSavings: number,
-    minSavingsThreshold: number
+    minSavingsThreshold: number,
   ): HealthCheckIssue | null {
     const normalizedSource = this.ffmpegService.normalizeCodec(sourceCodec);
     const normalizedTarget = this.ffmpegService.normalizeCodec(targetCodec);

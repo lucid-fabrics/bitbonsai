@@ -1,7 +1,20 @@
 import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
 import { NgClass } from '@angular/common';
-import { Component, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  Component,
+  ElementRef,
+  inject,
+  OnDestroy,
+  OnInit,
+  signal,
+  viewChild,
+} from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { PathSelectorComponent } from '@bitbonsai/shared-ui';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { TranslocoModule } from '@ngneat/transloco';
@@ -27,7 +40,11 @@ import type { Node } from '../../models/node.model';
 function extractErrorMessage(error: unknown, defaultMessage: string): string {
   if (error && typeof error === 'object' && 'error' in error) {
     const innerError = (error as { error?: { message?: string } }).error;
-    if (innerError && typeof innerError === 'object' && 'message' in innerError) {
+    if (
+      innerError &&
+      typeof innerError === 'object' &&
+      'message' in innerError
+    ) {
       return innerError.message || defaultMessage;
     }
   }
@@ -194,10 +211,14 @@ export class StorageSharesModal implements OnInit, OnDestroy {
       this.loading.set(true);
       this.error.set(null);
 
-      const shares = await this.storageClient.getSharesByNode(this.node.id).toPromise();
+      const shares = await this.storageClient
+        .getSharesByNode(this.node.id)
+        .toPromise();
       this.shares.set(shares || []);
     } catch (error: unknown) {
-      this.error.set(extractErrorMessage(error, 'Failed to load storage shares'));
+      this.error.set(
+        extractErrorMessage(error, 'Failed to load storage shares'),
+      );
     } finally {
       this.loading.set(false);
     }
@@ -209,7 +230,9 @@ export class StorageSharesModal implements OnInit, OnDestroy {
       this.error.set(null);
       this.autoDetectMessage.set(null);
 
-      const result = await this.storageClient.autoDetectAndMount(this.node.id).toPromise();
+      const result = await this.storageClient
+        .autoDetectAndMount(this.node.id)
+        .toPromise();
 
       if (!result || result.detected === 0) {
         this.autoDetectMessage.set(
@@ -218,7 +241,7 @@ export class StorageSharesModal implements OnInit, OnDestroy {
             `• The main node doesn't have any NFS/SMB exports configured\n` +
             `• Network connectivity issues between nodes\n` +
             `• Firewall blocking NFS (port 2049) or SMB (ports 139, 445)\n\n` +
-            `You can add a share manually using the "Add Share Manually" button above.`
+            `You can add a share manually using the "Add Share Manually" button above.`,
         );
       } else {
         const messages = [
@@ -235,10 +258,12 @@ export class StorageSharesModal implements OnInit, OnDestroy {
         await this.loadShares(); // Reload to show newly created shares
       }
     } catch (error: unknown) {
-      this.error.set(extractErrorMessage(error, 'Failed to auto-detect shares'));
+      this.error.set(
+        extractErrorMessage(error, 'Failed to auto-detect shares'),
+      );
       this.autoDetectMessage.set(
         `Auto-detection failed. You can still add shares manually. ` +
-          `Make sure the main node is accessible and has NFS/SMB exports enabled.`
+          `Make sure the main node is accessible and has NFS/SMB exports enabled.`,
       );
     } finally {
       this.loading.set(false);
@@ -251,13 +276,15 @@ export class StorageSharesModal implements OnInit, OnDestroy {
     this.autoDetectMessage.set(null);
 
     try {
-      const result = await this.storageClient.autoExportDockerVolumes().toPromise();
+      const result = await this.storageClient
+        .autoExportDockerVolumes()
+        .toPromise();
 
       if (result?.success) {
         this.autoDetectMessage.set(
           `✓ ${result.message}\n\n` +
             `Docker volumes have been detected and automatically exported as NFS shares. ` +
-            `Refreshing the list to show the new auto-managed shares...`
+            `Refreshing the list to show the new auto-managed shares...`,
         );
 
         // Reload shares to show the newly created auto-managed shares
@@ -269,15 +296,15 @@ export class StorageSharesModal implements OnInit, OnDestroy {
       this.error.set(
         extractErrorMessage(
           error,
-          'Failed to auto-export Docker volumes. Make sure you are running on the main node in a Docker container.'
-        )
+          'Failed to auto-export Docker volumes. Make sure you are running on the main node in a Docker container.',
+        ),
       );
       this.autoDetectMessage.set(
         `Auto-export failed. This feature requires:\n` +
           `• Running as the MAIN node\n` +
           `• Running inside a Docker container\n` +
           `• Docker socket access (/var/run/docker.sock)\n\n` +
-          `You can still add shares manually using the "Add Share Manually" button.`
+          `You can still add shares manually using the "Add Share Manually" button.`,
       );
     } finally {
       this.loading.set(false);
@@ -306,7 +333,9 @@ export class StorageSharesModal implements OnInit, OnDestroy {
     try {
       share.status = StorageShareStatus.TESTING;
 
-      const result = await this.storageClient.unmountShare(share.id).toPromise();
+      const result = await this.storageClient
+        .unmountShare(share.id)
+        .toPromise();
 
       if (result?.success) {
         await this.loadShares(); // Reload to get updated status
@@ -327,7 +356,10 @@ export class StorageSharesModal implements OnInit, OnDestroy {
         'Remove the share configuration from this node',
         'Unmount the share if currently mounted',
       ],
-      wontHappen: ['Delete any files on the remote server', 'Affect other nodes using this share'],
+      wontHappen: [
+        'Delete any files on the remote server',
+        'Affect other nodes using this share',
+      ],
       irreversible: true,
       confirmButtonText: 'Delete Share',
       cancelButtonText: 'Keep Share',
@@ -375,7 +407,7 @@ export class StorageSharesModal implements OnInit, OnDestroy {
           `Cannot reach server ${serverAddress}. Please check:\n` +
             `• Server is online and accessible\n` +
             `• Network connectivity\n` +
-            `• Firewall settings`
+            `• Firewall settings`,
         );
         this.creating.set(false);
         return;
@@ -387,7 +419,7 @@ export class StorageSharesModal implements OnInit, OnDestroy {
           : connectivityTest.supportsSMB;
       if (!protocolSupported) {
         this.error.set(
-          `Server ${serverAddress} does not support ${protocol}. Try the other protocol.`
+          `Server ${serverAddress} does not support ${protocol}. Try the other protocol.`,
         );
         this.creating.set(false);
         return;

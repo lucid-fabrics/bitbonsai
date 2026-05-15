@@ -70,7 +70,9 @@ describe('InsightsEffects', () => {
       actions$ = of(InsightsActions.loadCodecDistribution());
 
       effects.loadCodecDistribution$.subscribe((action) => {
-        expect(action.type).toBe(InsightsActions.loadCodecDistributionSuccess.type);
+        expect(action.type).toBe(
+          InsightsActions.loadCodecDistributionSuccess.type,
+        );
         expect(service.getCodecDistribution).toHaveBeenCalled();
         done();
       });
@@ -83,7 +85,9 @@ describe('InsightsEffects', () => {
       actions$ = of(InsightsActions.loadCodecDistribution());
 
       effects.loadCodecDistribution$.subscribe((action) => {
-        expect(action.type).toBe(InsightsActions.loadCodecDistributionFailure.type);
+        expect(action.type).toBe(
+          InsightsActions.loadCodecDistributionFailure.type,
+        );
         done();
       });
     });
@@ -91,13 +95,17 @@ describe('InsightsEffects', () => {
 
   describe('loadNodePerformance$', () => {
     it('should dispatch loadNodePerformanceSuccess on success', (done) => {
-      const mockData = [{ nodeId: 'n1', nodeName: 'Main', jobsCompleted: 100 }] as never;
+      const mockData = [
+        { nodeId: 'n1', nodeName: 'Main', jobsCompleted: 100 },
+      ] as never;
       service.getNodePerformance.mockReturnValue(of(mockData));
 
       actions$ = of(InsightsActions.loadNodePerformance());
 
       effects.loadNodePerformance$.subscribe((action) => {
-        expect(action.type).toBe(InsightsActions.loadNodePerformanceSuccess.type);
+        expect(action.type).toBe(
+          InsightsActions.loadNodePerformanceSuccess.type,
+        );
         expect(service.getNodePerformance).toHaveBeenCalled();
         done();
       });
@@ -110,7 +118,9 @@ describe('InsightsEffects', () => {
       actions$ = of(InsightsActions.loadNodePerformance());
 
       effects.loadNodePerformance$.subscribe((action) => {
-        expect(action.type).toBe(InsightsActions.loadNodePerformanceFailure.type);
+        expect(action.type).toBe(
+          InsightsActions.loadNodePerformanceFailure.type,
+        );
         done();
       });
     });

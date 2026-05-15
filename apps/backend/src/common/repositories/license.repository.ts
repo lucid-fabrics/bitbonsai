@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { type License, LicenseStatus, type LicenseTier, type Prisma } from '@prisma/client';
+import {
+  type License,
+  LicenseStatus,
+  type LicenseTier,
+  type Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BaseRepository } from './base.repository';
 
@@ -21,7 +26,10 @@ export class LicenseRepository extends BaseRepository {
     return super.findUnique<License | null>({ where: { id } });
   }
 
-  async findByIdWithSelect<T>(id: string, select: Record<string, unknown>): Promise<T | null> {
+  async findByIdWithSelect<T>(
+    id: string,
+    select: Record<string, unknown>,
+  ): Promise<T | null> {
     return super.findUnique<T | null>({ where: { id }, select });
   }
 
@@ -29,7 +37,10 @@ export class LicenseRepository extends BaseRepository {
     return super.findUnique<License | null>({ where: { key } });
   }
 
-  async findByKeyWithInclude<T>(key: string, include: Record<string, unknown>): Promise<T | null> {
+  async findByKeyWithInclude<T>(
+    key: string,
+    include: Record<string, unknown>,
+  ): Promise<T | null> {
     return super.findUnique<T | null>({ where: { key }, include });
   }
 
@@ -47,7 +58,9 @@ export class LicenseRepository extends BaseRepository {
     });
   }
 
-  async findFirstActiveWithSelect<T>(select: Record<string, unknown>): Promise<T | null> {
+  async findFirstActiveWithSelect<T>(
+    select: Record<string, unknown>,
+  ): Promise<T | null> {
     return super.findFirst<T | null>({
       where: { status: LicenseStatus.ACTIVE },
       select,
@@ -90,12 +103,15 @@ export class LicenseRepository extends BaseRepository {
       key?: string;
       tier?: LicenseTier;
       email?: string;
-    }
+    },
   ): Promise<License> {
     return super.update<License>({ where: { id }, data });
   }
 
-  async updateByKey(key: string, data: Record<string, unknown>): Promise<License> {
+  async updateByKey(
+    key: string,
+    data: Record<string, unknown>,
+  ): Promise<License> {
     return super.update<License>({ where: { key }, data });
   }
 
@@ -106,7 +122,7 @@ export class LicenseRepository extends BaseRepository {
   async upsertByEmail(
     email: string,
     updateData: Record<string, unknown>,
-    createData: Prisma.LicenseCreateInput
+    createData: Prisma.LicenseCreateInput,
   ): Promise<License> {
     return this.prisma.license.upsert({
       where: { email },
@@ -115,7 +131,9 @@ export class LicenseRepository extends BaseRepository {
     });
   }
 
-  async transactionFindFirstAndUpsert(licenseData: Record<string, unknown>): Promise<License> {
+  async transactionFindFirstAndUpsert(
+    licenseData: Record<string, unknown>,
+  ): Promise<License> {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.license.findFirst();
       if (existing) {
@@ -130,7 +148,9 @@ export class LicenseRepository extends BaseRepository {
     });
   }
 
-  async findFirstWhere(where: Prisma.LicenseWhereInput): Promise<License | null> {
+  async findFirstWhere(
+    where: Prisma.LicenseWhereInput,
+  ): Promise<License | null> {
     return super.findFirst<License | null>({ where });
   }
 

@@ -33,7 +33,8 @@ export const routes: Routes = [
   },
   {
     path: 'setup',
-    loadComponent: () => import('./features/setup/setup.page').then((m) => m.SetupComponent),
+    loadComponent: () =>
+      import('./features/setup/setup.page').then((m) => m.SetupComponent),
     canActivate: [setupGuard],
     // Setup guard will redirect away if setup is already complete
   },
@@ -41,62 +42,77 @@ export const routes: Routes = [
     path: 'node-setup',
     loadComponent: () =>
       import('./features/node-setup/node-setup-wizard.component').then(
-        (m) => m.NodeSetupWizardComponent
+        (m) => m.NodeSetupWizardComponent,
       ),
     // Child node setup wizard - no guards (public access for initial setup)
   },
   {
     path: 'login',
-    loadComponent: () => import('./features/auth/login/login.page').then((m) => m.LoginComponent),
+    loadComponent: () =>
+      import('./features/auth/login/login.page').then((m) => m.LoginComponent),
     canActivate: [setupGuard],
     // Login requires setup to be complete but no authentication
   },
   {
     path: 'overview',
     loadComponent: () =>
-      import('./features/overview/overview.page').then((m) => m.OverviewComponent),
+      import('./features/overview/overview.page').then(
+        (m) => m.OverviewComponent,
+      ),
     canActivate: [setupGuard, authGuard],
     // Overview is accessible to both MAIN and LINKED nodes
   },
   {
     path: 'queue',
-    loadComponent: () => import('./features/queue/queue.page').then((m) => m.QueueComponent),
+    loadComponent: () =>
+      import('./features/queue/queue.page').then((m) => m.QueueComponent),
     canActivate: [setupGuard, authGuard],
     // Queue is accessible to both MAIN and LINKED nodes (but requires setup + auth)
   },
   {
     path: 'libraries',
     loadComponent: () =>
-      import('./features/libraries/libraries.page').then((m) => m.LibrariesComponent),
+      import('./features/libraries/libraries.page').then(
+        (m) => m.LibrariesComponent,
+      ),
     canActivate: [setupGuard, authGuard, mainNodeGuard],
   },
   {
     path: 'policies',
     loadComponent: () =>
-      import('./features/policies/policies.page').then((m) => m.PoliciesComponent),
+      import('./features/policies/policies.page').then(
+        (m) => m.PoliciesComponent,
+      ),
     canActivate: [setupGuard, authGuard, mainNodeGuard],
   },
   {
     path: 'nodes',
-    loadComponent: () => import('./features/nodes/nodes.page').then((m) => m.NodesComponent),
+    loadComponent: () =>
+      import('./features/nodes/nodes.page').then((m) => m.NodesComponent),
     canActivate: [setupGuard, authGuard, mainNodeGuard],
   },
   {
     path: 'discovery',
     loadComponent: () =>
-      import('./features/discovery/discovery.page').then((m) => m.DiscoveryComponent),
+      import('./features/discovery/discovery.page').then(
+        (m) => m.DiscoveryComponent,
+      ),
     canActivate: [authGuard], // No setupGuard or mainNodeGuard - accessible during setup and for CHILD nodes
   },
   {
     path: 'insights',
     loadComponent: () =>
-      import('./features/insights/insights.page').then((m) => m.InsightsComponent),
+      import('./features/insights/insights.page').then(
+        (m) => m.InsightsComponent,
+      ),
     canActivate: [setupGuard, authGuard, mainNodeGuard],
   },
   {
     path: 'settings',
     loadComponent: () =>
-      import('./features/settings/settings.page').then((m) => m.SettingsComponent),
+      import('./features/settings/settings.page').then(
+        (m) => m.SettingsComponent,
+      ),
     canActivate: [setupGuard, authGuard],
     children: [
       { path: '', redirectTo: 'license', pathMatch: 'full' },
@@ -104,52 +120,58 @@ export const routes: Routes = [
         path: 'license',
         loadComponent: () =>
           import('./features/settings/tabs/license-tab.component').then(
-            (m) => m.LicenseTabComponent
+            (m) => m.LicenseTabComponent,
           ),
       },
       {
         path: 'environment',
         loadComponent: () =>
           import('./features/settings/tabs/environment-tab.component').then(
-            (m) => m.EnvironmentTabComponent
+            (m) => m.EnvironmentTabComponent,
           ),
       },
       {
         path: 'system',
         loadComponent: () =>
-          import('./features/settings/tabs/system-tab.component').then((m) => m.SystemTabComponent),
+          import('./features/settings/tabs/system-tab.component').then(
+            (m) => m.SystemTabComponent,
+          ),
       },
       {
         path: 'resources',
         loadComponent: () =>
           import('./features/settings/tabs/resources-tab.component').then(
-            (m) => m.ResourcesTabComponent
+            (m) => m.ResourcesTabComponent,
           ),
       },
       {
         path: 'advanced',
         loadComponent: () =>
           import('./features/settings/tabs/advanced-tab.component').then(
-            (m) => m.AdvancedTabComponent
+            (m) => m.AdvancedTabComponent,
           ),
       },
       {
         path: 'integrations',
         loadComponent: () =>
           import('./features/settings/tabs/integrations-tab.component').then(
-            (m) => m.IntegrationsTabComponent
+            (m) => m.IntegrationsTabComponent,
           ),
       },
       {
         path: 'debug',
         loadComponent: () =>
-          import('./features/settings/tabs/debug-tab.component').then((m) => m.DebugTabComponent),
+          import('./features/settings/tabs/debug-tab.component').then(
+            (m) => m.DebugTabComponent,
+          ),
         canActivate: [devOnlyGuard], // Development only - blocked in production
       },
       {
         path: 'docs',
         loadComponent: () =>
-          import('./features/settings/tabs/docs-tab.component').then((m) => m.DocsTabComponent),
+          import('./features/settings/tabs/docs-tab.component').then(
+            (m) => m.DocsTabComponent,
+          ),
       },
     ],
   },

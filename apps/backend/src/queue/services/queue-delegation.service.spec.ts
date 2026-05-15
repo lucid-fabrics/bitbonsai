@@ -84,7 +84,9 @@ describe('QueueDelegationService', () => {
         nodeId: 'node-1',
         node: { name: 'Node 1', hasSharedStorage: true },
       };
-      mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([
+        stuckJob as any,
+      ]);
       mockJobRepository.updateById.mockResolvedValue({
         id: 'job-1',
         stage: 'QUEUED',
@@ -98,7 +100,7 @@ describe('QueueDelegationService', () => {
         expect.objectContaining({
           stage: 'QUEUED',
           transferProgress: 0,
-        })
+        }),
       );
     });
   });
@@ -121,7 +123,9 @@ describe('QueueDelegationService', () => {
         return cb(tx);
       });
 
-      await expect(service.delegateJob('missing', 'node-2')).rejects.toThrow(NotFoundException);
+      await expect(service.delegateJob('missing', 'node-2')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException when job already assigned to target node', async () => {
@@ -139,7 +143,9 @@ describe('QueueDelegationService', () => {
         return cb(tx);
       });
 
-      await expect(service.delegateJob('job-1', 'node-1')).rejects.toThrow(BadRequestException);
+      await expect(service.delegateJob('job-1', 'node-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException for invalid stage', async () => {
@@ -157,7 +163,9 @@ describe('QueueDelegationService', () => {
         return cb(tx);
       });
 
-      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(BadRequestException);
+      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -170,7 +178,9 @@ describe('QueueDelegationService', () => {
         transferProgress: 50,
         transferStartedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
       };
-      mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([
+        stuckJob as any,
+      ]);
       mockJobStateService.failJob.mockResolvedValue({
         id: 'job-1',
         stage: JobStage.FAILED,
@@ -180,7 +190,7 @@ describe('QueueDelegationService', () => {
 
       expect(mockJobStateService.failJob).toHaveBeenCalledWith(
         'job-1',
-        expect.stringContaining('retry')
+        expect.stringContaining('retry'),
       );
     });
 
@@ -192,7 +202,9 @@ describe('QueueDelegationService', () => {
         transferProgress: 30,
         transferStartedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
       };
-      mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([
+        stuckJob as any,
+      ]);
       mockJobCrudService.update.mockResolvedValue({
         id: 'job-1',
         stage: JobStage.DETECTED,
@@ -205,7 +217,7 @@ describe('QueueDelegationService', () => {
         expect.objectContaining({
           stage: JobStage.DETECTED,
           transferRetryCount: 2,
-        })
+        }),
       );
     });
 
@@ -226,7 +238,9 @@ describe('QueueDelegationService', () => {
         transferProgress: 0,
         transferStartedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
       };
-      mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([
+        stuckJob as any,
+      ]);
       mockJobCrudService.update.mockResolvedValue({ id: 'job-2' } as any);
 
       await service.cleanupStuckTransfers();
@@ -235,12 +249,14 @@ describe('QueueDelegationService', () => {
         'job-2',
         expect.objectContaining({
           transferRetryCount: 1,
-        })
+        }),
       );
     });
 
     it('should handle errors without throwing', async () => {
-      mockJobRepository.findManyWithInclude.mockRejectedValue(new Error('DB error'));
+      mockJobRepository.findManyWithInclude.mockRejectedValue(
+        new Error('DB error'),
+      );
 
       await expect(service.cleanupStuckTransfers()).resolves.toBeUndefined();
     });
@@ -248,105 +264,11 @@ describe('QueueDelegationService', () => {
 
   describe('delegateJob - additional branches', () => {
     it('should throw NotFoundException when target node not found', async () => {
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          job: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'job-1',
-              nodeId: 'node-1',
-              stage: 'QUEUED',
-              library: { nodeId: 'node-1' },
-              originalNodeId: null,
-              filePath: '/mnt/file.mkv',
-              originalFilePath: null,
-              error: null,
-              retryCount: 0,
-              transferProgress: 0,
-            }),
-          },
-          node: {
-            findUnique: jest.fn().mockResolvedValue(null),
-          },
-        };
-        return cb(tx);
-      });
-
-      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw BadRequestException when target node is not ONLINE', async () => {
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          job: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'job-1',
-              nodeId: 'node-1',
-              stage: 'QUEUED',
-              library: { nodeId: 'node-1' },
-            }),
-          },
-          node: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'node-2',
-              name: 'Node 2',
-              status: 'OFFLINE',
-              hasSharedStorage: false,
-            }),
-          },
-        };
-        return cb(tx);
-      });
-
-      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(BadRequestException);
-    });
-
-    it('should set targetStage to QUEUED when FAILED job is delegated', async () => {
-      const updatedJob = { id: 'job-1', stage: 'QUEUED', nodeId: 'node-2' };
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const jobFindUnique = jest
-          .fn()
-          .mockResolvedValueOnce({
-            id: 'job-1',
-            nodeId: 'node-1',
-            stage: 'FAILED',
-            library: { nodeId: 'node-1' },
-            originalNodeId: null,
-            filePath: '/mnt/file.mkv',
-            originalFilePath: null,
-            error: 'some error',
-            retryCount: 2,
-            transferProgress: 0,
-          })
-          .mockResolvedValueOnce(updatedJob);
-        const tx = {
-          job: {
-            findUnique: jobFindUnique,
-            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-          },
-          node: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'node-2',
-              name: 'Node 2',
-              status: 'ONLINE',
-              hasSharedStorage: false,
-            }),
-          },
-        };
-        return cb(tx);
-      });
-
-      const result = await service.delegateJob('job-1', 'node-2');
-
-      expect(result).toEqual(updatedJob);
-    });
-
-    it('should throw BadRequestException when job stage changes during delegation', async () => {
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          job: {
-            findUnique: jest
-              .fn()
-              .mockResolvedValueOnce({
+      mockPrisma.$transaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            job: {
+              findUnique: jest.fn().mockResolvedValue({
                 id: 'job-1',
                 nodeId: 'node-1',
                 stage: 'QUEUED',
@@ -357,23 +279,131 @@ describe('QueueDelegationService', () => {
                 error: null,
                 retryCount: 0,
                 transferProgress: 0,
-              })
-              .mockResolvedValueOnce(null),
-            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
-          },
-          node: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'node-2',
-              name: 'Node 2',
-              status: 'ONLINE',
-              hasSharedStorage: false,
-            }),
-          },
-        };
-        return cb(tx);
-      });
+              }),
+            },
+            node: {
+              findUnique: jest.fn().mockResolvedValue(null),
+            },
+          };
+          return cb(tx);
+        },
+      );
 
-      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(BadRequestException);
+      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw BadRequestException when target node is not ONLINE', async () => {
+      mockPrisma.$transaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            job: {
+              findUnique: jest.fn().mockResolvedValue({
+                id: 'job-1',
+                nodeId: 'node-1',
+                stage: 'QUEUED',
+                library: { nodeId: 'node-1' },
+              }),
+            },
+            node: {
+              findUnique: jest.fn().mockResolvedValue({
+                id: 'node-2',
+                name: 'Node 2',
+                status: 'OFFLINE',
+                hasSharedStorage: false,
+              }),
+            },
+          };
+          return cb(tx);
+        },
+      );
+
+      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should set targetStage to QUEUED when FAILED job is delegated', async () => {
+      const updatedJob = { id: 'job-1', stage: 'QUEUED', nodeId: 'node-2' };
+      mockPrisma.$transaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const jobFindUnique = jest
+            .fn()
+            .mockResolvedValueOnce({
+              id: 'job-1',
+              nodeId: 'node-1',
+              stage: 'FAILED',
+              library: { nodeId: 'node-1' },
+              originalNodeId: null,
+              filePath: '/mnt/file.mkv',
+              originalFilePath: null,
+              error: 'some error',
+              retryCount: 2,
+              transferProgress: 0,
+            })
+            .mockResolvedValueOnce(updatedJob);
+          const tx = {
+            job: {
+              findUnique: jobFindUnique,
+              updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+            },
+            node: {
+              findUnique: jest.fn().mockResolvedValue({
+                id: 'node-2',
+                name: 'Node 2',
+                status: 'ONLINE',
+                hasSharedStorage: false,
+              }),
+            },
+          };
+          return cb(tx);
+        },
+      );
+
+      const result = await service.delegateJob('job-1', 'node-2');
+
+      expect(result).toEqual(updatedJob);
+    });
+
+    it('should throw BadRequestException when job stage changes during delegation', async () => {
+      mockPrisma.$transaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            job: {
+              findUnique: jest
+                .fn()
+                .mockResolvedValueOnce({
+                  id: 'job-1',
+                  nodeId: 'node-1',
+                  stage: 'QUEUED',
+                  library: { nodeId: 'node-1' },
+                  originalNodeId: null,
+                  filePath: '/mnt/file.mkv',
+                  originalFilePath: null,
+                  error: null,
+                  retryCount: 0,
+                  transferProgress: 0,
+                })
+                .mockResolvedValueOnce(null),
+              updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+            },
+            node: {
+              findUnique: jest.fn().mockResolvedValue({
+                id: 'node-2',
+                name: 'Node 2',
+                status: 'ONLINE',
+                hasSharedStorage: false,
+              }),
+            },
+          };
+          return cb(tx);
+        },
+      );
+
+      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should use shared storage path when verified accessible', async () => {
@@ -386,45 +416,47 @@ describe('QueueDelegationService', () => {
         translatedPath: '/mnt/node2/file.mkv',
       });
 
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const jobFindUnique = jest
-          .fn()
-          .mockResolvedValueOnce({
-            id: 'job-1',
-            nodeId: 'node-1',
-            stage: 'QUEUED',
-            library: { nodeId: 'source-node' },
-            originalNodeId: null,
-            filePath: '/mnt/source/file.mkv',
-            originalFilePath: null,
-            error: null,
-            retryCount: 0,
-            transferProgress: 0,
-          })
-          .mockResolvedValueOnce(updatedJob);
-        const nodeFindUnique = jest
-          .fn()
-          .mockResolvedValueOnce({
-            id: 'node-2',
-            name: 'Node 2',
-            status: 'ONLINE',
-            hasSharedStorage: true,
-          })
-          .mockResolvedValueOnce({
-            id: 'source-node',
-            name: 'Source Node',
-          });
-        const tx = {
-          job: {
-            findUnique: jobFindUnique,
-            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-          },
-          node: {
-            findUnique: nodeFindUnique,
-          },
-        };
-        return cb(tx);
-      });
+      mockPrisma.$transaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const jobFindUnique = jest
+            .fn()
+            .mockResolvedValueOnce({
+              id: 'job-1',
+              nodeId: 'node-1',
+              stage: 'QUEUED',
+              library: { nodeId: 'source-node' },
+              originalNodeId: null,
+              filePath: '/mnt/source/file.mkv',
+              originalFilePath: null,
+              error: null,
+              retryCount: 0,
+              transferProgress: 0,
+            })
+            .mockResolvedValueOnce(updatedJob);
+          const nodeFindUnique = jest
+            .fn()
+            .mockResolvedValueOnce({
+              id: 'node-2',
+              name: 'Node 2',
+              status: 'ONLINE',
+              hasSharedStorage: true,
+            })
+            .mockResolvedValueOnce({
+              id: 'source-node',
+              name: 'Source Node',
+            });
+          const tx = {
+            job: {
+              findUnique: jobFindUnique,
+              updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+            },
+            node: {
+              findUnique: nodeFindUnique,
+            },
+          };
+          return cb(tx);
+        },
+      );
 
       const result = await service.delegateJob('job-1', 'node-2');
 
@@ -442,49 +474,51 @@ describe('QueueDelegationService', () => {
       });
       mockFileTransferService.transferFile.mockResolvedValue(undefined);
 
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const jobFindUnique = jest
-          .fn()
-          .mockResolvedValueOnce({
-            id: 'job-1',
-            nodeId: 'node-1',
-            stage: 'QUEUED',
-            library: { nodeId: 'source-node' },
-            originalNodeId: null,
-            filePath: '/mnt/source/file.mkv',
-            originalFilePath: null,
-            error: null,
-            retryCount: 0,
-            transferProgress: 0,
-          })
-          .mockResolvedValueOnce(updatedJob);
-        const nodeFindUnique = jest
-          .fn()
-          .mockResolvedValueOnce({
-            id: 'node-2',
-            name: 'Node 2',
-            status: 'ONLINE',
-            hasSharedStorage: true,
-          })
-          .mockResolvedValueOnce({
-            id: 'source-node',
-            name: 'Source Node',
-          })
-          .mockResolvedValueOnce({
-            id: 'source-node',
-            name: 'Source Node',
-          });
-        const tx = {
-          job: {
-            findUnique: jobFindUnique,
-            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-          },
-          node: {
-            findUnique: nodeFindUnique,
-          },
-        };
-        return cb(tx);
-      });
+      mockPrisma.$transaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const jobFindUnique = jest
+            .fn()
+            .mockResolvedValueOnce({
+              id: 'job-1',
+              nodeId: 'node-1',
+              stage: 'QUEUED',
+              library: { nodeId: 'source-node' },
+              originalNodeId: null,
+              filePath: '/mnt/source/file.mkv',
+              originalFilePath: null,
+              error: null,
+              retryCount: 0,
+              transferProgress: 0,
+            })
+            .mockResolvedValueOnce(updatedJob);
+          const nodeFindUnique = jest
+            .fn()
+            .mockResolvedValueOnce({
+              id: 'node-2',
+              name: 'Node 2',
+              status: 'ONLINE',
+              hasSharedStorage: true,
+            })
+            .mockResolvedValueOnce({
+              id: 'source-node',
+              name: 'Source Node',
+            })
+            .mockResolvedValueOnce({
+              id: 'source-node',
+              name: 'Source Node',
+            });
+          const tx = {
+            job: {
+              findUnique: jobFindUnique,
+              updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+            },
+            node: {
+              findUnique: nodeFindUnique,
+            },
+          };
+          return cb(tx);
+        },
+      );
 
       const result = await service.delegateJob('job-1', 'node-2');
 
@@ -492,37 +526,41 @@ describe('QueueDelegationService', () => {
     });
 
     it('should throw NotFoundException when source node not found', async () => {
-      mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const nodeFindUnique = jest
-          .fn()
-          .mockResolvedValueOnce({
-            id: 'node-2',
-            name: 'Node 2',
-            status: 'ONLINE',
-            hasSharedStorage: false,
-          })
-          .mockResolvedValueOnce(null); // source node not found
-        const tx = {
-          job: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'job-1',
-              nodeId: 'node-1',
-              stage: 'QUEUED',
-              library: { nodeId: 'source-node' },
-              originalNodeId: null,
-              filePath: '/mnt/file.mkv',
-              originalFilePath: null,
-              error: null,
-              retryCount: 0,
-              transferProgress: 0,
-            }),
-          },
-          node: { findUnique: nodeFindUnique },
-        };
-        return cb(tx);
-      });
+      mockPrisma.$transaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const nodeFindUnique = jest
+            .fn()
+            .mockResolvedValueOnce({
+              id: 'node-2',
+              name: 'Node 2',
+              status: 'ONLINE',
+              hasSharedStorage: false,
+            })
+            .mockResolvedValueOnce(null); // source node not found
+          const tx = {
+            job: {
+              findUnique: jest.fn().mockResolvedValue({
+                id: 'job-1',
+                nodeId: 'node-1',
+                stage: 'QUEUED',
+                library: { nodeId: 'source-node' },
+                originalNodeId: null,
+                filePath: '/mnt/file.mkv',
+                originalFilePath: null,
+                error: null,
+                retryCount: 0,
+                transferProgress: 0,
+              }),
+            },
+            node: { findUnique: nodeFindUnique },
+          };
+          return cb(tx);
+        },
+      );
 
-      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(NotFoundException);
+      await expect(service.delegateJob('job-1', 'node-2')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -534,7 +572,9 @@ describe('QueueDelegationService', () => {
         nodeId: 'node-1',
         node: { name: 'Node 1', hasSharedStorage: true },
       };
-      mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([
+        stuckJob as any,
+      ]);
       mockJobRepository.updateById.mockResolvedValue({
         id: 'job-shared',
       } as any);
@@ -543,7 +583,7 @@ describe('QueueDelegationService', () => {
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-shared',
-        expect.objectContaining({ transferRequired: false })
+        expect.objectContaining({ transferRequired: false }),
       );
     });
 
@@ -554,7 +594,9 @@ describe('QueueDelegationService', () => {
         nodeId: 'node-1',
         node: { name: 'Node 1', hasSharedStorage: false },
       };
-      mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([
+        stuckJob as any,
+      ]);
       mockJobRepository.updateById.mockResolvedValue({
         id: 'job-notshared',
       } as any);
@@ -563,7 +605,7 @@ describe('QueueDelegationService', () => {
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-notshared',
-        expect.objectContaining({ transferRequired: true })
+        expect.objectContaining({ transferRequired: true }),
       );
     });
 
@@ -574,7 +616,9 @@ describe('QueueDelegationService', () => {
         nodeId: null,
         node: null,
       };
-      mockJobRepository.findManyWithInclude.mockResolvedValue([stuckJob as any]);
+      mockJobRepository.findManyWithInclude.mockResolvedValue([
+        stuckJob as any,
+      ]);
       mockJobRepository.updateById.mockResolvedValue({
         id: 'job-nonode',
       } as any);
@@ -583,7 +627,7 @@ describe('QueueDelegationService', () => {
 
       expect(mockJobRepository.updateById).toHaveBeenCalledWith(
         'job-nonode',
-        expect.objectContaining({ transferRequired: true })
+        expect.objectContaining({ transferRequired: true }),
       );
     });
   });

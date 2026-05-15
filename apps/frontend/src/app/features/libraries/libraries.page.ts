@@ -1,6 +1,12 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { AsyncPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  type OnInit,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { TranslocoModule } from '@ngneat/transloco';
@@ -20,7 +26,11 @@ import {
 import { LibraryCardComponent } from './components/library-card/library-card.component';
 import { LibraryFilesModalComponent } from './components/library-files-modal/library-files-modal.component';
 import { LibraryFormComponent } from './components/library-form/library-form.component';
-import type { CreateLibraryDto, Library, UpdateLibraryDto } from './models/library.model';
+import type {
+  CreateLibraryDto,
+  Library,
+  UpdateLibraryDto,
+} from './models/library.model';
 
 @Component({
   selector: 'app-libraries',
@@ -83,14 +93,14 @@ export class LibrariesComponent implements OnInit {
         LibrariesActions.updateLibrary({
           id: selectedLib.id,
           library: data as UpdateLibraryDto,
-        })
+        }),
       );
     } else {
       // Create new library
       this.store.dispatch(
         LibrariesActions.createLibrary({
           library: data as CreateLibraryDto,
-        })
+        }),
       );
     }
 
@@ -129,11 +139,15 @@ export class LibrariesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
-      if (result === true) {
-        this.store.dispatch(LibrariesActions.deleteLibrary({ id: library.id }));
-      }
-    });
+    dialogRef.closed
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result === true) {
+          this.store.dispatch(
+            LibrariesActions.deleteLibrary({ id: library.id }),
+          );
+        }
+      });
   }
 
   onScanLibrary(library: Library): void {
@@ -150,7 +164,7 @@ export class LibrariesComponent implements OnInit {
       LibrariesActions.updateLibrary({
         id: library.id,
         library: { watchEnabled: !library.watchEnabled },
-      })
+      }),
     );
   }
 

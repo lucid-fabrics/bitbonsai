@@ -68,7 +68,7 @@ describe('EmailNotificationService', () => {
           from: 'from@example.com',
           to: 'to@example.com',
           subject: 'Encoding Complete: movie.mkv',
-        })
+        }),
       );
     });
 
@@ -119,7 +119,7 @@ describe('EmailNotificationService', () => {
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: '⚠️ Encoding Failed: corrupt.mkv',
-        })
+        }),
       );
     });
 
@@ -135,7 +135,7 @@ describe('EmailNotificationService', () => {
       prisma.findFirst.mockResolvedValue(validSmtpSettings as never);
 
       await expect(
-        service.sendJobFailed({ fileLabel: 'movie.mkv', error: null })
+        service.sendJobFailed({ fileLabel: 'movie.mkv', error: null }),
       ).resolves.not.toThrow();
     });
   });
@@ -155,7 +155,7 @@ describe('EmailNotificationService', () => {
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: expect.stringContaining('20 encoded'),
-        })
+        }),
       );
     });
 
@@ -188,7 +188,7 @@ describe('EmailNotificationService', () => {
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: '🚨 CRITICAL: node_offline',
-        })
+        }),
       );
     });
 
@@ -204,7 +204,7 @@ describe('EmailNotificationService', () => {
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: '⚠️ Warning: high_load',
-        })
+        }),
       );
     });
   });
@@ -225,7 +225,7 @@ describe('EmailNotificationService', () => {
       expect(result.success).toBe(true);
       expect(mockVerify).toHaveBeenCalled();
       expect(mockSendMail).toHaveBeenCalledWith(
-        expect.objectContaining({ subject: '🧪 BitBonsai Email Test' })
+        expect.objectContaining({ subject: '🧪 BitBonsai Email Test' }),
       );
     });
 

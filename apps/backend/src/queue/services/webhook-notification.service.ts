@@ -68,14 +68,14 @@ export class WebhookNotificationService implements OnModuleDestroy {
 
   constructor(
     private readonly settingsRepository: SettingsRepository,
-    private readonly httpService: HttpService
+    private readonly httpService: HttpService,
   ) {}
 
   onModuleDestroy(): void {
     // Log any remaining failed webhooks on shutdown
     if (this.deadLetterQueue.length > 0) {
       this.logger.warn(
-        `Shutting down with ${this.deadLetterQueue.length} undelivered webhooks in dead-letter queue`
+        `Shutting down with ${this.deadLetterQueue.length} undelivered webhooks in dead-letter queue`,
       );
     }
   }
@@ -90,7 +90,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
   async sendJobNotification(
     eventType: WebhookEventType,
     job: Partial<Job>,
-    additionalData?: Record<string, unknown>
+    additionalData?: Record<string, unknown>,
   ): Promise<void> {
     try {
       const settings = await this.getWebhookSettings();
@@ -101,8 +101,14 @@ export class WebhookNotificationService implements OnModuleDestroy {
 
       // Check if this event type is enabled
       const enabledEvents = settings.webhookEvents as string[] | null;
-      if (enabledEvents && enabledEvents.length > 0 && !enabledEvents.includes(eventType)) {
-        this.logger.debug(`Webhook event ${eventType} not in enabled events list, skipping`);
+      if (
+        enabledEvents &&
+        enabledEvents.length > 0 &&
+        !enabledEvents.includes(eventType)
+      ) {
+        this.logger.debug(
+          `Webhook event ${eventType} not in enabled events list, skipping`,
+        );
         return;
       }
 
@@ -130,10 +136,14 @@ export class WebhookNotificationService implements OnModuleDestroy {
         },
       };
 
-      await this.sendWebhook(settings.webhookUrl, payload, settings.webhookSecret);
+      await this.sendWebhook(
+        settings.webhookUrl,
+        payload,
+        settings.webhookSecret,
+      );
     } catch (error: unknown) {
       this.logger.error(
-        `Failed to send webhook notification: ${error instanceof Error ? error.message : error}`
+        `Failed to send webhook notification: ${error instanceof Error ? error.message : error}`,
       );
       // Don't throw - webhook failures shouldn't affect job processing
     }
@@ -149,7 +159,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
   async sendHealthAlert(
     alertType: string,
     message: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ): Promise<void> {
     try {
       const settings = await this.getWebhookSettings();
@@ -168,7 +178,11 @@ export class WebhookNotificationService implements OnModuleDestroy {
         },
       };
 
-      await this.sendWebhook(settings.webhookUrl, payload, settings.webhookSecret);
+      await this.sendWebhook(
+        settings.webhookUrl,
+        payload,
+        settings.webhookSecret,
+      );
     } catch (error: unknown) {
       this.logger.error(`Failed to send health alert webhook: ${error}`);
     }
@@ -186,7 +200,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
     totalJobs: number,
     completedJobs: number,
     failedJobs: number,
-    savedBytes: bigint
+    savedBytes: bigint,
   ): Promise<void> {
     try {
       const settings = await this.getWebhookSettings();
@@ -207,7 +221,11 @@ export class WebhookNotificationService implements OnModuleDestroy {
         },
       };
 
-      await this.sendWebhook(settings.webhookUrl, payload, settings.webhookSecret);
+      await this.sendWebhook(
+        settings.webhookUrl,
+        payload,
+        settings.webhookSecret,
+      );
     } catch (error: unknown) {
       this.logger.error(`Failed to send batch complete webhook: ${error}`);
     }
@@ -241,7 +259,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
   private async sendWebhook(
     url: string,
     payload: WebhookPayload,
-    secret?: string | null
+    secret?: string | null,
   ): Promise<void> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -265,7 +283,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
           this.httpService.post(url, payload, {
             headers,
             timeout: 10000, // 10 second timeout
-          })
+          }),
         );
 
         if (response.status >= 200 && response.status < 300) {
@@ -280,7 +298,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
         if (attempt < this.MAX_RETRIES) {
           const delay = 2 ** attempt * 1000; // Exponential backoff
           this.logger.warn(
-            `Webhook attempt ${attempt}/${this.MAX_RETRIES} failed: ${lastError}. Retrying in ${delay}ms...`
+            `Webhook attempt ${attempt}/${this.MAX_RETRIES} failed: ${lastError}. Retrying in ${delay}ms...`,
           );
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
@@ -299,13 +317,15 @@ export class WebhookNotificationService implements OnModuleDestroy {
     payload: WebhookPayload,
     url: string,
     secret: string | null,
-    lastError: string
+    lastError: string,
   ): void {
     const now = new Date();
 
     // Check if this payload is already in the queue (dedup by event+timestamp)
     const existingIndex = this.deadLetterQueue.findIndex(
-      (item) => item.payload.event === payload.event && item.payload.timestamp === payload.timestamp
+      (item) =>
+        item.payload.event === payload.event &&
+        item.payload.timestamp === payload.timestamp,
     );
 
     if (existingIndex >= 0) {
@@ -321,7 +341,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
       const removed = this.deadLetterQueue.shift();
       if (removed) {
         this.logger.warn(
-          `Dead-letter queue full - discarding oldest webhook: ${removed.payload.event} from ${removed.firstFailure.toISOString()}`
+          `Dead-letter queue full - discarding oldest webhook: ${removed.payload.event} from ${removed.firstFailure.toISOString()}`,
         );
       }
     }
@@ -338,7 +358,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
     });
 
     this.logger.warn(
-      `Webhook added to dead-letter queue: ${payload.event}. Queue size: ${this.deadLetterQueue.length}`
+      `Webhook added to dead-letter queue: ${payload.event}. Queue size: ${this.deadLetterQueue.length}`,
     );
   }
 
@@ -369,7 +389,7 @@ export class WebhookNotificationService implements OnModuleDestroy {
         if (now.getTime() - item.firstFailure.getTime() > maxAgeMs) {
           expiredIds.push(i);
           this.logger.warn(
-            `Webhook expired (age > ${this.DLQ_MAX_AGE_HOURS}h): ${item.payload.event}`
+            `Webhook expired (age > ${this.DLQ_MAX_AGE_HOURS}h): ${item.payload.event}`,
           );
           continue;
         }
@@ -378,14 +398,19 @@ export class WebhookNotificationService implements OnModuleDestroy {
         if (item.attempts >= this.MAX_DLQ_RETRIES) {
           maxRetriesIds.push(i);
           this.logger.error(
-            `Webhook permanently failed after ${item.attempts} attempts: ${item.payload.event} - ${item.lastError}`
+            `Webhook permanently failed after ${item.attempts} attempts: ${item.payload.event} - ${item.lastError}`,
           );
           continue;
         }
 
         // Exponential backoff based on attempt count
-        const backoffMinutes = Math.min(2 ** (item.attempts - this.MAX_RETRIES), 60);
-        const nextRetryTime = new Date(item.lastAttempt.getTime() + backoffMinutes * 60 * 1000);
+        const backoffMinutes = Math.min(
+          2 ** (item.attempts - this.MAX_RETRIES),
+          60,
+        );
+        const nextRetryTime = new Date(
+          item.lastAttempt.getTime() + backoffMinutes * 60 * 1000,
+        );
 
         if (now < nextRetryTime) {
           continue; // Not ready for retry yet
@@ -411,13 +436,13 @@ export class WebhookNotificationService implements OnModuleDestroy {
             this.httpService.post(item.url, item.payload, {
               headers,
               timeout: 10000,
-            })
+            }),
           );
 
           if (response.status >= 200 && response.status < 300) {
             succeededIds.push(i);
             this.logger.log(
-              `📤 DLQ webhook succeeded on retry ${item.attempts + 1}: ${item.payload.event}`
+              `📤 DLQ webhook succeeded on retry ${item.attempts + 1}: ${item.payload.event}`,
             );
           } else {
             item.attempts++;
@@ -427,17 +452,28 @@ export class WebhookNotificationService implements OnModuleDestroy {
         } catch (error: unknown) {
           item.attempts++;
           item.lastAttempt = now;
-          item.lastError = error instanceof Error ? error.message : String(error);
+          item.lastError =
+            error instanceof Error ? error.message : String(error);
         }
       }
 
       // Remove succeeded, expired, and max-retries items
-      const idsToRemove = new Set([...succeededIds, ...expiredIds, ...maxRetriesIds]);
-      this.deadLetterQueue = this.deadLetterQueue.filter((_, i) => !idsToRemove.has(i));
+      const idsToRemove = new Set([
+        ...succeededIds,
+        ...expiredIds,
+        ...maxRetriesIds,
+      ]);
+      this.deadLetterQueue = this.deadLetterQueue.filter(
+        (_, i) => !idsToRemove.has(i),
+      );
 
-      if (succeededIds.length > 0 || expiredIds.length > 0 || maxRetriesIds.length > 0) {
+      if (
+        succeededIds.length > 0 ||
+        expiredIds.length > 0 ||
+        maxRetriesIds.length > 0
+      ) {
         this.logger.log(
-          `DLQ processed: ${succeededIds.length} succeeded, ${expiredIds.length} expired, ${maxRetriesIds.length} max retries. Remaining: ${this.deadLetterQueue.length}`
+          `DLQ processed: ${succeededIds.length} succeeded, ${expiredIds.length} expired, ${maxRetriesIds.length} max retries. Remaining: ${this.deadLetterQueue.length}`,
         );
       }
     } finally {
@@ -454,12 +490,14 @@ export class WebhookNotificationService implements OnModuleDestroy {
     }
 
     const oldest = this.deadLetterQueue.reduce((min, item) =>
-      item.firstFailure < min.firstFailure ? item : min
+      item.firstFailure < min.firstFailure ? item : min,
     );
 
     return {
       size: this.deadLetterQueue.length,
-      oldestAge: Math.round((Date.now() - oldest.firstFailure.getTime()) / 1000 / 60), // minutes
+      oldestAge: Math.round(
+        (Date.now() - oldest.firstFailure.getTime()) / 1000 / 60,
+      ), // minutes
     };
   }
 }

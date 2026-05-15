@@ -11,7 +11,10 @@ import { exec } from 'child_process';
 const mockExec = exec as unknown as jest.Mock;
 
 // Helper to simulate promisified exec
-type ExecCallback = (error: Error | null, result: { stdout: string; stderr: string }) => void;
+type ExecCallback = (
+  error: Error | null,
+  result: { stdout: string; stderr: string },
+) => void;
 
 function mockExecResolve(stdout: string, stderr = '') {
   mockExec.mockImplementation((_cmd: string, callback: ExecCallback) => {
@@ -25,7 +28,9 @@ function mockExecReject(error: Error) {
   });
 }
 
-function mockExecSequence(responses: Array<{ stdout?: string; stderr?: string; error?: Error }>) {
+function mockExecSequence(
+  responses: Array<{ stdout?: string; stderr?: string; error?: Error }>,
+) {
   let callIndex = 0;
   mockExec.mockImplementation((_cmd: string, callback: ExecCallback) => {
     const response = responses[callIndex] || responses[responses.length - 1];
@@ -49,7 +54,9 @@ describe('DockerVolumeDetectorService', () => {
       providers: [DockerVolumeDetectorService],
     }).compile();
 
-    service = module.get<DockerVolumeDetectorService>(DockerVolumeDetectorService);
+    service = module.get<DockerVolumeDetectorService>(
+      DockerVolumeDetectorService,
+    );
 
     jest.spyOn((service as any).logger, 'log').mockImplementation();
     jest.spyOn((service as any).logger, 'warn').mockImplementation();
@@ -127,7 +134,9 @@ describe('DockerVolumeDetectorService', () => {
     });
 
     it('should handle multiple path segments', () => {
-      expect(service.getSuggestedShareName('/mnt/user/media')).toBe('Mnt User Media');
+      expect(service.getSuggestedShareName('/mnt/user/media')).toBe(
+        'Mnt User Media',
+      );
     });
 
     it('should capitalize first letter of each segment', () => {
@@ -415,7 +424,7 @@ describe('DockerVolumeDetectorService', () => {
       ]);
 
       await expect((service as any).getContainerIdFromCgroup()).rejects.toThrow(
-        'Could not extract container ID from cgroup'
+        'Could not extract container ID from cgroup',
       );
     });
 

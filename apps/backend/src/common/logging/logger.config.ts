@@ -20,10 +20,19 @@ const logLevel = process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info');
 
 // LOW PRIORITY FIX #21: Configurable log rotation parameters
 const LOG_MAX_SIZE = parseInt(process.env.LOG_MAX_SIZE || '10485760', 10); // 10MB default
-const LOG_MAX_FILES_ERROR = parseInt(process.env.LOG_MAX_FILES_ERROR || '5', 10);
-const LOG_MAX_FILES_COMBINED = parseInt(process.env.LOG_MAX_FILES_COMBINED || '10', 10);
+const LOG_MAX_FILES_ERROR = parseInt(
+  process.env.LOG_MAX_FILES_ERROR || '5',
+  10,
+);
+const LOG_MAX_FILES_COMBINED = parseInt(
+  process.env.LOG_MAX_FILES_COMBINED || '10',
+  10,
+);
 const LOG_MAX_FILES_HTTP = parseInt(process.env.LOG_MAX_FILES_HTTP || '5', 10);
-const LOG_MAX_FILES_EXCEPTIONS = parseInt(process.env.LOG_MAX_FILES_EXCEPTIONS || '3', 10);
+const LOG_MAX_FILES_EXCEPTIONS = parseInt(
+  process.env.LOG_MAX_FILES_EXCEPTIONS || '3',
+  10,
+);
 
 /**
  * Custom format for development logs with colors and timestamps
@@ -34,9 +43,11 @@ const developmentFormat = winston.format.combine(
   winston.format.colorize(),
   winston.format.printf(({ timestamp, level, message, context, ...meta }) => {
     const contextStr = context ? `[${context}]` : '';
-    const metaStr = Object.keys(meta).length ? `\n${JSON.stringify(meta, null, 2)}` : '';
+    const metaStr = Object.keys(meta).length
+      ? `\n${JSON.stringify(meta, null, 2)}`
+      : '';
     return `${timestamp} ${level} ${message} ${contextStr} ${metaStr}`;
-  })
+  }),
 );
 
 /**
@@ -45,7 +56,7 @@ const developmentFormat = winston.format.combine(
 const productionFormat = winston.format.combine(
   winston.format.timestamp(),
   winston.format.errors({ stack: true }),
-  winston.format.json()
+  winston.format.json(),
 );
 
 /**

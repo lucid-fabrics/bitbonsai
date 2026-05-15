@@ -1,4 +1,10 @@
-import { Component, computed, inject, type OnInit, ViewEncapsulation } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  type OnInit,
+  ViewEncapsulation,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
@@ -21,11 +27,13 @@ export class SettingsComponent implements OnInit {
   // Advanced mode from store (persisted setting)
   private readonly advancedMode = toSignal(
     this.store.select(SettingsSelectors.selectAdvancedMode),
-    { initialValue: false }
+    { initialValue: false },
   );
 
   // Debug tab visible in development OR when advanced mode enabled in production
-  readonly showDebugTab = computed(() => !environment.production || this.advancedMode());
+  readonly showDebugTab = computed(
+    () => !environment.production || this.advancedMode(),
+  );
 
   ngOnInit(): void {
     // Load advanced mode setting from API

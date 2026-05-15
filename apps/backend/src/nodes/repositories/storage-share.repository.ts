@@ -31,7 +31,10 @@ export class StorageShareRepository implements IStorageShareRepository {
     });
   }
 
-  async findByMountPoint(nodeId: string, mountPoint: string): Promise<StorageShare | null> {
+  async findByMountPoint(
+    nodeId: string,
+    mountPoint: string,
+  ): Promise<StorageShare | null> {
     return this.prisma.storageShare.findFirst({
       where: {
         nodeId,
@@ -79,7 +82,7 @@ export class StorageShareRepository implements IStorageShareRepository {
   async updateStatus(
     id: string,
     status: StorageShareStatus,
-    errorMessage?: string
+    errorMessage?: string,
   ): Promise<StorageShare> {
     const data: Record<string, unknown> = { status };
 
@@ -171,14 +174,19 @@ export class StorageShareRepository implements IStorageShareRepository {
     });
   }
 
-  async findMountPointsByNodeId(nodeId: string): Promise<Array<{ mountPoint: string }>> {
+  async findMountPointsByNodeId(
+    nodeId: string,
+  ): Promise<Array<{ mountPoint: string }>> {
     return this.prisma.storageShare.findMany({
       where: { nodeId },
       select: { mountPoint: true },
     });
   }
 
-  async findBySharePath(nodeId: string, sharePath: string): Promise<StorageShare | null> {
+  async findBySharePath(
+    nodeId: string,
+    sharePath: string,
+  ): Promise<StorageShare | null> {
     return this.prisma.storageShare.findFirst({
       where: {
         nodeId,

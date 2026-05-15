@@ -136,7 +136,10 @@ export function isLocalNetworkIp(ip: string): boolean {
 
   // Check IPv6 unique local addresses (fc00::/7)
   // This includes fc00::/8 and fd00::/8
-  if (trimmedIp.toLowerCase().startsWith('fc') || trimmedIp.toLowerCase().startsWith('fd')) {
+  if (
+    trimmedIp.toLowerCase().startsWith('fc') ||
+    trimmedIp.toLowerCase().startsWith('fd')
+  ) {
     // More precise check for fc00::/7 range
     const ipv6Regex = /^f[cd][0-9a-f]{2}:/i;
     if (ipv6Regex.test(trimmedIp)) {

@@ -37,7 +37,8 @@ export class PolicyDto {
   targetQuality!: number;
 
   @ApiPropertyOptional({
-    description: 'Target container format (mkv, mp4, webm, or null to keep original)',
+    description:
+      'Target container format (mkv, mp4, webm, or null to keep original)',
     example: 'mkv',
     enum: ['mkv', 'mp4', 'webm', null],
     nullable: true,
@@ -45,19 +46,22 @@ export class PolicyDto {
   targetContainer?: string | null;
 
   @ApiProperty({
-    description: 'Smart remux enabled - skip re-encoding when source matches target codec',
+    description:
+      'Smart remux enabled - skip re-encoding when source matches target codec',
     example: true,
   })
   skipReencoding!: boolean;
 
   @ApiProperty({
-    description: 'Allow same codec re-encoding without confirmation (skip NEEDS_DECISION)',
+    description:
+      'Allow same codec re-encoding without confirmation (skip NEEDS_DECISION)',
     example: false,
   })
   allowSameCodec!: boolean;
 
   @ApiPropertyOptional({
-    description: 'Minimum expected savings percentage required for same-codec encoding (0-100)',
+    description:
+      'Minimum expected savings percentage required for same-codec encoding (0-100)',
     example: 0,
   })
   minSavingsPercent?: number | null;

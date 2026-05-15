@@ -63,7 +63,7 @@ export interface TimeWindow {
  */
 export function isNodeInAllowedWindow(
   node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'>,
-  currentTime: Date = new Date()
+  currentTime: Date = new Date(),
 ): boolean {
   // Rule 1: Schedule disabled = 24/7 availability
   if (!node.scheduleEnabled) {
@@ -84,7 +84,10 @@ export function isNodeInAllowedWindow(
       : (JSON.parse(String(raw)) as TimeWindow[]);
   } catch (error: unknown) {
     // Invalid JSON = treat as 24/7 (fail open for availability)
-    logger.warn('Failed to parse scheduleWindows JSON, defaulting to 24/7', error);
+    logger.warn(
+      'Failed to parse scheduleWindows JSON, defaulting to 24/7',
+      error,
+    );
     return true;
   }
 
@@ -113,13 +116,19 @@ export function isNodeInAllowedWindow(
     if (endMinutes < startMinutes) {
       // Window crosses midnight
       // Match if: current time >= start OR current time < end
-      if (currentTimeMinutes >= startMinutes || currentTimeMinutes < endMinutes) {
+      if (
+        currentTimeMinutes >= startMinutes ||
+        currentTimeMinutes < endMinutes
+      ) {
         return true;
       }
     } else {
       // Normal window (doesn't cross midnight)
       // Match if: start <= current time < end
-      if (currentTimeMinutes >= startMinutes && currentTimeMinutes < endMinutes) {
+      if (
+        currentTimeMinutes >= startMinutes &&
+        currentTimeMinutes < endMinutes
+      ) {
         return true;
       }
     }
@@ -141,7 +150,7 @@ export function isNodeInAllowedWindow(
  * // "Schedule enabled with 5 time windows"
  */
 export function getScheduleDescription(
-  node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'>
+  node: Pick<Node, 'scheduleEnabled' | 'scheduleWindows'>,
 ): string {
   if (!node.scheduleEnabled) {
     return 'Available 24/7 (schedule disabled)';
@@ -174,7 +183,15 @@ export function getScheduleDescription(
  * @returns {string} Formatted string (e.g., "Monday 23:00 - 07:00")
  */
 export function formatTimeWindow(window: TimeWindow): string {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const days = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ];
   const dayName = days[window.dayOfWeek] ?? 'Unknown';
 
   const formatTime = (hour: number, minute?: number): string => {

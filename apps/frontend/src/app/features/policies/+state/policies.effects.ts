@@ -16,10 +16,12 @@ export class PoliciesEffects {
       switchMap(() =>
         this.policyService.getPolicies().pipe(
           map((policies) => PoliciesActions.loadPoliciesSuccess({ policies })),
-          catchError((error) => of(PoliciesActions.loadPoliciesFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(PoliciesActions.loadPoliciesFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   loadPresets$ = createEffect(() =>
@@ -28,10 +30,12 @@ export class PoliciesEffects {
       switchMap(() =>
         this.policyService.getPresets().pipe(
           map((presets) => PoliciesActions.loadPresetsSuccess({ presets })),
-          catchError((error) => of(PoliciesActions.loadPresetsFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(PoliciesActions.loadPresetsFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   createPolicy$ = createEffect(() =>
@@ -40,10 +44,12 @@ export class PoliciesEffects {
       switchMap(({ request }) =>
         this.policyService.createPolicy(request).pipe(
           map((policy) => PoliciesActions.createPolicySuccess({ policy })),
-          catchError((error) => of(PoliciesActions.createPolicyFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(PoliciesActions.createPolicyFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   updatePolicy$ = createEffect(() =>
@@ -52,10 +58,12 @@ export class PoliciesEffects {
       switchMap(({ id, request }) =>
         this.policyService.updatePolicy(id, request).pipe(
           map((policy) => PoliciesActions.updatePolicySuccess({ policy })),
-          catchError((error) => of(PoliciesActions.updatePolicyFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(PoliciesActions.updatePolicyFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 
   deletePolicy$ = createEffect(() =>
@@ -64,9 +72,11 @@ export class PoliciesEffects {
       switchMap(({ id }) =>
         this.policyService.deletePolicy(id).pipe(
           map(() => PoliciesActions.deletePolicySuccess({ id })),
-          catchError((error) => of(PoliciesActions.deletePolicyFailure({ error: error.message })))
-        )
-      )
-    )
+          catchError((error) =>
+            of(PoliciesActions.deletePolicyFailure({ error: error.message })),
+          ),
+        ),
+      ),
+    ),
   );
 }
