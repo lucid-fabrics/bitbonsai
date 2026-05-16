@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  LoggerService as NestLoggerService,
-  Scope,
-} from '@nestjs/common';
+import { Injectable, LoggerService as NestLoggerService, Scope } from '@nestjs/common';
 import type { Logger } from 'winston';
 
 /**
@@ -36,12 +32,7 @@ export class LoggerService implements NestLoggerService {
   /**
    * Log an error message
    */
-  error(
-    message: string,
-    trace?: string,
-    context?: string,
-    meta?: Record<string, unknown>,
-  ): void {
+  error(message: string, trace?: string, context?: string, meta?: Record<string, unknown>): void {
     this.logger.error(message, {
       context: context || this.context,
       stack: trace,
@@ -52,11 +43,7 @@ export class LoggerService implements NestLoggerService {
   /**
    * Log a warning message
    */
-  warn(
-    message: string,
-    context?: string,
-    meta?: Record<string, unknown>,
-  ): void {
+  warn(message: string, context?: string, meta?: Record<string, unknown>): void {
     this.logger.warn(message, {
       context: context || this.context,
       ...meta,
@@ -66,11 +53,7 @@ export class LoggerService implements NestLoggerService {
   /**
    * Log a debug message
    */
-  debug(
-    message: string,
-    context?: string,
-    meta?: Record<string, unknown>,
-  ): void {
+  debug(message: string, context?: string, meta?: Record<string, unknown>): void {
     this.logger.debug(message, {
       context: context || this.context,
       ...meta,
@@ -80,11 +63,7 @@ export class LoggerService implements NestLoggerService {
   /**
    * Log a verbose message
    */
-  verbose(
-    message: string,
-    context?: string,
-    meta?: Record<string, unknown>,
-  ): void {
+  verbose(message: string, context?: string, meta?: Record<string, unknown>): void {
     this.logger.verbose(message, {
       context: context || this.context,
       ...meta,
@@ -104,11 +83,7 @@ export class LoggerService implements NestLoggerService {
   /**
    * Log structured data (for complex objects)
    */
-  logWithData(
-    level: string,
-    message: string,
-    data: Record<string, unknown>,
-  ): void {
+  logWithData(level: string, message: string, data: Record<string, unknown>): void {
     this.logger.log(level, message, {
       context: this.context,
       ...data,

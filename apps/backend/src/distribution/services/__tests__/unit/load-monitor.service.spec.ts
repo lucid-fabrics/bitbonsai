@@ -75,9 +75,7 @@ describe('LoadMonitorService', () => {
       ...overrides,
     }) as Node;
 
-  const createLoadData = (
-    overrides: Partial<HeartbeatLoadData> = {},
-  ): HeartbeatLoadData => ({
+  const createLoadData = (overrides: Partial<HeartbeatLoadData> = {}): HeartbeatLoadData => ({
     load1m: 2.0,
     load5m: 1.8,
     load15m: 1.5,
@@ -107,7 +105,7 @@ describe('LoadMonitorService', () => {
           currentSystemLoad: 2.5,
           currentMemoryFreeGB: 12,
           lastHeartbeatLoad: expect.objectContaining({ load1m: 2.5 }),
-        }),
+        })
       );
     });
 

@@ -54,6 +54,6 @@ export const setupGuard: CanActivateFn = (route) => {
       // This prevents the app from being locked out if the API is temporarily unavailable
       errorLogger.error('Setup guard error', error);
       return of(true);
-    }),
+    })
   );
 };

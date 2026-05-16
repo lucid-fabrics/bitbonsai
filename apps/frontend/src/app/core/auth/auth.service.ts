@@ -1,11 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable, Subject, tap } from 'rxjs';
-import {
-  AuthResponse,
-  LoginCredentials,
-  RefreshTokenRequest,
-} from './models/auth-response.model';
+import { AuthResponse, LoginCredentials, RefreshTokenRequest } from './models/auth-response.model';
 
 /**
  * Authentication Service
@@ -35,17 +31,13 @@ export class AuthService {
   /**
    * Observable that emits the current authentication state
    */
-  private readonly isAuthenticatedSubject = new BehaviorSubject<boolean>(
-    this.hasValidTokens(),
-  );
+  private readonly isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasValidTokens());
   public readonly isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
 
   // DEEP AUDIT P1-2: Token refresh state management (moved from module-level interceptor)
   // This prevents memory leaks across login/logout cycles
   private _isRefreshing = false;
-  private readonly _refreshTokenSubject = new BehaviorSubject<string | null>(
-    null,
-  );
+  private readonly _refreshTokenSubject = new BehaviorSubject<string | null>(null);
   private readonly _logoutSubject = new Subject<void>();
 
   /** Observable that emits when logout occurs - interceptor should reset state */
@@ -119,13 +111,11 @@ export class AuthService {
     }
 
     const payload: RefreshTokenRequest = { refresh_token: refreshToken };
-    return this.http
-      .post<{ accessToken: string }>(`${this.API_URL}/refresh`, payload)
-      .pipe(
-        tap((response) => {
-          this.setAccessToken(response.accessToken);
-        }),
-      );
+    return this.http.post<{ accessToken: string }>(`${this.API_URL}/refresh`, payload).pipe(
+      tap((response) => {
+        this.setAccessToken(response.accessToken);
+      })
+    );
   }
 
   /**

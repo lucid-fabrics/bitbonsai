@@ -50,24 +50,16 @@ export class LicenseService {
   }
 
   getStripePlans(): Observable<{ plans: StripePlan[]; configured: boolean }> {
-    return this.http.get<{ plans: StripePlan[]; configured: boolean }>(
-      `${this.stripeUrl}/plans`,
-    );
+    return this.http.get<{ plans: StripePlan[]; configured: boolean }>(`${this.stripeUrl}/plans`);
   }
 
-  createStripeCheckout(
-    email: string,
-    priceId: string,
-  ): Observable<StripeCheckoutResponse> {
-    return this.http.post<StripeCheckoutResponse>(
-      `${this.stripeUrl}/checkout`,
-      {
-        email,
-        priceId,
-        successUrl: `${window.location.origin}/settings?tab=license&stripe=success`,
-        cancelUrl: `${window.location.origin}/settings?tab=license`,
-      },
-    );
+  createStripeCheckout(email: string, priceId: string): Observable<StripeCheckoutResponse> {
+    return this.http.post<StripeCheckoutResponse>(`${this.stripeUrl}/checkout`, {
+      email,
+      priceId,
+      successUrl: `${window.location.origin}/settings?tab=license&stripe=success`,
+      cancelUrl: `${window.location.origin}/settings?tab=license`,
+    });
   }
 
   getStripePortalUrl(customerId: string): Observable<{ url: string }> {

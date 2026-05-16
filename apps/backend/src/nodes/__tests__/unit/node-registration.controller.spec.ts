@@ -97,9 +97,7 @@ describe('NodeRegistrationController', () => {
       ],
     }).compile();
 
-    controller = module.get<NodeRegistrationController>(
-      NodeRegistrationController,
-    );
+    controller = module.get<NodeRegistrationController>(NodeRegistrationController);
   });
 
   it('should be defined', () => {
@@ -128,22 +126,18 @@ describe('NodeRegistrationController', () => {
 
     it('should propagate ConflictException when node limit exceeded', async () => {
       mockNodesService.registerNode.mockRejectedValue(
-        new Error('Maximum nodes reached for this license'),
+        new Error('Maximum nodes reached for this license')
       );
 
       await expect(controller.register({} as any)).rejects.toThrow(
-        'Maximum nodes reached for this license',
+        'Maximum nodes reached for this license'
       );
     });
 
     it('should propagate BadRequestException for invalid license', async () => {
-      mockNodesService.registerNode.mockRejectedValue(
-        new Error('Invalid license key'),
-      );
+      mockNodesService.registerNode.mockRejectedValue(new Error('Invalid license key'));
 
-      await expect(controller.register({} as any)).rejects.toThrow(
-        'Invalid license key',
-      );
+      await expect(controller.register({} as any)).rejects.toThrow('Invalid license key');
     });
   });
 
@@ -173,12 +167,12 @@ describe('NodeRegistrationController', () => {
 
     it('should propagate NotFoundException for invalid/expired token', async () => {
       mockNodesService.pairNode.mockRejectedValue(
-        new NotFoundException('Invalid or expired token'),
+        new NotFoundException('Invalid or expired token')
       );
 
-      await expect(
-        controller.pair({ pairingToken: '000000' } as any),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.pair({ pairingToken: '000000' } as any)).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -197,20 +191,16 @@ describe('NodeRegistrationController', () => {
 
       const result = await controller.generatePairingToken('node-1');
 
-      expect(mockNodesService.generatePairingTokenForNode).toHaveBeenCalledWith(
-        'node-1',
-      );
+      expect(mockNodesService.generatePairingTokenForNode).toHaveBeenCalledWith('node-1');
       expect(result).toEqual(response);
     });
 
     it('should propagate NotFoundException for unknown node', async () => {
       mockNodesService.generatePairingTokenForNode.mockRejectedValue(
-        new NotFoundException('Node not found'),
+        new NotFoundException('Node not found')
       );
 
-      await expect(controller.generatePairingToken('missing')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(controller.generatePairingToken('missing')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -236,12 +226,10 @@ describe('NodeRegistrationController', () => {
 
     it('should propagate errors for MAIN nodes attempting unregister', async () => {
       mockNodesService.unregisterSelf.mockRejectedValue(
-        new Error('Only LINKED nodes can unregister'),
+        new Error('Only LINKED nodes can unregister')
       );
 
-      await expect(controller.unregisterSelf()).rejects.toThrow(
-        'Only LINKED nodes can unregister',
-      );
+      await expect(controller.unregisterSelf()).rejects.toThrow('Only LINKED nodes can unregister');
     });
   });
 
@@ -263,9 +251,7 @@ describe('NodeRegistrationController', () => {
 
       const result = await controller.discoverMainNodes();
 
-      expect(mockNodeDiscoveryService.discoverMainNodes).toHaveBeenCalledTimes(
-        1,
-      );
+      expect(mockNodeDiscoveryService.discoverMainNodes).toHaveBeenCalledTimes(1);
       expect(result).toEqual(nodes);
     });
 
@@ -285,31 +271,29 @@ describe('NodeRegistrationController', () => {
   describe('createRegistrationRequest', () => {
     it('should create a registration request and return mapped dto', async () => {
       mockRegistrationRequestService.createRegistrationRequest.mockResolvedValue(
-        mockRegistrationRequest,
+        mockRegistrationRequest
       );
       const createDto = {
         childNodeName: 'Child Node',
         ipAddress: '192.168.1.200',
       };
 
-      const result = await controller.createRegistrationRequest(
-        createDto as any,
-      );
+      const result = await controller.createRegistrationRequest(createDto as any);
 
-      expect(
-        mockRegistrationRequestService.createRegistrationRequest,
-      ).toHaveBeenCalledWith(createDto);
+      expect(mockRegistrationRequestService.createRegistrationRequest).toHaveBeenCalledWith(
+        createDto
+      );
       expect(result).toMatchObject({ id: 'req-1', status: 'PENDING' });
     });
 
     it('should propagate errors for invalid request data', async () => {
       mockRegistrationRequestService.createRegistrationRequest.mockRejectedValue(
-        new Error('Invalid request data'),
+        new Error('Invalid request data')
       );
 
-      await expect(
-        controller.createRegistrationRequest({} as any),
-      ).rejects.toThrow('Invalid request data');
+      await expect(controller.createRegistrationRequest({} as any)).rejects.toThrow(
+        'Invalid request data'
+      );
     });
   });
 
@@ -327,9 +311,7 @@ describe('NodeRegistrationController', () => {
       const result = await controller.getPendingRequests();
 
       expect(mockNodesService.getCurrentNode).toHaveBeenCalledTimes(1);
-      expect(
-        mockRegistrationRequestService.getPendingRequests,
-      ).toHaveBeenCalledWith('node-1');
+      expect(mockRegistrationRequestService.getPendingRequests).toHaveBeenCalledWith('node-1');
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(1);
     });
@@ -350,26 +332,20 @@ describe('NodeRegistrationController', () => {
 
   describe('getRegistrationRequest', () => {
     it('should return a specific registration request', async () => {
-      mockRegistrationRequestService.getRequest.mockResolvedValue(
-        mockRegistrationRequest,
-      );
+      mockRegistrationRequestService.getRequest.mockResolvedValue(mockRegistrationRequest);
 
       const result = await controller.getRegistrationRequest('req-1');
 
-      expect(mockRegistrationRequestService.getRequest).toHaveBeenCalledWith(
-        'req-1',
-      );
+      expect(mockRegistrationRequestService.getRequest).toHaveBeenCalledWith('req-1');
       expect(result).toMatchObject({ id: 'req-1' });
     });
 
     it('should propagate NotFoundException for unknown request', async () => {
       mockRegistrationRequestService.getRequest.mockRejectedValue(
-        new NotFoundException('Request not found'),
+        new NotFoundException('Request not found')
       );
 
-      await expect(
-        controller.getRegistrationRequest('missing'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.getRegistrationRequest('missing')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -388,9 +364,7 @@ describe('NodeRegistrationController', () => {
 
       const result = await controller.approveRegistrationRequest('req-1', {});
 
-      expect(
-        mockRegistrationRequestService.approveRequest,
-      ).toHaveBeenCalledWith('req-1', {});
+      expect(mockRegistrationRequestService.approveRequest).toHaveBeenCalledWith('req-1', {});
       expect(result).toMatchObject({ id: 'req-1' });
     });
 
@@ -403,30 +377,31 @@ describe('NodeRegistrationController', () => {
 
       const result = await controller.approveRegistrationRequest('req-1');
 
-      expect(
-        mockRegistrationRequestService.approveRequest,
-      ).toHaveBeenCalledWith('req-1', undefined);
+      expect(mockRegistrationRequestService.approveRequest).toHaveBeenCalledWith(
+        'req-1',
+        undefined
+      );
       expect(result).toMatchObject({ id: 'req-1', status: 'APPROVED' });
     });
 
     it('should propagate NotFoundException for unknown request', async () => {
       mockRegistrationRequestService.approveRequest.mockRejectedValue(
-        new NotFoundException('Request not found'),
+        new NotFoundException('Request not found')
       );
 
-      await expect(
-        controller.approveRegistrationRequest('missing'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.approveRegistrationRequest('missing')).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should propagate ConflictException when node limit exceeded', async () => {
       mockRegistrationRequestService.approveRequest.mockRejectedValue(
-        new Error('Maximum nodes reached'),
+        new Error('Maximum nodes reached')
       );
 
-      await expect(
-        controller.approveRegistrationRequest('req-1'),
-      ).rejects.toThrow('Maximum nodes reached');
+      await expect(controller.approveRegistrationRequest('req-1')).rejects.toThrow(
+        'Maximum nodes reached'
+      );
     });
   });
 
@@ -444,26 +419,20 @@ describe('NodeRegistrationController', () => {
       mockRegistrationRequestService.rejectRequest.mockResolvedValue(rejected);
       const rejectDto = { reason: 'Unauthorized device' };
 
-      const result = await controller.rejectRegistrationRequest(
-        'req-1',
-        rejectDto as any,
-      );
+      const result = await controller.rejectRegistrationRequest('req-1', rejectDto as any);
 
-      expect(mockRegistrationRequestService.rejectRequest).toHaveBeenCalledWith(
-        'req-1',
-        rejectDto,
-      );
+      expect(mockRegistrationRequestService.rejectRequest).toHaveBeenCalledWith('req-1', rejectDto);
       expect(result).toMatchObject({ id: 'req-1' });
     });
 
     it('should propagate NotFoundException for unknown request', async () => {
       mockRegistrationRequestService.rejectRequest.mockRejectedValue(
-        new NotFoundException('Request not found'),
+        new NotFoundException('Request not found')
       );
 
-      await expect(
-        controller.rejectRegistrationRequest('missing', {} as any),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.rejectRegistrationRequest('missing', {} as any)).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -481,20 +450,18 @@ describe('NodeRegistrationController', () => {
 
       const result = await controller.cancelRegistrationRequest('req-1');
 
-      expect(mockRegistrationRequestService.cancelRequest).toHaveBeenCalledWith(
-        'req-1',
-      );
+      expect(mockRegistrationRequestService.cancelRequest).toHaveBeenCalledWith('req-1');
       expect(result).toMatchObject({ id: 'req-1' });
     });
 
     it('should propagate NotFoundException for unknown request', async () => {
       mockRegistrationRequestService.cancelRequest.mockRejectedValue(
-        new NotFoundException('Request not found'),
+        new NotFoundException('Request not found')
       );
 
-      await expect(
-        controller.cancelRegistrationRequest('missing'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.cancelRegistrationRequest('missing')).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -508,27 +475,22 @@ describe('NodeRegistrationController', () => {
         ...mockRegistrationRequest,
         status: 'CANCELLED' as const,
       };
-      mockRegistrationRequestService.cancelRequestByToken.mockResolvedValue(
-        cancelled,
-      );
+      mockRegistrationRequestService.cancelRequestByToken.mockResolvedValue(cancelled);
 
-      const result =
-        await controller.cancelRegistrationRequestByToken('123456');
+      const result = await controller.cancelRegistrationRequestByToken('123456');
 
-      expect(
-        mockRegistrationRequestService.cancelRequestByToken,
-      ).toHaveBeenCalledWith('123456');
+      expect(mockRegistrationRequestService.cancelRequestByToken).toHaveBeenCalledWith('123456');
       expect(result).toMatchObject({ id: 'req-1' });
     });
 
     it('should propagate NotFoundException for invalid token', async () => {
       mockRegistrationRequestService.cancelRequestByToken.mockRejectedValue(
-        new NotFoundException('Invalid pairing token'),
+        new NotFoundException('Invalid pairing token')
       );
 
-      await expect(
-        controller.cancelRegistrationRequestByToken('000000'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.cancelRegistrationRequestByToken('000000')).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -567,10 +529,7 @@ describe('NodeRegistrationController', () => {
 
       const result = await controller.addAuthorizedKey(body);
 
-      expect(mockSshKeyService.addAuthorizedKey).toHaveBeenCalledWith(
-        body.publicKey,
-        body.comment,
-      );
+      expect(mockSshKeyService.addAuthorizedKey).toHaveBeenCalledWith(body.publicKey, body.comment);
       expect(result).toEqual({
         success: true,
         message: 'SSH key added to authorized_keys',
@@ -583,10 +542,7 @@ describe('NodeRegistrationController', () => {
 
       const result = await controller.addAuthorizedKey(body);
 
-      expect(mockSshKeyService.addAuthorizedKey).toHaveBeenCalledWith(
-        body.publicKey,
-        undefined,
-      );
+      expect(mockSshKeyService.addAuthorizedKey).toHaveBeenCalledWith(body.publicKey, undefined);
       expect(result.success).toBe(true);
     });
   });

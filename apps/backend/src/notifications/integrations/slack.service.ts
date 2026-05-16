@@ -58,7 +58,7 @@ export class SlackNotificationService {
 
   constructor(
     private readonly settingsRepository: SettingsRepository,
-    private readonly httpService: HttpService,
+    private readonly httpService: HttpService
   ) {}
 
   /**
@@ -73,9 +73,7 @@ export class SlackNotificationService {
     const webhookUrl = await this.getWebhookUrl();
     if (!webhookUrl) return;
 
-    const savedGB = job.savedBytes
-      ? (Number(job.savedBytes) / 1024 ** 3).toFixed(2)
-      : '0';
+    const savedGB = job.savedBytes ? (Number(job.savedBytes) / 1024 ** 3).toFixed(2) : '0';
     const savedPercent = job.savedPercent?.toFixed(1) || '0';
     const durationStr = job.duration
       ? `${Math.floor(job.duration / 60)}m ${job.duration % 60}s`
@@ -179,9 +177,7 @@ export class SlackNotificationService {
 
     const successRate =
       stats.completed + stats.failed > 0
-        ? ((stats.completed / (stats.completed + stats.failed)) * 100).toFixed(
-            1,
-          )
+        ? ((stats.completed / (stats.completed + stats.failed)) * 100).toFixed(1)
         : '0';
 
     const payload: SlackWebhookPayload = {
@@ -211,9 +207,7 @@ export class SlackNotificationService {
             },
             {
               type: 'context',
-              elements: [
-                { type: 'mrkdwn', text: `Duration: ${stats.duration}` },
-              ],
+              elements: [{ type: 'mrkdwn', text: `Duration: ${stats.duration}` }],
             },
           ],
         },
@@ -240,10 +234,7 @@ export class SlackNotificationService {
     const payload: SlackWebhookPayload = {
       attachments: [
         {
-          color:
-            alert.severity === 'critical'
-              ? this.COLORS.ERROR
-              : this.COLORS.WARNING,
+          color: alert.severity === 'critical' ? this.COLORS.ERROR : this.COLORS.WARNING,
           blocks: [
             {
               type: 'header',
@@ -272,9 +263,7 @@ export class SlackNotificationService {
   /**
    * Test webhook connection
    */
-  async testWebhook(
-    webhookUrl: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  async testWebhook(webhookUrl: string): Promise<{ success: boolean; error?: string }> {
     try {
       const payload: SlackWebhookPayload = {
         attachments: [
@@ -326,17 +315,14 @@ export class SlackNotificationService {
   /**
    * Send webhook with retry logic
    */
-  private async sendWebhook(
-    url: string,
-    payload: SlackWebhookPayload,
-  ): Promise<void> {
+  private async sendWebhook(url: string, payload: SlackWebhookPayload): Promise<void> {
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
       try {
         await firstValueFrom(
           this.httpService.post(url, payload, {
             headers: { 'Content-Type': 'application/json' },
             timeout: 10000,
-          }),
+          })
         );
         this.logger.debug('Slack webhook sent successfully');
         return;

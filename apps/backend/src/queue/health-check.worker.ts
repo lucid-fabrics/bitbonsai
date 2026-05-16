@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { FileHealthStatus, JobStage } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
@@ -8,7 +8,13 @@ import { ContainerCompatibilityService } from '../encoding/container-compatibili
 import { FfmpegService } from '../encoding/ffmpeg.service';
 import { FileHealthService } from '../encoding/file-health.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { HealthCheckIssueSeverity } from './models/health-check-issue.model';
+import {
+  HealthCheckIssue,
+  HealthCheckIssueCategory,
+  HealthCheckIssueSeverity,
+  HealthCheckSuggestedAction,
+} from './models/health-check-issue.model';
+import { CircuitBreakerService } from './services/circuit-breaker.service';
 import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 import { HealthCheckCodecAnalyzerService } from './services/health-check-codec-analyzer.service';
 
@@ -34,7 +40,7 @@ import { HealthCheckCodecAnalyzerService } from './services/health-check-codec-a
  * - MAX_RETRY_ATTEMPTS: Max retry attempts (default: 3)
  */
 @Injectable()
-export class HealthCheckWorker implements OnModuleInit {
+export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(HealthCheckWorker.name);
   private isRunning = false;
   private currentlyChecking = new Set<string>(); // Track in-progress checks
@@ -43,22 +49,10 @@ export class HealthCheckWorker implements OnModuleInit {
 
   // Configuration (can be moved to Settings later)
   // DEEP AUDIT P1-3: Reduced default concurrency from 10 to 5 to prevent DB pool exhaustion
-  private readonly CONCURRENCY = parseInt(
-    process.env.HEALTH_CHECK_CONCURRENCY || '5',
-    10,
-  );
-  private readonly INTERVAL_MS = parseInt(
-    process.env.HEALTH_CHECK_INTERVAL_MS || '2000',
-    10,
-  );
-  private readonly MIN_HEALTH_SCORE = parseInt(
-    process.env.MIN_HEALTH_SCORE || '40',
-    10,
-  );
-  private readonly MAX_RETRY_ATTEMPTS = parseInt(
-    process.env.MAX_RETRY_ATTEMPTS || '3',
-    10,
-  );
+  private readonly CONCURRENCY = parseInt(process.env.HEALTH_CHECK_CONCURRENCY || '5', 10);
+  private readonly INTERVAL_MS = parseInt(process.env.HEALTH_CHECK_INTERVAL_MS || '2000', 10);
+  private readonly MIN_HEALTH_SCORE = parseInt(process.env.MIN_HEALTH_SCORE || '40', 10);
+  private readonly MAX_RETRY_ATTEMPTS = parseInt(process.env.MAX_RETRY_ATTEMPTS || '3', 10);
   // DEEP AUDIT P1-3: Maximum pool utilization before applying backpressure (0-1)
   private readonly MAX_POOL_UTILIZATION = 0.8;
 
@@ -72,15 +66,14 @@ export class HealthCheckWorker implements OnModuleInit {
     private readonly fileRelocatorService: FileRelocatorService,
     private readonly fileFailureTracking: FileFailureTrackingService,
     private readonly codecAnalyzer: HealthCheckCodecAnalyzerService,
+    private readonly circuitBreaker: CircuitBreakerService
   ) {}
 
   /**
    * Start the health check worker when the module initializes
    */
   async onModuleInit(): Promise<void> {
-    this.logger.log(
-      `Starting HealthCheckWorker with concurrency=${this.CONCURRENCY}`,
-    );
+    this.logger.log(`Starting HealthCheckWorker with concurrency=${this.CONCURRENCY}`);
     this.start();
   }
 
@@ -107,15 +100,13 @@ export class HealthCheckWorker implements OnModuleInit {
 
     // MEDIUM #2 FIX: Check if lock is stale (>2h old)
     if (this.cronRunning && now - this.cronLockExpiry < 2 * 60 * 60 * 1000) {
-      this.logger.warn(
-        'Auto-requeue: Previous execution still running, skipping this cycle',
-      );
+      this.logger.warn('Auto-requeue: Previous execution still running, skipping this cycle');
       return;
     }
 
     if (this.cronRunning) {
       this.logger.warn(
-        `Auto-requeue: Stale lock detected (${Math.round((now - this.cronLockExpiry) / 1000 / 60)}m old), forcing reset`,
+        `Auto-requeue: Stale lock detected (${Math.round((now - this.cronLockExpiry) / 1000 / 60)}m old), forcing reset`
       );
     }
 
@@ -159,7 +150,7 @@ export class HealthCheckWorker implements OnModuleInit {
           corruptedRequeueCount: true,
           filePath: true,
           libraryId: true,
-        },
+        }
       );
 
       // Also find jobs that have hit the cap - permanently fail them
@@ -183,13 +174,13 @@ export class HealthCheckWorker implements OnModuleInit {
           filePath: true,
           libraryId: true,
           contentFingerprint: true,
-        },
+        }
       );
 
       // Permanently fail exhausted jobs
       if (exhaustedJobs.length > 0) {
         this.logger.warn(
-          `Auto-requeue: ${exhaustedJobs.length} job(s) exceeded max requeue count (${this.MAX_CORRUPTED_REQUEUE}) - marking FAILED permanently`,
+          `Auto-requeue: ${exhaustedJobs.length} job(s) exceeded max requeue count (${this.MAX_CORRUPTED_REQUEUE}) - marking FAILED permanently`
         );
 
         for (const job of exhaustedJobs) {
@@ -206,19 +197,17 @@ export class HealthCheckWorker implements OnModuleInit {
               job.filePath,
               job.libraryId,
               errorMsg,
-              job.contentFingerprint ?? undefined,
+              job.contentFingerprint ?? undefined
             );
           } catch (trackingErr: unknown) {
             this.logger.error(
               `Failed to record failure tracking for ${job.fileLabel}`,
-              trackingErr instanceof Error
-                ? trackingErr.stack
-                : String(trackingErr),
+              trackingErr instanceof Error ? trackingErr.stack : String(trackingErr)
             );
           }
 
           this.logger.warn(
-            `✗ Auto-requeue cap reached: ${job.fileLabel} (${job.corruptedRequeueCount}/${this.MAX_CORRUPTED_REQUEUE}) → FAILED permanently`,
+            `✗ Auto-requeue cap reached: ${job.fileLabel} (${job.corruptedRequeueCount}/${this.MAX_CORRUPTED_REQUEUE}) → FAILED permanently`
           );
         }
       }
@@ -229,13 +218,25 @@ export class HealthCheckWorker implements OnModuleInit {
       }
 
       this.logger.log(
-        `🔄 Auto-requeue: Found ${corruptedJobs.length} CORRUPTED job(s) - resetting for re-validation`,
+        `🔄 Auto-requeue: Found ${corruptedJobs.length} CORRUPTED job(s) - resetting for re-validation`
       );
 
       // Reset jobs to DETECTED with UNKNOWN health status for re-check
       // Increment corruptedRequeueCount for each job individually
       let resetCount = 0;
       for (const job of corruptedJobs) {
+        // Circuit breaker: skip permanently broken jobs
+        const broken = await this.circuitBreaker.checkAndBreak(
+          job.id,
+          `CORRUPTED requeue attempt ${job.corruptedRequeueCount + 1}`
+        );
+        if (broken) {
+          this.logger.warn(
+            `✗ Circuit broken during CORRUPTED requeue: ${job.fileLabel} → FAILED permanently`
+          );
+          continue;
+        }
+
         await this.jobRepository.updateById(job.id, {
           stage: JobStage.DETECTED,
           healthStatus: FileHealthStatus.UNKNOWN,
@@ -245,20 +246,17 @@ export class HealthCheckWorker implements OnModuleInit {
         resetCount++;
       }
 
-      this.logger.log(
-        `✅ Auto-requeue: Reset ${resetCount} job(s) to DETECTED for re-validation`,
-      );
+      this.logger.log(`✅ Auto-requeue: Reset ${resetCount} job(s) to DETECTED for re-validation`);
 
       // Log sample of affected files for debugging
       const sampleFiles = corruptedJobs.slice(0, 5).map((j) => j.fileLabel);
       if (sampleFiles.length > 0) {
         this.logger.debug(
-          `Auto-requeue sample: ${sampleFiles.join(', ')}${corruptedJobs.length > 5 ? '...' : ''}`,
+          `Auto-requeue sample: ${sampleFiles.join(', ')}${corruptedJobs.length > 5 ? '...' : ''}`
         );
       }
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Auto-requeue failed: ${errorMessage}`);
     }
   }
@@ -316,8 +314,7 @@ export class HealthCheckWorker implements OnModuleInit {
         await this.timeoutStuckHealthChecks();
         await this.processHealthChecks();
       } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error(`Worker loop error: ${errorMessage}`);
       }
 
@@ -348,7 +345,7 @@ export class HealthCheckWorker implements OnModuleInit {
         fileLabel: true,
         healthCheckStartedAt: true,
         retryCount: true,
-      },
+      }
     );
 
     for (const job of stuckJobs) {
@@ -359,7 +356,7 @@ export class HealthCheckWorker implements OnModuleInit {
       // If retries exhausted, fail the job
       if (job.retryCount >= this.MAX_RETRY_ATTEMPTS) {
         this.logger.warn(
-          `⏱️ Health check timeout: ${job.fileLabel} stuck for ${stuckMinutes}min, max retries (${this.MAX_RETRY_ATTEMPTS}) exhausted - marking FAILED`,
+          `⏱️ Health check timeout: ${job.fileLabel} stuck for ${stuckMinutes}min, max retries (${this.MAX_RETRY_ATTEMPTS}) exhausted - marking FAILED`
         );
         await this.jobRepository.updateById(job.id, {
           stage: JobStage.FAILED,
@@ -373,7 +370,7 @@ export class HealthCheckWorker implements OnModuleInit {
         const nextRetryAt = new Date(Date.now() + backoffMs);
 
         this.logger.warn(
-          `⏱️ Health check timeout: ${job.fileLabel} stuck for ${stuckMinutes}min - resetting to DETECTED (retry ${job.retryCount + 1}/${this.MAX_RETRY_ATTEMPTS}, next retry in ${backoffMs / 1000}s)`,
+          `⏱️ Health check timeout: ${job.fileLabel} stuck for ${stuckMinutes}min - resetting to DETECTED (retry ${job.retryCount + 1}/${this.MAX_RETRY_ATTEMPTS}, next retry in ${backoffMs / 1000}s)`
         );
         await this.jobRepository.updateById(job.id, {
           stage: JobStage.DETECTED,
@@ -408,13 +405,10 @@ export class HealthCheckWorker implements OnModuleInit {
     // This prevents overwhelming the system under heavy load
     // Note: Using currentlyChecking.size as a proxy for DB pool pressure
     // since Prisma $metrics may not be available in all configurations
-    if (
-      this.currentlyChecking.size >=
-      this.CONCURRENCY * this.MAX_POOL_UTILIZATION
-    ) {
+    if (this.currentlyChecking.size >= this.CONCURRENCY * this.MAX_POOL_UTILIZATION) {
       // Already at 80% of max concurrency, apply backpressure
       this.logger.debug(
-        `Backpressure: ${this.currentlyChecking.size}/${this.CONCURRENCY} checks in progress (>${Math.round(this.MAX_POOL_UTILIZATION * 100)}%)`,
+        `Backpressure: ${this.currentlyChecking.size}/${this.CONCURRENCY} checks in progress (>${Math.round(this.MAX_POOL_UTILIZATION * 100)}%)`
       );
       return;
     }
@@ -502,7 +496,7 @@ export class HealthCheckWorker implements OnModuleInit {
     }
 
     this.logger.debug(
-      `Processing ${filteredJobs.length} health checks (filtered from ${jobs.length}, ${this.currentlyChecking.size}/${this.CONCURRENCY} slots busy)`,
+      `Processing ${filteredJobs.length} health checks (filtered from ${jobs.length}, ${this.currentlyChecking.size}/${this.CONCURRENCY} slots busy)`
     );
 
     // Process jobs in parallel (fire and forget)
@@ -556,29 +550,25 @@ export class HealthCheckWorker implements OnModuleInit {
         } catch {
           if (attempt < FILE_ACCESS_MAX_RETRIES) {
             this.logger.debug(
-              `File access attempt ${attempt}/${FILE_ACCESS_MAX_RETRIES} failed for ${job.fileLabel}, retrying in ${FILE_ACCESS_RETRY_DELAY_MS}ms...`,
+              `File access attempt ${attempt}/${FILE_ACCESS_MAX_RETRIES} failed for ${job.fileLabel}, retrying in ${FILE_ACCESS_RETRY_DELAY_MS}ms...`
             );
-            await new Promise((resolve) =>
-              setTimeout(resolve, FILE_ACCESS_RETRY_DELAY_MS),
-            );
+            await new Promise((resolve) => setTimeout(resolve, FILE_ACCESS_RETRY_DELAY_MS));
           }
         }
       }
 
       if (!fileAccessible) {
         // SELF-HEALING: Try to relocate file if it was moved/renamed by media server
-        this.logger.warn(
-          `File not accessible for ${job.fileLabel}, attempting auto-relocation...`,
-        );
+        this.logger.warn(`File not accessible for ${job.fileLabel}, attempting auto-relocation...`);
         const relocationResult = await this.fileRelocatorService.relocateFile(
           job.filePath,
-          job.beforeSizeBytes,
+          job.beforeSizeBytes
         );
 
         if (relocationResult.found && relocationResult.newPath) {
           // File was relocated - update job and continue with health check
           this.logger.log(
-            `✅ AUTO-RELOCATED: ${job.fileLabel} found at new location (${relocationResult.matchType}, ${relocationResult.confidence}% confidence)`,
+            `✅ AUTO-RELOCATED: ${job.fileLabel} found at new location (${relocationResult.matchType}, ${relocationResult.confidence}% confidence)`
           );
 
           // Update job path in database
@@ -596,13 +586,12 @@ export class HealthCheckWorker implements OnModuleInit {
             stage: JobStage.FAILED,
             healthStatus: FileHealthStatus.CORRUPTED,
             healthScore: 0,
-            healthMessage:
-              '❌ Source file was deleted before health check could run',
+            healthMessage: '❌ Source file was deleted before health check could run',
             healthCheckedAt: new Date(),
             error: `File not found at expected path: ${job.filePath}\n\nThe file may have been moved or deleted after the job was created. (Checked ${FILE_ACCESS_MAX_RETRIES} times over ${(FILE_ACCESS_MAX_RETRIES * FILE_ACCESS_RETRY_DELAY_MS) / 1000}s)\n\n(Auto-relocation searched ${relocationResult.searchedPaths} files but could not find a match)`,
           });
           this.logger.error(
-            `✗ ${job.fileLabel} - FILE MISSING after ${FILE_ACCESS_MAX_RETRIES} retries and auto-relocation → FAILED`,
+            `✗ ${job.fileLabel} - FILE MISSING after ${FILE_ACCESS_MAX_RETRIES} retries and auto-relocation → FAILED`
           );
           return;
         }
@@ -616,34 +605,100 @@ export class HealthCheckWorker implements OnModuleInit {
             "healthCheckStartedAt" = NOW()
         WHERE id = ${jobId}
           AND stage IN ('DETECTED', 'HEALTH_CHECK')
-          AND (
-            "healthCheckStartedAt" IS NULL
-            OR "healthCheckStartedAt" < NOW() - INTERVAL '10 minutes'
-          )
+          AND "healthCheckStartedAt" IS NULL
       `;
 
       // Check if we successfully claimed the job (returns affected row count)
       if (claimResult === 0) {
         // Another worker already claimed this job for health check
-        this.logger.debug(
-          `Job ${jobId} already claimed by another health check worker, skipping`,
-        );
+        this.logger.debug(`Job ${jobId} already claimed by another health check worker, skipping`);
         return;
       }
 
       this.logger.debug(`Health checking: ${job.fileLabel}`);
 
-      // Perform health analysis
-      const healthResult = await this.fileHealthService.analyzeFile(
-        job.filePath,
-      );
+      // Tiered health check: quick header scan → thorough frame decode on failure
+      // Step 1: Quick check — fast ffprobe header scan (5s timeout)
+      const quickResult = await this.fileHealthService.quickHealthCheck(job.filePath);
+
+      if (!quickResult.passed) {
+        // If durationSecs is undefined the file is completely unreadable (bad header / zero-byte).
+        // Running thoroughHealthCheck with a 60s fallback would waste 90s on a file that cannot
+        // be decoded at all — skip straight to CORRUPTED.
+        if (!quickResult.durationSecs) {
+          this.logger.warn(
+            `Quick check failed for ${job.fileLabel} (${quickResult.reason}) and file is unreadable — skipping thorough check, marking CORRUPTED`
+          );
+          await this.prisma.job.update({
+            where: { id: jobId },
+            data: {
+              stage: JobStage.FAILED,
+              healthStatus: 'CORRUPTED' as const,
+              healthScore: 0,
+              healthMessage: `❌ Score: 0/100 | Issues: Quick check failed (unreadable): ${quickResult.reason}`,
+              healthCheckedAt: new Date(),
+              error: `Health check failed (unreadable): ${quickResult.reason}`,
+            },
+          });
+          return;
+        }
+
+        this.logger.log(
+          `Quick check failed for ${job.fileLabel} (${quickResult.reason}), running thorough check...`
+        );
+
+        // Step 2: Thorough check — ffmpeg decode of first 60s (90s timeout)
+        const thoroughResult = await this.fileHealthService.thoroughHealthCheck(
+          job.filePath,
+          quickResult.durationSecs
+        );
+
+        if (thoroughResult.passed) {
+          // Quick failed but thorough passed → transient read issue, treat as healthy
+          this.logger.log(
+            `Thorough check passed — transient issue for ${job.fileLabel}, marking HEALTHY`
+          );
+          await this.prisma.job.update({
+            where: { id: jobId },
+            data: {
+              stage: JobStage.QUEUED,
+              healthStatus: 'HEALTHY' as const,
+              healthScore: 80,
+              healthMessage: `✅ Score: 80/100 | Quick check had transient issue (${quickResult.reason}), thorough decode passed`,
+              healthCheckedAt: new Date(),
+              error: null,
+            },
+          });
+          return;
+        }
+
+        // Both checks failed → mark CORRUPTED
+        const errorSummary = thoroughResult.errors.join('; ');
+        this.logger.warn(
+          `✗ ${job.fileLabel} - CORRUPTED (quick + thorough failed): ${errorSummary} → FAILED`
+        );
+        await this.prisma.job.update({
+          where: { id: jobId },
+          data: {
+            stage: JobStage.FAILED,
+            healthStatus: 'CORRUPTED' as const,
+            healthScore: 0,
+            healthMessage: `❌ Score: 0/100 | Issues: Quick+Thorough: ${errorSummary}`,
+            healthCheckedAt: new Date(),
+            error: `Health check failed (quick + thorough): ${errorSummary}`,
+          },
+        });
+        return;
+      }
+
+      // Quick check passed — run full analysis for codec/stream metadata and compatibility
+      const healthResult = await this.fileHealthService.analyzeFile(job.filePath);
 
       // Check for container compatibility issues (AC3/DTS with MP4, etc.)
-      const compatibilityIssues =
-        await this.containerCompatibilityService.checkCompatibility(
-          job.filePath,
-          job.targetContainer || 'mp4', // Use job's target container, fallback to mp4
-        );
+      const compatibilityIssues = await this.containerCompatibilityService.checkCompatibility(
+        job.filePath,
+        job.targetContainer || 'mp4' // Use job's target container, fallback to mp4
+      );
 
       // Check for codec match (file already in target codec)
       // Skip this check if policy has allowSameCodec enabled AND expected savings meets threshold
@@ -654,7 +709,7 @@ export class HealthCheckWorker implements OnModuleInit {
         // allowSameCodec is disabled - always check for codec match
         const codecMatchIssue = this.codecAnalyzer.checkCodecMatch(
           job.sourceCodec,
-          job.targetCodec,
+          job.targetCodec
         );
         if (codecMatchIssue) {
           compatibilityIssues.push(codecMatchIssue);
@@ -662,22 +717,20 @@ export class HealthCheckWorker implements OnModuleInit {
       } else if (minSavingsPercent > 0) {
         // allowSameCodec is enabled but has a savings threshold
         // Calculate expected savings and compare against threshold
-        const expectedSavings =
-          this.codecAnalyzer.calculateExpectedSavingsPercent(
-            job.sourceCodec,
-            job.targetCodec,
-            job.beforeSizeBytes,
-          );
+        const expectedSavings = this.codecAnalyzer.calculateExpectedSavingsPercent(
+          job.sourceCodec,
+          job.targetCodec,
+          job.beforeSizeBytes
+        );
 
         if (expectedSavings < minSavingsPercent) {
           // Expected savings is below threshold - show NEEDS_DECISION
-          const codecMatchIssue =
-            this.codecAnalyzer.checkCodecMatchWithThreshold(
-              job.sourceCodec,
-              job.targetCodec,
-              expectedSavings,
-              minSavingsPercent,
-            );
+          const codecMatchIssue = this.codecAnalyzer.checkCodecMatchWithThreshold(
+            job.sourceCodec,
+            job.targetCodec,
+            expectedSavings,
+            minSavingsPercent
+          );
           if (codecMatchIssue) {
             compatibilityIssues.push(codecMatchIssue);
           }
@@ -692,30 +745,25 @@ export class HealthCheckWorker implements OnModuleInit {
 
       // Check if there are BLOCKER issues requiring user decision
       const blockerIssues = compatibilityIssues.filter(
-        (issue) => issue.severity === HealthCheckIssueSeverity.BLOCKER,
+        (issue) => issue.severity === HealthCheckIssueSeverity.BLOCKER
       );
 
       if (blockerIssues.length > 0) {
         // Has blocker issues - requires user decision
         nextStage = JobStage.NEEDS_DECISION;
         this.logger.warn(
-          `⚠️ ${job.fileLabel} - NEEDS DECISION (${blockerIssues.length} blocker issue(s)) → NEEDS_DECISION`,
+          `⚠️ ${job.fileLabel} - NEEDS DECISION (${blockerIssues.length} blocker issue(s)) → NEEDS_DECISION`
         );
-      } else if (
-        healthResult.canEncode &&
-        healthResult.score >= this.MIN_HEALTH_SCORE
-      ) {
+      } else if (healthResult.canEncode && healthResult.score >= this.MIN_HEALTH_SCORE) {
         // Healthy enough to encode
         nextStage = JobStage.QUEUED;
-        this.logger.log(
-          `✓ ${job.fileLabel} - HEALTHY (score: ${healthResult.score}/100) → QUEUED`,
-        );
+        this.logger.log(`✓ ${job.fileLabel} - HEALTHY (score: ${healthResult.score}/100) → QUEUED`);
       } else {
         // Too corrupted to encode
         nextStage = JobStage.FAILED;
         errorMessage = `Health check failed: ${healthResult.issues.join(', ')}`;
         this.logger.warn(
-          `✗ ${job.fileLabel} - CORRUPTED (score: ${healthResult.score}/100) → FAILED`,
+          `✗ ${job.fileLabel} - CORRUPTED (score: ${healthResult.score}/100) → FAILED`
         );
       }
 
@@ -744,11 +792,8 @@ export class HealthCheckWorker implements OnModuleInit {
         ...decisionData,
       });
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.error(
-        `Health check failed for job ${jobId}: ${errorMessage}`,
-      );
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Health check failed for job ${jobId}: ${errorMessage}`);
 
       // Get current retry count
       const job = await this.jobRepository.findUniqueSelect<{
@@ -772,9 +817,7 @@ export class HealthCheckWorker implements OnModuleInit {
           healthCheckRetries: retries,
           error: `Health check error: ${errorMessage}`,
         });
-        this.logger.error(
-          `Job ${job.fileLabel} failed health check after ${retries} attempts`,
-        );
+        this.logger.error(`Job ${job.fileLabel} failed health check after ${retries} attempts`);
       } else {
         // Retry later - reset to DETECTED
         await this.jobRepository.updateById(jobId, {
@@ -782,7 +825,7 @@ export class HealthCheckWorker implements OnModuleInit {
           healthCheckRetries: retries,
         });
         this.logger.debug(
-          `Job ${job.fileLabel} health check retry ${retries}/${this.MAX_RETRY_ATTEMPTS}`,
+          `Job ${job.fileLabel} health check retry ${retries}/${this.MAX_RETRY_ATTEMPTS}`
         );
       }
     } finally {
@@ -824,5 +867,9 @@ export class HealthCheckWorker implements OnModuleInit {
       await this.loopPromise;
       this.logger.log('HealthCheckWorker loop exited gracefully');
     }
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.stop();
   }
 }

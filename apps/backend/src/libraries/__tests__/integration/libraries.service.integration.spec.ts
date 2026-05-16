@@ -90,7 +90,7 @@ describe('LibrariesService Integration Tests', () => {
           path: '/test/path',
           mediaType: 'MOVIE' as const,
           nodeId: 'non-existent-id',
-        }),
+        })
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -118,9 +118,7 @@ describe('LibrariesService Integration Tests', () => {
       });
       const after = new Date();
 
-      expect(result.createdAt.getTime()).toBeGreaterThanOrEqual(
-        before.getTime(),
-      );
+      expect(result.createdAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
       expect(result.createdAt.getTime()).toBeLessThanOrEqual(after.getTime());
     });
   });
@@ -165,9 +163,7 @@ describe('LibrariesService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(service.findOne('non-existent-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('non-existent-id')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -185,9 +181,9 @@ describe('LibrariesService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(
-        service.update('non-existent-id', { name: 'Test' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('non-existent-id', { name: 'Test' })).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should update updatedAt timestamp', async () => {
@@ -201,9 +197,7 @@ describe('LibrariesService Integration Tests', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
       const updated = await service.update(created.id, { name: 'Updated' });
 
-      expect(updated.updatedAt.getTime()).toBeGreaterThan(
-        created.updatedAt.getTime(),
-      );
+      expect(updated.updatedAt.getTime()).toBeGreaterThan(created.updatedAt.getTime());
     });
   });
 
@@ -225,9 +219,7 @@ describe('LibrariesService Integration Tests', () => {
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
-      await expect(service.remove('non-existent-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('non-existent-id')).rejects.toThrow(NotFoundException);
     });
   });
 });

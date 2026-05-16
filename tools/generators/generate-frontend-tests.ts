@@ -16,10 +16,7 @@ import * as path from 'path';
 const FRONTEND_SRC = path.join(__dirname, '../../apps/frontend/src/app');
 
 // Template for Service Tests
-const generateServiceTest = (
-  serviceName: string,
-  className: string,
-): string => {
+const generateServiceTest = (serviceName: string, className: string): string => {
   const clientName = serviceName.replace('Service', 'Client');
   const clientClassName = className.replace('Service', 'Client');
   const boName = serviceName.replace('Service', 'Bo');
@@ -156,7 +153,7 @@ describe('${className}', () => {
 const generateEffectsTest = (
   effectsName: string,
   className: string,
-  featureName: string,
+  featureName: string
 ): string => {
   const serviceName = `${featureName.charAt(0).toUpperCase() + featureName.slice(1)}Service`;
   const actionsName = effectsName.replace('.effects', '');
@@ -232,10 +229,7 @@ describe('${className}', () => {
 };
 
 // Template for Component Tests
-const generateComponentTest = (
-  componentName: string,
-  className: string,
-): string => {
+const generateComponentTest = (componentName: string, className: string): string => {
   return `import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideMockStore, MockStore } from '@ngrx/store/testing';
 import { ${className} } from './${componentName}';
@@ -470,7 +464,7 @@ console.log(`BOs:         ${bosGenerated} files generated`);
 console.log(`Effects:     ${effectsGenerated} files generated`);
 console.log(`Components:  ${componentsGenerated} files generated`);
 console.log(
-  `Total:       ${servicesGenerated + bosGenerated + effectsGenerated + componentsGenerated} test files`,
+  `Total:       ${servicesGenerated + bosGenerated + effectsGenerated + componentsGenerated} test files`
 );
 console.log('\n💡 Next steps:');
 console.log('1. Review generated tests and customize assertions');

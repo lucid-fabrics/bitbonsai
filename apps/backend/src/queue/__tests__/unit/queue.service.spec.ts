@@ -194,40 +194,30 @@ describe('QueueService', () => {
 
     it('should throw NotFoundException if node does not exist', async () => {
       jobCrudService.create.mockRejectedValue(
-        new NotFoundException('Node with ID "node-1" not found'),
+        new NotFoundException('Node with ID "node-1" not found')
       );
 
-      await expect(service.create(createDto)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.create(createDto)).rejects.toThrow(
-        'Node with ID "node-1" not found',
-      );
+      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
+      await expect(service.create(createDto)).rejects.toThrow('Node with ID "node-1" not found');
     });
 
     it('should throw NotFoundException if library does not exist', async () => {
       jobCrudService.create.mockRejectedValue(
-        new NotFoundException('Library with ID "lib-1" not found'),
+        new NotFoundException('Library with ID "lib-1" not found')
       );
 
-      await expect(service.create(createDto)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.create(createDto)).rejects.toThrow(
-        'Library with ID "lib-1" not found',
-      );
+      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
+      await expect(service.create(createDto)).rejects.toThrow('Library with ID "lib-1" not found');
     });
 
     it('should throw NotFoundException if policy does not exist', async () => {
       jobCrudService.create.mockRejectedValue(
-        new NotFoundException('Policy with ID "policy-1" not found'),
+        new NotFoundException('Policy with ID "policy-1" not found')
       );
 
+      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
       await expect(service.create(createDto)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.create(createDto)).rejects.toThrow(
-        'Policy with ID "policy-1" not found',
+        'Policy with ID "policy-1" not found'
       );
     });
   });
@@ -254,7 +244,7 @@ describe('QueueService', () => {
         undefined,
         undefined,
         undefined,
-        undefined,
+        undefined
       );
     });
 
@@ -277,7 +267,7 @@ describe('QueueService', () => {
         undefined,
         undefined,
         undefined,
-        undefined,
+        undefined
       );
     });
 
@@ -300,7 +290,7 @@ describe('QueueService', () => {
         undefined,
         undefined,
         undefined,
-        undefined,
+        undefined
       );
     });
   });
@@ -317,14 +307,12 @@ describe('QueueService', () => {
 
     it('should throw NotFoundException if job does not exist', async () => {
       jobCrudService.findOne.mockRejectedValue(
-        new NotFoundException('Job with ID "non-existent" not found'),
+        new NotFoundException('Job with ID "non-existent" not found')
       );
 
+      await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
       await expect(service.findOne('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.findOne('non-existent')).rejects.toThrow(
-        'Job with ID "non-existent" not found',
+        'Job with ID "non-existent" not found'
       );
     });
   });
@@ -356,13 +344,9 @@ describe('QueueService', () => {
     });
 
     it('should throw NotFoundException if node does not exist', async () => {
-      processingService.getNextJob.mockRejectedValue(
-        new NotFoundException('Node not found'),
-      );
+      processingService.getNextJob.mockRejectedValue(new NotFoundException('Node not found'));
 
-      await expect(service.getNextJob('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getNextJob('non-existent')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -379,20 +363,15 @@ describe('QueueService', () => {
       const result = await service.updateProgress('job-1', updateDto);
 
       expect(result).toEqual(updatedJob);
-      expect(jobCrudService.updateProgress).toHaveBeenCalledWith(
-        'job-1',
-        updateDto,
-      );
+      expect(jobCrudService.updateProgress).toHaveBeenCalledWith('job-1', updateDto);
     });
 
     it('should throw NotFoundException if job does not exist', async () => {
-      jobCrudService.updateProgress.mockRejectedValue(
-        new NotFoundException('Job not found'),
-      );
+      jobCrudService.updateProgress.mockRejectedValue(new NotFoundException('Job not found'));
 
-      await expect(
-        service.updateProgress('non-existent', updateDto),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateProgress('non-existent', updateDto)).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -421,10 +400,7 @@ describe('QueueService', () => {
 
       expect(result.stage).toBe(JobStage.COMPLETED);
       expect(result.progress).toBe(100);
-      expect(jobStateService.completeJob).toHaveBeenCalledWith(
-        'job-1',
-        completeDto,
-      );
+      expect(jobStateService.completeJob).toHaveBeenCalledWith('job-1', completeDto, undefined);
     });
   });
 
@@ -446,10 +422,7 @@ describe('QueueService', () => {
 
       expect(result.stage).toBe(JobStage.FAILED);
       expect(result.error).toBe(errorMessage);
-      expect(jobStateService.failJob).toHaveBeenCalledWith(
-        'job-1',
-        errorMessage,
-      );
+      expect(jobStateService.failJob).toHaveBeenCalledWith('job-1', errorMessage, undefined);
     });
   });
 
@@ -470,26 +443,18 @@ describe('QueueService', () => {
     });
 
     it('should throw NotFoundException if job does not exist', async () => {
-      jobStateService.cancelJob.mockRejectedValue(
-        new NotFoundException('Job not found'),
-      );
+      jobStateService.cancelJob.mockRejectedValue(new NotFoundException('Job not found'));
 
-      await expect(service.cancelJob('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.cancelJob('non-existent')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException if job is already completed', async () => {
       jobStateService.cancelJob.mockRejectedValue(
-        new BadRequestException('Cannot cancel a completed job'),
+        new BadRequestException('Cannot cancel a completed job')
       );
 
-      await expect(service.cancelJob('job-1')).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.cancelJob('job-1')).rejects.toThrow(
-        'Cannot cancel a completed job',
-      );
+      await expect(service.cancelJob('job-1')).rejects.toThrow(BadRequestException);
+      await expect(service.cancelJob('job-1')).rejects.toThrow('Cannot cancel a completed job');
     });
   });
 
@@ -503,13 +468,9 @@ describe('QueueService', () => {
     });
 
     it('should throw NotFoundException if job does not exist', async () => {
-      jobCrudService.remove.mockRejectedValue(
-        new NotFoundException('Job not found'),
-      );
+      jobCrudService.remove.mockRejectedValue(new NotFoundException('Job not found'));
 
-      await expect(service.remove('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('non-existent')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -617,10 +578,7 @@ describe('QueueService', () => {
       const result = await service.updateJobPreview('job-1', previewPaths);
 
       expect(result).toEqual(updatedJob);
-      expect(jobCrudService.updateJobPreview).toHaveBeenCalledWith(
-        'job-1',
-        previewPaths,
-      );
+      expect(jobCrudService.updateJobPreview).toHaveBeenCalledWith('job-1', previewPaths);
     });
   });
 
@@ -650,10 +608,7 @@ describe('QueueService', () => {
     it('should clear jobs for specified stages', async () => {
       jobCrudService.clearJobs.mockResolvedValue(10);
 
-      const result = await service.clearJobs([
-        JobStage.COMPLETED,
-        JobStage.CANCELLED,
-      ]);
+      const result = await service.clearJobs([JobStage.COMPLETED, JobStage.CANCELLED]);
 
       expect(result).toBe(10);
       expect(jobCrudService.clearJobs).toHaveBeenCalledWith([
@@ -708,13 +663,9 @@ describe('QueueService', () => {
     });
 
     it('should throw NotFoundException if job does not exist', async () => {
-      jobStateService.pauseJob.mockRejectedValue(
-        new NotFoundException('Job not found'),
-      );
+      jobStateService.pauseJob.mockRejectedValue(new NotFoundException('Job not found'));
 
-      await expect(service.pauseJob('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.pauseJob('non-existent')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -825,9 +776,7 @@ describe('QueueService', () => {
 
       await service.retryAllFailed('FFmpeg crash');
 
-      expect(jobStateService.retryAllFailed).toHaveBeenCalledWith(
-        'FFmpeg crash',
-      );
+      expect(jobStateService.retryAllFailed).toHaveBeenCalledWith('FFmpeg crash');
     });
   });
 
@@ -883,10 +832,7 @@ describe('QueueService', () => {
       const result = await service.updateJobPriority('job-1', 1);
 
       expect(result).toEqual(updatedJob);
-      expect(jobStateService.updateJobPriority).toHaveBeenCalledWith(
-        'job-1',
-        1,
-      );
+      expect(jobStateService.updateJobPriority).toHaveBeenCalledWith('job-1', 1);
     });
   });
 
@@ -911,9 +857,7 @@ describe('QueueService', () => {
       const result = await service.deleteOriginalBackup('job-1');
 
       expect(result.freedSpace).toBe(BigInt(5368709120));
-      expect(jobStateService.deleteOriginalBackup).toHaveBeenCalledWith(
-        'job-1',
-      );
+      expect(jobStateService.deleteOriginalBackup).toHaveBeenCalledWith('job-1');
     });
   });
 
@@ -944,16 +888,12 @@ describe('QueueService', () => {
   describe('detectAndRequeueIfUncompressed', () => {
     it('should detect and requeue an uncompressed job', async () => {
       const requeuedJob = { ...mockJob, stage: JobStage.QUEUED };
-      jobStateService.detectAndRequeueIfUncompressed.mockResolvedValue(
-        requeuedJob,
-      );
+      jobStateService.detectAndRequeueIfUncompressed.mockResolvedValue(requeuedJob);
 
       const result = await service.detectAndRequeueIfUncompressed('job-1');
 
       expect(result).toEqual(requeuedJob);
-      expect(
-        jobStateService.detectAndRequeueIfUncompressed,
-      ).toHaveBeenCalledWith('job-1');
+      expect(jobStateService.detectAndRequeueIfUncompressed).toHaveBeenCalledWith('job-1');
     });
   });
 
@@ -965,10 +905,7 @@ describe('QueueService', () => {
       const result = await service.resolveDecision('job-1');
 
       expect(result).toEqual(resolvedJob);
-      expect(jobStateService.resolveDecision).toHaveBeenCalledWith(
-        'job-1',
-        undefined,
-      );
+      expect(jobStateService.resolveDecision).toHaveBeenCalledWith('job-1', undefined);
     });
 
     it('should resolve a decision with data payload', async () => {
@@ -979,10 +916,7 @@ describe('QueueService', () => {
       const result = await service.resolveDecision('job-1', decisionData);
 
       expect(result).toEqual(resolvedJob);
-      expect(jobStateService.resolveDecision).toHaveBeenCalledWith(
-        'job-1',
-        decisionData,
-      );
+      expect(jobStateService.resolveDecision).toHaveBeenCalledWith('job-1', decisionData);
     });
   });
 
@@ -996,20 +930,15 @@ describe('QueueService', () => {
       const result = await service.delegateJob('job-1', 'node-2');
 
       expect(result).toEqual(delegatedJob);
-      expect(delegationService.delegateJob).toHaveBeenCalledWith(
-        'job-1',
-        'node-2',
-      );
+      expect(delegationService.delegateJob).toHaveBeenCalledWith('job-1', 'node-2');
     });
 
     it('should throw NotFoundException if target node does not exist', async () => {
       delegationService.delegateJob.mockRejectedValue(
-        new NotFoundException('Node "node-99" not found'),
+        new NotFoundException('Node "node-99" not found')
       );
 
-      await expect(service.delegateJob('job-1', 'node-99')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.delegateJob('job-1', 'node-99')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -1068,28 +997,21 @@ describe('QueueService', () => {
     });
 
     it('should silently swallow errors from updateProgress', async () => {
-      jobCrudService.updateProgress.mockRejectedValue(
-        new Error('DB write failed'),
-      );
+      jobCrudService.updateProgress.mockRejectedValue(new Error('DB write failed'));
       const event = new EncodingProgressUpdateEvent('job-1', {
         progress: 60,
         etaSeconds: 300,
         fps: 24,
       });
 
-      await expect(
-        service.handleEncodingProgressUpdate(event),
-      ).resolves.not.toThrow();
+      await expect(service.handleEncodingProgressUpdate(event)).resolves.not.toThrow();
     });
   });
 
   describe('handleEncodingPreviewUpdate', () => {
     it('should update preview paths when preview event is received', async () => {
       jobCrudService.updateJobPreview.mockResolvedValue(mockJob);
-      const event = new EncodingPreviewUpdateEvent('job-1', [
-        '/tmp/p1.jpg',
-        '/tmp/p2.jpg',
-      ]);
+      const event = new EncodingPreviewUpdateEvent('job-1', ['/tmp/p1.jpg', '/tmp/p2.jpg']);
 
       await service.handleEncodingPreviewUpdate(event);
 
@@ -1100,14 +1022,10 @@ describe('QueueService', () => {
     });
 
     it('should silently swallow errors from updateJobPreview', async () => {
-      jobCrudService.updateJobPreview.mockRejectedValue(
-        new Error('Storage unavailable'),
-      );
+      jobCrudService.updateJobPreview.mockRejectedValue(new Error('Storage unavailable'));
       const event = new EncodingPreviewUpdateEvent('job-1', ['/tmp/p1.jpg']);
 
-      await expect(
-        service.handleEncodingPreviewUpdate(event),
-      ).resolves.not.toThrow();
+      await expect(service.handleEncodingPreviewUpdate(event)).resolves.not.toThrow();
     });
   });
 
@@ -1117,23 +1035,19 @@ describe('QueueService', () => {
         ...mockJob,
         stage: JobStage.FAILED,
       });
-      const event = new EncodingFailedEvent(
-        'job-1',
-        'FFmpeg: codec not supported',
-      );
+      const event = new EncodingFailedEvent('job-1', 'FFmpeg: codec not supported');
 
       await service.handleEncodingFailed(event);
 
       expect(jobStateService.failJob).toHaveBeenCalledWith(
         'job-1',
         'FFmpeg: codec not supported',
+        undefined
       );
     });
 
     it('should silently swallow errors from failJob', async () => {
-      jobStateService.failJob.mockRejectedValue(
-        new Error('Job already deleted'),
-      );
+      jobStateService.failJob.mockRejectedValue(new Error('Job already deleted'));
       const event = new EncodingFailedEvent('job-1', 'FFmpeg crash');
 
       await expect(service.handleEncodingFailed(event)).resolves.not.toThrow();
@@ -1157,9 +1071,7 @@ describe('QueueService', () => {
       jobStateService.cancelJob.mockRejectedValue(new Error('Job not found'));
       const event = new EncodingCancelledEvent('job-1');
 
-      await expect(
-        service.handleEncodingCancelled(event),
-      ).resolves.not.toThrow();
+      await expect(service.handleEncodingCancelled(event)).resolves.not.toThrow();
     });
   });
 
@@ -1173,10 +1085,7 @@ describe('QueueService', () => {
 
       await service.handleEncodingProcessMarked(event);
 
-      expect(jobCrudService.updateJobRaw).toHaveBeenCalledWith(
-        'job-1',
-        updates,
-      );
+      expect(jobCrudService.updateJobRaw).toHaveBeenCalledWith('job-1', updates);
     });
 
     it('should silently swallow errors from updateJobRaw', async () => {
@@ -1185,9 +1094,7 @@ describe('QueueService', () => {
         pauseProcessedAt: new Date(),
       });
 
-      await expect(
-        service.handleEncodingProcessMarked(event),
-      ).resolves.not.toThrow();
+      await expect(service.handleEncodingProcessMarked(event)).resolves.not.toThrow();
     });
   });
 
@@ -1202,9 +1109,7 @@ describe('QueueService', () => {
         fps: 24,
       });
 
-      await expect(
-        service.handleEncodingProgressUpdate(event),
-      ).resolves.not.toThrow();
+      await expect(service.handleEncodingProgressUpdate(event)).resolves.not.toThrow();
     });
   });
 
@@ -1213,9 +1118,7 @@ describe('QueueService', () => {
       jobCrudService.updateJobPreview.mockRejectedValue({ code: 500 });
       const event = new EncodingPreviewUpdateEvent('job-1', ['/tmp/p1.jpg']);
 
-      await expect(
-        service.handleEncodingPreviewUpdate(event),
-      ).resolves.not.toThrow();
+      await expect(service.handleEncodingPreviewUpdate(event)).resolves.not.toThrow();
     });
   });
 
@@ -1233,9 +1136,7 @@ describe('QueueService', () => {
       jobStateService.cancelJob.mockRejectedValue(null);
       const event = new EncodingCancelledEvent('job-1');
 
-      await expect(
-        service.handleEncodingCancelled(event),
-      ).resolves.not.toThrow();
+      await expect(service.handleEncodingCancelled(event)).resolves.not.toThrow();
     });
   });
 
@@ -1246,9 +1147,7 @@ describe('QueueService', () => {
         pauseProcessedAt: new Date(),
       });
 
-      await expect(
-        service.handleEncodingProcessMarked(event),
-      ).resolves.not.toThrow();
+      await expect(service.handleEncodingProcessMarked(event)).resolves.not.toThrow();
     });
   });
 });

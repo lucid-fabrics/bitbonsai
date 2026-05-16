@@ -15,9 +15,7 @@ describe('EncodingController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [EncodingController],
-      providers: [
-        { provide: EncodingProcessorService, useValue: mockEncodingService },
-      ],
+      providers: [{ provide: EncodingProcessorService, useValue: mockEncodingService }],
     }).compile();
 
     controller = module.get<EncodingController>(EncodingController);
@@ -37,9 +35,7 @@ describe('EncodingController', () => {
         message: 'Started 4 worker(s) for node node-1',
         workersStarted: 4,
       });
-      expect(mockEncodingService.startWorkerPool).toHaveBeenCalledWith(
-        'node-1',
-      );
+      expect(mockEncodingService.startWorkerPool).toHaveBeenCalledWith('node-1');
     });
 
     it('should handle single worker start', async () => {
@@ -52,13 +48,9 @@ describe('EncodingController', () => {
     });
 
     it('should propagate errors from service', async () => {
-      mockEncodingService.startWorkerPool.mockRejectedValue(
-        new Error('Node not found'),
-      );
+      mockEncodingService.startWorkerPool.mockRejectedValue(new Error('Node not found'));
 
-      await expect(controller.startWorker('nonexistent')).rejects.toThrow(
-        'Node not found',
-      );
+      await expect(controller.startWorker('nonexistent')).rejects.toThrow('Node not found');
     });
   });
 
@@ -75,13 +67,9 @@ describe('EncodingController', () => {
     });
 
     it('should propagate errors from service', async () => {
-      mockEncodingService.stopWorker.mockRejectedValue(
-        new Error('Worker not running'),
-      );
+      mockEncodingService.stopWorker.mockRejectedValue(new Error('Worker not running'));
 
-      await expect(controller.stopWorker('node-1')).rejects.toThrow(
-        'Worker not running',
-      );
+      await expect(controller.stopWorker('node-1')).rejects.toThrow('Worker not running');
     });
   });
 });

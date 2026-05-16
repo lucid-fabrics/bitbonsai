@@ -2,7 +2,7 @@ import { NgIf } from '@angular/common';
 import { Component, Input } from '@angular/core';
 
 @Component({
-  selector: 'bb-card',
+  selector: 'lib-card',
   standalone: true,
   imports: [NgIf],
   template: `

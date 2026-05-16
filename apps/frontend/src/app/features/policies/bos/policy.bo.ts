@@ -34,52 +34,32 @@ export class PolicyBo {
     this.id = model.id;
     this.name = model.name;
     this.preset = model.preset;
-    this.targetCodec =
-      (apiModel.targetCodec as TargetCodec) || model.target_codec;
+    this.targetCodec = (apiModel.targetCodec as TargetCodec) || model.target_codec;
     this.targetQuality = (apiModel.targetQuality as number) || model.crf;
     this.targetContainer =
-      (apiModel.targetContainer as string | null | undefined) ??
-      model.target_container ??
-      'mkv';
+      (apiModel.targetContainer as string | null | undefined) ?? model.target_container ?? 'mkv';
     this.skipReencoding =
-      (apiModel.skipReencoding as boolean | undefined) ??
-      model.skip_reencoding ??
-      true;
+      (apiModel.skipReencoding as boolean | undefined) ?? model.skip_reencoding ?? true;
     this.allowSameCodec =
-      (apiModel.allowSameCodec as boolean | undefined) ??
-      model.allow_same_codec ??
-      false;
+      (apiModel.allowSameCodec as boolean | undefined) ?? model.allow_same_codec ?? false;
     this.minSavingsPercent =
-      (apiModel.minSavingsPercent as number | null | undefined) ??
-      model.min_savings_percent ??
-      0;
-    this.libraryId =
-      (apiModel.libraryId as string | undefined) || model.library_id;
+      (apiModel.minSavingsPercent as number | null | undefined) ?? model.min_savings_percent ?? 0;
+    this.libraryId = (apiModel.libraryId as string | undefined) || model.library_id;
     this.deviceProfiles = this.convertDeviceProfilesToArray(
-      (apiModel.deviceProfiles as DeviceProfiles | undefined) ||
-        model.device_profiles,
+      (apiModel.deviceProfiles as DeviceProfiles | undefined) || model.device_profiles
     );
-    this.ffmpegFlags =
-      (apiModel.ffmpegFlags as string | undefined) || model.ffmpeg_flags;
+    this.ffmpegFlags = (apiModel.ffmpegFlags as string | undefined) || model.ffmpeg_flags;
     this.audioHandling =
-      (apiModel.audioHandling as AudioHandling | undefined) ||
-      model.audio_handling;
+      (apiModel.audioHandling as AudioHandling | undefined) || model.audio_handling;
     this.hardwareAcceleration =
       (apiModel.hardwareAcceleration as HardwareAcceleration | undefined) ||
       model.hardware_acceleration;
-    this.completedJobs =
-      (apiModel.completedJobs as number) ?? model.completed_jobs ?? 0;
-    this.createdAt = new Date(
-      (apiModel.createdAt as string) || model.created_at || Date.now(),
-    );
-    this.updatedAt = new Date(
-      (apiModel.updatedAt as string) || model.updated_at || Date.now(),
-    );
+    this.completedJobs = (apiModel.completedJobs as number) ?? model.completed_jobs ?? 0;
+    this.createdAt = new Date((apiModel.createdAt as string) || model.created_at || Date.now());
+    this.updatedAt = new Date((apiModel.updatedAt as string) || model.updated_at || Date.now());
   }
 
-  private convertDeviceProfilesToArray(
-    profiles: DeviceProfiles | undefined,
-  ): DeviceProfile[] {
+  private convertDeviceProfilesToArray(profiles: DeviceProfiles | undefined): DeviceProfile[] {
     if (!profiles) return [];
 
     const result: DeviceProfile[] = [];

@@ -11,6 +11,7 @@ import { JobRepository } from '../../common/repositories/job.repository';
 import { NodeRepository } from '../../common/repositories/node.repository';
 import { ContentFingerprintService } from '../../core/services/content-fingerprint.service';
 import { NodeConfigService } from '../../core/services/node-config.service';
+import { PreflightService } from '../../encoding/services/preflight.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FileFailureTrackingService } from './file-failure-tracking.service';
 import { QueueJobCrudService } from './queue-job-crud.service';
@@ -59,6 +60,7 @@ describe('QueueJobCrudService', () => {
       library: { findUnique: jest.fn() },
       policy: { findUnique: jest.fn() },
       processedFileRecord: { findUnique: jest.fn() },
+      job: { findFirst: jest.fn().mockResolvedValue(null) },
     } as any;
 
     mockContentFingerprint = {
@@ -92,6 +94,13 @@ describe('QueueJobCrudService', () => {
           useValue: mockFileFailureTracking,
         },
         { provide: HttpService, useValue: mockHttpService },
+        {
+          provide: PreflightService,
+          useValue: {
+            runPreflight: jest.fn().mockResolvedValue({ ok: true }),
+            checkDiskSpace: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -117,9 +126,9 @@ describe('QueueJobCrudService', () => {
       mockNodeConfig.getNodeId.mockReturnValue(null);
       mockJobRepository.findUniqueSelect.mockResolvedValue(null);
 
-      await expect(
-        service.validateJobOwnership('missing', 'update'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.validateJobOwnership('missing', 'update')).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should throw ForbiddenException when non-main node attempts cross-node operation', async () => {
@@ -131,9 +140,9 @@ describe('QueueJobCrudService', () => {
         updatedAt: new Date(),
       });
 
-      await expect(
-        service.validateJobOwnership('job-1', 'update'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.validateJobOwnership('job-1', 'update')).rejects.toThrow(
+        ForbiddenException
+      );
     });
 
     it('should allow main node to modify any job', async () => {
@@ -157,14 +166,7 @@ describe('QueueJobCrudService', () => {
       mockJobRepository.findManyWithInclude.mockResolvedValue(jobs as any);
       mockJobRepository.countWhere.mockResolvedValue(1);
 
-      const result = await service.findAll(
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        1,
-        20,
-      );
+      const result = await service.findAll(undefined, undefined, undefined, undefined, 1, 20);
 
       expect(result.jobs).toEqual(jobs);
       expect(result.total).toBe(1);
@@ -182,7 +184,7 @@ describe('QueueJobCrudService', () => {
       expect(mockJobRepository.findManyWithInclude).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ stage: JobStage.ENCODING }),
-        }),
+        })
       );
     });
   });
@@ -199,9 +201,7 @@ describe('QueueJobCrudService', () => {
     it('should throw NotFoundException when job not found', async () => {
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
 
-      await expect(service.findOne('missing')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('missing')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -218,9 +218,7 @@ describe('QueueJobCrudService', () => {
     it('should throw NotFoundException when job does not exist', async () => {
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(service.remove('missing')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('missing')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -253,9 +251,9 @@ describe('QueueJobCrudService', () => {
       });
       mockJobRepository.atomicUpdateMany.mockResolvedValue({ count: 0 });
 
-      await expect(
-        service.update('job-1', { stage: JobStage.QUEUED }),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.update('job-1', { stage: JobStage.QUEUED })).rejects.toThrow(
+        ConflictException
+      );
     });
 
     it('should return updated job on success', async () => {
@@ -286,9 +284,9 @@ describe('QueueJobCrudService', () => {
         stage: 'QUEUED',
       } as any);
 
-      await expect(
-        service.updateProgress('job-1', { progress: 150 } as any),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.updateProgress('job-1', { progress: 150 } as any)).rejects.toThrow(
+        BadRequestException
+      );
     });
 
     it('should throw BadRequestException when stage is HEALTH_CHECK', async () => {
@@ -305,7 +303,7 @@ describe('QueueJobCrudService', () => {
       await expect(
         service.updateProgress('job-1', {
           stage: JobStage.HEALTH_CHECK,
-        } as any),
+        } as any)
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -372,30 +370,22 @@ describe('QueueJobCrudService', () => {
 
     beforeEach(() => {
       // Skip real filesystem validation in create tests
-      jest
-        .spyOn(service, 'validateFilePath')
-        .mockImplementation(() => undefined);
+      jest.spyOn(service, 'validateFilePath').mockImplementation(() => undefined);
     });
 
     it('should throw BadRequestException when file size exceeds 500 GB', async () => {
       const hugeDto = {
         ...baseDto,
-        beforeSizeBytes: Number(
-          BigInt(501) * BigInt(1024) * BigInt(1024) * BigInt(1024),
-        ),
+        beforeSizeBytes: Number(BigInt(501) * BigInt(1024) * BigInt(1024) * BigInt(1024)),
       };
 
-      await expect(service.create(hugeDto as any)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.create(hugeDto as any)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when file size is below 1 KB', async () => {
       const tinyDto = { ...baseDto, beforeSizeBytes: 512 };
 
-      await expect(service.create(tinyDto as any)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.create(tinyDto as any)).rejects.toThrow(BadRequestException);
     });
 
     it('should proxy job creation to MAIN node when mainApiUrl is set', async () => {
@@ -416,13 +406,9 @@ describe('QueueJobCrudService', () => {
 
       // Patch firstValueFrom indirectly - test that the error is propagated
       const error = new Error('MAIN unreachable');
-      jest
-        .spyOn(require('rxjs'), 'firstValueFrom')
-        .mockRejectedValueOnce(error);
+      jest.spyOn(require('rxjs'), 'firstValueFrom').mockRejectedValueOnce(error);
 
-      await expect(service.create(baseDto as any)).rejects.toThrow(
-        'MAIN unreachable',
-      );
+      await expect(service.create(baseDto as any)).rejects.toThrow('MAIN unreachable');
     });
 
     it('should throw NotFoundException when node does not exist', async () => {
@@ -436,9 +422,7 @@ describe('QueueJobCrudService', () => {
         id: 'policy-1',
       } as any);
 
-      await expect(service.create(baseDto as any)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.create(baseDto as any)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when library does not exist', async () => {
@@ -449,9 +433,7 @@ describe('QueueJobCrudService', () => {
         id: 'policy-1',
       } as any);
 
-      await expect(service.create(baseDto as any)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.create(baseDto as any)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when policy does not exist', async () => {
@@ -463,9 +445,7 @@ describe('QueueJobCrudService', () => {
       } as any);
       (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.create(baseDto as any)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.create(baseDto as any)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when active job already exists for file', async () => {
@@ -484,9 +464,7 @@ describe('QueueJobCrudService', () => {
       } as any);
 
       const dtoWithTmpPath = { ...baseDto, filePath: '/tmp/movie.mkv' };
-      await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when fingerprint matches already-processed file', async () => {
@@ -501,17 +479,13 @@ describe('QueueJobCrudService', () => {
       } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
       mockContentFingerprint.computeFingerprint.mockResolvedValue('fp-abc123');
-      (
-        mockPrisma.processedFileRecord.findUnique as jest.Mock
-      ).mockResolvedValue({
+      (mockPrisma.processedFileRecord.findUnique as jest.Mock).mockResolvedValue({
         filePath: '/old/movie.mkv',
         contentFingerprint: 'fp-abc123',
       } as any);
 
       const dtoWithTmpPath = { ...baseDto, filePath: '/tmp/movie.mkv' };
-      await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when fingerprint is blacklisted', async () => {
@@ -525,18 +499,12 @@ describe('QueueJobCrudService', () => {
         id: 'policy-1',
       } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
-      mockContentFingerprint.computeFingerprint.mockResolvedValue(
-        'fp-blacklisted',
-      );
-      (
-        mockPrisma.processedFileRecord.findUnique as jest.Mock
-      ).mockResolvedValue(null);
+      mockContentFingerprint.computeFingerprint.mockResolvedValue('fp-blacklisted');
+      (mockPrisma.processedFileRecord.findUnique as jest.Mock).mockResolvedValue(null);
       mockFileFailureTracking.isBlacklisted.mockResolvedValue(true);
 
       const dtoWithTmpPath = { ...baseDto, filePath: '/tmp/movie.mkv' };
-      await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow(BadRequestException);
     });
 
     it('should continue job creation when fingerprint computation fails with non-BadRequest error', async () => {
@@ -551,9 +519,7 @@ describe('QueueJobCrudService', () => {
       } as any);
       // First call: active job check returns null, second call: old jobs returns []
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
-      mockContentFingerprint.computeFingerprint.mockRejectedValue(
-        new Error('IO error'),
-      );
+      mockContentFingerprint.computeFingerprint.mockRejectedValue(new Error('IO error'));
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       const createdJob = { id: 'new-job', fileLabel: 'movie.mkv' };
       mockJobRepository.createJob.mockResolvedValue(createdJob as any);
@@ -616,9 +582,7 @@ describe('QueueJobCrudService', () => {
       mockJobRepository.createJob.mockRejectedValue(prismaError);
 
       const dtoWithTmpPath = { ...baseDto, filePath: '/tmp/movie.mkv' };
-      await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow(BadRequestException);
     });
 
     it('should rethrow non-P2002 errors from createJob', async () => {
@@ -634,34 +598,30 @@ describe('QueueJobCrudService', () => {
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
       mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
-      mockJobRepository.createJob.mockRejectedValue(
-        new Error('DB connection lost'),
-      );
+      mockJobRepository.createJob.mockRejectedValue(new Error('DB connection lost'));
 
       const dtoWithTmpPath = { ...baseDto, filePath: '/tmp/movie.mkv' };
-      await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow(
-        'DB connection lost',
-      );
+      await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow('DB connection lost');
     });
   });
 
   describe('validateFilePath', () => {
     it('should throw BadRequestException for path containing ..', () => {
-      expect(() =>
-        service.validateFilePath('/library/../etc/passwd', '/library'),
-      ).toThrow(BadRequestException);
+      expect(() => service.validateFilePath('/library/../etc/passwd', '/library')).toThrow(
+        BadRequestException
+      );
     });
 
     it('should throw BadRequestException for path containing %2e', () => {
-      expect(() =>
-        service.validateFilePath('/library/%2e%2e/etc/passwd', '/library'),
-      ).toThrow(BadRequestException);
+      expect(() => service.validateFilePath('/library/%2e%2e/etc/passwd', '/library')).toThrow(
+        BadRequestException
+      );
     });
 
     it('should throw BadRequestException for path containing %2E', () => {
-      expect(() =>
-        service.validateFilePath('/library/%2E/secret', '/library'),
-      ).toThrow(BadRequestException);
+      expect(() => service.validateFilePath('/library/%2E/secret', '/library')).toThrow(
+        BadRequestException
+      );
     });
   });
 
@@ -680,14 +640,7 @@ describe('QueueJobCrudService', () => {
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       mockJobRepository.countWhere.mockResolvedValue(0);
 
-      const result = await service.findAll(
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        0,
-        0,
-      );
+      const result = await service.findAll(undefined, undefined, undefined, undefined, 0, 0);
 
       expect(result.page).toBe(1);
       expect(result.limit).toBe(20);
@@ -702,7 +655,7 @@ describe('QueueJobCrudService', () => {
       expect(mockJobRepository.findManyWithInclude).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ nodeId: 'node-1' }),
-        }),
+        })
       );
     });
 
@@ -715,7 +668,7 @@ describe('QueueJobCrudService', () => {
       expect(mockJobRepository.findManyWithInclude).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ libraryId: 'lib-1' }),
-        }),
+        })
       );
     });
 
@@ -728,12 +681,9 @@ describe('QueueJobCrudService', () => {
       expect(mockJobRepository.findManyWithInclude).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: [
-              { filePath: { contains: 'avengers' } },
-              { fileLabel: { contains: 'avengers' } },
-            ],
+            OR: [{ filePath: { contains: 'avengers' } }, { fileLabel: { contains: 'avengers' } }],
           }),
-        }),
+        })
       );
     });
 
@@ -744,7 +694,7 @@ describe('QueueJobCrudService', () => {
       await service.findAll(JobStage.FAILED);
 
       expect(mockJobRepository.findManyWithInclude).toHaveBeenCalledWith(
-        expect.objectContaining({ orderBy: { failedAt: 'desc' } }),
+        expect.objectContaining({ orderBy: { failedAt: 'desc' } })
       );
     });
 
@@ -752,14 +702,7 @@ describe('QueueJobCrudService', () => {
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       mockJobRepository.countWhere.mockResolvedValue(45);
 
-      const result = await service.findAll(
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        1,
-        10,
-      );
+      const result = await service.findAll(undefined, undefined, undefined, undefined, 1, 10);
 
       expect(result.totalPages).toBe(5);
     });
@@ -808,10 +751,7 @@ describe('QueueJobCrudService', () => {
       };
       mockJobRepository.updateById.mockResolvedValue(updatedJob as any);
 
-      const result = await service.updateJobPreview('job-1', [
-        'a.jpg',
-        'b.jpg',
-      ]);
+      const result = await service.updateJobPreview('job-1', ['a.jpg', 'b.jpg']);
 
       expect(result).toEqual(updatedJob);
       expect(mockJobRepository.updateById).toHaveBeenCalledWith('job-1', {
@@ -822,9 +762,7 @@ describe('QueueJobCrudService', () => {
     it('should propagate errors from repository', async () => {
       mockJobRepository.updateById.mockRejectedValue(new Error('DB error'));
 
-      await expect(service.updateJobPreview('job-1', [])).rejects.toThrow(
-        'DB error',
-      );
+      await expect(service.updateJobPreview('job-1', [])).rejects.toThrow('DB error');
     });
   });
 
@@ -840,9 +778,9 @@ describe('QueueJobCrudService', () => {
         stage: 'QUEUED',
       } as any);
 
-      await expect(
-        service.updateProgress('job-1', { progress: -1 } as any),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.updateProgress('job-1', { progress: -1 } as any)).rejects.toThrow(
+        BadRequestException
+      );
     });
 
     it('should throw BadRequestException when etaSeconds is negative', async () => {
@@ -856,9 +794,9 @@ describe('QueueJobCrudService', () => {
         stage: 'QUEUED',
       } as any);
 
-      await expect(
-        service.updateProgress('job-1', { etaSeconds: -5 } as any),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.updateProgress('job-1', { etaSeconds: -5 } as any)).rejects.toThrow(
+        BadRequestException
+      );
     });
 
     it('should throw NotFoundException when job does not exist', async () => {
@@ -869,9 +807,9 @@ describe('QueueJobCrudService', () => {
       } as any);
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(
-        service.updateProgress('missing', { progress: 50 } as any),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateProgress('missing', { progress: 50 } as any)).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should set lastHeartbeat when job stage is ENCODING', async () => {
@@ -895,20 +833,18 @@ describe('QueueJobCrudService', () => {
         expect.objectContaining({
           lastHeartbeat: expect.any(Date),
           heartbeatNodeId: 'node-1',
-        }),
+        })
       );
     });
 
     it('should proxy update to MAIN node when mainApiUrl is set', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3000');
       const error = new Error('Network error');
-      jest
-        .spyOn(require('rxjs'), 'firstValueFrom')
-        .mockRejectedValueOnce(error);
+      jest.spyOn(require('rxjs'), 'firstValueFrom').mockRejectedValueOnce(error);
 
-      await expect(
-        service.updateProgress('job-1', { progress: 50 } as any),
-      ).rejects.toThrow('Network error');
+      await expect(service.updateProgress('job-1', { progress: 50 } as any)).rejects.toThrow(
+        'Network error'
+      );
     });
 
     it('should update lastProgressUpdate when resumeTimestamp is provided', async () => {
@@ -932,7 +868,7 @@ describe('QueueJobCrudService', () => {
         expect.objectContaining({
           resumeTimestamp: 120,
           lastProgressUpdate: expect.any(Date),
-        }),
+        })
       );
     });
   });
@@ -941,13 +877,11 @@ describe('QueueJobCrudService', () => {
     it('should proxy update to MAIN node when mainApiUrl is set', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3000');
       const error = new Error('Proxy error');
-      jest
-        .spyOn(require('rxjs'), 'firstValueFrom')
-        .mockRejectedValueOnce(error);
+      jest.spyOn(require('rxjs'), 'firstValueFrom').mockRejectedValueOnce(error);
 
-      await expect(
-        service.update('job-1', { stage: JobStage.QUEUED }),
-      ).rejects.toThrow('Proxy error');
+      await expect(service.update('job-1', { stage: JobStage.QUEUED })).rejects.toThrow(
+        'Proxy error'
+      );
     });
 
     it('should set lastStageChangeAt when stage is included in update', async () => {
@@ -965,7 +899,7 @@ describe('QueueJobCrudService', () => {
 
       expect(mockJobRepository.atomicUpdateMany).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ lastStageChangeAt: expect.any(Date) }),
+        expect.objectContaining({ lastStageChangeAt: expect.any(Date) })
       );
     });
 
@@ -978,18 +912,14 @@ describe('QueueJobCrudService', () => {
       mockJobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
       mockJobRepository.findById.mockResolvedValue(null);
 
-      await expect(service.update('job-1', {})).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.update('job-1', {})).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('remove', () => {
     it('should propagate errors from deleteById', async () => {
       mockJobRepository.findById.mockResolvedValue({ id: 'job-1' } as any);
-      mockJobRepository.deleteById.mockRejectedValue(
-        new Error('Delete failed'),
-      );
+      mockJobRepository.deleteById.mockRejectedValue(new Error('Delete failed'));
 
       await expect(service.remove('job-1')).rejects.toThrow('Delete failed');
     });
@@ -1005,9 +935,7 @@ describe('QueueJobCrudService', () => {
     });
 
     it('should propagate errors from deleteManyWhere', async () => {
-      mockJobRepository.deleteManyWhere.mockRejectedValue(
-        new Error('Clear failed'),
-      );
+      mockJobRepository.deleteManyWhere.mockRejectedValue(new Error('Clear failed'));
 
       await expect(service.clearJobs()).rejects.toThrow('Clear failed');
     });
@@ -1015,10 +943,7 @@ describe('QueueJobCrudService', () => {
     it('should clear multiple specified stages', async () => {
       mockJobRepository.deleteManyWhere.mockResolvedValue({ count: 7 });
 
-      const count = await service.clearJobs([
-        JobStage.FAILED,
-        JobStage.CANCELLED,
-      ]);
+      const count = await service.clearJobs([JobStage.FAILED, JobStage.CANCELLED]);
       expect(count).toBe(7);
       expect(mockJobRepository.deleteManyWhere).toHaveBeenCalledWith({
         stage: { in: [JobStage.FAILED, JobStage.CANCELLED] },
@@ -1034,7 +959,7 @@ describe('QueueJobCrudService', () => {
       await service.findAll(JobStage.ENCODING);
 
       expect(mockJobRepository.findManyWithInclude).toHaveBeenCalledWith(
-        expect.objectContaining({ orderBy: { createdAt: 'asc' } }),
+        expect.objectContaining({ orderBy: { createdAt: 'asc' } })
       );
     });
 
@@ -1042,14 +967,7 @@ describe('QueueJobCrudService', () => {
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       mockJobRepository.countWhere.mockResolvedValue(20);
 
-      const result = await service.findAll(
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        1,
-        20,
-      );
+      const result = await service.findAll(undefined, undefined, undefined, undefined, 1, 20);
 
       expect(result.totalPages).toBe(1);
     });
@@ -1079,7 +997,7 @@ describe('QueueJobCrudService', () => {
 
       expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
         'job-1',
-        expect.objectContaining({ tempFilePath: '/tmp/encode_job1.mkv' }),
+        expect.objectContaining({ tempFilePath: '/tmp/encode_job1.mkv' })
       );
     });
 
@@ -1106,7 +1024,7 @@ describe('QueueJobCrudService', () => {
 
       expect(mockJobRepository.updateRaw).toHaveBeenCalledWith(
         'job-1',
-        expect.not.objectContaining({ tempFilePath: expect.anything() }),
+        expect.not.objectContaining({ tempFilePath: expect.anything() })
       );
     });
 
@@ -1122,21 +1040,17 @@ describe('QueueJobCrudService', () => {
         stage: 'QUEUED',
         nodeId: null,
       } as any);
-      mockJobRepository.updateRaw.mockRejectedValue(
-        new Error('DB write failed'),
-      );
+      mockJobRepository.updateRaw.mockRejectedValue(new Error('DB write failed'));
 
-      await expect(
-        service.updateProgress('job-1', { progress: 50 } as any),
-      ).rejects.toThrow('DB write failed');
+      await expect(service.updateProgress('job-1', { progress: 50 } as any)).rejects.toThrow(
+        'DB write failed'
+      );
     });
 
     it('should return proxied job on successful proxy to MAIN node', async () => {
       mockNodeConfig.getMainApiUrl.mockReturnValue('http://main:3000');
       const remoteJob = { id: 'job-1', progress: 75 };
-      jest
-        .spyOn(require('rxjs'), 'firstValueFrom')
-        .mockResolvedValueOnce({ data: remoteJob });
+      jest.spyOn(require('rxjs'), 'firstValueFrom').mockResolvedValueOnce({ data: remoteJob });
 
       const result = await service.updateProgress('job-1', {
         progress: 75,
@@ -1205,9 +1119,7 @@ describe('QueueJobCrudService', () => {
         progress: 0,
       } as any);
 
-      await expect(
-        service.updateProgress('job-1', { progress: 0 } as any),
-      ).resolves.not.toThrow();
+      await expect(service.updateProgress('job-1', { progress: 0 } as any)).resolves.not.toThrow();
     });
 
     it('should accept progress of exactly 100 (boundary value)', async () => {
@@ -1226,7 +1138,7 @@ describe('QueueJobCrudService', () => {
       } as any);
 
       await expect(
-        service.updateProgress('job-1', { progress: 100 } as any),
+        service.updateProgress('job-1', { progress: 100 } as any)
       ).resolves.not.toThrow();
     });
 
@@ -1253,9 +1165,9 @@ describe('QueueJobCrudService', () => {
 
   describe('validateFilePath (additional)', () => {
     it('should throw BadRequestException for path containing unicode dot \\u2024', () => {
-      expect(() =>
-        service.validateFilePath('/library/\u2024\u2024/secret', '/library'),
-      ).toThrow(BadRequestException);
+      expect(() => service.validateFilePath('/library/\u2024\u2024/secret', '/library')).toThrow(
+        BadRequestException
+      );
     });
   });
 
@@ -1278,9 +1190,7 @@ describe('QueueJobCrudService', () => {
     };
 
     beforeEach(() => {
-      jest
-        .spyOn(service, 'validateFilePath')
-        .mockImplementation(() => undefined);
+      jest.spyOn(service, 'validateFilePath').mockImplementation(() => undefined);
     });
 
     it('should rethrow P2002 error when no conflicting job found after constraint violation', async () => {
@@ -1330,7 +1240,7 @@ describe('QueueJobCrudService', () => {
       await service.create(dtoNoType as any);
 
       expect(mockJobRepository.createJob).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'ENCODE' }),
+        expect.objectContaining({ type: 'ENCODE' })
       );
     });
 
@@ -1356,7 +1266,7 @@ describe('QueueJobCrudService', () => {
       await service.create(dtoNoThrottle as any);
 
       expect(mockJobRepository.createJob).toHaveBeenCalledWith(
-        expect.objectContaining({ resourceThrottled: false }),
+        expect.objectContaining({ resourceThrottled: false })
       );
     });
   });
@@ -1395,9 +1305,9 @@ describe('QueueJobCrudService', () => {
       mockNodeConfig.isMainNode.mockReturnValue(false);
       mockJobRepository.findUniqueSelect.mockResolvedValue(null);
 
-      await expect(
-        service.validateJobOwnership('missing', 'update'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.validateJobOwnership('missing', 'update')).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 });

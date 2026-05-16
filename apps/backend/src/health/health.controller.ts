@@ -1,11 +1,5 @@
 import { version as APP_VERSION } from '@bitbonsai/version';
-import {
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/guards/public.decorator';
 import type { BasicHealthDto } from './dto/basic-health.dto';
@@ -35,7 +29,7 @@ export class HealthController {
         status: 'ok',
         timestamp: '2025-10-01T12:00:00Z',
         uptime: 3600,
-        version: APP_VERSION, // Read from package.json
+        version: '1.0.0', // Read from package.json
       },
     },
   })
@@ -47,7 +41,7 @@ export class HealthController {
         status: 'error',
         timestamp: '2025-10-01T12:00:00Z',
         uptime: 3600,
-        version: APP_VERSION, // Read from package.json
+        version: '1.0.0', // Read from package.json
       },
     },
   })
@@ -194,8 +188,7 @@ export class HealthController {
             queuedJobsCount: 20,
             estimatedSpaceNeededBytes: '150000000000',
             hasEnoughSpaceForQueue: false,
-            warningMessage:
-              'Insufficient space: need 50.0 GB more to complete 20 queued jobs',
+            warningMessage: 'Insufficient space: need 50.0 GB more to complete 20 queued jobs',
           },
         ],
         globalWarnings: [
@@ -215,8 +208,7 @@ export class HealthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Readiness probe',
-    description:
-      'Kubernetes readiness probe - checks if application is ready to accept requests',
+    description: 'Kubernetes readiness probe - checks if application is ready to accept requests',
   })
   @ApiResponse({
     status: 200,
@@ -286,8 +278,7 @@ export class HealthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Simple ping endpoint',
-    description:
-      'Ultra-simple health check that returns "Ok" as text/plain for monitoring tools',
+    description: 'Ultra-simple health check that returns "Ok" as text/plain for monitoring tools',
   })
   @ApiResponse({
     status: 200,

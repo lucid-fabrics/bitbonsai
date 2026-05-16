@@ -59,7 +59,7 @@ export class ToastService {
   private showToast(
     message: string,
     type: 'success' | 'info' | 'warning' | 'error',
-    duration: number,
+    duration: number
   ): void {
     // Create toast container if it doesn't exist
     let container = document.querySelector('.toast-container') as HTMLElement;

@@ -29,8 +29,7 @@ describe('SharedUiComponent', () => {
   });
 
   it('should be a standalone component', () => {
-    const metadata = (SharedUiComponent as { ɵcmp?: { standalone?: boolean } })
-      .ɵcmp;
+    const metadata = (SharedUiComponent as { ɵcmp?: { standalone?: boolean } }).ɵcmp;
     if (metadata) {
       expect(metadata.standalone).toBe(true);
     } else {

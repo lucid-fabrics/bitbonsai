@@ -38,10 +38,7 @@ describe('PolicyRepository (policies module)', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        PolicyRepository,
-        { provide: PrismaService, useValue: mockPrismaService },
-      ],
+      providers: [PolicyRepository, { provide: PrismaService, useValue: mockPrismaService }],
     }).compile();
 
     repository = module.get<PolicyRepository>(PolicyRepository);
@@ -112,7 +109,7 @@ describe('PolicyRepository (policies module)', () => {
             preset: 'QUALITY_AV1',
             targetCodec: 'AV1',
           }),
-        }),
+        })
       );
     });
 
@@ -132,7 +129,7 @@ describe('PolicyRepository (policies module)', () => {
           skipSeeding: false,
           allowSameCodec: false,
           minSavingsPercent: 0,
-        }),
+        })
       ).rejects.toThrow('DB error');
     });
   });
@@ -229,13 +226,9 @@ describe('PolicyRepository (policies module)', () => {
     });
 
     it('should propagate errors when policy not found', async () => {
-      mockPrismaService.policy.update.mockRejectedValue(
-        new Error('Record not found'),
-      );
+      mockPrismaService.policy.update.mockRejectedValue(new Error('Record not found'));
 
-      await expect(repository.update('ghost', { name: 'X' })).rejects.toThrow(
-        'Record not found',
-      );
+      await expect(repository.update('ghost', { name: 'X' })).rejects.toThrow('Record not found');
     });
   });
 
@@ -252,13 +245,9 @@ describe('PolicyRepository (policies module)', () => {
     });
 
     it('should propagate errors when policy not found', async () => {
-      mockPrismaService.policy.delete.mockRejectedValue(
-        new Error('Record to delete not found'),
-      );
+      mockPrismaService.policy.delete.mockRejectedValue(new Error('Record to delete not found'));
 
-      await expect(repository.delete('ghost')).rejects.toThrow(
-        'Record to delete not found',
-      );
+      await expect(repository.delete('ghost')).rejects.toThrow('Record to delete not found');
     });
   });
 });

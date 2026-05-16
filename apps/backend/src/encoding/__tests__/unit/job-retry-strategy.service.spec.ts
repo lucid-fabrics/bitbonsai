@@ -23,10 +23,7 @@ describe('JobRetryStrategyService', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        JobRetryStrategyService,
-        { provide: QueueService, useValue: mockQueueService },
-      ],
+      providers: [JobRetryStrategyService, { provide: QueueService, useValue: mockQueueService }],
     }).compile();
 
     service = module.get(JobRetryStrategyService);
@@ -37,19 +34,10 @@ describe('JobRetryStrategyService', () => {
   describe('isNonRetriableError', () => {
     it.each([
       ['non-retriable error flag', 'non-retriable error: something bad'],
-      [
-        'source file appears corrupted',
-        'source file appears corrupted or truncated',
-      ],
+      ['source file appears corrupted', 'source file appears corrupted or truncated'],
       ['could not find ref with poc', 'could not find ref with poc 12'],
-      [
-        'error submitting packet to decoder',
-        'error submitting packet to decoder',
-      ],
-      [
-        'invalid data found when processing input',
-        'invalid data found when processing input',
-      ],
+      ['error submitting packet to decoder', 'error submitting packet to decoder'],
+      ['invalid data found when processing input', 'invalid data found when processing input'],
       ['corrupt decoded frame', 'corrupt decoded frame in stream 0'],
       ['missing reference picture', 'missing reference picture'],
       ['moov atom not found', 'moov atom not found'],
@@ -62,7 +50,7 @@ describe('JobRetryStrategyService', () => {
       'returns false for: %s',
       (message) => {
         expect(service.isNonRetriableError(message)).toBe(false);
-      },
+      }
     );
   });
 
@@ -81,14 +69,12 @@ describe('JobRetryStrategyService', () => {
       expect(service.isTransientError(message)).toBe(true);
     });
 
-    it.each([
-      'codec not found',
-      'moov atom not found',
-      'corrupt decoded frame',
-      '',
-    ])('returns false for: %s', (message) => {
-      expect(service.isTransientError(message)).toBe(false);
-    });
+    it.each(['codec not found', 'moov atom not found', 'corrupt decoded frame', ''])(
+      'returns false for: %s',
+      (message) => {
+        expect(service.isTransientError(message)).toBe(false);
+      }
+    );
   });
 
   // ─── handleJobFailure ─────────────────────────────────────────────────────
@@ -110,7 +96,7 @@ describe('JobRetryStrategyService', () => {
             progress: 0,
             retryCount: 1,
             error: expect.stringContaining('Attempt 1/3 failed'),
-          }),
+          })
         );
 
         const call = mockQueueService.update.mock.calls[0][1];
@@ -132,7 +118,7 @@ describe('JobRetryStrategyService', () => {
           expect.objectContaining({
             retryCount: 2,
             error: expect.stringContaining('Attempt 2/3 failed'),
-          }),
+          })
         );
 
         const call = mockQueueService.update.mock.calls[0][1];
@@ -153,7 +139,7 @@ describe('JobRetryStrategyService', () => {
           expect.objectContaining({
             retryCount: 3,
             error: expect.stringContaining('Attempt 3/3 failed'),
-          }),
+          })
         );
 
         const call = mockQueueService.update.mock.calls[0][1];
@@ -171,7 +157,7 @@ describe('JobRetryStrategyService', () => {
         expect(mockQueueService.update).not.toHaveBeenCalled();
         expect(mockQueueService.failJob).toHaveBeenCalledWith(
           'job-1',
-          expect.stringContaining('All 3 retry attempts exhausted'),
+          expect.stringContaining('All 3 retry attempts exhausted')
         );
       });
     });
@@ -186,9 +172,7 @@ describe('JobRetryStrategyService', () => {
         expect(mockQueueService.update).not.toHaveBeenCalled();
         expect(mockQueueService.failJob).toHaveBeenCalledWith(
           'job-1',
-          expect.stringContaining(
-            'Non-retriable error (corrupted source file)',
-          ),
+          expect.stringContaining('Non-retriable error (corrupted source file)')
         );
       });
 
@@ -213,7 +197,7 @@ describe('JobRetryStrategyService', () => {
         expect(mockQueueService.update).not.toHaveBeenCalled();
         expect(mockQueueService.failJob).toHaveBeenCalledWith(
           'job-1',
-          expect.stringContaining('Non-retriable error after 1 attempt(s)'),
+          expect.stringContaining('Non-retriable error after 1 attempt(s)')
         );
       });
     });
@@ -235,20 +219,16 @@ describe('JobRetryStrategyService', () => {
 
         expect(mockQueueService.update).toHaveBeenCalledWith(
           'job-1',
-          expect.objectContaining({ retryCount: 1 }),
+          expect.objectContaining({ retryCount: 1 })
         );
       });
 
       it('does not throw if queueService.update throws', async () => {
         const job = makeJob({ retryCount: 0 });
         const error = new Error('ECONNRESET');
-        mockQueueService.update.mockRejectedValueOnce(
-          new Error('DB connection lost'),
-        );
+        mockQueueService.update.mockRejectedValueOnce(new Error('DB connection lost'));
 
-        await expect(
-          service.handleJobFailure(job, error),
-        ).resolves.toBeUndefined();
+        await expect(service.handleJobFailure(job, error)).resolves.toBeUndefined();
       });
 
       it('does not throw if queueService.failJob throws', async () => {
@@ -256,9 +236,7 @@ describe('JobRetryStrategyService', () => {
         const error = new Error('moov atom not found');
         mockQueueService.failJob.mockRejectedValueOnce(new Error('DB error'));
 
-        await expect(
-          service.handleJobFailure(job, error),
-        ).resolves.toBeUndefined();
+        await expect(service.handleJobFailure(job, error)).resolves.toBeUndefined();
       });
     });
   });

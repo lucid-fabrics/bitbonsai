@@ -12,12 +12,10 @@ export class SystemService {
   getSystemResources() {
     const cpuCount = os.cpus().length;
     const theoreticalMax = Math.floor(cpuCount / this.CORES_PER_HEVC_JOB);
-    const optimalWorkers = Math.floor(
-      theoreticalMax * this.WORKER_SAFETY_MARGIN,
-    );
+    const optimalWorkers = Math.floor(theoreticalMax * this.WORKER_SAFETY_MARGIN);
     const actualWorkers = Math.max(
       this.MIN_WORKERS_PER_NODE,
-      Math.min(optimalWorkers, this.MAX_WORKERS_PER_NODE),
+      Math.min(optimalWorkers, this.MAX_WORKERS_PER_NODE)
     );
 
     // Calculate what would happen with different margins
@@ -27,7 +25,7 @@ export class SystemService {
         label: 'Conservative (30%)',
         workers: Math.max(
           this.MIN_WORKERS_PER_NODE,
-          Math.min(Math.floor(theoreticalMax * 0.3), this.MAX_WORKERS_PER_NODE),
+          Math.min(Math.floor(theoreticalMax * 0.3), this.MAX_WORKERS_PER_NODE)
         ),
         risk: 'low',
         description: 'Lower CPU usage, slower queue processing',
@@ -44,7 +42,7 @@ export class SystemService {
         label: 'Aggressive (70%)',
         workers: Math.max(
           this.MIN_WORKERS_PER_NODE,
-          Math.min(Math.floor(theoreticalMax * 0.7), this.MAX_WORKERS_PER_NODE),
+          Math.min(Math.floor(theoreticalMax * 0.7), this.MAX_WORKERS_PER_NODE)
         ),
         risk: 'high',
         description: 'Faster processing, higher crash risk',

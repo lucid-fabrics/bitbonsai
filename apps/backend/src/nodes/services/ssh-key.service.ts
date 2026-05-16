@@ -1,11 +1,5 @@
 import { spawn } from 'node:child_process';
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
@@ -131,9 +125,7 @@ export class SshKeyService implements OnModuleInit {
     // Create authorized_keys if it doesn't exist
     if (!existsSync(this.authorizedKeysPath)) {
       writeFileSync(this.authorizedKeysPath, keyEntry, { mode: 0o600 });
-      this.logger.log(
-        `Created authorized_keys and added key${comment ? ` (${comment})` : ''}`,
-      );
+      this.logger.log(`Created authorized_keys and added key${comment ? ` (${comment})` : ''}`);
       return;
     }
 
@@ -143,9 +135,7 @@ export class SshKeyService implements OnModuleInit {
     // Check if key already exists (compare key part only, ignore comment)
     const keyPart = publicKey.split(' ').slice(0, 2).join(' ');
     if (existingKeys.includes(keyPart)) {
-      this.logger.log(
-        `Key already exists in authorized_keys${comment ? ` (${comment})` : ''}`,
-      );
+      this.logger.log(`Key already exists in authorized_keys${comment ? ` (${comment})` : ''}`);
       return;
     }
 
@@ -153,9 +143,7 @@ export class SshKeyService implements OnModuleInit {
     writeFileSync(this.authorizedKeysPath, existingKeys + keyEntry, {
       mode: 0o600,
     });
-    this.logger.log(
-      `✅ Added key to authorized_keys${comment ? ` (${comment})` : ''}`,
-    );
+    this.logger.log(`✅ Added key to authorized_keys${comment ? ` (${comment})` : ''}`);
   }
 
   /**
@@ -212,9 +200,7 @@ export class SshKeyService implements OnModuleInit {
 
       const timeoutId = setTimeout(() => {
         ssh.kill('SIGKILL');
-        this.logger.warn(
-          `SSH connection to ${host} timed out after 10 seconds`,
-        );
+        this.logger.warn(`SSH connection to ${host} timed out after 10 seconds`);
         resolve(false);
       }, 10000);
 
@@ -227,9 +213,7 @@ export class SshKeyService implements OnModuleInit {
         if (success) {
           this.logger.log(`✅ SSH connection to ${host} successful`);
         } else {
-          this.logger.warn(
-            `❌ SSH connection to ${host} failed (code: ${code})`,
-          );
+          this.logger.warn(`❌ SSH connection to ${host} failed (code: ${code})`);
         }
         resolve(success);
       });
@@ -251,11 +235,7 @@ export class SshKeyService implements OnModuleInit {
    * @param publicKey - Public key to copy
    * @param port - SSH port (default: 22)
    */
-  async copyKeyToRemote(
-    host: string,
-    publicKey: string,
-    port = 22,
-  ): Promise<void> {
+  async copyKeyToRemote(host: string, publicKey: string, port = 22): Promise<void> {
     return new Promise((resolve, reject) => {
       // Use ssh to append the key to remote authorized_keys
       const command = `mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo "${publicKey}" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys`;

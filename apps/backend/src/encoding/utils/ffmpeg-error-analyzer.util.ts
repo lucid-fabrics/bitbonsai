@@ -8,8 +8,11 @@
 const MAX_RETRY_ATTEMPTS = 3;
 const MIN_RETRIES_FOR_EARLY_FAILURE_CORRUPTION = 2;
 
+export type ErrorClass = 'RETRIABLE' | 'FATAL' | 'UNKNOWN';
+
 export interface FFmpegErrorAnalysis {
   category: ErrorCategory;
+  errorClass: ErrorClass;
   title: string;
   description: string;
   technicalDetails?: string;
@@ -40,7 +43,7 @@ export function analyzeFfmpegError(
   exitCode: number,
   stderr: string,
   progress: number,
-  retryCount: number,
+  retryCount: number
 ): FFmpegErrorAnalysis {
   const stderrLower = stderr.toLowerCase();
 
@@ -48,6 +51,7 @@ export function analyzeFfmpegError(
   if (isSourceCorrupted(exitCode, stderrLower, progress)) {
     return {
       category: ErrorCategory.SOURCE_CORRUPTED,
+      errorClass: 'FATAL',
       title: '🔴 Source File is Corrupted',
       description:
         'The video file contains corrupted or invalid data that cannot be processed. FFmpeg encountered errors while trying to decode the video stream.',
@@ -65,12 +69,10 @@ export function analyzeFfmpegError(
   }
 
   // PATTERN 2: File was deleted/moved
-  if (
-    stderrLower.includes('no such file') ||
-    stderrLower.includes('file not found')
-  ) {
+  if (stderrLower.includes('no such file') || stderrLower.includes('file not found')) {
     return {
       category: ErrorCategory.SOURCE_MISSING,
+      errorClass: 'FATAL',
       title: '📁 Source File Not Found',
       description:
         'The source file was moved or deleted after the job was created. The file may have been manually moved, or the storage volume may have been unmounted.',
@@ -94,6 +96,7 @@ export function analyzeFfmpegError(
   ) {
     return {
       category: ErrorCategory.INSUFFICIENT_RESOURCES,
+      errorClass: 'RETRIABLE',
       title: '💾 Insufficient System Resources',
       description:
         'The system ran out of disk space or memory while encoding. Large 4K HDR files require significant temporary storage space.',
@@ -117,6 +120,7 @@ export function analyzeFfmpegError(
   ) {
     return {
       category: ErrorCategory.PROCESS_INTERRUPTED,
+      errorClass: 'RETRIABLE',
       title: '⚠️ Encoding Process Interrupted',
       description:
         'The encoding process was terminated unexpectedly shortly after starting. This could be due to system issues, resource constraints, or file access problems.',
@@ -140,6 +144,7 @@ export function analyzeFfmpegError(
   ) {
     return {
       category: ErrorCategory.SOURCE_CORRUPTED,
+      errorClass: 'FATAL',
       title: '🔴 Persistent Early Failure - Likely Corrupted',
       description:
         'This file consistently fails within the first few percent of encoding after multiple retry attempts. This pattern strongly indicates corrupted source data that was not detected during health check.',
@@ -163,6 +168,7 @@ export function analyzeFfmpegError(
   ) {
     return {
       category: ErrorCategory.CODEC_INCOMPATIBILITY,
+      errorClass: 'FATAL',
       title: '🎬 Codec Not Supported',
       description:
         'The requested video or audio codec is not available or supported in this FFmpeg build.',
@@ -181,6 +187,7 @@ export function analyzeFfmpegError(
   // PATTERN 7: Generic/Unknown error
   return {
     category: ErrorCategory.UNKNOWN,
+    errorClass: 'UNKNOWN',
     title: '❓ Encoding Failed',
     description:
       'The encoding process failed for an unknown reason. Review the technical details below for more information.',
@@ -199,11 +206,7 @@ export function analyzeFfmpegError(
 /**
  * Check if error indicates source file corruption
  */
-function isSourceCorrupted(
-  exitCode: number,
-  stderrLower: string,
-  progress: number,
-): boolean {
+function isSourceCorrupted(exitCode: number, stderrLower: string, progress: number): boolean {
   // Exit code 255 with early failure (<5%) and corruption patterns
   if ((exitCode === 255 || exitCode === -1 || exitCode === 1) && progress < 5) {
     const corruptionPatterns = [
@@ -250,10 +253,7 @@ function extractResourceError(stderrLower: string): string {
   if (stderrLower.includes('no space left')) {
     return 'Disk full: No space left on device for temporary encoding files';
   }
-  if (
-    stderrLower.includes('cannot allocate memory') ||
-    stderrLower.includes('out of memory')
-  ) {
+  if (stderrLower.includes('cannot allocate memory') || stderrLower.includes('out of memory')) {
     return 'Memory exhausted: System ran out of available RAM during encoding';
   }
   return 'System resource limitation reached';
@@ -279,12 +279,10 @@ function extractLastErrors(stderr: string): string {
     (line) =>
       line.toLowerCase().includes('error') ||
       line.toLowerCase().includes('failed') ||
-      line.toLowerCase().includes('invalid'),
+      line.toLowerCase().includes('invalid')
   );
 
-  return errorLines.length > 0
-    ? errorLines.slice(-5).join('\n')
-    : lines.slice(-10).join('\n');
+  return errorLines.length > 0 ? errorLines.slice(-5).join('\n') : lines.slice(-10).join('\n');
 }
 
 /**

@@ -8,6 +8,7 @@ import { CoreModule } from '../core/core.module';
 import { LibrariesModule } from '../libraries/libraries.module';
 import { NodesModule } from '../nodes/nodes.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { QueueModule } from '../queue/queue.module';
 import { ContainerCompatibilityService } from './container-compatibility.service';
 import { EncodingController } from './encoding.controller';
 import { EncodingFileService } from './encoding-file.service';
@@ -26,10 +27,20 @@ import { FfmpegProcessCleanupService } from './ffmpeg-process-cleanup.service';
 import { FfmpegProgressParserService } from './ffmpeg-progress-parser.service';
 import { FfprobeService } from './ffprobe.service';
 import { FileHealthService } from './file-health.service';
+import { FileSizeEstimationService } from './file-size-estimation.service';
 import { HardwareAccelerationService } from './hardware-acceleration.service';
 import { JobRetryStrategyService } from './job-retry-strategy.service';
 import { PoolLockService } from './pool-lock.service';
 import { QualityMetricsService } from './quality-metrics.service';
+import { CodecFallbackService } from './services/codec-fallback.service';
+import { ContainerValidationService } from './services/container-validation.service';
+import { DiskSpaceGuardService } from './services/disk-space-guard.service';
+import { GpuHealthService } from './services/gpu-health.service';
+import { NfsHealthService } from './services/nfs-health.service';
+import { PreflightService } from './services/preflight.service';
+import { QualityGateService } from './services/quality-gate.service';
+import { SegmentedEncodeService } from './services/segmented-encode.service';
+import { TempFileGuardService } from './services/temp-file-guard.service';
 import { SystemResourceService } from './system-resource.service';
 import { WorkerPoolService } from './worker-pool.service';
 
@@ -48,6 +59,7 @@ import { WorkerPoolService } from './worker-pool.service';
   imports: [
     CoreModule,
     PrismaModule,
+    forwardRef(() => QueueModule),
     // forwardRef required: EncodingModule ↔ LibrariesModule circular dependency
     // EncodingFileService injects LibrariesService.findOne() + update()
     // LibrariesModule imports QueueModule which imports EncodingModule
@@ -71,6 +83,7 @@ import { WorkerPoolService } from './worker-pool.service';
     FfmpegFileVerificationService,
     FfmpegService,
     HardwareAccelerationService,
+    DiskSpaceGuardService,
     FileHealthService,
     ContainerCompatibilityService,
     EncodingPreviewService,
@@ -81,21 +94,40 @@ import { WorkerPoolService } from './worker-pool.service';
     SystemResourceService,
     WorkerPoolService,
     JobRetryStrategyService,
+    FileSizeEstimationService,
     JobRepository,
     LibraryRepository,
     NodeRepository,
     PolicyRepository,
     SettingsRepository,
+    QualityGateService,
+    CodecFallbackService,
+    GpuHealthService,
+    NfsHealthService,
+    PreflightService,
+    SegmentedEncodeService,
+    TempFileGuardService,
+    ContainerValidationService,
   ],
   exports: [
     EncodingProcessorService,
     FfmpegService,
+    DiskSpaceGuardService,
     FileHealthService,
     ContainerCompatibilityService,
     EncodingPreviewService,
     EncodingHistoryService,
     EncodingSchedulerService,
     QualityMetricsService,
+    FileSizeEstimationService,
+    QualityGateService,
+    CodecFallbackService,
+    GpuHealthService,
+    NfsHealthService,
+    PreflightService,
+    SegmentedEncodeService,
+    TempFileGuardService,
+    ContainerValidationService,
   ],
 })
 export class EncodingModule {}

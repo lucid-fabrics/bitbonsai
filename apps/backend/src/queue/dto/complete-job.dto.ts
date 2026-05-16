@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 /**
  * DTO for completing an encoding job
@@ -7,7 +7,7 @@ import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 export class CompleteJobDto {
   @ApiProperty({
     description: 'Size of the encoded file in bytes',
-    example: 5368709120,
+    example: '5368709120',
     type: 'string',
   })
   @IsNotEmpty()
@@ -16,7 +16,7 @@ export class CompleteJobDto {
 
   @ApiProperty({
     description: 'Bytes saved compared to original (can be negative if larger)',
-    example: 5368709120,
+    example: '5368709120',
     type: 'string',
   })
   @IsNotEmpty()
@@ -30,4 +30,13 @@ export class CompleteJobDto {
   @IsNotEmpty()
   @IsNumber()
   savedPercent!: number;
+
+  @ApiProperty({
+    description: 'Quality metrics JSON string (VMAF, PSNR, SSIM)',
+    example: '{"vmaf":92.5,"psnr":38.2,"ssim":0.97,"calculatedAt":"2026-03-29T06:00:00Z"}',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  qualityMetrics?: string;
 }

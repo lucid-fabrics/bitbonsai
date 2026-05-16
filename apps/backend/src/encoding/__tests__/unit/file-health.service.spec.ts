@@ -129,17 +129,11 @@ describe('FileHealthService', () => {
         streams: [{ codec_name: 'h264', codec_type: 'video' }],
       };
 
-      createMockProcess(
-        0,
-        JSON.stringify(probeOutput),
-        'Invalid data found at processing',
-      );
+      createMockProcess(0, JSON.stringify(probeOutput), 'Invalid data found at processing');
 
       const result = await service.analyzeFile('/test/corrupt.mkv');
 
-      expect(
-        result.issues.some((i) => i.includes('invalid or corrupted')),
-      ).toBe(true);
+      expect(result.issues.some((i) => i.includes('invalid or corrupted'))).toBe(true);
       expect(result.score).toBeLessThan(90);
     });
 
@@ -172,14 +166,12 @@ describe('FileHealthService', () => {
       createMockProcess(
         0,
         JSON.stringify(probeOutput),
-        'Warning: some issue\nWarning: another issue',
+        'Warning: some issue\nWarning: another issue'
       );
 
       const result = await service.analyzeFile('/test/warnings.mkv');
 
-      expect(result.warnings.some((w) => w.includes('2 warning(s)'))).toBe(
-        true,
-      );
+      expect(result.warnings.some((w) => w.includes('2 warning(s)'))).toBe(true);
     });
 
     it('should detect non-monotonous DTS issues', async () => {
@@ -193,17 +185,11 @@ describe('FileHealthService', () => {
         ],
       };
 
-      createMockProcess(
-        0,
-        JSON.stringify(probeOutput),
-        'non-monotonous dts in output',
-      );
+      createMockProcess(0, JSON.stringify(probeOutput), 'non-monotonous dts in output');
 
       const result = await service.analyzeFile('/test/dts-issue.mkv');
 
-      expect(result.warnings.some((w) => w.includes('Timestamp issues'))).toBe(
-        true,
-      );
+      expect(result.warnings.some((w) => w.includes('Timestamp issues'))).toBe(true);
     });
 
     it('should handle ffprobe failure', async () => {
@@ -213,9 +199,7 @@ describe('FileHealthService', () => {
 
       const result = await service.analyzeFile('/test/unreadable.mkv');
 
-      expect(result.issues.some((i) => i.includes('FFProbe failed'))).toBe(
-        true,
-      );
+      expect(result.issues.some((i) => i.includes('FFProbe failed'))).toBe(true);
     });
 
     it('should handle ffprobe spawn error', async () => {
@@ -282,14 +266,12 @@ describe('FileHealthService', () => {
                 JSON.stringify({
                   ...probeOutput,
                   // five warnings → -15 score → score=80 → WARNING
-                }),
-              ),
+                })
+              )
             );
             proc.stderr.emit(
               'data',
-              Buffer.from(
-                'warning: a\nwarning: b\nwarning: c\nwarning: d\nwarning: e',
-              ),
+              Buffer.from('warning: a\nwarning: b\nwarning: c\nwarning: d\nwarning: e')
             );
             proc.emit('close', 0);
           }, 10);
@@ -337,24 +319,19 @@ describe('FileHealthService', () => {
               Buffer.from(
                 JSON.stringify({
                   ...probeOutput,
-                }),
-              ),
+                })
+              )
             );
             proc.stderr.emit(
               'data',
-              Buffer.from(
-                'warning: a\nwarning: b\nwarning: c\nwarning: d\nwarning: e',
-              ),
+              Buffer.from('warning: a\nwarning: b\nwarning: c\nwarning: d\nwarning: e')
             );
             proc.emit('close', 0);
           }, 10);
         } else {
           // ffmpeg test decode: fails with invalid data
           setTimeout(() => {
-            proc.stderr.emit(
-              'data',
-              Buffer.from('invalid data found when processing input'),
-            );
+            proc.stderr.emit('data', Buffer.from('invalid data found when processing input'));
             proc.emit('close', 1);
           }, 10);
         }
@@ -366,9 +343,7 @@ describe('FileHealthService', () => {
       expect(result.status).toBe(FileHealthStatus.CORRUPTED);
       expect(result.canEncode).toBe(false);
       expect(result.score).toBe(35);
-      expect(result.issues.some((i) => i.includes('Test decode failed'))).toBe(
-        true,
-      );
+      expect(result.issues.some((i) => i.includes('Test decode failed'))).toBe(true);
     });
 
     it('should handle test decode spawn error gracefully', async () => {
@@ -397,9 +372,7 @@ describe('FileHealthService', () => {
             proc.stdout.emit('data', Buffer.from(JSON.stringify(probeOutput)));
             proc.stderr.emit(
               'data',
-              Buffer.from(
-                'warning: a\nwarning: b\nwarning: c\nwarning: d\nwarning: e',
-              ),
+              Buffer.from('warning: a\nwarning: b\nwarning: c\nwarning: d\nwarning: e')
             );
             proc.emit('close', 0);
           }, 10);
@@ -499,8 +472,7 @@ describe('FileHealthService', () => {
       const result = (service as any).evaluateHealth({
         exitCode: 0,
         stdout: '{}',
-        stderr:
-          'warning: something\nwarning: else\nwarning: more\nwarning: extra\nwarning: five',
+        stderr: 'warning: something\nwarning: else\nwarning: more\nwarning: extra\nwarning: five',
         duration: 3600,
         bitrate: 5000000,
         hasVideo: true,

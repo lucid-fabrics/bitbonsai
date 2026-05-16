@@ -81,9 +81,7 @@ export class NodesService {
     return this.nodesClient.discoverMainNodes();
   }
 
-  createRegistrationRequest(
-    data: CreateRegistrationRequestDto,
-  ): Observable<RegistrationRequest> {
+  createRegistrationRequest(data: CreateRegistrationRequestDto): Observable<RegistrationRequest> {
     return this.nodesClient.createRegistrationRequest(data);
   }
 
@@ -95,17 +93,11 @@ export class NodesService {
     return this.nodesClient.getRegistrationRequest(id);
   }
 
-  approveRequest(
-    id: string,
-    data?: ApproveRequestDto,
-  ): Observable<RegistrationRequest> {
+  approveRequest(id: string, data?: ApproveRequestDto): Observable<RegistrationRequest> {
     return this.nodesClient.approveRequest(id, data);
   }
 
-  rejectRequest(
-    id: string,
-    data: RejectRequestDto,
-  ): Observable<RegistrationRequest> {
+  rejectRequest(id: string, data: RejectRequestDto): Observable<RegistrationRequest> {
     return this.nodesClient.rejectRequest(id, data);
   }
 
@@ -135,7 +127,7 @@ export class NodesService {
 
   addAuthorizedKey(
     publicKey: string,
-    comment?: string,
+    comment?: string
   ): Observable<{ success: boolean; message: string }> {
     return this.nodesClient.addAuthorizedKey(publicKey, comment);
   }

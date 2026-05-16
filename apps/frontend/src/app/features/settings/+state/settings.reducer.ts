@@ -161,9 +161,7 @@ export const settingsReducer = createReducer(
   })),
   on(SettingsActions.regenerateAPIKeySuccess, (state, { apiKey }) => ({
     ...state,
-    systemSettings: state.systemSettings
-      ? { ...state.systemSettings, apiKey }
-      : null,
+    systemSettings: state.systemSettings ? { ...state.systemSettings, apiKey } : null,
     isLoading: false,
     successMessage: 'API key regenerated successfully!',
   })),
@@ -201,13 +199,11 @@ export const settingsReducer = createReducer(
     ...state,
     advancedModeEnabled: enabled,
     isLoading: false,
-    successMessage: enabled
-      ? 'Advanced mode enabled'
-      : 'Advanced mode disabled',
+    successMessage: enabled ? 'Advanced mode enabled' : 'Advanced mode disabled',
   })),
   on(SettingsActions.updateAdvancedModeFailure, (state, { error }) => ({
     ...state,
     error,
     isLoading: false,
-  })),
+  }))
 );

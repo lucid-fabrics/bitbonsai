@@ -1,11 +1,5 @@
 import { AsyncPipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  inject,
-  type OnInit,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { TranslocoModule } from '@ngneat/transloco';
@@ -61,12 +55,12 @@ export class DashboardComponent implements OnInit {
 
   viewFilesToEncode(folder: FolderInfo): void {
     this.dialogFolderName = folder.name;
-    this.dialogCodec = 'h264';
+    this.dialogCodec = '';
     this.dialogLoading = true;
     this.dialogOpen = true;
 
     this.mediaStatsApi
-      .getFolderFiles(folder.name, 'h264')
+      .getFolderFiles(folder.name)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {

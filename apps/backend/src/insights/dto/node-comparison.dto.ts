@@ -46,8 +46,7 @@ export class NodeMetricsDto {
   successRate!: number;
 
   @ApiProperty({
-    description:
-      'Total bytes saved by this node (as string for BigInt support)',
+    description: 'Total bytes saved by this node (as string for BigInt support)',
     example: '268435456000',
     format: 'int64',
   })

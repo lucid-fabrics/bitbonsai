@@ -40,10 +40,7 @@ describe('PolicyBo', () => {
         expect(bo.targetCodec).toBe(TargetCodec.HEVC);
         expect(bo.targetQuality).toBe(23);
         expect(bo.libraryId).toBe('660e8400-e29b-41d4-a716-446655440001');
-        expect(bo.deviceProfiles).toEqual([
-          DeviceProfile.APPLE_TV,
-          DeviceProfile.WEB,
-        ]);
+        expect(bo.deviceProfiles).toEqual([DeviceProfile.APPLE_TV, DeviceProfile.WEB]);
         expect(bo.ffmpegFlags).toBe('-preset slow');
         expect(bo.audioHandling).toBe(AudioHandling.COPY);
         expect(bo.hardwareAcceleration).toBe('NVIDIA');
@@ -203,10 +200,7 @@ describe('PolicyBo', () => {
         expect(bo.targetCodec).toBe(TargetCodec.HEVC);
         expect(bo.targetQuality).toBe(22);
         expect(bo.libraryId).toBe('cc0e8400-e29b-41d4-a716-446655440007');
-        expect(bo.deviceProfiles).toEqual([
-          DeviceProfile.APPLE_TV,
-          DeviceProfile.ROKU,
-        ]);
+        expect(bo.deviceProfiles).toEqual([DeviceProfile.APPLE_TV, DeviceProfile.ROKU]);
         expect(bo.ffmpegFlags).toBe('-preset medium');
         expect(bo.audioHandling).toBe(AudioHandling.TRANSCODE_AC3);
         expect(bo.hardwareAcceleration).toBe('AMD');
@@ -458,12 +452,7 @@ describe('PolicyBo', () => {
       });
 
       it('should handle all codec types', () => {
-        const codecs = [
-          TargetCodec.HEVC,
-          TargetCodec.AV1,
-          TargetCodec.VP9,
-          TargetCodec.H264,
-        ];
+        const codecs = [TargetCodec.HEVC, TargetCodec.AV1, TargetCodec.VP9, TargetCodec.H264];
 
         codecs.forEach((codec, index) => {
           const mockModel = {

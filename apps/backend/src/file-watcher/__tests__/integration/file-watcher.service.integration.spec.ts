@@ -142,8 +142,7 @@ describe('FileWatcherService (Integration)', () => {
 
       // Verify NO event was emitted for non-video file
       const emitCallsAfter = emitSpy.mock.calls.filter(
-        (call) =>
-          call[0] === 'file.detected' && call[1].fileName === 'readme.txt',
+        (call) => call[0] === 'file.detected' && call[1].fileName === 'readme.txt'
       ).length;
       expect(emitCallsAfter).toBe(0);
 
@@ -191,8 +190,7 @@ describe('FileWatcherService (Integration)', () => {
 
       // Verify event was emitted for subdirectory file
       const fileDetectedCalls = emitSpy.mock.calls.filter(
-        (call) =>
-          call[0] === 'file.detected' && call[1].fileName === 'episode1.mkv',
+        (call) => call[0] === 'file.detected' && call[1].fileName === 'episode1.mkv'
       );
       expect(fileDetectedCalls.length).toBeGreaterThan(0);
 

@@ -4,13 +4,7 @@
  * Creates a test node and libraries directly in the database
  */
 
-import {
-  AccelerationType,
-  MediaType,
-  NodeRole,
-  NodeStatus,
-  PrismaClient,
-} from '@prisma/client';
+import { AccelerationType, MediaType, NodeRole, NodeStatus, PrismaClient } from '@prisma/client';
 import { randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();

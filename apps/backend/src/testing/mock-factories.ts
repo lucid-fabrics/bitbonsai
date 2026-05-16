@@ -9,14 +9,7 @@
  *   import { createMockJob, createMockPolicy, createMockNode } from '../../../testing/mock-factories';
  *   const job = createMockJob({ stage: JobStage.ENCODING, progress: 50 });
  */
-import type {
-  Job,
-  Library,
-  License,
-  Metric,
-  Node,
-  Policy,
-} from '@prisma/client';
+import type { Job, Library, License, Metric, Node, Policy } from '@prisma/client';
 import {
   AccelerationType,
   FileHealthStatus,
@@ -125,6 +118,25 @@ export function createMockJob(overrides: Partial<Job> = {}): Job {
     contentFingerprint: null,
     qualityMetrics: null,
     qualityMetricsAt: null,
+    fencingToken: null,
+    gpuAttempts: 0,
+    codecOverride: null,
+    ownershipLeaseExpiry: null,
+    ownershipEpoch: 0,
+    pendingCompletionData: null,
+    pendingCompletionAt: null,
+    totalAttempts: 0,
+    circuitBroken: false,
+    circuitBrokenAt: null,
+    circuitBrokenReason: null,
+    dlqEnteredAt: null,
+    jobFingerprint: null,
+    segmentedEncode: false,
+    segmentCount: null,
+    currentSegmentIndex: null,
+    segmentDurationSecs: 300,
+    segmentsDir: null,
+    concatListPath: null,
     nodeId: 'node-1',
     libraryId: 'lib-1',
     policyId: 'policy-1',

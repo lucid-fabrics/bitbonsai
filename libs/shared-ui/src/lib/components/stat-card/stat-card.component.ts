@@ -8,11 +8,11 @@ export interface TrendData {
 }
 
 @Component({
-  selector: 'bb-stat-card',
+  selector: 'lib-stat-card',
   standalone: true,
   imports: [NgIf, NgClass, CardComponent],
   template: `
-    <bb-card>
+    <lib-card>
       <div class="stat-card">
         <div class="stat-card__label">{{ label }}</div>
         <div class="stat-card__value">{{ formattedValue }}</div>
@@ -23,7 +23,7 @@ export interface TrendData {
           </span>
         </div>
       </div>
-    </bb-card>
+    </lib-card>
   `,
   styleUrls: ['./stat-card.component.scss'],
 })

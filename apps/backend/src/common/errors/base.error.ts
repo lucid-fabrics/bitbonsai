@@ -28,7 +28,7 @@ export abstract class BaseError extends Error {
     statusCode: number,
     errorCode: string,
     isOperational = true,
-    context?: Record<string, unknown>,
+    context?: Record<string, unknown>
   ) {
     super(message);
 

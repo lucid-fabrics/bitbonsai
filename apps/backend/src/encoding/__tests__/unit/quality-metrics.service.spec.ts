@@ -1,6 +1,10 @@
 import { EventEmitter } from 'node:events';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { QualityMetricsService } from '../../quality-metrics.service';
+import {
+  type QualityMetrics,
+  QualityMetricsService,
+  type QualityValidationResult,
+} from '../../quality-metrics.service';
 
 // Mock the entire child_process module at the module level so spawn is writable
 jest.mock('node:child_process', () => ({
@@ -20,10 +24,7 @@ interface FakeProcess extends EventEmitter {
   stdout: EventEmitter;
 }
 
-function makeFakeProcess(
-  stderrOutput: string,
-  exitCode: number | null = 0,
-): FakeProcess {
+function makeFakeProcess(stderrOutput: string, exitCode: number | null = 0): FakeProcess {
   const proc = new EventEmitter() as FakeProcess;
   proc.stderr = new EventEmitter();
   proc.stdout = new EventEmitter();
@@ -64,9 +65,7 @@ describe('QualityMetricsService (unit)', () => {
 
   describe('calculateVmaf', () => {
     it('returns parsed VMAF score from primary "VMAF score:" pattern', async () => {
-      childProcess.spawn.mockReturnValue(
-        makeFakeProcess('VMAF score: 92.35\nsome other line', 0),
-      );
+      childProcess.spawn.mockReturnValue(makeFakeProcess('VMAF score: 92.35\nsome other line', 0));
       const result = await service.calculateVmaf('/orig.mkv', '/enc.mkv');
       expect(result).toBeCloseTo(92.35);
     });
@@ -112,9 +111,7 @@ describe('QualityMetricsService (unit)', () => {
 
   describe('calculatePsnr', () => {
     it('returns parsed PSNR score', async () => {
-      childProcess.spawn.mockReturnValue(
-        makeFakeProcess('psnr_avg:38.54 other data', 0),
-      );
+      childProcess.spawn.mockReturnValue(makeFakeProcess('psnr_avg:38.54 other data', 0));
       const result = await service.calculatePsnr('/orig.mkv', '/enc.mkv');
       expect(result).toBeCloseTo(38.54);
     });
@@ -143,17 +140,13 @@ describe('QualityMetricsService (unit)', () => {
 
   describe('calculateSsim', () => {
     it('returns parsed SSIM score', async () => {
-      childProcess.spawn.mockReturnValue(
-        makeFakeProcess('ssim_avg:0.9876 other', 0),
-      );
+      childProcess.spawn.mockReturnValue(makeFakeProcess('ssim_avg:0.9876 other', 0));
       const result = await service.calculateSsim('/orig.mkv', '/enc.mkv');
       expect(result).toBeCloseTo(0.9876);
     });
 
     it('returns null when ssim_avg not present', async () => {
-      childProcess.spawn.mockReturnValue(
-        makeFakeProcess('nothing relevant', 0),
-      );
+      childProcess.spawn.mockReturnValue(makeFakeProcess('nothing relevant', 0));
       const result = await service.calculateSsim('/orig.mkv', '/enc.mkv');
       expect(result).toBeNull();
     });
@@ -181,10 +174,7 @@ describe('QualityMetricsService (unit)', () => {
         .mockReturnValueOnce(makeFakeProcess('psnr_avg:42.00', 0))
         .mockReturnValueOnce(makeFakeProcess('ssim_avg:0.9950', 0));
 
-      const result = await service.calculateAllQualityMetrics(
-        '/orig.mkv',
-        '/enc.mkv',
-      );
+      const result = await service.calculateAllQualityMetrics('/orig.mkv', '/enc.mkv');
       expect(result.vmaf).toBeCloseTo(91.0);
       expect(result.psnr).toBeCloseTo(42.0);
       expect(result.ssim).toBeCloseTo(0.995);
@@ -194,10 +184,7 @@ describe('QualityMetricsService (unit)', () => {
     it('omits metrics that return null', async () => {
       childProcess.spawn.mockReturnValue(makeFakeProcess('no data', 0));
 
-      const result = await service.calculateAllQualityMetrics(
-        '/orig.mkv',
-        '/enc.mkv',
-      );
+      const result = await service.calculateAllQualityMetrics('/orig.mkv', '/enc.mkv');
       expect(result.vmaf).toBeUndefined();
       expect(result.psnr).toBeUndefined();
       expect(result.ssim).toBeUndefined();
@@ -207,17 +194,10 @@ describe('QualityMetricsService (unit)', () => {
     it('always includes calculatedAt timestamp', async () => {
       childProcess.spawn.mockReturnValue(makeFakeProcess('', 0));
       const before = new Date();
-      const result = await service.calculateAllQualityMetrics(
-        '/orig.mkv',
-        '/enc.mkv',
-      );
+      const result = await service.calculateAllQualityMetrics('/orig.mkv', '/enc.mkv');
       const after = new Date();
-      expect(result.calculatedAt.getTime()).toBeGreaterThanOrEqual(
-        before.getTime(),
-      );
-      expect(result.calculatedAt.getTime()).toBeLessThanOrEqual(
-        after.getTime(),
-      );
+      expect(result.calculatedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
+      expect(result.calculatedAt.getTime()).toBeLessThanOrEqual(after.getTime());
     });
 
     it('returns partial results when PSNR spawn errors but others succeed', async () => {
@@ -226,10 +206,7 @@ describe('QualityMetricsService (unit)', () => {
         .mockReturnValueOnce(makeErrorProcess())
         .mockReturnValueOnce(makeFakeProcess('ssim_avg:0.9700', 0));
 
-      const result = await service.calculateAllQualityMetrics(
-        '/orig.mkv',
-        '/enc.mkv',
-      );
+      const result = await service.calculateAllQualityMetrics('/orig.mkv', '/enc.mkv');
       expect(result.vmaf).toBeCloseTo(85.0);
       expect(result.psnr).toBeUndefined();
       expect(result.ssim).toBeCloseTo(0.97);
@@ -238,13 +215,125 @@ describe('QualityMetricsService (unit)', () => {
     it('returns only calculatedAt when all metrics fail', async () => {
       childProcess.spawn.mockReturnValue(makeErrorProcess());
 
-      const result = await service.calculateAllQualityMetrics(
-        '/orig.mkv',
-        '/enc.mkv',
-      );
+      const result = await service.calculateAllQualityMetrics('/orig.mkv', '/enc.mkv');
       expect(result.vmaf).toBeUndefined();
       expect(result.psnr).toBeUndefined();
       expect(result.ssim).toBeUndefined();
+    });
+  });
+
+  // ── validateQuality ───────────────────────────────────────────────────────
+
+  describe('validateQuality', () => {
+    it('should pass when VMAF meets threshold', () => {
+      const metrics: QualityMetrics = {
+        vmaf: 90,
+        calculatedAt: new Date(),
+      };
+      const result: QualityValidationResult = service.validateQuality(metrics, 85);
+
+      expect(result.passed).toBe(true);
+      expect(result.vmaf).toBe(90);
+      expect(result.threshold).toBe(85);
+      expect(result.qualityLabel).toBe('Excellent');
+      expect(result.reencodeTriggered).toBe(false);
+    });
+
+    it('should fail when VMAF is below threshold', () => {
+      const metrics: QualityMetrics = {
+        vmaf: 75,
+        calculatedAt: new Date(),
+      };
+      const result: QualityValidationResult = service.validateQuality(metrics, 85);
+
+      expect(result.passed).toBe(false);
+      expect(result.vmaf).toBe(75);
+      expect(result.reencodeTriggered).toBe(true);
+    });
+
+    it('should handle missing VMAF gracefully', () => {
+      const metrics: QualityMetrics = {
+        psnr: 40,
+        calculatedAt: new Date(),
+      };
+      const result: QualityValidationResult = service.validateQuality(metrics, 85);
+
+      expect(result.passed).toBe(true);
+      expect(result.qualityLabel).toBe('Unknown');
+      expect(result.vmaf).toBeUndefined();
+    });
+
+    it('should use default threshold of 85 when not specified', () => {
+      const metrics: QualityMetrics = {
+        vmaf: 84,
+        calculatedAt: new Date(),
+      };
+      const result: QualityValidationResult = service.validateQuality(metrics);
+
+      expect(result.passed).toBe(false);
+      expect(result.threshold).toBe(85);
+    });
+  });
+
+  // ── toJsonString / fromJsonString ─────────────────────────────────────────
+
+  describe('toJsonString and fromJsonString', () => {
+    it('should serialize and deserialize quality metrics', () => {
+      const metrics: QualityMetrics = {
+        vmaf: 92.5,
+        psnr: 38.2,
+        ssim: 0.97,
+        calculatedAt: new Date('2026-03-29T06:00:00Z'),
+      };
+
+      const json = service.toJsonString(metrics);
+      const parsed = service.fromJsonString(json);
+
+      expect(parsed?.vmaf).toBe(92.5);
+      expect(parsed?.psnr).toBe(38.2);
+      expect(parsed?.ssim).toBe(0.97);
+      expect(parsed?.calculatedAt).toBeInstanceOf(Date);
+    });
+
+    it('should return null for null input', () => {
+      const result = service.fromJsonString(null);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for empty string', () => {
+      const result = service.fromJsonString('');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('qualifyVmafScore', () => {
+    it('should return "Excellent" for score >= 80', () => {
+      // Access via validateQuality which calls qualifyVmafScore internally
+      const result = service.validateQuality({ vmaf: 95, calculatedAt: new Date() });
+      expect(result.qualityLabel).toBe('Excellent');
+    });
+
+    it('should return "Good" for score 60-79', () => {
+      const result = service.validateQuality({ vmaf: 70, calculatedAt: new Date() });
+      expect(result.qualityLabel).toBe('Good');
+    });
+
+    it('should return "Fair" for score 40-59', () => {
+      const result = service.validateQuality({ vmaf: 50, calculatedAt: new Date() });
+      expect(result.qualityLabel).toBe('Fair');
+    });
+
+    it('should return "Poor" for score < 40', () => {
+      const result = service.validateQuality({ vmaf: 30, calculatedAt: new Date() });
+      expect(result.qualityLabel).toBe('Poor');
+    });
+  });
+
+  describe('isAvailable', () => {
+    it('should check for VMAF support in FFmpeg', async () => {
+      const available = await service.isAvailable();
+      // Returns boolean - either true or false depending on FFmpeg build
+      expect(typeof available).toBe('boolean');
     });
   });
 });

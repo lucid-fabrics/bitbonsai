@@ -108,19 +108,15 @@ describe('AuthService', () => {
           refreshToken: expect.any(String),
           refreshTokenExpiresAt: expect.any(Date),
           lastLoginAt: expect.any(Date),
-        }),
+        })
       );
     });
 
     it('should throw UnauthorizedException with "Invalid credentials" when user not found', async () => {
       mockUserRepository.findByUsername.mockResolvedValue(null);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.login(loginDto)).rejects.toThrow(
-        'Invalid credentials',
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow('Invalid credentials');
       expect(mockJwtService.sign).not.toHaveBeenCalled();
     });
 
@@ -130,12 +126,8 @@ describe('AuthService', () => {
         isActive: false,
       });
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.login(loginDto)).rejects.toThrow(
-        'Account is disabled',
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow('Account is disabled');
       expect(mockJwtService.sign).not.toHaveBeenCalled();
     });
 
@@ -143,12 +135,8 @@ describe('AuthService', () => {
       mockUserRepository.findByUsername.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.login(loginDto)).rejects.toThrow(
-        'Invalid credentials',
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow('Invalid credentials');
       expect(mockJwtService.sign).not.toHaveBeenCalled();
     });
   });
@@ -194,19 +182,15 @@ describe('AuthService', () => {
         expect.objectContaining({
           refreshToken: expect.any(String),
           refreshTokenExpiresAt: expect.any(Date),
-        }),
+        })
       );
     });
 
     it('should throw UnauthorizedException with "Invalid refresh token" when token not found', async () => {
       mockUserRepository.findByRefreshToken.mockResolvedValue(null);
 
-      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(
-        'Invalid refresh token',
-      );
+      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow('Invalid refresh token');
     });
 
     it('should throw UnauthorizedException with "Refresh token expired" when token is expired', async () => {
@@ -216,16 +200,10 @@ describe('AuthService', () => {
         refreshTokenExpiresAt: new Date(Date.now() - 86400000), // 1 day ago
       };
 
-      mockUserRepository.findByRefreshToken.mockResolvedValue(
-        userWithExpiredToken,
-      );
+      mockUserRepository.findByRefreshToken.mockResolvedValue(userWithExpiredToken);
 
-      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(
-        'Refresh token expired',
-      );
+      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow('Refresh token expired');
     });
 
     it('should throw UnauthorizedException with "Refresh token expired" when refreshTokenExpiresAt is null', async () => {
@@ -235,16 +213,10 @@ describe('AuthService', () => {
         refreshTokenExpiresAt: null,
       };
 
-      mockUserRepository.findByRefreshToken.mockResolvedValue(
-        userWithNullExpiry,
-      );
+      mockUserRepository.findByRefreshToken.mockResolvedValue(userWithNullExpiry);
 
-      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(
-        'Refresh token expired',
-      );
+      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshToken(refreshTokenDto)).rejects.toThrow('Refresh token expired');
     });
   });
 
@@ -287,12 +259,8 @@ describe('AuthService', () => {
         throw new Error('JsonWebTokenError');
       });
 
-      await expect(service.validateToken('malformed-token')).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.validateToken('malformed-token')).rejects.toThrow(
-        'Invalid token',
-      );
+      await expect(service.validateToken('malformed-token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.validateToken('malformed-token')).rejects.toThrow('Invalid token');
     });
 
     it('should throw UnauthorizedException when token is expired', async () => {
@@ -300,9 +268,7 @@ describe('AuthService', () => {
         throw new Error('TokenExpiredError');
       });
 
-      await expect(service.validateToken('expired-token')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.validateToken('expired-token')).rejects.toThrow(UnauthorizedException);
     });
   });
 

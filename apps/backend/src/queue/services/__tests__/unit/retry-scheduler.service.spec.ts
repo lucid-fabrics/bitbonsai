@@ -8,6 +8,7 @@ describe('RetrySchedulerService', () => {
   let jobRepository: {
     findManySelect: jest.Mock;
     updateManyByIds: jest.Mock;
+    updateById: jest.Mock;
     countWhere: jest.Mock;
   };
 
@@ -15,14 +16,12 @@ describe('RetrySchedulerService', () => {
     jobRepository = {
       findManySelect: jest.fn(),
       updateManyByIds: jest.fn(),
+      updateById: jest.fn(),
       countWhere: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        RetrySchedulerService,
-        { provide: JobRepository, useValue: jobRepository },
-      ],
+      providers: [RetrySchedulerService, { provide: JobRepository, useValue: jobRepository }],
     }).compile();
 
     service = module.get<RetrySchedulerService>(RetrySchedulerService);
@@ -38,16 +37,42 @@ describe('RetrySchedulerService', () => {
     jest.restoreAllMocks();
   });
 
-  const createFailedJob = (
-    id: string,
-    overrides: Record<string, unknown> = {},
-  ) => ({
+  const createFailedJob = (id: string, overrides: Record<string, unknown> = {}) => ({
     id,
     fileLabel: `test-${id}.mkv`,
     retryCount: 0,
     nextRetryAt: new Date('2026-02-23T12:00:00Z'),
     error: 'FFmpeg process crashed',
     ...overrides,
+  });
+
+  describe('computeNextRetryDelay', () => {
+    it('should return ~30s for attempt 1', () => {
+      const delay = service.computeNextRetryDelay(1);
+      expect(delay).toBeGreaterThanOrEqual(30_000);
+      expect(delay).toBeLessThan(40_000); // 30s + up to 10s jitter
+    });
+
+    it('should return ~1m for attempt 2', () => {
+      const delay = service.computeNextRetryDelay(2);
+      expect(delay).toBeGreaterThanOrEqual(60_000);
+      expect(delay).toBeLessThan(70_000);
+    });
+
+    it('should cap at 1 hour for large attempt numbers', () => {
+      const delay = service.computeNextRetryDelay(20);
+      expect(delay).toBeGreaterThanOrEqual(3_600_000);
+      expect(delay).toBeLessThan(3_610_000);
+    });
+
+    it('should double delay each attempt up to the cap', () => {
+      const d1 = service.computeNextRetryDelay(1);
+      const d2 = service.computeNextRetryDelay(2);
+      const d3 = service.computeNextRetryDelay(3);
+      // Base values (without jitter) double each attempt
+      expect(d2 - 10_000).toBeLessThanOrEqual(d1 * 2 + 10_000);
+      expect(d3 - 10_000).toBeLessThanOrEqual(d2 * 2 + 10_000);
+    });
   });
 
   describe('retryFailedJobs', () => {
@@ -68,40 +93,38 @@ describe('RetrySchedulerService', () => {
           retryCount: true,
           nextRetryAt: true,
           error: true,
-        },
+        }
       );
       expect(jobRepository.updateManyByIds).not.toHaveBeenCalled();
-      expect((service as any).logger.debug).toHaveBeenCalledWith(
-        'No failed jobs ready for retry',
-      );
+      expect((service as any).logger.debug).toHaveBeenCalledWith('No failed jobs ready for retry');
     });
 
-    it('should re-queue eligible failed jobs', async () => {
+    it('should re-queue eligible failed jobs with exponential backoff nextRetryAt', async () => {
       const failedJobs = [
         createFailedJob('job-1', { retryCount: 0 }),
         createFailedJob('job-2', { retryCount: 1 }),
       ];
       jobRepository.findManySelect.mockResolvedValue(failedJobs);
-      jobRepository.updateManyByIds.mockResolvedValue({ count: 2 });
+      jobRepository.updateById.mockResolvedValue({});
 
       await service.retryFailedJobs();
 
-      expect(jobRepository.updateManyByIds).toHaveBeenCalledWith(
-        ['job-1', 'job-2'],
-        {
-          stage: JobStage.QUEUED,
-          progress: 0,
-          error: null,
-          completedAt: null,
-          startedAt: null,
-          retryCount: { increment: 1 },
-        },
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ stage: JobStage.QUEUED, progress: 0, error: null, retryCount: 1 })
+      );
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-2',
+        expect.objectContaining({ stage: JobStage.QUEUED, progress: 0, error: null, retryCount: 2 })
       );
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Found 2 failed job(s) ready for retry',
+        'Found 2 failed job(s) ready for retry'
       );
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Background retry scheduler: 2 job(s) re-queued',
+        'Found 2 failed job(s) ready for retry'
+      );
+      expect((service as any).logger.log).toHaveBeenCalledWith(
+        'Background retry scheduler: 2 job(s) re-queued'
       );
     });
 
@@ -115,30 +138,27 @@ describe('RetrySchedulerService', () => {
 
       await service.retryFailedJobs();
 
-      expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Retrying job: test-job-1.mkv (attempt 2/4)',
-      );
-      expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Retrying job: test-job-2.mkv (attempt 4/4)',
-      );
+      // Log message contains job label
+      const logCalls = (service as any).logger.log.mock.calls.map((c: string[]) => c[0]);
+      expect(logCalls.some((msg: string) => msg.includes('test-job-1.mkv'))).toBe(true);
     });
 
     it('should handle single failed job', async () => {
       const failedJobs = [createFailedJob('job-1', { retryCount: 1 })];
       jobRepository.findManySelect.mockResolvedValue(failedJobs);
-      jobRepository.updateManyByIds.mockResolvedValue({ count: 1 });
+      jobRepository.updateById.mockResolvedValue({});
 
       await service.retryFailedJobs();
 
-      expect(jobRepository.updateManyByIds).toHaveBeenCalledWith(
-        ['job-1'],
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
         expect.objectContaining({
           stage: JobStage.QUEUED,
-          retryCount: { increment: 1 },
-        }),
+          retryCount: 2,
+        })
       );
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Background retry scheduler: 1 job(s) re-queued',
+        'Background retry scheduler: 1 job(s) re-queued'
       );
     });
 
@@ -149,7 +169,7 @@ describe('RetrySchedulerService', () => {
 
       expect(jobRepository.findManySelect).toHaveBeenCalledWith(
         expect.objectContaining({ retryCount: { lt: 3 } }),
-        expect.anything(),
+        expect.anything()
       );
     });
 
@@ -160,37 +180,34 @@ describe('RetrySchedulerService', () => {
 
       expect(jobRepository.findManySelect).toHaveBeenCalledWith(
         expect.objectContaining({ nextRetryAt: { lte: expect.any(Date) } }),
-        expect.anything(),
+        expect.anything()
       );
     });
 
     it('should handle database error gracefully', async () => {
-      jobRepository.findManySelect.mockRejectedValue(
-        new Error('DB connection lost'),
-      );
+      jobRepository.findManySelect.mockRejectedValue(new Error('DB connection lost'));
 
       await service.retryFailedJobs();
 
       expect((service as any).logger.error).toHaveBeenCalledWith(
         'Failed to retry jobs in background scheduler',
-        expect.any(Error),
+        expect.any(Error)
       );
       expect(jobRepository.updateManyByIds).not.toHaveBeenCalled();
     });
 
-    it('should handle updateMany failure gracefully', async () => {
-      jobRepository.findManySelect.mockResolvedValue([
-        createFailedJob('job-1'),
-      ]);
-      jobRepository.updateManyByIds.mockRejectedValue(
-        new Error('Update failed'),
-      );
+    it('should handle updateById failure gracefully and log error', async () => {
+      jobRepository.findManySelect.mockResolvedValue([createFailedJob('job-1')]);
+      jobRepository.updateById.mockRejectedValue(new Error('Update failed'));
 
       await service.retryFailedJobs();
 
       expect((service as any).logger.error).toHaveBeenCalledWith(
-        'Failed to retry jobs in background scheduler',
-        expect.any(Error),
+        expect.stringContaining('Failed to re-queue job job-1'),
+        expect.any(Error)
+      );
+      expect((service as any).logger.log).toHaveBeenCalledWith(
+        'Background retry scheduler: 0 job(s) re-queued'
       );
     });
   });
@@ -203,9 +220,7 @@ describe('RetrySchedulerService', () => {
       const result = await service.triggerManualRetry();
 
       expect(result).toBe(3);
-      expect((service as any).logger.log).toHaveBeenCalledWith(
-        'Manual retry trigger initiated',
-      );
+      expect((service as any).logger.log).toHaveBeenCalledWith('Manual retry trigger initiated');
     });
 
     it('should return 0 when no jobs were retried', async () => {

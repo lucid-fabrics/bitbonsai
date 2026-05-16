@@ -47,14 +47,8 @@ import type { Node } from './models/node.model';
 import { AccelerationType, NodeRole, NodeStatus } from './models/node.model';
 import type { NodeScore } from './models/node-score.model';
 import type { RegistrationRequest } from './models/registration-request.model';
-import {
-  ContainerType,
-  RegistrationRequestStatus,
-} from './models/registration-request.model';
-import type {
-  EnvironmentInfo,
-  StorageRecommendation,
-} from './models/storage-recommendation.model';
+import { ContainerType, RegistrationRequestStatus } from './models/registration-request.model';
+import type { EnvironmentInfo, StorageRecommendation } from './models/storage-recommendation.model';
 
 @Component({
   selector: 'app-nodes',
@@ -141,21 +135,19 @@ export class NodesComponent implements OnInit {
     this.checkStorageConfiguration();
 
     // Listen for highlightRequest query parameter
-    this.route.queryParams
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((params) => {
-        const requestId = params.highlightRequest;
-        if (requestId) {
-          this.highlightedRequestId.set(requestId);
-          // Auto-scroll to the highlighted request after a short delay
-          setTimeout(() => {
-            const element = document.getElementById(`request-${requestId}`);
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          }, 500);
-        }
-      });
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const requestId = params.highlightRequest;
+      if (requestId) {
+        this.highlightedRequestId.set(requestId);
+        // Auto-scroll to the highlighted request after a short delay
+        setTimeout(() => {
+          const element = document.getElementById(`request-${requestId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+      }
+    });
   }
 
   /**
@@ -256,7 +248,7 @@ export class NodesComponent implements OnInit {
     interval(10000)
       .pipe(
         switchMap(() => this.nodesApi.getNodes()),
-        takeUntilDestroyed(this.destroyRef),
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: (nodes) => {
@@ -272,7 +264,7 @@ export class NodesComponent implements OnInit {
     interval(30000)
       .pipe(
         switchMap(() => this.nodesApi.getPendingRequests()),
-        takeUntilDestroyed(this.destroyRef),
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: (requests) => {
@@ -288,7 +280,7 @@ export class NodesComponent implements OnInit {
     interval(30000)
       .pipe(
         switchMap(() => this.nodesApi.getNodeScores()),
-        takeUntilDestroyed(this.destroyRef),
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: (scores) => {
@@ -309,13 +301,11 @@ export class NodesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((token) => {
-        if (token && typeof token === 'string') {
-          this.pairWithToken(token);
-        }
-      });
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((token) => {
+      if (token && typeof token === 'string') {
+        this.pairWithToken(token);
+      }
+    });
   }
 
   /**
@@ -335,8 +325,7 @@ export class NodesComponent implements OnInit {
           const request = requests.find((r) => r.pairingToken === token);
 
           if (!request) {
-            this.error =
-              'Invalid or expired pairing token. Please check the token and try again.';
+            this.error = 'Invalid or expired pairing token. Please check the token and try again.';
             this.isLoading = false;
             this.cdr.markForCheck();
             return;
@@ -367,22 +356,20 @@ export class NodesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((result) => {
-        const typedResult = result as ApprovalDialogResult | undefined;
-        if (typedResult?.approved) {
-          // Clear the highlight
-          this.highlightedRequestId.set(null);
-          // Reload nodes and pending requests to show the newly paired node
-          this.loadNodes();
-          this.loadPendingRequests();
-          this.isLoading = false;
-        } else if (result === null || result === undefined) {
-          // Dialog was cancelled
-          this.isLoading = false;
-        }
-      });
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      const typedResult = result as ApprovalDialogResult | undefined;
+      if (typedResult?.approved) {
+        // Clear the highlight
+        this.highlightedRequestId.set(null);
+        // Reload nodes and pending requests to show the newly paired node
+        this.loadNodes();
+        this.loadPendingRequests();
+        this.isLoading = false;
+      } else if (result === null || result === undefined) {
+        // Dialog was cancelled
+        this.isLoading = false;
+      }
+    });
   }
 
   /**
@@ -390,7 +377,7 @@ export class NodesComponent implements OnInit {
    */
   private approveRequest(
     requestId: string,
-    config?: { maxWorkers?: number; cpuLimit?: number },
+    config?: { maxWorkers?: number; cpuLimit?: number }
   ): void {
     this.isLoading = true;
     this.cdr.markForCheck();
@@ -426,19 +413,17 @@ export class NodesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((result) => {
-        // Dialog returns { approved, nodeId, capabilities }
-        const dialogResult = result as ApprovalDialogResult | undefined;
-        if (dialogResult?.approved) {
-          // Clear the highlight
-          this.highlightedRequestId.set(null);
-          // Reload nodes and pending requests to show the newly paired node
-          this.loadNodes();
-          this.loadPendingRequests();
-        }
-      });
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      // Dialog returns { approved, nodeId, capabilities }
+      const dialogResult = result as ApprovalDialogResult | undefined;
+      if (dialogResult?.approved) {
+        // Clear the highlight
+        this.highlightedRequestId.set(null);
+        // Reload nodes and pending requests to show the newly paired node
+        this.loadNodes();
+        this.loadPendingRequests();
+      }
+    });
   }
 
   /**
@@ -454,13 +439,11 @@ export class NodesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((reason) => {
-        if (reason && typeof reason === 'string') {
-          this.rejectRequest(request.id, reason);
-        }
-      });
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((reason) => {
+      if (reason && typeof reason === 'string') {
+        this.rejectRequest(request.id, reason);
+      }
+    });
   }
 
   /**
@@ -552,35 +535,30 @@ export class NodesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((result) => {
-        if (result) {
-          this.isLoading = true;
-          this.error = null;
-          this.cdr.markForCheck();
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      if (result) {
+        this.isLoading = true;
+        this.error = null;
+        this.cdr.markForCheck();
 
-          this.nodesApi
-            .updateNode(node.id, result)
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe({
-              next: (updatedNode) => {
-                // Update the node in the list
-                this.nodes = this.nodes.map((n) =>
-                  n.id === updatedNode.id ? updatedNode : n,
-                );
-                this.isLoading = false;
-                this.cdr.markForCheck();
-              },
-              error: (err) => {
-                this.error =
-                  err.error?.message || 'Failed to update node configuration';
-                this.isLoading = false;
-                this.cdr.markForCheck();
-              },
-            });
-        }
-      });
+        this.nodesApi
+          .updateNode(node.id, result)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (updatedNode) => {
+              // Update the node in the list
+              this.nodes = this.nodes.map((n) => (n.id === updatedNode.id ? updatedNode : n));
+              this.isLoading = false;
+              this.cdr.markForCheck();
+            },
+            error: (err) => {
+              this.error = err.error?.message || 'Failed to update node configuration';
+              this.isLoading = false;
+              this.cdr.markForCheck();
+            },
+          });
+      }
+    });
   }
 
   /**
@@ -651,31 +629,29 @@ export class NodesComponent implements OnInit {
       disableClose: false,
     });
 
-    dialogRef.closed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((result) => {
-        if (result === true) {
-          // Set loading state to prevent double-delete
-          this.deletingNodeId = node.id;
-          this.cdr.markForCheck();
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      if (result === true) {
+        // Set loading state to prevent double-delete
+        this.deletingNodeId = node.id;
+        this.cdr.markForCheck();
 
-          this.nodesApi
-            .deleteNode(node.id)
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe({
-              next: () => {
-                this.nodes = this.nodes.filter((n) => n.id !== node.id);
-                this.deletingNodeId = null;
-                this.cdr.markForCheck();
-              },
-              error: (err) => {
-                this.error = err.error?.message || 'Failed to delete node';
-                this.deletingNodeId = null;
-                this.cdr.markForCheck();
-              },
-            });
-        }
-      });
+        this.nodesApi
+          .deleteNode(node.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.nodes = this.nodes.filter((n) => n.id !== node.id);
+              this.deletingNodeId = null;
+              this.cdr.markForCheck();
+            },
+            error: (err) => {
+              this.error = err.error?.message || 'Failed to delete node';
+              this.deletingNodeId = null;
+              this.cdr.markForCheck();
+            },
+          });
+      }
+    });
   }
 
   /**
@@ -721,11 +697,7 @@ export class NodesComponent implements OnInit {
    * Open storage setup wizard modal
    */
   onConfigureStorage(): void {
-    if (
-      !this.storageSourceNode ||
-      !this.storageTargetNode ||
-      !this.storageRecommendation
-    ) {
+    if (!this.storageSourceNode || !this.storageTargetNode || !this.storageRecommendation) {
       return;
     }
 
@@ -745,11 +717,7 @@ export class NodesComponent implements OnInit {
   }
 
   private openStorageWizard(targetEnvironment?: EnvironmentInfo): void {
-    if (
-      !this.storageSourceNode ||
-      !this.storageTargetNode ||
-      !this.storageRecommendation
-    ) {
+    if (!this.storageSourceNode || !this.storageTargetNode || !this.storageRecommendation) {
       return;
     }
 
@@ -771,23 +739,16 @@ export class NodesComponent implements OnInit {
       height: '90vh',
     });
 
-    dialogRef.closed
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((result) => {
-        if (
-          result &&
-          typeof result === 'object' &&
-          'configured' in result &&
-          result.configured
-        ) {
-          // Hide the recommendation banner after successful configuration
-          this.showStorageRecommendation = false;
-          this.cdr.markForCheck();
+    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      if (result && typeof result === 'object' && 'configured' in result && result.configured) {
+        // Hide the recommendation banner after successful configuration
+        this.showStorageRecommendation = false;
+        this.cdr.markForCheck();
 
-          // Reload nodes to get updated storage configuration
-          this.loadNodes();
-        }
-      });
+        // Reload nodes to get updated storage configuration
+        this.loadNodes();
+      }
+    });
   }
 
   /**

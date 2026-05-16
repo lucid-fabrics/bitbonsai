@@ -40,13 +40,18 @@ export class QueueProcessingService implements OnModuleInit {
     private fileTransferService: FileTransferService,
     private nodeConfig: NodeConfigService,
     private httpService: HttpService,
-    private jobCrudService: QueueJobCrudService,
+    private jobCrudService: QueueJobCrudService
   ) {}
 
   /**
    * SELF-HEALING: Scan and heal orphaned jobs on startup
    */
   async onModuleInit(): Promise<void> {
+    // Reset ENCODING/VERIFYING jobs owned by this node back to QUEUED.
+    // On startup there are no live FFmpeg processes, so any in-flight job is orphaned.
+    // This runs on ALL nodes so each node cleans up its own mess immediately (no 10-min watchdog wait).
+    await this.resetOrphanedEncodingJobs();
+
     if (this.nodeConfig.getMainApiUrl()) {
       this.logger.debug('POLICY HEAL: Skipping startup scan (LINKED node)');
       return;
@@ -62,6 +67,91 @@ export class QueueProcessingService implements OnModuleInit {
   }
 
   /**
+   * On startup, reset any ENCODING/VERIFYING jobs owned by this node to QUEUED.
+   * Since the process just started, no FFmpeg is running — these jobs are definitively orphaned.
+   *
+   * Uses a fencing token to prevent a race with JobCleanupService, which also resets
+   * stuck jobs on startup. The token is written first so JobCleanupService skips jobs
+   * we already own, then cleared after the reset is complete.
+   */
+  private async resetOrphanedEncodingJobs(): Promise<void> {
+    const nodeId = this.nodeConfig.getNodeId();
+    if (!nodeId) return;
+
+    const bootToken = `${process.pid}:${Date.now()}`;
+
+    try {
+      // Clear stale fencing tokens from prior crashes of this node.
+      // PIDs can be reused across boots, so we match by nodeId rather than token value.
+      // This must run before we stamp the new bootToken so those jobs become eligible again.
+      await this.prisma.job.updateMany({
+        where: {
+          nodeId,
+          fencingToken: { not: null },
+          stage: { in: [JobStage.ENCODING, JobStage.VERIFYING] },
+        },
+        data: { fencingToken: null },
+      });
+
+      // Claim orphaned jobs for this node by stamping a fencing token.
+      // Only jobs with no existing token are eligible — this prevents double-reset
+      // with JobCleanupService which guards on fencingToken: null.
+      await this.prisma.job.updateMany({
+        where: {
+          nodeId,
+          stage: { in: [JobStage.ENCODING, JobStage.VERIFYING] },
+          fencingToken: null,
+        },
+        data: { fencingToken: bootToken },
+      });
+
+      // Fetch only the jobs we successfully claimed.
+      const claimedJobs = await this.prisma.job.findMany({
+        where: { fencingToken: bootToken },
+        select: { id: true },
+      });
+
+      if (claimedJobs.length === 0) {
+        return;
+      }
+
+      // Reset each claimed job and clear the fencing token atomically.
+      let resetCount = 0;
+      for (const job of claimedJobs) {
+        try {
+          await this.prisma.job.update({
+            where: { id: job.id },
+            data: {
+              stage: JobStage.QUEUED,
+              progress: 0,
+              startedAt: null,
+              lastProgressUpdate: null,
+              fencingToken: null,
+              totalAttempts: { increment: 1 },
+            },
+          });
+          resetCount++;
+        } catch (updateError) {
+          this.logger.error(`Startup orphan reset failed for job ${job.id}`, updateError);
+          // Best-effort: clear the token so cleanup services can pick it up later.
+          await this.prisma.job
+            .update({
+              where: { id: job.id },
+              data: { fencingToken: null },
+            })
+            .catch(() => undefined);
+        }
+      }
+
+      this.logger.warn(
+        `Startup: reset ${resetCount} orphaned ENCODING/VERIFYING job(s) on node ${nodeId} → QUEUED`
+      );
+    } catch (error) {
+      this.logger.error('Startup orphan reset failed', error);
+    }
+  }
+
+  /**
    * SELF-HEALING: Find and fix all jobs with orphaned or mismatched policies
    */
   private async healOrphanedJobs(): Promise<void> {
@@ -70,9 +160,7 @@ export class QueueProcessingService implements OnModuleInit {
     const policyMap = new Map(allPolicies.map((p) => [p.id, p]));
 
     if (allPolicies.length === 0) {
-      this.logger.warn(
-        'POLICY HEAL: No policies exist - cannot heal orphaned jobs',
-      );
+      this.logger.warn('POLICY HEAL: No policies exist - cannot heal orphaned jobs');
       return;
     }
 
@@ -86,22 +174,21 @@ export class QueueProcessingService implements OnModuleInit {
         policies: { id: string; targetCodec: string; name: string }[];
       } | null;
     };
-    const jobsToCheck =
-      await this.jobRepository.findManyWithInclude<JobWithLibraryPolicies>({
-        where: {
-          stage: {
-            in: [JobStage.QUEUED, JobStage.DETECTED, JobStage.PAUSED_LOAD],
+    const jobsToCheck = await this.jobRepository.findManyWithInclude<JobWithLibraryPolicies>({
+      where: {
+        stage: {
+          in: [JobStage.QUEUED, JobStage.DETECTED, JobStage.PAUSED_LOAD],
+        },
+      },
+      include: {
+        library: {
+          include: {
+            defaultPolicy: true,
+            policies: true,
           },
         },
-        include: {
-          library: {
-            include: {
-              defaultPolicy: true,
-              policies: true,
-            },
-          },
-        },
-      });
+      },
+    });
 
     let healedCount = 0;
     let errorCount = 0;
@@ -119,7 +206,7 @@ export class QueueProcessingService implements OnModuleInit {
             targetCodec: currentPolicy.targetCodec,
           });
           this.logger.log(
-            `POLICY HEAL: Fixed codec mismatch for job ${job.id} (${job.targetCodec} → ${currentPolicy.targetCodec})`,
+            `POLICY HEAL: Fixed codec mismatch for job ${job.id} (${job.targetCodec} → ${currentPolicy.targetCodec})`
           );
           healedCount++;
           continue;
@@ -127,10 +214,7 @@ export class QueueProcessingService implements OnModuleInit {
 
         let newPolicy = null;
 
-        if (
-          job.library?.defaultPolicy &&
-          policyMap.has(job.library.defaultPolicy.id)
-        ) {
+        if (job.library?.defaultPolicy && policyMap.has(job.library.defaultPolicy.id)) {
           newPolicy = job.library.defaultPolicy;
         } else if (job.library?.policies?.length) {
           newPolicy = job.library.policies.find((p) => policyMap.has(p.id));
@@ -143,7 +227,7 @@ export class QueueProcessingService implements OnModuleInit {
           this.logger.error(
             `POLICY HEAL FAILED: No valid policy found for job ${job.id}. ` +
               `Tried: library default, library policies, first available. ` +
-              `Please create at least one policy and assign to library.`,
+              `Please create at least one policy and assign to library.`
           );
           errorCount++;
           continue;
@@ -154,7 +238,7 @@ export class QueueProcessingService implements OnModuleInit {
           targetCodec: newPolicy.targetCodec,
         });
         this.logger.log(
-          `POLICY HEAL: Assigned policy "${newPolicy.name}" to orphaned job ${job.id}`,
+          `POLICY HEAL: Assigned policy "${newPolicy.name}" to orphaned job ${job.id}`
         );
         healedCount++;
       } catch (error: unknown) {
@@ -165,7 +249,7 @@ export class QueueProcessingService implements OnModuleInit {
 
     if (healedCount > 0 || errorCount > 0) {
       this.logger.log(
-        `POLICY HEAL: Startup scan complete - healed: ${healedCount}, errors: ${errorCount}`,
+        `POLICY HEAL: Startup scan complete - healed: ${healedCount}, errors: ${errorCount}`
       );
     } else {
       this.logger.debug('POLICY HEAL: No orphaned jobs found');
@@ -181,40 +265,33 @@ export class QueueProcessingService implements OnModuleInit {
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
       const url = `${mainApiUrl}/api/v1/queue/next/${nodeId}`;
-      this.logger.log(
-        `🔍 MULTI-NODE: LINKED node detected - proxying getNextJob to MAIN`,
-      );
+      this.logger.log(`🔍 MULTI-NODE: LINKED node detected - proxying getNextJob to MAIN`);
       this.logger.log(`🔍 MULTI-NODE: Calling ${url}`);
 
       try {
         const response = await firstValueFrom(
           this.httpService.get(url, {
             timeout: 30000,
-          }),
+          })
         );
 
         if (response.data) {
           this.logger.log(
-            `✅ MULTI-NODE: Received job from MAIN: ${response.data.id} (${response.data.fileLabel})`,
+            `✅ MULTI-NODE: Received job from MAIN: ${response.data.id} (${response.data.fileLabel})`
           );
         } else {
-          this.logger.debug(
-            `🔍 MULTI-NODE: MAIN node returned null (no jobs available)`,
-          );
+          this.logger.debug(`🔍 MULTI-NODE: MAIN node returned null (no jobs available)`);
         }
 
         return response.data;
       } catch (error: unknown) {
-        this.logger.error(
-          `❌ MULTI-NODE: Failed to proxy getNextJob to MAIN node:`,
-          error,
-        );
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy getNextJob to MAIN node:`, error);
         if (error instanceof Error) {
           this.logger.error(`❌ MULTI-NODE: Error message: ${error.message}`);
           this.logger.error(`❌ MULTI-NODE: Error stack: ${error.stack}`);
         }
         this.logger.warn(
-          `⚠️ MULTI-NODE: Falling back to local database query (this may not work on LINKED nodes)`,
+          `⚠️ MULTI-NODE: Falling back to local database query (this may not work on LINKED nodes)`
         );
       }
     }
@@ -248,7 +325,7 @@ export class QueueProcessingService implements OnModuleInit {
 
     if (node._count.jobs >= node.license.maxConcurrentJobs) {
       this.logger.log(
-        `Node ${nodeId} at capacity (${node._count.jobs}/${node.license.maxConcurrentJobs})`,
+        `Node ${nodeId} at capacity (${node._count.jobs}/${node.license.maxConcurrentJobs})`
       );
       return null;
     }
@@ -277,11 +354,7 @@ export class QueueProcessingService implements OnModuleInit {
               stage: JobStage.QUEUED,
               OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: new Date() } }],
             },
-            orderBy: [
-              { priority: 'desc' },
-              { healthScore: 'desc' },
-              { createdAt: 'asc' },
-            ],
+            orderBy: [{ priority: 'desc' }, { healthScore: 'desc' }, { createdAt: 'asc' }],
             include: {
               library: {
                 select: {
@@ -299,12 +372,11 @@ export class QueueProcessingService implements OnModuleInit {
           const needsTransfer =
             !node.hasSharedStorage &&
             sourceNodeId !== nodeId &&
-            (job.transferRequired !== false ||
-              (job.transferProgress || 0) < 100);
+            (job.transferRequired !== false || (job.transferProgress || 0) < 100);
 
           if (needsTransfer) {
             this.logger.log(
-              `Job ${job.id} requires file transfer before encoding (node has no shared storage)`,
+              `Job ${job.id} requires file transfer before encoding (node has no shared storage)`
             );
 
             await tx.job.update({
@@ -333,9 +405,16 @@ export class QueueProcessingService implements OnModuleInit {
 
           if (job.pauseRequestedAt) {
             this.logger.debug(
-              `Job ${job.id} has pause request (${job.pauseRequestedAt.toISOString()}), skipping`,
+              `Job ${job.id} has pause request (${job.pauseRequestedAt.toISOString()}), skipping`
             );
             return { claimFailed: true, pauseRequested: true };
+          }
+
+          if (job.cancelRequestedAt) {
+            this.logger.debug(
+              `Job ${job.id} has cancel request (${job.cancelRequestedAt.toISOString()}), skipping`
+            );
+            return { claimFailed: true, cancelRequested: true };
           }
 
           const updateResult = await tx.job.updateMany({
@@ -343,6 +422,7 @@ export class QueueProcessingService implements OnModuleInit {
               id: job.id,
               stage: JobStage.QUEUED,
               pauseRequestedAt: null,
+              cancelRequestedAt: null,
             },
             data: {
               stage: JobStage.ENCODING,
@@ -352,7 +432,7 @@ export class QueueProcessingService implements OnModuleInit {
 
           if (updateResult.count === 0) {
             this.logger.debug(
-              `Job ${job.id} was claimed by another worker (attempt ${attempt}/${maxAttempts}), trying next job`,
+              `Job ${job.id} was claimed by another worker (attempt ${attempt}/${maxAttempts}), trying next job`
             );
             return { claimFailed: true, attemptedJobId: job.id };
           }
@@ -371,7 +451,7 @@ export class QueueProcessingService implements OnModuleInit {
           maxWait: 5000,
           timeout: 10000,
           isolationLevel: 'ReadCommitted',
-        },
+        }
       );
 
       if (!result) {
@@ -385,9 +465,7 @@ export class QueueProcessingService implements OnModuleInit {
       }
 
       if (result.claimedJob) {
-        this.logger.log(
-          `Assigned job ${result.claimedJob.id} to node ${nodeId}`,
-        );
+        this.logger.log(`Assigned job ${result.claimedJob.id} to node ${nodeId}`);
         return result.claimedJob;
       }
 
@@ -395,9 +473,7 @@ export class QueueProcessingService implements OnModuleInit {
       return null;
     }
 
-    this.logger.debug(
-      `Failed to claim job after ${maxAttempts} attempts (high concurrency)`,
-    );
+    this.logger.debug(`Failed to claim job after ${maxAttempts} attempts (high concurrency)`);
     return null;
   }
 
@@ -422,33 +498,25 @@ export class QueueProcessingService implements OnModuleInit {
       });
 
       if (!library) {
-        this.logger.error(
-          `Library ${payload.libraryId} not found, cannot create job`,
-        );
+        this.logger.error(`Library ${payload.libraryId} not found, cannot create job`);
         return;
       }
 
       if (!library.defaultPolicyId || !library.defaultPolicy) {
         this.logger.warn(
-          `Library ${library.name} has no default policy. Skipping job creation for ${payload.fileName}`,
+          `Library ${library.name} has no default policy. Skipping job creation for ${payload.fileName}`
         );
         return;
       }
 
-      const videoInfo = await this.mediaAnalysis.probeVideoFile(
-        payload.filePath,
-      );
+      const videoInfo = await this.mediaAnalysis.probeVideoFile(payload.filePath);
 
       if (!videoInfo) {
-        this.logger.warn(
-          `Failed to probe video file: ${payload.filePath}, skipping job creation`,
-        );
+        this.logger.warn(`Failed to probe video file: ${payload.filePath}, skipping job creation`);
         return;
       }
 
-      const detailedInfo = await this.ffmpegService.getVideoInfoCached(
-        payload.filePath,
-      );
+      const detailedInfo = await this.ffmpegService.getVideoInfoCached(payload.filePath);
       const sourceCodec = normalizeCodec(detailedInfo.codec);
       const targetCodec = normalizeCodec(library.defaultPolicy.targetCodec);
       const sourceContainer = detailedInfo.container;
@@ -461,7 +529,7 @@ export class QueueProcessingService implements OnModuleInit {
         if (library.defaultPolicy.skipReencoding) {
           if (sourceContainer === targetContainer) {
             this.logger.log(
-              `File ${payload.fileName} already uses target codec ${targetCodec} and container ${targetContainer}, skipping`,
+              `File ${payload.fileName} already uses target codec ${targetCodec} and container ${targetContainer}, skipping`
             );
             return;
           } else {
@@ -502,20 +570,20 @@ export class QueueProcessingService implements OnModuleInit {
         ffmpegThreads = 8;
 
         this.logger.warn(
-          `AV1 source detected for ${payload.fileName} - will throttle to ${ffmpegThreads} threads`,
+          `AV1 source detected for ${payload.fileName} - will throttle to ${ffmpegThreads} threads`
         );
       }
 
       const optimalNodeId = await this.jobRouterService.findBestNodeForJob(
         `pending-${payload.fileName}`,
-        BigInt(videoInfo.sizeBytes),
+        BigInt(videoInfo.sizeBytes)
       );
 
       const assignedNodeId = optimalNodeId || library.nodeId;
 
       if (!optimalNodeId) {
         this.logger.warn(
-          `JobRouter could not find optimal node for ${payload.fileName}, falling back to library node`,
+          `JobRouter could not find optimal node for ${payload.fileName}, falling back to library node`
         );
       }
 
@@ -524,10 +592,7 @@ export class QueueProcessingService implements OnModuleInit {
       const sourceNode = await this.nodeRepository.findById(library.nodeId);
 
       const transferRequired =
-        targetNode &&
-        sourceNode &&
-        !targetNode.hasSharedStorage &&
-        targetNode.id !== sourceNode.id;
+        targetNode && sourceNode && !targetNode.hasSharedStorage && targetNode.id !== sourceNode.id;
 
       const job = await this.jobCrudService.create({
         filePath: payload.filePath,
@@ -549,33 +614,22 @@ export class QueueProcessingService implements OnModuleInit {
 
       if (transferRequired && targetNode && sourceNode) {
         this.logger.log(
-          `Transfer required for job ${job.id}: ${sourceNode.name} -> ${targetNode.name}`,
+          `Transfer required for job ${job.id}: ${sourceNode.name} -> ${targetNode.name}`
         );
 
         this.fileTransferService
           .transferFile(job.id, payload.filePath, sourceNode, targetNode)
           .catch((error) => {
-            this.logger.error(
-              `Background file transfer failed for job ${job.id}:`,
-              error,
-            );
+            this.logger.error(`Background file transfer failed for job ${job.id}:`, error);
           });
       }
 
-      this.logger.log(
-        `Successfully created job for detected file: ${payload.fileName}`,
-      );
+      this.logger.log(`Successfully created job for detected file: ${payload.fileName}`);
     } catch (error: unknown) {
-      if (
-        error instanceof BadRequestException &&
-        error.message.includes('already exists')
-      ) {
+      if (error instanceof BadRequestException && error.message.includes('already exists')) {
         this.logger.log(`Job already exists for ${payload.fileName}, skipping`);
       } else {
-        this.logger.error(
-          `Failed to create job for detected file ${payload.fileName}:`,
-          error,
-        );
+        this.logger.error(`Failed to create job for detected file ${payload.fileName}:`, error);
       }
     }
   }

@@ -40,7 +40,7 @@ export class PlexIntegrationService {
   constructor(
     private readonly settingsRepository: SettingsRepository,
     private readonly jobRepository: JobRepository,
-    private readonly httpService: HttpService,
+    private readonly httpService: HttpService
   ) {}
 
   /**
@@ -57,15 +57,13 @@ export class PlexIntegrationService {
         this.httpService.get(`${config.url}/status/sessions`, {
           headers: { 'X-Plex-Token': config.token },
           timeout: 5000,
-        }),
+        })
       );
 
       const sessions = response.data?.MediaContainer?.Metadata || [];
 
       // Check for any playing (not paused) sessions
-      const activeSessions = sessions.filter(
-        (s: PlexSession) => s.Player?.state === 'playing',
-      );
+      const activeSessions = sessions.filter((s: PlexSession) => s.Player?.state === 'playing');
 
       return activeSessions.length > 0;
     } catch (error: unknown) {
@@ -93,15 +91,13 @@ export class PlexIntegrationService {
         this.httpService.get(`${config.url}/status/sessions`, {
           headers: { 'X-Plex-Token': config.token },
           timeout: 5000,
-        }),
+        })
       );
 
       const sessions = response.data?.MediaContainer?.Metadata || [];
 
       return sessions.map((s: PlexSession) => ({
-        title: s.grandparentTitle
-          ? `${s.grandparentTitle} - ${s.title}`
-          : s.title,
+        title: s.grandparentTitle ? `${s.grandparentTitle} - ${s.title}` : s.title,
         user: s.User?.title || 'Unknown',
         state: s.Player?.state || 'unknown',
         type: s.type,
@@ -129,11 +125,11 @@ export class PlexIntegrationService {
         this.httpService.get(url, {
           headers: { 'X-Plex-Token': config.token },
           timeout: 10000,
-        }),
+        })
       );
 
       this.logger.log(
-        `📺 Plex library refresh triggered${sectionId ? ` (section ${sectionId})` : ''}`,
+        `📺 Plex library refresh triggered${sectionId ? ` (section ${sectionId})` : ''}`
       );
     } catch (error: unknown) {
       this.logger.error(`Failed to refresh Plex library: ${error}`);
@@ -176,18 +172,14 @@ export class PlexIntegrationService {
         // Playback just started - pause encoding
         const paused = await this.pauseAllEncoding();
         if (paused > 0) {
-          this.logger.log(
-            `⏸️ Paused ${paused} encoding job(s) - Plex playback detected`,
-          );
+          this.logger.log(`⏸️ Paused ${paused} encoding job(s) - Plex playback detected`);
         }
         this.wasPlaybackActive = true;
       } else if (!isPlaying && this.wasPlaybackActive) {
         // Playback just stopped - resume encoding
         const resumed = await this.resumeAllEncoding();
         if (resumed > 0) {
-          this.logger.log(
-            `▶️ Resumed ${resumed} encoding job(s) - Plex playback ended`,
-          );
+          this.logger.log(`▶️ Resumed ${resumed} encoding job(s) - Plex playback ended`);
         }
         this.wasPlaybackActive = false;
       }
@@ -202,7 +194,7 @@ export class PlexIntegrationService {
   private async pauseAllEncoding(): Promise<number> {
     const result = await this.jobRepository.updateManyWhere(
       { stage: { in: [JobStage.QUEUED, JobStage.ENCODING] } },
-      { stage: JobStage.PAUSED, error: 'Paused: Plex playback detected' },
+      { stage: JobStage.PAUSED, error: 'Paused: Plex playback detected' }
     );
 
     return result.count;
@@ -214,7 +206,7 @@ export class PlexIntegrationService {
   private async resumeAllEncoding(): Promise<number> {
     const result = await this.jobRepository.updateManyWhere(
       { stage: JobStage.PAUSED, error: { contains: 'Plex playback detected' } },
-      { stage: JobStage.QUEUED, error: null },
+      { stage: JobStage.QUEUED, error: null }
     );
 
     return result.count;
@@ -232,7 +224,7 @@ export class PlexIntegrationService {
         this.httpService.get(`${config.url}/library/sections`, {
           headers: { 'X-Plex-Token': config.token },
           timeout: 5000,
-        }),
+        })
       );
 
       const sections = response.data?.MediaContainer?.Directory || [];
@@ -285,7 +277,7 @@ export class PlexIntegrationService {
    */
   async testConnection(
     url: string,
-    token: string,
+    token: string
   ): Promise<{ success: boolean; serverName?: string; error?: string }> {
     const result = await testIntegrationConnection(this.httpService, {
       url,
@@ -297,9 +289,7 @@ export class PlexIntegrationService {
       return { success: false, error: result.error };
     }
 
-    const container = result.data?.MediaContainer as
-      | Record<string, unknown>
-      | undefined;
+    const container = result.data?.MediaContainer as Record<string, unknown> | undefined;
 
     return {
       success: true,

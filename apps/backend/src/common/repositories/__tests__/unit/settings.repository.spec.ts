@@ -38,10 +38,7 @@ describe('SettingsRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SettingsRepository,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [SettingsRepository, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
 
     repository = module.get<SettingsRepository>(SettingsRepository);
@@ -132,10 +129,7 @@ describe('SettingsRepository', () => {
       const updated = { ...mockSettings, isSetupComplete: false };
       mockPrisma.settings.update.mockResolvedValue(updated);
 
-      const result = await repository.update(
-        { id: 'settings-1' },
-        { isSetupComplete: false },
-      );
+      const result = await repository.update({ id: 'settings-1' }, { isSetupComplete: false });
 
       expect(result).toEqual(updated);
       expect(mockPrisma.settings.update).toHaveBeenCalledWith({
@@ -145,13 +139,11 @@ describe('SettingsRepository', () => {
     });
 
     it('should propagate errors when record not found', async () => {
-      mockPrisma.settings.update.mockRejectedValue(
-        new Error('Record not found'),
-      );
+      mockPrisma.settings.update.mockRejectedValue(new Error('Record not found'));
 
-      await expect(
-        repository.update({ id: 'ghost' }, { isSetupComplete: true }),
-      ).rejects.toThrow('Record not found');
+      await expect(repository.update({ id: 'ghost' }, { isSetupComplete: true })).rejects.toThrow(
+        'Record not found'
+      );
     });
   });
 
@@ -159,10 +151,7 @@ describe('SettingsRepository', () => {
     it('should call prisma.settings.upsert with where, update and create', async () => {
       mockPrisma.settings.upsert.mockResolvedValue(mockSettings);
 
-      const result = await repository.upsert(
-        { id: 'settings-1' },
-        { isSetupComplete: true },
-      );
+      const result = await repository.upsert({ id: 'settings-1' }, { isSetupComplete: true });
 
       expect(result).toEqual(mockSettings);
       expect(mockPrisma.settings.upsert).toHaveBeenCalledWith({
@@ -186,12 +175,10 @@ describe('SettingsRepository', () => {
     });
 
     it('should propagate errors when record not found', async () => {
-      mockPrisma.settings.delete.mockRejectedValue(
-        new Error('Record to delete not found'),
-      );
+      mockPrisma.settings.delete.mockRejectedValue(new Error('Record to delete not found'));
 
       await expect(repository.delete({ id: 'ghost' })).rejects.toThrow(
-        'Record to delete not found',
+        'Record to delete not found'
       );
     });
   });
@@ -221,8 +208,8 @@ describe('SettingsRepository', () => {
     it('should create settings inside transaction when none exist', async () => {
       mockTx.settings.findFirst.mockResolvedValue(null);
       mockTx.settings.create.mockResolvedValue(mockSettings);
-      mockPrisma.$transaction.mockImplementation(
-        (cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx),
+      mockPrisma.$transaction.mockImplementation((cb: (tx: typeof mockTx) => Promise<unknown>) =>
+        cb(mockTx)
       );
 
       const result = await repository.upsertSettings({ isSetupComplete: true });
@@ -237,8 +224,8 @@ describe('SettingsRepository', () => {
       const updated = { ...mockSettings, licenseKey: 'new-key' };
       mockTx.settings.findFirst.mockResolvedValue(mockSettings);
       mockTx.settings.update.mockResolvedValue(updated);
-      mockPrisma.$transaction.mockImplementation(
-        (cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx),
+      mockPrisma.$transaction.mockImplementation((cb: (tx: typeof mockTx) => Promise<unknown>) =>
+        cb(mockTx)
       );
 
       const result = await repository.upsertSettings({ licenseKey: 'new-key' });
@@ -254,8 +241,8 @@ describe('SettingsRepository', () => {
   describe('findOrCreateWithDefaults', () => {
     it('should return existing settings without creating', async () => {
       mockTx.settings.findFirst.mockResolvedValue(mockSettings);
-      mockPrisma.$transaction.mockImplementation(
-        (cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx),
+      mockPrisma.$transaction.mockImplementation((cb: (tx: typeof mockTx) => Promise<unknown>) =>
+        cb(mockTx)
       );
 
       const result = await repository.findOrCreateWithDefaults({
@@ -269,8 +256,8 @@ describe('SettingsRepository', () => {
     it('should create with defaults when none exist', async () => {
       mockTx.settings.findFirst.mockResolvedValue(null);
       mockTx.settings.create.mockResolvedValue(mockSettings);
-      mockPrisma.$transaction.mockImplementation(
-        (cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx),
+      mockPrisma.$transaction.mockImplementation((cb: (tx: typeof mockTx) => Promise<unknown>) =>
+        cb(mockTx)
       );
 
       const result = await repository.findOrCreateWithDefaults({

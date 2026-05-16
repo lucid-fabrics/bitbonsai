@@ -25,6 +25,17 @@ export interface FileHealthResult {
   };
 }
 
+export interface QuickCheckResult {
+  passed: boolean;
+  reason?: string;
+  durationSecs?: number;
+}
+
+export interface ThoroughCheckResult {
+  passed: boolean;
+  errors: string[];
+}
+
 /**
  * FileHealthService
  *
@@ -36,6 +47,167 @@ export class FileHealthService {
   private static readonly MAX_HEALTH_SCORE = 100;
 
   private readonly logger = new Logger(FileHealthService.name);
+
+  /**
+   * Quick health check — fast ffprobe header scan only.
+   *
+   * Catches missing/unreadable files, bad headers, and zero duration.
+   * Timeout: 5 seconds. Takes <2s on healthy files.
+   *
+   * @param filePath - Path to file
+   * @returns QuickCheckResult with pass/fail and optional duration
+   */
+  async quickHealthCheck(filePath: string): Promise<QuickCheckResult> {
+    return new Promise((resolve) => {
+      const ffprobe = spawn('ffprobe', [
+        '-v',
+        'error',
+        '-show_entries',
+        'format=duration,size',
+        '-of',
+        'json',
+        filePath,
+      ]);
+
+      let stdout = '';
+      let stderr = '';
+
+      ffprobe.stdout?.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      ffprobe.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      const timeoutId = setTimeout(() => {
+        try {
+          ffprobe.kill('SIGKILL');
+        } catch {
+          // already dead
+        }
+        resolve({ passed: false, reason: 'Quick check timed out after 5 seconds' });
+      }, 5000);
+
+      ffprobe.on('close', (code) => {
+        clearTimeout(timeoutId);
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
+
+        if (code !== 0) {
+          const hint = stderr.trim() ? `: ${stderr.trim().split('\n')[0]}` : '';
+          resolve({ passed: false, reason: `ffprobe exited with code ${code}${hint}` });
+          return;
+        }
+
+        try {
+          const json: { format?: { duration?: string; size?: string } } = JSON.parse(stdout);
+          const duration = parseFloat(json.format?.duration ?? '');
+          const size = parseInt(json.format?.size ?? '', 10);
+
+          if (!duration || duration <= 0) {
+            resolve({ passed: false, reason: 'Duration is zero or missing' });
+            return;
+          }
+
+          if (!size || size <= 0) {
+            resolve({ passed: false, reason: 'File size is zero or missing' });
+            return;
+          }
+
+          resolve({ passed: true, durationSecs: duration });
+        } catch {
+          resolve({ passed: false, reason: 'Failed to parse ffprobe output' });
+        }
+      });
+
+      ffprobe.on('error', (err) => {
+        clearTimeout(timeoutId);
+        ffprobe.stdout?.destroy();
+        ffprobe.stderr?.destroy();
+        resolve({ passed: false, reason: `Failed to run ffprobe: ${err.message}` });
+      });
+    });
+  }
+
+  /**
+   * Thorough health check — ffmpeg decode of first 60 seconds.
+   *
+   * Catches corrupt macroblocks, audio sync issues, and actual decode errors
+   * that ffprobe header scans miss. Timeout: 90 seconds.
+   *
+   * @param filePath - Path to file
+   * @param durationSecs - Known file duration (used for context, decode capped at 60s)
+   * @returns ThoroughCheckResult with pass/fail and error lines
+   */
+  async thoroughHealthCheck(filePath: string, durationSecs: number): Promise<ThoroughCheckResult> {
+    const decodeSecs = Math.min(60, durationSecs);
+
+    return new Promise((resolve) => {
+      const ffmpeg = spawn('ffmpeg', [
+        '-v',
+        'error',
+        '-i',
+        filePath,
+        '-t',
+        String(decodeSecs),
+        '-f',
+        'null',
+        '-',
+      ]);
+
+      let stderr = '';
+
+      ffmpeg.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      const timeoutId = setTimeout(() => {
+        try {
+          ffmpeg.kill('SIGKILL');
+        } catch {
+          // already dead
+        }
+        resolve({ passed: false, errors: ['Thorough check timed out after 90 seconds'] });
+      }, 90000);
+
+      ffmpeg.on('close', (code) => {
+        clearTimeout(timeoutId);
+        ffmpeg.stdout?.destroy();
+        ffmpeg.stderr?.destroy();
+
+        // Filter stderr for genuine error lines
+        const errorLines = stderr
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(
+            (l) =>
+              l.startsWith('[error]') ||
+              /invalid data/i.test(l) ||
+              /corrupt/i.test(l) ||
+              /error while decoding/i.test(l) ||
+              /error submitting/i.test(l)
+          );
+
+        if (code === 0 && errorLines.length === 0) {
+          resolve({ passed: true, errors: [] });
+        } else {
+          const errors =
+            errorLines.length > 0
+              ? errorLines
+              : [`ffmpeg exited with code ${code}`, ...stderr.split('\n').filter((l) => l.trim())];
+          resolve({ passed: false, errors: errors.slice(0, 10) }); // cap at 10 lines
+        }
+      });
+
+      ffmpeg.on('error', (err) => {
+        clearTimeout(timeoutId);
+        ffmpeg.stdout?.destroy();
+        ffmpeg.stderr?.destroy();
+        resolve({ passed: false, errors: [`Failed to run ffmpeg: ${err.message}`] });
+      });
+    });
+  }
 
   /**
    * Analyze file health before encoding
@@ -74,12 +246,9 @@ export class FileHealthService {
 
       // For files with WARNING status (70-89 score), perform test decode
       // This catches deep corruption that ffprobe misses (like Men in Black)
-      if (
-        healthResult.status === FileHealthStatus.WARNING &&
-        healthResult.score >= 70
-      ) {
+      if (healthResult.status === FileHealthStatus.WARNING && healthResult.score >= 70) {
         this.logger.debug(
-          `File has WARNING status (score ${healthResult.score}), performing test decode`,
+          `File has WARNING status (score ${healthResult.score}), performing test decode`
         );
         const decodeResult = await this.testDecode(filePath);
 
@@ -89,12 +258,10 @@ export class FileHealthService {
           healthResult.score = 35; // Below threshold
           healthResult.canEncode = false;
           healthResult.issues.push(
-            'Test decode failed - file contains corrupted frames that cannot be processed',
+            'Test decode failed - file contains corrupted frames that cannot be processed'
           );
           healthResult.warnings.push(`Decode error: ${decodeResult.error}`);
-          this.logger.warn(
-            `Test decode failed for ${filePath}: ${decodeResult.error}`,
-          );
+          this.logger.warn(`Test decode failed for ${filePath}: ${decodeResult.error}`);
         } else {
           this.logger.debug(`Test decode successful for ${filePath}`);
         }
@@ -102,8 +269,7 @@ export class FileHealthService {
 
       return healthResult;
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`File health analysis failed: ${errorMessage}`);
       return {
         status: FileHealthStatus.CORRUPTED,
@@ -175,8 +341,8 @@ export class FileHealthService {
             } catch (parseError: unknown) {
               reject(
                 new Error(
-                  `Failed to parse FFprobe JSON: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`,
-                ),
+                  `Failed to parse FFprobe JSON: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
+                )
               );
               return;
             }
@@ -199,8 +365,7 @@ export class FileHealthService {
 
           resolve(result);
         } catch (error: unknown) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
           reject(new Error(`Failed to parse ffprobe output: ${errorMessage}`));
         }
       });

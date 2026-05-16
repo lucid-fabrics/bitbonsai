@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Post,
-  Put,
-} from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -44,7 +35,7 @@ import {
 export class LicenseController {
   constructor(
     private readonly licenseService: LicenseService,
-    private readonly licenseClient: LicenseClientService,
+    private readonly licenseClient: LicenseClientService
   ) {}
 
   /**
@@ -81,9 +72,7 @@ export class LicenseController {
   @ApiOkResponse({ description: 'License is valid' })
   @ApiBadRequestResponse({ description: 'License inactive or expired' })
   @ApiNotFoundResponse({ description: 'License not found' })
-  async validate(
-    @Body() validateLicenseDto: ValidateLicenseDto,
-  ): Promise<unknown> {
+  async validate(@Body() validateLicenseDto: ValidateLicenseDto): Promise<unknown> {
     return this.licenseService.validateLicense(validateLicenseDto.key);
   }
 
@@ -95,8 +84,7 @@ export class LicenseController {
   @Get(':id/can-add-node')
   @ApiOperation({
     summary: 'Check if a node can be added',
-    description:
-      'Verifies that the license has not reached its maximum node limit',
+    description: 'Verifies that the license has not reached its maximum node limit',
   })
   @ApiParam({
     name: 'id',
@@ -120,8 +108,7 @@ export class LicenseController {
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: 'Get current license information',
-    description:
-      'Returns license verification status and limits for this BitBonsai instance',
+    description: 'Returns license verification status and limits for this BitBonsai instance',
   })
   @ApiOkResponse({ description: 'Current license info' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
@@ -166,7 +153,7 @@ export class LicenseController {
   @ApiBadRequestResponse({ description: 'Invalid license key' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   async setLicenseKey(
-    @Body() dto: SetLicenseKeyDto,
+    @Body() dto: SetLicenseKeyDto
   ): Promise<{ success: boolean; message: string }> {
     await this.licenseClient.setLicenseKey(dto.key);
     return { success: true, message: 'License key updated and verified' };
@@ -209,9 +196,7 @@ export class LicenseController {
   })
   @ApiOkResponse({ description: 'License lookup result' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
-  async lookupLicense(
-    @Body() dto: LookupLicenseDto,
-  ): Promise<LookupLicenseResponse> {
+  async lookupLicense(@Body() dto: LookupLicenseDto): Promise<LookupLicenseResponse> {
     return this.licenseClient.lookupLicenseByEmail(dto.email);
   }
 }

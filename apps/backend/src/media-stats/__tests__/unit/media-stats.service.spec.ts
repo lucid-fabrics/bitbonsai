@@ -134,14 +134,10 @@ describe('MediaStatsService', () => {
       // First call returns a directory
       mockReaddirSync.mockImplementation((path: string) => {
         if (path === '/media/movies') {
-          return [
-            { name: 'action', isDirectory: () => true, isFile: () => false },
-          ];
+          return [{ name: 'action', isDirectory: () => true, isFile: () => false }];
         }
         if (path === '/media/movies/action') {
-          return [
-            { name: 'movie.mp4', isDirectory: () => false, isFile: () => true },
-          ];
+          return [{ name: 'movie.mp4', isDirectory: () => false, isFile: () => true }];
         }
         return [];
       });
@@ -246,9 +242,7 @@ describe('MediaStatsService', () => {
     it('should throw NotFoundException for unknown folder', async () => {
       mockGetAllLibraryPaths.mockResolvedValue(['/media/movies']);
 
-      await expect(service.getFolderFiles('nonexistent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getFolderFiles('nonexistent')).rejects.toThrow(NotFoundException);
     });
 
     it('should return files for valid folder', async () => {

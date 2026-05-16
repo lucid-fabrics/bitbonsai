@@ -224,12 +224,9 @@ export class EnvironmentService {
     try {
       // Check for nvidia-smi command
       await execAsync('which nvidia-smi');
-      const { stdout } = await execAsync(
-        'nvidia-smi --query-gpu=name --format=csv,noheader',
-        {
-          timeout: 5000,
-        },
-      );
+      const { stdout } = await execAsync('nvidia-smi --query-gpu=name --format=csv,noheader', {
+        timeout: 5000,
+      });
 
       if (stdout.trim()) {
         this.logger.log(`NVIDIA GPU detected: ${stdout.trim()}`);
@@ -249,9 +246,7 @@ export class EnvironmentService {
   private async detectIntelQsv(): Promise<boolean> {
     try {
       // Check for Intel GPU render devices
-      const renderDevices = fs
-        .readdirSync('/dev/dri')
-        .filter((file) => file.startsWith('renderD'));
+      const renderDevices = fs.readdirSync('/dev/dri').filter((file) => file.startsWith('renderD'));
 
       if (renderDevices.length === 0) {
         return false;
@@ -259,9 +254,7 @@ export class EnvironmentService {
 
       // Verify it's an Intel GPU
       if (fs.existsSync('/sys/class/drm/card0/device/vendor')) {
-        const vendor = fs
-          .readFileSync('/sys/class/drm/card0/device/vendor', 'utf8')
-          .trim();
+        const vendor = fs.readFileSync('/sys/class/drm/card0/device/vendor', 'utf8').trim();
         if (vendor === '0x8086') {
           // Intel vendor ID
           this.logger.log('Intel QSV detected');
@@ -294,9 +287,7 @@ export class EnvironmentService {
 
       // Alternative: Check /sys for AMD GPU
       if (fs.existsSync('/sys/class/drm/card0/device/vendor')) {
-        const vendor = fs
-          .readFileSync('/sys/class/drm/card0/device/vendor', 'utf8')
-          .trim();
+        const vendor = fs.readFileSync('/sys/class/drm/card0/device/vendor', 'utf8').trim();
         if (vendor === '0x1002') {
           // AMD vendor ID
           this.logger.log('AMD GPU detected via sysfs');
@@ -415,14 +406,10 @@ export class EnvironmentService {
     // Environment-specific recommendations
     if (environment === 'UNRAID') {
       recommendations.push('Use /mnt/user paths for Unraid array storage');
-      recommendations.push(
-        'Consider using cache pool for frequently accessed files',
-      );
+      recommendations.push('Consider using cache pool for frequently accessed files');
 
       if (await this.isDocker()) {
-        recommendations.push(
-          'GPU passthrough available - configure in Docker template',
-        );
+        recommendations.push('GPU passthrough available - configure in Docker template');
       }
     } else if (environment === 'DOCKER') {
       recommendations.push('Mount host directories for persistent storage');
@@ -434,24 +421,16 @@ export class EnvironmentService {
 
     // Hardware acceleration recommendations
     if (acceleration.nvidia) {
-      recommendations.push(
-        'NVIDIA GPU detected - hardware acceleration available for transcoding',
-      );
+      recommendations.push('NVIDIA GPU detected - hardware acceleration available for transcoding');
     }
     if (acceleration.intelQsv) {
-      recommendations.push(
-        'Intel Quick Sync detected - hardware acceleration available',
-      );
+      recommendations.push('Intel Quick Sync detected - hardware acceleration available');
     }
     if (acceleration.amd) {
-      recommendations.push(
-        'AMD GPU detected - hardware acceleration may be available',
-      );
+      recommendations.push('AMD GPU detected - hardware acceleration may be available');
     }
     if (acceleration.appleVideoToolbox) {
-      recommendations.push(
-        'Apple Silicon detected - VideoToolbox acceleration available',
-      );
+      recommendations.push('Apple Silicon detected - VideoToolbox acceleration available');
     }
 
     return recommendations;

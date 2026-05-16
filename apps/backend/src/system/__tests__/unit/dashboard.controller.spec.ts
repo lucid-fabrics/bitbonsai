@@ -16,9 +16,7 @@ describe('DashboardController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [DashboardController],
-      providers: [
-        { provide: HealthDashboardService, useValue: mockDashboardService },
-      ],
+      providers: [{ provide: HealthDashboardService, useValue: mockDashboardService }],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: () => true })
@@ -53,9 +51,7 @@ describe('DashboardController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockDashboardService.getDashboard.mockRejectedValue(
-        new Error('DB unavailable'),
-      );
+      mockDashboardService.getDashboard.mockRejectedValue(new Error('DB unavailable'));
 
       await expect(controller.getDashboard()).rejects.toThrow('DB unavailable');
     });
@@ -76,13 +72,9 @@ describe('DashboardController', () => {
     });
 
     it('should propagate service errors', async () => {
-      mockDashboardService.runHealthChecks.mockRejectedValue(
-        new Error('Check failed'),
-      );
+      mockDashboardService.runHealthChecks.mockRejectedValue(new Error('Check failed'));
 
-      await expect(controller.getHealthChecks()).rejects.toThrow(
-        'Check failed',
-      );
+      await expect(controller.getHealthChecks()).rejects.toThrow('Check failed');
     });
   });
 });

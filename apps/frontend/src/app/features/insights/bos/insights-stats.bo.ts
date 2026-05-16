@@ -6,7 +6,7 @@ export class InsightsStatsBO {
     public readonly totalJobsCompleted: number,
     public readonly totalStorageSavedGB: number,
     public readonly averageSuccessRate: number,
-    public readonly averageThroughput: number,
+    public readonly averageThroughput: number
   ) {}
 
   static fromDto(dto: {
@@ -19,7 +19,7 @@ export class InsightsStatsBO {
       dto.totalJobsCompleted,
       dto.totalSavedGB,
       dto.successRate,
-      dto.avgThroughput,
+      dto.avgThroughput
     );
   }
 

@@ -19,7 +19,7 @@ export interface CarouselImage {
 }
 
 @Component({
-  selector: 'bb-image-carousel',
+  selector: 'lib-image-carousel',
   standalone: true,
   imports: [],
   templateUrl: './image-carousel.component.html',
@@ -31,8 +31,8 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
   @Input() initialIndex = 0;
   @Input() showThumbnails = true;
   @Input() fullscreen = false;
-  @Output() imageClick = new EventEmitter<number>();
-  @Output() close = new EventEmitter<void>();
+  @Output() imageChosen = new EventEmitter<number>();
+  @Output() closed = new EventEmitter<void>();
 
   @ViewChildren('thumbnail') thumbnails!: QueryList<ElementRef>;
 
@@ -78,10 +78,7 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
 
     // Check if mouse is over the main image
     const target = event.target as HTMLElement;
-    if (
-      target.classList.contains('carousel-image') ||
-      target.closest('.carousel-viewport')
-    ) {
+    if (target.classList.contains('carousel-image') || target.closest('.carousel-viewport')) {
       event.preventDefault();
 
       if (event.deltaY < 0) {
@@ -136,13 +133,24 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
 
   protected onImageClick(): void {
     if (!this.fullscreen) {
-      this.imageClick.emit(this.currentIndex);
+      this.imageChosen.emit(this.currentIndex);
     }
+  }
+
+  protected onImageKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.onImageClick();
+    }
+  }
+
+  protected handleContainerKeydown(): void {
+    // Keyboard events are handled by HostListener on document
   }
 
   protected closeCarousel(): void {
     if (this.fullscreen) {
-      this.close.emit();
+      this.closed.emit();
     }
   }
 
@@ -152,15 +160,24 @@ export class ImageCarouselComponent implements AfterViewInit, OnInit {
     }
   }
 
+  protected onContainerKeydown(event: KeyboardEvent): void {
+    if (!this.fullscreen) return;
+
+    switch (event.key) {
+      case 'Escape':
+        event.preventDefault();
+        this.closeCarousel();
+        break;
+    }
+  }
+
   protected getPreviousImage(): CarouselImage {
-    const prevIndex =
-      this.currentIndex > 0 ? this.currentIndex - 1 : this.images.length - 1;
+    const prevIndex = this.currentIndex > 0 ? this.currentIndex - 1 : this.images.length - 1;
     return this.images[prevIndex];
   }
 
   protected getNextImage(): CarouselImage {
-    const nextIndex =
-      this.currentIndex < this.images.length - 1 ? this.currentIndex + 1 : 0;
+    const nextIndex = this.currentIndex < this.images.length - 1 ? this.currentIndex + 1 : 0;
     return this.images[nextIndex];
   }
 

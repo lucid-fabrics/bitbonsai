@@ -44,30 +44,25 @@ describe('DocsController', () => {
 
       expect(mockRes.setHeader).toHaveBeenCalledWith(
         'Content-Type',
-        'text/markdown; charset=utf-8',
+        'text/markdown; charset=utf-8'
       );
-      expect(mockRes.setHeader).toHaveBeenCalledWith(
-        'Cache-Control',
-        'public, max-age=3600',
-      );
+      expect(mockRes.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=3600');
       expect(mockRes.send).toHaveBeenCalledWith(content);
     });
 
     it('should throw NotFoundException when file does not exist', () => {
       mockExistsSync.mockReturnValue(false);
 
-      expect(() => controller.getDoc('MISSING', mockRes as never)).toThrow(
-        NotFoundException,
-      );
+      expect(() => controller.getDoc('MISSING', mockRes as never)).toThrow(NotFoundException);
     });
 
     it('should sanitize filename to strip path traversal characters', () => {
       mockExistsSync.mockReturnValue(false);
 
       // Should not throw a different error — just NotFoundException for the sanitized path
-      expect(() =>
-        controller.getDoc('../../../etc/passwd', mockRes as never),
-      ).toThrow(NotFoundException);
+      expect(() => controller.getDoc('../../../etc/passwd', mockRes as never)).toThrow(
+        NotFoundException
+      );
     });
 
     it('should throw NotFoundException when readFileSync throws', () => {
@@ -76,9 +71,7 @@ describe('DocsController', () => {
         throw new Error('permission denied');
       });
 
-      expect(() => controller.getDoc('REBALANCING', mockRes as never)).toThrow(
-        NotFoundException,
-      );
+      expect(() => controller.getDoc('REBALANCING', mockRes as never)).toThrow(NotFoundException);
     });
   });
 });

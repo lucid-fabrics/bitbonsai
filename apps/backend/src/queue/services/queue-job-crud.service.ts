@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
@@ -13,6 +14,7 @@ import { JobRepository } from '../../common/repositories/job.repository';
 import { NodeRepository } from '../../common/repositories/node.repository';
 import { ContentFingerprintService } from '../../core/services/content-fingerprint.service';
 import { NodeConfigService } from '../../core/services/node-config.service';
+import { PreflightService } from '../../encoding/services/preflight.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CreateJobDto } from '../dto/create-job.dto';
 import type { JobStatsDto } from '../dto/job-stats.dto';
@@ -38,6 +40,7 @@ export class QueueJobCrudService {
     private contentFingerprint: ContentFingerprintService,
     private fileFailureTracking: FileFailureTrackingService,
     private jobStats: QueueJobStatsService,
+    private preflight: PreflightService
   ) {}
 
   /**
@@ -46,6 +49,7 @@ export class QueueJobCrudService {
   async validateJobOwnership(
     jobId: string,
     operation: string,
+    callerNodeId?: string
   ): Promise<{ nodeId: string | null; updatedAt: Date }> {
     const currentNodeId = this.nodeConfig.getNodeId();
     const isMainNode = this.nodeConfig.isMainNode();
@@ -69,13 +73,27 @@ export class QueueJobCrudService {
       throw new NotFoundException(`Job ${jobId} not found`);
     }
 
+    // LINKED node: check caller matches job owner
     if (!isMainNode && job.nodeId && job.nodeId !== currentNodeId) {
       this.logger.error(
-        `⚠️ HIGH #4: Cross-node ${operation} rejected: ` +
-          `Node ${currentNodeId} attempted to modify job ${jobId} owned by ${job.nodeId} (${job.fileLabel})`,
+        `Cross-node ${operation} rejected: ` +
+          `Node ${currentNodeId} attempted to modify job ${jobId} owned by ${job.nodeId} (${job.fileLabel})`
       );
       throw new ForbiddenException(
-        `Node ${currentNodeId} cannot ${operation} job ${jobId} - job is assigned to node ${job.nodeId}`,
+        `Node ${currentNodeId} cannot ${operation} job ${jobId} - job is assigned to node ${job.nodeId}`
+      );
+    }
+
+    // MAIN node receiving proxied call: validate the caller node owns this job.
+    // callerNodeId comes from the x-node-id header set by LINKED proxy calls.
+    // User-initiated actions won't include this header (callerNodeId undefined) and are always allowed.
+    if (isMainNode && callerNodeId && job.nodeId && job.nodeId !== callerNodeId) {
+      this.logger.error(
+        `Cross-node ${operation} rejected on MAIN: ` +
+          `LINKED node ${callerNodeId} attempted to modify job ${jobId} owned by ${job.nodeId} (${job.fileLabel})`
+      );
+      throw new ForbiddenException(
+        `Node ${callerNodeId} cannot ${operation} job ${jobId} - job is assigned to node ${job.nodeId}`
       );
     }
 
@@ -95,9 +113,7 @@ export class QueueJobCrudService {
       filePath.includes('%2E') ||
       filePath.includes('\u2024')
     ) {
-      throw new BadRequestException(
-        'File path contains directory traversal attempt',
-      );
+      throw new BadRequestException('File path contains directory traversal attempt');
     }
 
     const resolvedFile = path.resolve(filePath);
@@ -118,28 +134,14 @@ export class QueueJobCrudService {
       const realLibrary = fs.realpathSync(resolvedLibrary);
 
       if (!realFile.startsWith(realLibrary + path.sep)) {
-        throw new BadRequestException(
-          `File path '${filePath}' is outside library boundary`,
-        );
+        throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
       }
     } catch (err: unknown) {
-      if (
-        err &&
-        typeof err === 'object' &&
-        'code' in err &&
-        err.code === 'ELOOP'
-      ) {
-        throw new BadRequestException(
-          'Symlink detected - operation rejected for security',
-        );
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'ELOOP') {
+        throw new BadRequestException('Symlink detected - operation rejected for security');
       }
 
-      if (
-        err &&
-        typeof err === 'object' &&
-        'code' in err &&
-        err.code === 'ENOENT'
-      ) {
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
         let currentPath = path.dirname(resolvedFile);
         let depth = 0;
         const maxDepth = 20;
@@ -150,23 +152,17 @@ export class QueueJobCrudService {
             const realLibrary = fs.realpathSync(resolvedLibrary);
 
             if (!realParent.startsWith(realLibrary + path.sep)) {
-              throw new BadRequestException(
-                `File path '${filePath}' is outside library boundary`,
-              );
+              throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
             }
 
             return;
           } catch (parentErr: unknown) {
-            if (
-              parentErr &&
-              typeof parentErr === 'object' &&
-              'code' in parentErr
-            ) {
+            if (parentErr && typeof parentErr === 'object' && 'code' in parentErr) {
               if (parentErr.code === 'ENOENT') {
                 const nextParent = path.dirname(currentPath);
                 if (nextParent === currentPath) {
                   throw new BadRequestException(
-                    `File path '${filePath}' parent directories do not exist and cannot be validated`,
+                    `File path '${filePath}' parent directories do not exist and cannot be validated`
                   );
                 }
                 currentPath = nextParent;
@@ -174,14 +170,13 @@ export class QueueJobCrudService {
                 continue;
               }
             }
-            const message =
-              parentErr instanceof Error ? parentErr.message : 'Unknown error';
+            const message = parentErr instanceof Error ? parentErr.message : 'Unknown error';
             throw new BadRequestException(`Invalid file path: ${message}`);
           }
         }
 
         throw new BadRequestException(
-          `File path '${filePath}' validation failed: too many missing parent directories (depth > ${maxDepth})`,
+          `File path '${filePath}' validation failed: too many missing parent directories (depth > ${maxDepth})`
         );
       } else {
         const message = err instanceof Error ? err.message : 'Unknown error';
@@ -205,40 +200,34 @@ export class QueueJobCrudService {
     this.logger.log(`Creating job for: ${createJobDto.fileLabel}`);
 
     const fileSizeBytes = BigInt(createJobDto.beforeSizeBytes);
-    const maxFileSizeBytes =
-      BigInt(500) * BigInt(1024) * BigInt(1024) * BigInt(1024);
+    const maxFileSizeBytes = BigInt(500) * BigInt(1024) * BigInt(1024) * BigInt(1024);
     const minFileSizeBytes = BigInt(1024);
 
     if (fileSizeBytes > maxFileSizeBytes) {
       throw new BadRequestException(
-        `File size ${fileSizeBytes} bytes exceeds maximum allowed size of ${maxFileSizeBytes} bytes (500 GB)`,
+        `File size ${fileSizeBytes} bytes exceeds maximum allowed size of ${maxFileSizeBytes} bytes (500 GB)`
       );
     }
 
     if (fileSizeBytes < minFileSizeBytes) {
       throw new BadRequestException(
-        `File size ${fileSizeBytes} bytes is below minimum size of ${minFileSizeBytes} bytes (1 KB)`,
+        `File size ${fileSizeBytes} bytes is below minimum size of ${minFileSizeBytes} bytes (1 KB)`
       );
     }
 
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
       const url = `${mainApiUrl}/api/v1/queue`;
-      this.logger.debug(
-        `🔍 MULTI-NODE: LINKED node proxying job creation to MAIN: ${url}`,
-      );
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying job creation to MAIN: ${url}`);
 
       try {
         const response = await firstValueFrom(
-          this.httpService.post(url, createJobDto, { timeout: 30000 }),
+          this.httpService.post(url, createJobDto, { timeout: 30000 })
         );
         this.logger.debug(`✅ MULTI-NODE: Job creation successful`);
         return response.data;
       } catch (error: unknown) {
-        this.logger.error(
-          `❌ MULTI-NODE: Failed to proxy job creation to MAIN:`,
-          error,
-        );
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job creation to MAIN:`, error);
         throw error;
       }
     }
@@ -250,24 +239,54 @@ export class QueueJobCrudService {
     ]);
 
     if (!node) {
-      throw new NotFoundException(
-        `Node with ID "${createJobDto.nodeId}" not found`,
-      );
+      throw new NotFoundException(`Node with ID "${createJobDto.nodeId}" not found`);
     }
 
     if (!library) {
-      throw new NotFoundException(
-        `Library with ID "${createJobDto.libraryId}" not found`,
-      );
+      throw new NotFoundException(`Library with ID "${createJobDto.libraryId}" not found`);
     }
 
     if (!policy) {
-      throw new NotFoundException(
-        `Policy with ID "${createJobDto.policyId}" not found`,
-      );
+      throw new NotFoundException(`Policy with ID "${createJobDto.policyId}" not found`);
     }
 
     this.validateFilePath(createJobDto.filePath, library.path);
+
+    // Idempotent deduplication: reject if an active job with identical settings already exists
+    const jobFingerprint = createHash('sha256')
+      .update(
+        `${createJobDto.filePath}:${createJobDto.targetCodec}:${policy.targetQuality}:${createJobDto.targetContainer ?? ''}`
+      )
+      .digest('hex')
+      .slice(0, 16);
+
+    const duplicateJob = await this.prisma.job.findFirst({
+      where: {
+        jobFingerprint,
+        stage: { notIn: [JobStage.COMPLETED, JobStage.FAILED, JobStage.CANCELLED] },
+      },
+    });
+
+    if (duplicateJob) {
+      this.logger.log(
+        `Duplicate job fingerprint detected for: ${createJobDto.filePath} (existing job: ${duplicateJob.id})`
+      );
+      throw new ConflictException(
+        `Job already active for this file+settings (id: ${duplicateJob.id})`
+      );
+    }
+
+    // Pre-flight: validate file integrity before queuing
+    const preflightResult = await this.preflight.runPreflight(createJobDto.filePath);
+    if (!preflightResult.ok) {
+      this.logger.warn(`Pre-flight failed for ${createJobDto.filePath}: ${preflightResult.reason}`);
+      await this.fileFailureTracking.recordFailure(
+        createJobDto.filePath,
+        createJobDto.libraryId,
+        preflightResult.reason
+      );
+      throw new BadRequestException(`File failed pre-flight validation: ${preflightResult.reason}`);
+    }
 
     const existingActiveJob = await this.jobRepository.findFirstWhere({
       filePath: createJobDto.filePath,
@@ -285,51 +304,47 @@ export class QueueJobCrudService {
 
     if (existingActiveJob) {
       this.logger.log(
-        `Job already exists for file: ${createJobDto.filePath} (stage: ${existingActiveJob.stage}, id: ${existingActiveJob.id})`,
+        `Job already exists for file: ${createJobDto.filePath} (stage: ${existingActiveJob.stage}, id: ${existingActiveJob.id})`
       );
       throw new BadRequestException(
-        `Job already exists for this file (stage: ${existingActiveJob.stage}). Cannot create duplicate.`,
+        `Job already exists for this file (stage: ${existingActiveJob.stage}). Cannot create duplicate.`
       );
     }
 
     // Compute content fingerprint and check for already-processed files
     let fingerprint: string | null = null;
     try {
-      fingerprint = await this.contentFingerprint.computeFingerprint(
-        createJobDto.filePath,
-      );
+      fingerprint = await this.contentFingerprint.computeFingerprint(createJobDto.filePath);
 
       if (fingerprint) {
         // Check if this content was already processed (handles renamed/moved files)
-        const alreadyProcessed =
-          await this.prisma.processedFileRecord.findUnique({
-            where: { contentFingerprint: fingerprint },
-          });
+        const alreadyProcessed = await this.prisma.processedFileRecord.findUnique({
+          where: { contentFingerprint: fingerprint },
+        });
 
         if (alreadyProcessed) {
           this.logger.log(
             `Skipping already-processed file (fingerprint match): ${createJobDto.fileLabel} ` +
-              `(previously completed as ${alreadyProcessed.filePath})`,
+              `(previously completed as ${alreadyProcessed.filePath})`
           );
           throw new BadRequestException(
-            `File content already encoded (previously processed as "${alreadyProcessed.filePath}"). Skipping duplicate.`,
+            `File content already encoded (previously processed as "${alreadyProcessed.filePath}"). Skipping duplicate.`
           );
         }
 
         // Check if fingerprint is blacklisted in failure tracking
-        const isBlacklistedByHash =
-          await this.fileFailureTracking.isBlacklisted(
-            createJobDto.filePath,
-            createJobDto.libraryId,
-            fingerprint,
-          );
+        const isBlacklistedByHash = await this.fileFailureTracking.isBlacklisted(
+          createJobDto.filePath,
+          createJobDto.libraryId,
+          fingerprint
+        );
 
         if (isBlacklistedByHash) {
           this.logger.debug(
-            `Skipping auto-blacklisted file (fingerprint match): ${createJobDto.fileLabel}`,
+            `Skipping auto-blacklisted file (fingerprint match): ${createJobDto.fileLabel}`
           );
           throw new BadRequestException(
-            'File content is auto-blacklisted due to repeated failures across jobs.',
+            'File content is auto-blacklisted due to repeated failures across jobs.'
           );
         }
       }
@@ -340,7 +355,7 @@ export class QueueJobCrudService {
       }
       // Non-critical: fingerprinting failure shouldn't block job creation
       this.logger.warn(
-        `Fingerprint computation failed for ${createJobDto.filePath}: ${error instanceof Error ? error.message : String(error)}`,
+        `Fingerprint computation failed for ${createJobDto.filePath}: ${error instanceof Error ? error.message : String(error)}`
       );
     }
 
@@ -355,7 +370,7 @@ export class QueueJobCrudService {
 
     if (oldJobs.length > 0) {
       this.logger.log(
-        `Deleting ${oldJobs.length} old job(s) for file: ${createJobDto.filePath} (stages: ${oldJobs.map((j) => j.stage).join(', ')})`,
+        `Deleting ${oldJobs.length} old job(s) for file: ${createJobDto.filePath} (stages: ${oldJobs.map((j) => j.stage).join(', ')})`
       );
       await this.jobRepository.deleteManyWhere({
         id: {
@@ -410,10 +425,10 @@ export class QueueJobCrudService {
 
         if (existingJob) {
           this.logger.log(
-            `Job already exists for file: ${createJobDto.filePath} (stage: ${existingJob.stage}, id: ${existingJob.id})`,
+            `Job already exists for file: ${createJobDto.filePath} (stage: ${existingJob.stage}, id: ${existingJob.id})`
           );
           throw new BadRequestException(
-            `Job already exists for this file (stage: ${existingJob.stage}). Cannot create duplicate.`,
+            `Job already exists for this file (stage: ${existingJob.stage}). Cannot create duplicate.`
           );
         }
       }
@@ -432,7 +447,7 @@ export class QueueJobCrudService {
     search?: string,
     libraryId?: string,
     page?: number,
-    limit?: number,
+    limit?: number
   ): Promise<{
     jobs: Job[];
     total: number;
@@ -445,7 +460,7 @@ export class QueueJobCrudService {
     const skip = (currentPage - 1) * pageSize;
 
     this.logger.log(
-      `Fetching jobs (stage: ${stage || 'all'}, node: ${nodeId || 'all'}, library: ${libraryId || 'all'}, search: ${search || 'none'}, page: ${currentPage}, limit: ${pageSize})`,
+      `Fetching jobs (stage: ${stage || 'all'}, node: ${nodeId || 'all'}, library: ${libraryId || 'all'}, search: ${search || 'none'}, page: ${currentPage}, limit: ${pageSize})`
     );
 
     const where: Record<string, unknown> = {};
@@ -459,10 +474,7 @@ export class QueueJobCrudService {
       where.libraryId = libraryId;
     }
     if (search) {
-      where.OR = [
-        { filePath: { contains: search } },
-        { fileLabel: { contains: search } },
-      ];
+      where.OR = [{ filePath: { contains: search } }, { fileLabel: { contains: search } }];
     }
 
     const includeClause = {
@@ -490,9 +502,7 @@ export class QueueJobCrudService {
     };
 
     const orderByClause =
-      stage === 'FAILED'
-        ? { failedAt: 'desc' as const }
-        : { createdAt: 'asc' as const };
+      stage === 'FAILED' ? { failedAt: 'desc' as const } : { createdAt: 'asc' as const };
 
     const [jobs, total] = await Promise.all([
       this.jobRepository.findManyWithInclude<Job>({
@@ -580,10 +590,7 @@ export class QueueJobCrudService {
   /**
    * Raw job update for internal system operations
    */
-  async updateJobRaw(
-    jobId: string,
-    data: Record<string, unknown>,
-  ): Promise<void> {
+  async updateJobRaw(jobId: string, data: Record<string, unknown>): Promise<void> {
     await this.jobRepository.updateRaw(jobId, data);
   }
 
@@ -600,26 +607,19 @@ export class QueueJobCrudService {
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
       const url = `${mainApiUrl}/api/v1/queue/${id}`;
-      this.logger.debug(
-        `🔍 MULTI-NODE: LINKED node proxying progress update to MAIN: ${url}`,
-      );
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying progress update to MAIN: ${url}`);
 
       try {
         const response = await firstValueFrom(
           this.httpService.patch(url, updateJobDto, {
             timeout: 30000,
-          }),
+          })
         );
 
-        this.logger.debug(
-          `✅ MULTI-NODE: Progress update successful for ${id}`,
-        );
+        this.logger.debug(`✅ MULTI-NODE: Progress update successful for ${id}`);
         return response.data;
       } catch (error: unknown) {
-        this.logger.error(
-          `❌ MULTI-NODE: Failed to proxy progress update to MAIN:`,
-          error,
-        );
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy progress update to MAIN:`, error);
         if (error instanceof Error) {
           this.logger.error(`❌ MULTI-NODE: Error: ${error.message}`);
         }
@@ -646,7 +646,7 @@ export class QueueJobCrudService {
     if (updateJobDto.stage === JobStage.HEALTH_CHECK) {
       throw new BadRequestException(
         'Cannot manually set HEALTH_CHECK stage. This is an internal stage managed by the health check worker. ' +
-          'To prioritize a job, use the force-start endpoint instead.',
+          'To prioritize a job, use the force-start endpoint instead.'
       );
     }
 
@@ -662,9 +662,7 @@ export class QueueJobCrudService {
         if (this.fileExists(tempFilePath)) {
           updateData.tempFilePath = tempFilePath;
         } else {
-          this.logger.warn(
-            `Temp file not found: ${tempFilePath}, ignoring resume state`,
-          );
+          this.logger.warn(`Temp file not found: ${tempFilePath}, ignoring resume state`);
         }
       }
 
@@ -694,9 +692,7 @@ export class QueueJobCrudService {
         previewImagePaths: JSON.stringify(previewPaths),
       });
 
-      this.logger.debug(
-        `Job ${id} preview paths updated: ${previewPaths.length} images`,
-      );
+      this.logger.debug(`Job ${id} preview paths updated: ${previewPaths.length} images`);
       return job;
     } catch (error: unknown) {
       this.logger.error(`Failed to update job preview paths: ${id}`, error);
@@ -711,24 +707,19 @@ export class QueueJobCrudService {
     const mainApiUrl = this.nodeConfig.getMainApiUrl();
     if (mainApiUrl) {
       const url = `${mainApiUrl}/api/v1/queue/${id}`;
-      this.logger.log(
-        `🔍 MULTI-NODE: LINKED node proxying job update to MAIN: ${url}`,
-      );
+      this.logger.log(`🔍 MULTI-NODE: LINKED node proxying job update to MAIN: ${url}`);
 
       try {
         const response = await firstValueFrom(
           this.httpService.patch(url, data, {
             timeout: 30000,
-          }),
+          })
         );
 
         this.logger.log(`✅ MULTI-NODE: Job update successful for ${id}`);
         return response.data;
       } catch (error: unknown) {
-        this.logger.error(
-          `❌ MULTI-NODE: Failed to proxy job update to MAIN:`,
-          error,
-        );
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job update to MAIN:`, error);
         if (error instanceof Error) {
           this.logger.error(`❌ MULTI-NODE: Error: ${error.message}`);
         }
@@ -745,13 +736,11 @@ export class QueueJobCrudService {
 
     const result = await this.jobRepository.atomicUpdateMany(
       { id, updatedAt: ownership.updatedAt },
-      updateData as Prisma.JobUncheckedUpdateInput,
+      updateData as Prisma.JobUncheckedUpdateInput
     );
 
     if (result.count === 0) {
-      throw new ConflictException(
-        `Job ${id} was modified by another process - update failed`,
-      );
+      throw new ConflictException(`Job ${id} was modified by another process - update failed`);
     }
 
     const job = await this.jobRepository.findById(id);
@@ -803,6 +792,52 @@ export class QueueJobCrudService {
       this.logger.error('Failed to clear jobs', error);
       throw error;
     }
+  }
+
+  /**
+   * Get Dead Letter Queue jobs (circuit-broken, permanently failed)
+   */
+  async getDlqJobs(
+    skip = 0,
+    take = 50
+  ): Promise<{
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      filePath: string;
+      dlqEnteredAt: Date | null;
+      circuitBrokenReason: string | null;
+      totalAttempts: number;
+      error: string | null;
+    }>;
+    total: number;
+    skip: number;
+    take: number;
+  }> {
+    this.logger.log(`Fetching DLQ jobs (skip: ${skip}, take: ${take})`);
+
+    const where = { dlqEnteredAt: { not: null } };
+
+    const [jobs, total] = await Promise.all([
+      this.prisma.job.findMany({
+        where,
+        select: {
+          id: true,
+          fileLabel: true,
+          filePath: true,
+          dlqEnteredAt: true,
+          circuitBrokenReason: true,
+          totalAttempts: true,
+          error: true,
+        },
+        orderBy: { dlqEnteredAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.job.count({ where }),
+    ]);
+
+    return { jobs, total, skip, take };
   }
 
   /**

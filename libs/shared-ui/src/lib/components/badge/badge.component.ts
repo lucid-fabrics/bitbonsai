@@ -3,7 +3,7 @@ import { Component, Input } from '@angular/core';
 export type BadgeVariant = 'success' | 'warning' | 'danger' | 'info';
 
 @Component({
-  selector: 'bb-badge',
+  selector: 'lib-badge',
   standalone: true,
   imports: [],
   template: `

@@ -34,7 +34,7 @@ describe('InsightsController (E2E)', () => {
         whitelist: true,
         forbidNonWhitelisted: true,
         transform: true,
-      }),
+      })
     );
 
     await app.init();
@@ -184,9 +184,7 @@ describe('InsightsController (E2E)', () => {
     });
 
     it('should support 90 day period', () => {
-      return request(app.getHttpServer())
-        .get('/api/v1/insights/savings-trend?days=90')
-        .expect(200);
+      return request(app.getHttpServer()).get('/api/v1/insights/savings-trend?days=90').expect(200);
     });
 
     it('should validate days parameter', () => {
@@ -324,12 +322,8 @@ describe('InsightsController (E2E)', () => {
         .get('/api/v1/insights/codec-distribution')
         .expect(200)
         .expect((res: request.Response) => {
-          const hevcEntry = res.body.find(
-            (entry: { codec: string }) => entry.codec === 'HEVC',
-          );
-          const av1Entry = res.body.find(
-            (entry: { codec: string }) => entry.codec === 'AV1',
-          );
+          const hevcEntry = res.body.find((entry: { codec: string }) => entry.codec === 'HEVC');
+          const av1Entry = res.body.find((entry: { codec: string }) => entry.codec === 'AV1');
 
           expect(hevcEntry.count).toBe(3);
           expect(hevcEntry.percentage).toBeCloseTo(75, 0);
@@ -528,14 +522,8 @@ describe('InsightsController (E2E)', () => {
         .expect(200);
 
       expect(response.body).toHaveLength(2);
-      expect(
-        response.body.some((n: { nodeId: string }) => n.nodeId === testNode.id),
-      ).toBe(true);
-      expect(
-        response.body.some(
-          (n: { nodeId: string }) => n.nodeId === secondNode.id,
-        ),
-      ).toBe(true);
+      expect(response.body.some((n: { nodeId: string }) => n.nodeId === testNode.id)).toBe(true);
+      expect(response.body.some((n: { nodeId: string }) => n.nodeId === secondNode.id)).toBe(true);
 
       // Cleanup
       await prisma.node.delete({ where: { id: secondNode.id } });

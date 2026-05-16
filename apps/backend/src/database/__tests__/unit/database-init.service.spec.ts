@@ -5,16 +5,14 @@ import { DatabaseInitService } from '../../database-init.service';
 
 describe('DatabaseInitService', () => {
   let service: DatabaseInitService;
-  let prisma: ReturnType<typeof createMockPrismaService>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let prisma: any;
 
   beforeEach(async () => {
     prisma = createMockPrismaService();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        DatabaseInitService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [DatabaseInitService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<DatabaseInitService>(DatabaseInitService);
@@ -67,7 +65,7 @@ describe('DatabaseInitService', () => {
             maxNodes: 10,
             maxConcurrentJobs: 10,
           }),
-        }),
+        })
       );
     });
 
@@ -117,7 +115,7 @@ describe('DatabaseInitService', () => {
             acceleration: 'CPU',
             licenseId: 'license-1',
           }),
-        }),
+        })
       );
     });
 

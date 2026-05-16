@@ -12,7 +12,7 @@ describe('JwtAuthGuard', () => {
   const mockExecutionContext = (
     ip = '192.168.1.100',
     url = '/api/test',
-    method = 'GET',
+    method = 'GET'
   ): ExecutionContext => {
     const request = { ip, url, method, headers: {} };
     return {
@@ -112,9 +112,7 @@ describe('JwtAuthGuard', () => {
     await guard.canActivate(context);
 
     // Should have called super.canActivate (JWT validation)
-    expect(
-      Object.getPrototypeOf(Object.getPrototypeOf(guard)).canActivate,
-    ).toHaveBeenCalled();
+    expect(Object.getPrototypeOf(Object.getPrototypeOf(guard)).canActivate).toHaveBeenCalled();
   });
 
   it('should require JWT when local bypass is disabled', async () => {
@@ -131,9 +129,7 @@ describe('JwtAuthGuard', () => {
 
     await guard.canActivate(context);
 
-    expect(
-      Object.getPrototypeOf(Object.getPrototypeOf(guard)).canActivate,
-    ).toHaveBeenCalled();
+    expect(Object.getPrototypeOf(Object.getPrototypeOf(guard)).canActivate).toHaveBeenCalled();
   });
 
   it('should require JWT when no settings exist', async () => {
@@ -147,8 +143,6 @@ describe('JwtAuthGuard', () => {
 
     await guard.canActivate(context);
 
-    expect(
-      Object.getPrototypeOf(Object.getPrototypeOf(guard)).canActivate,
-    ).toHaveBeenCalled();
+    expect(Object.getPrototypeOf(Object.getPrototypeOf(guard)).canActivate).toHaveBeenCalled();
   });
 });

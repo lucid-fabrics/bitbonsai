@@ -25,10 +25,7 @@ describe('LicenseService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        LicenseService,
-        { provide: LicenseRepository, useValue: licenseRepo },
-      ],
+      providers: [LicenseService, { provide: LicenseRepository, useValue: licenseRepo }],
     }).compile();
 
     service = module.get<LicenseService>(LicenseService);
@@ -67,9 +64,7 @@ describe('LicenseService', () => {
     it('should throw NotFoundException when license not found', async () => {
       prismaMock.license.findUnique.mockResolvedValue(null);
 
-      await expect(service.validateLicense('INVALID')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.validateLicense('INVALID')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when license has expired', async () => {
@@ -89,9 +84,7 @@ describe('LicenseService', () => {
 
       prismaMock.license.findUnique.mockResolvedValue(mockLicense);
 
-      await expect(service.validateLicense('FREE-abc123')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.validateLicense('FREE-abc123')).rejects.toThrow(BadRequestException);
     });
 
     it('should indicate cannot add node when at limit', async () => {
@@ -241,9 +234,7 @@ describe('LicenseService', () => {
     it('should throw NotFoundException when license does not exist', async () => {
       prismaMock.license.findUnique.mockResolvedValue(null);
 
-      await expect(service.checkCanAddNode('invalid-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.checkCanAddNode('invalid-id')).rejects.toThrow(NotFoundException);
     });
   });
 });

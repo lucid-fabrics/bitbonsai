@@ -86,24 +86,15 @@ export class LibrariesClient {
   /**
    * Create encoding jobs from scan preview results
    */
-  createJobsFromScan(
-    id: string,
-    dto: CreateJobsFromScanDto,
-  ): Observable<CreateJobsFromScanResult> {
-    return this.http.post<CreateJobsFromScanResult>(
-      `${this.apiUrl}/${id}/scan/create-jobs`,
-      dto,
-    );
+  createJobsFromScan(id: string, dto: CreateJobsFromScanDto): Observable<CreateJobsFromScanResult> {
+    return this.http.post<CreateJobsFromScanResult>(`${this.apiUrl}/${id}/scan/create-jobs`, dto);
   }
 
   /**
    * Create jobs for all files in library (simplified workflow)
    * Note: Uses 10 minute timeout for large libraries
    */
-  createAllJobs(
-    id: string,
-    dto: CreateAllJobsDto,
-  ): Observable<BulkJobCreationResult> {
+  createAllJobs(id: string, dto: CreateAllJobsDto): Observable<BulkJobCreationResult> {
     return this.http
       .post<BulkJobCreationResult>(`${this.apiUrl}/${id}/create-all-jobs`, dto)
       .pipe(timeout(600000)); // 10 minutes = 600000ms
@@ -114,9 +105,7 @@ export class LibrariesClient {
    * Note: Uses 5 minute timeout for large libraries
    */
   getLibraryFiles(id: string): Observable<LibraryFiles> {
-    return this.http
-      .get<LibraryFiles>(`${this.apiUrl}/${id}/files`)
-      .pipe(timeout(300000)); // 5 minutes = 300000ms
+    return this.http.get<LibraryFiles>(`${this.apiUrl}/${id}/files`).pipe(timeout(300000)); // 5 minutes = 300000ms
   }
 
   /**
@@ -130,9 +119,6 @@ export class LibrariesClient {
    * Refresh ready files cache (invalidate and force reload)
    */
   refreshReadyFilesCache(): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(
-      `${this.apiUrl}/refresh-ready-cache`,
-      {},
-    );
+    return this.http.post<{ message: string }>(`${this.apiUrl}/refresh-ready-cache`, {});
   }
 }

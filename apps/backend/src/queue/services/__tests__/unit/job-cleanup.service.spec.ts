@@ -19,7 +19,7 @@ describe('JobCleanupService', () => {
     options: {
       startedAt?: Date | null;
       progress?: number;
-    } = {},
+    } = {}
   ) => ({
     id,
     filePath: `/media/test-${id}.mkv`,
@@ -54,10 +54,7 @@ describe('JobCleanupService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        JobCleanupService,
-        { provide: JobRepository, useValue: jobRepository },
-      ],
+      providers: [JobCleanupService, { provide: JobRepository, useValue: jobRepository }],
     }).compile();
 
     service = module.get<JobCleanupService>(JobCleanupService);
@@ -77,9 +74,7 @@ describe('JobCleanupService', () => {
 
   describe('onModuleInit', () => {
     it('should call cleanupStuckJobs on initialization', async () => {
-      const cleanupSpy = jest
-        .spyOn(service, 'cleanupStuckJobs')
-        .mockResolvedValue(0);
+      const cleanupSpy = jest.spyOn(service, 'cleanupStuckJobs').mockResolvedValue(0);
 
       await service.onModuleInit();
 
@@ -108,6 +103,7 @@ describe('JobCleanupService', () => {
       expect(result).toBe(2);
       expect(jobRepository.findManySelect).toHaveBeenCalledWith(
         {
+          fencingToken: null,
           stage: JobStage.ENCODING,
           updatedAt: expect.objectContaining({ lt: expect.any(Date) }),
         },
@@ -118,7 +114,7 @@ describe('JobCleanupService', () => {
           updatedAt: true,
           progress: true,
           retryCount: true,
-        },
+        }
       );
       expect(jobRepository.updateById).toHaveBeenCalledTimes(2);
     });
@@ -141,7 +137,7 @@ describe('JobCleanupService', () => {
       expect(result).toBe(0);
       expect(jobRepository.updateById).not.toHaveBeenCalled();
       expect((service as any).logger.log).toHaveBeenCalledWith(
-        'No stuck jobs found during cleanup',
+        'No stuck jobs found during cleanup'
       );
     });
 
@@ -149,12 +145,10 @@ describe('JobCleanupService', () => {
       const error = new Error('Database error');
       jobRepository.findManySelect.mockRejectedValue(error);
 
-      await expect(service.cleanupStuckJobs()).rejects.toThrow(
-        'Database error',
-      );
+      await expect(service.cleanupStuckJobs()).rejects.toThrow('Database error');
       expect((service as any).logger.error).toHaveBeenCalledWith(
         'Failed to cleanup stuck jobs',
-        error,
+        error
       );
     });
 
@@ -165,7 +159,7 @@ describe('JobCleanupService', () => {
 
       expect(jobRepository.findManySelect).toHaveBeenCalledWith(
         expect.objectContaining({ stage: JobStage.ENCODING }),
-        expect.anything(),
+        expect.anything()
       );
     });
   });
@@ -209,9 +203,7 @@ describe('JobCleanupService', () => {
 
       expect(result).toBe(0);
       expect(jobRepository.updateById).not.toHaveBeenCalled();
-      expect((service as any).logger.debug).toHaveBeenCalledWith(
-        'No timed-out jobs found',
-      );
+      expect((service as any).logger.debug).toHaveBeenCalledWith('No timed-out jobs found');
     });
 
     it('should handle multiple timed-out jobs', async () => {
@@ -257,7 +249,7 @@ describe('JobCleanupService', () => {
       expect(jobRepository.updateById).toHaveBeenCalledTimes(2);
       expect((service as any).logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to mark job'),
-        expect.any(Error),
+        expect.any(Error)
       );
     });
 
@@ -265,37 +257,29 @@ describe('JobCleanupService', () => {
       const error = new Error('Database error');
       jobRepository.findManySelect.mockRejectedValue(error);
 
-      await expect(service.detectTimedOutJobs()).rejects.toThrow(
-        'Database error',
-      );
+      await expect(service.detectTimedOutJobs()).rejects.toThrow('Database error');
       expect((service as any).logger.error).toHaveBeenCalledWith(
         'Failed to detect timed-out jobs',
-        error,
+        error
       );
     });
   });
 
   describe('handleTimedOutJobsCron', () => {
     it('should call detectTimedOutJobs when cron runs', async () => {
-      const detectSpy = jest
-        .spyOn(service, 'detectTimedOutJobs')
-        .mockResolvedValue(0);
+      const detectSpy = jest.spyOn(service, 'detectTimedOutJobs').mockResolvedValue(0);
 
       await service.handleTimedOutJobsCron();
 
       expect(detectSpy).toHaveBeenCalledTimes(1);
-      expect((service as any).logger.debug).toHaveBeenCalledWith(
-        'Running scheduled timeout check',
-      );
+      expect((service as any).logger.debug).toHaveBeenCalledWith('Running scheduled timeout check');
     });
 
     it('should handle errors from detectTimedOutJobs', async () => {
       const error = new Error('Timeout detection error');
       jest.spyOn(service, 'detectTimedOutJobs').mockRejectedValue(error);
 
-      await expect(service.handleTimedOutJobsCron()).rejects.toThrow(
-        'Timeout detection error',
-      );
+      await expect(service.handleTimedOutJobsCron()).rejects.toThrow('Timeout detection error');
     });
   });
 
@@ -372,7 +356,7 @@ describe('JobCleanupService', () => {
       await service.cleanupStuckJobs();
 
       expect((service as any).logger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('stuck for 10 minutes'),
+        expect.stringContaining('stuck for 10 minutes')
       );
     });
   });

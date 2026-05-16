@@ -31,13 +31,8 @@ export class ContainerCompatibilityService {
    * @param targetContainer - Target container format (e.g., 'mp4', 'mkv')
    * @returns Array of detected issues requiring user decision
    */
-  async checkCompatibility(
-    filePath: string,
-    targetContainer = 'mp4',
-  ): Promise<HealthCheckIssue[]> {
-    this.logger.debug(
-      `Checking compatibility: ${filePath} → .${targetContainer}`,
-    );
+  async checkCompatibility(filePath: string, targetContainer = 'mp4'): Promise<HealthCheckIssue[]> {
+    this.logger.debug(`Checking compatibility: ${filePath} → .${targetContainer}`);
 
     try {
       // Get detailed stream information
@@ -53,8 +48,7 @@ export class ContainerCompatibilityService {
 
       return issues;
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Compatibility check failed: ${errorMessage}`);
       return [];
     }
@@ -71,10 +65,7 @@ export class ContainerCompatibilityService {
    * @param filePath - Path to file (for extension detection)
    * @returns Array of compatibility issues
    */
-  private checkMP4Compatibility(
-    streams: MediaStream[],
-    filePath: string,
-  ): HealthCheckIssue[] {
+  private checkMP4Compatibility(streams: MediaStream[], filePath: string): HealthCheckIssue[] {
     const issues: HealthCheckIssue[] = [];
 
     // Get all audio streams
@@ -98,10 +89,7 @@ export class ContainerCompatibilityService {
       if (codec === 'ac3' || codec === 'eac3') {
         incompatibleStreams.push({
           index: stream.index,
-          codec:
-            codec === 'eac3'
-              ? 'E-AC3 (Dolby Digital Plus)'
-              : 'AC3 (Dolby Digital)',
+          codec: codec === 'eac3' ? 'E-AC3 (Dolby Digital Plus)' : 'AC3 (Dolby Digital)',
           title: stream.tags?.title,
         });
       }
@@ -158,8 +146,7 @@ The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sou
 
       // Determine if file is already MP4
       const currentContainer = extname(filePath).toLowerCase();
-      const isSourceMP4 =
-        currentContainer === '.mp4' || currentContainer === '.m4v';
+      const isSourceMP4 = currentContainer === '.mp4' || currentContainer === '.m4v';
 
       // Build suggested actions
       const actions: HealthCheckSuggestedAction[] = [];
@@ -183,8 +170,7 @@ The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sou
       actions.push({
         id: 'transcode_audio_aac',
         label: 'Transcode Audio to AAC',
-        description:
-          'Convert all incompatible audio tracks to AAC (lossy compression)',
+        description: 'Convert all incompatible audio tracks to AAC (lossy compression)',
         impact: 'Slight audio quality loss, maintains MP4 container',
         recommended: false,
         config: {
@@ -199,8 +185,7 @@ The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sou
       actions.push({
         id: 'use_delay_moov',
         label: 'Force MP4 with delay_moov (Advanced)',
-        description:
-          'Attempt to force AC3/DTS into MP4 using FFmpeg workaround',
+        description: 'Attempt to force AC3/DTS into MP4 using FFmpeg workaround',
         impact:
           'May work but creates non-standard MP4 files. Playback compatibility not guaranteed.',
         recommended: false,
@@ -239,14 +224,7 @@ The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sou
    */
   private async getStreamInfo(filePath: string): Promise<MediaStream[]> {
     return new Promise((resolve, reject) => {
-      const ffprobe = spawn('ffprobe', [
-        '-v',
-        'error',
-        '-show_streams',
-        '-of',
-        'json',
-        filePath,
-      ]);
+      const ffprobe = spawn('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', filePath]);
 
       let stdout = '';
       let stderr = '';
@@ -280,8 +258,7 @@ The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sou
           const streams: MediaStream[] = json.streams || [];
           resolve(streams);
         } catch (error: unknown) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
           reject(new Error(`Failed to parse ffprobe output: ${errorMessage}`));
         }
       });

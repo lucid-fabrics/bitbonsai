@@ -15,16 +15,10 @@ export class BusinessRuleError extends BaseError {
 export class NodeOfflineError extends BaseError {
   constructor(nodeId: string, nodeName?: string) {
     const name = nodeName || nodeId;
-    super(
-      `Node '${name}' is offline and cannot process jobs`,
-      422,
-      'NODE_OFFLINE',
-      true,
-      {
-        nodeId,
-        nodeName,
-      },
-    );
+    super(`Node '${name}' is offline and cannot process jobs`, 422, 'NODE_OFFLINE', true, {
+      nodeId,
+      nodeName,
+    });
   }
 }
 
@@ -68,7 +62,7 @@ export class StorageQuotaExceededError extends BaseError {
       422,
       'STORAGE_QUOTA_EXCEEDED',
       true,
-      { quota, currentUsage },
+      { quota, currentUsage }
     );
   }
 }
