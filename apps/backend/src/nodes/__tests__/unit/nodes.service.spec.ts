@@ -1244,15 +1244,13 @@ describe('NodesService', () => {
         ...mockNode,
         acceleration: AccelerationType.CPU,
       });
-      const updatedNode = { ...mockNode, maxWorkers: 4 };
+      const updatedNode = { ...mockNode, maxWorkers: 2 };
       mockNodeRepo.updateData.mockResolvedValue(updatedNode);
 
-      // 4 workers: should be within 2x for any reasonable CPU count
-      // (recommended is typically cpuCount / coresPerJob which is at least 1)
-      // Using 4 which is well within 2x recommended for any system
-      const result = await service.update('node-1', { maxWorkers: 4 });
+      // 2 workers: at most 2x recommended even on the smallest CI runner (1-core = recommended 1)
+      const result = await service.update('node-1', { maxWorkers: 2 });
 
-      expect(result.maxWorkers).toBe(4);
+      expect(result.maxWorkers).toBe(2);
     });
 
     it('should not include name in update when name is undefined', async () => {
