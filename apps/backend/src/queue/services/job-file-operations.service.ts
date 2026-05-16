@@ -196,11 +196,7 @@ export class JobFileOperationsService {
           prioritySetAt: null,
         },
         include: {
-          node: {
-            include: {
-              license: true,
-            },
-          },
+          node: true,
         },
       });
 
@@ -250,7 +246,7 @@ export class JobFileOperationsService {
         priority: 0,
         prioritySetAt: null,
       },
-      { node: { include: { license: true } } }
+      { node: true }
     );
 
     this.logger.log(

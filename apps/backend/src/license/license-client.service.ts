@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { LicenseStatus, type Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 import * as os from 'os';
 import { firstValueFrom } from 'rxjs';
@@ -182,30 +181,20 @@ export class LicenseClientService {
         };
       }
 
-      // Fallback to local database license if API unreachable
-      const localLicense = await this.licenseRepository.findFirstActiveDesc();
-
-      if (localLicense) {
-        this.logger.warn('License API unreachable, using local database license');
-        const licenseInfo: LicenseInfo = {
-          key: this.maskLicenseKey(localLicense.key),
-          email: localLicense.email,
-          tier: localLicense.tier,
-          status: localLicense.status,
-          maxNodes: localLicense.maxNodes,
-          maxConcurrentJobs: localLicense.maxConcurrentJobs,
-          expiresAt: localLicense.validUntil,
-        };
-        this.cachedLicense = {
-          ...licenseInfo,
-          key: localLicense.key, // Store full key in cache
-        };
-        this.lastVerification = now;
-        return licenseInfo;
-      }
-
-      this.logger.error('License verification failed and no cache available', errorDetails);
-      throw new UnauthorizedException('License verification failed');
+      // License table removed — degrade to FREE
+      this.logger.warn('License API unreachable and no cache available — defaulting to FREE');
+      const freeLicense: LicenseInfo = {
+        key: 'FREE',
+        email: 'free@bitbonsai.app',
+        tier: 'FREE',
+        status: 'ACTIVE',
+        maxNodes: 1,
+        maxConcurrentJobs: 2,
+        expiresAt: null,
+      };
+      this.cachedLicense = freeLicense;
+      this.lastVerification = now;
+      return freeLicense;
     }
   }
 
@@ -267,10 +256,10 @@ export class LicenseClientService {
         key: licenseKey,
         email: verifiedPayload.email || email || 'unknown@bitbonsai.app',
         tier: internalTier,
-        status: LicenseStatus.ACTIVE,
+        status: 'ACTIVE',
         maxNodes: limits.maxNodes,
         maxConcurrentJobs: limits.maxConcurrentJobs,
-        features: features as unknown as Prisma.InputJsonValue,
+        features: features as unknown as Record<string, unknown>,
         validUntil: verifiedPayload.expiresAt ? new Date(verifiedPayload.expiresAt) : null,
       };
       const savedLicense = await this.licenseRepository.transactionFindFirstAndUpsert(licenseData);

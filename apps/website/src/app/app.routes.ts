@@ -45,6 +45,19 @@ export const appRoutes: Route[] = [
     loadComponent: () => import('./pages/terms/terms.component').then((m) => m.TermsComponent),
   },
   {
+    path: 'signup',
+    loadComponent: () => import('./pages/signup/signup.component').then((m) => m.SignupComponent),
+  },
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./pages/user-login/user-login.component').then((m) => m.UserLoginComponent),
+  },
+  {
+    path: 'device',
+    loadComponent: () => import('./pages/device/device.component').then((m) => m.DeviceComponent),
+  },
+  {
     path: 'admin/login',
     loadComponent: () =>
       import('./pages/admin/login/login.component').then((m) => m.LoginComponent),

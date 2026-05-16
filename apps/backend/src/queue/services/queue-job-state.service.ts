@@ -99,8 +99,8 @@ export class QueueJobStateService {
           this.logger.warn(`Job ${id} already completed - skipping to prevent double metrics`);
           return tx.job.findUnique({
             where: { id },
-            include: { node: { include: { license: true } } },
-          }) as Promise<Job & { node: { licenseId: string } }>;
+            include: { node: true },
+          }) as Promise<Job & { node: Record<string, unknown> }>;
         }
 
         const completedJob = await tx.job.update({
@@ -117,11 +117,7 @@ export class QueueJobStateService {
             ...(completeJobDto.qualityMetrics && { qualityMetrics: completeJobDto.qualityMetrics }),
           },
           include: {
-            node: {
-              include: {
-                license: true,
-              },
-            },
+            node: true,
           },
         });
 

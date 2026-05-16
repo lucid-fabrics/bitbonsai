@@ -100,7 +100,6 @@ export async function cleanDatabase(prisma: PrismaClient): Promise<void> {
   await prisma.policy.deleteMany({});
   await prisma.library.deleteMany({});
   await prisma.node.deleteMany({});
-  await prisma.license.deleteMany({});
 }
 
 /**
@@ -120,18 +119,6 @@ export async function teardownTestDatabase(): Promise<void> {
  * Create test data fixtures
  */
 export async function createTestFixtures(prisma: PrismaClient) {
-  const license = await prisma.license.create({
-    data: {
-      key: 'TEST-LICENSE-KEY',
-      tier: 'FREE',
-      status: 'ACTIVE',
-      email: 'test@example.com',
-      maxNodes: 1,
-      maxConcurrentJobs: 2,
-      features: {},
-    },
-  });
-
   const node = await prisma.node.create({
     data: {
       name: 'Test Node',
@@ -141,7 +128,6 @@ export async function createTestFixtures(prisma: PrismaClient) {
       acceleration: 'CPU',
       apiKey: 'test-api-key',
       lastHeartbeat: new Date(),
-      licenseId: license.id,
     },
   });
 
@@ -157,5 +143,5 @@ export async function createTestFixtures(prisma: PrismaClient) {
     },
   });
 
-  return { license, node, library };
+  return { node, library };
 }

@@ -7,6 +7,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { CloudAuthModule } from './cloud-auth/cloud-auth.module';
 import { CommonModule } from './common/common.module';
 import { envValidationSchema } from './common/config/env.validation';
 import { CoreModule } from './core/core.module';
@@ -58,6 +59,7 @@ import { SystemModule } from './system/system.module';
     EventEmitterModule.forRoot({ global: true }),
     ScheduleModule.forRoot(),
     PrismaModule,
+    CloudAuthModule,
     CommonModule,
     CoreModule,
     AuthModule,

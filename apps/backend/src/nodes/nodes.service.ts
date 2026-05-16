@@ -229,7 +229,6 @@ export class NodesService implements OnModuleInit {
       lastHeartbeat: node.lastHeartbeat,
       uptimeSeconds,
       createdAt: node.createdAt,
-      license: node.license ?? undefined,
       libraries: node.libraries,
       activeJobCount: node._count.jobs,
     };

@@ -1,6 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { LicenseTier } from '@prisma/client';
-import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsDateString, IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+
+const VALID_TIERS = [
+  'FREE',
+  'PATREON',
+  'PATREON_SUPPORTER',
+  'PATREON_PLUS',
+  'PATREON_PRO',
+  'PATREON_ULTIMATE',
+  'COMMERCIAL_STARTER',
+  'COMMERCIAL_PRO',
+  'COMMERCIAL_ENTERPRISE',
+] as const;
+
+export type TierString = (typeof VALID_TIERS)[number];
 
 /**
  * DTO for creating a new license
@@ -8,12 +21,12 @@ import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsOptional } from 'class-val
 export class CreateLicenseDto {
   @ApiProperty({
     description: 'License tier',
-    enum: LicenseTier,
-    example: LicenseTier.FREE,
+    enum: VALID_TIERS,
+    example: 'FREE',
   })
-  @IsEnum(LicenseTier)
+  @IsString()
   @IsNotEmpty()
-  tier!: LicenseTier;
+  tier!: string;
 
   @ApiProperty({
     description: 'Email address associated with the license',

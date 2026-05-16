@@ -1,6 +1,6 @@
 import type { LicenseFeatures } from '@bitbonsai/prisma-types';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { type License, LicenseStatus, LicenseTier, type Prisma } from '@prisma/client';
+// LicenseTier / LicenseStatus / License types removed from Prisma schema — use local strings
 import { randomBytes } from 'crypto';
 import { LicenseRepository } from '../common/repositories/license.repository';
 import type { CreateLicenseDto } from './dto/create-license.dto';
@@ -31,83 +31,8 @@ export class LicenseService {
    * @throws NotFoundException if license not found
    * @throws BadRequestException if license is not active or has expired
    */
-  async validateLicense(key: string): Promise<{
-    id: string;
-    key: string;
-    tier: LicenseTier;
-    status: LicenseStatus;
-    validUntil: Date | null;
-    maxNodes: number;
-    maxConcurrentJobs: number;
-    features: LicenseFeatures;
-    email: string;
-    createdAt: Date;
-    updatedAt: Date;
-    canAddNode: boolean;
-    activeNodes: number;
-  }> {
-    const license = await this.licenseRepository.findUnique<{
-      id: string;
-      tier: LicenseTier;
-      status: LicenseStatus;
-      validUntil: Date | null;
-      maxNodes: number;
-      maxConcurrentJobs: number;
-      features: unknown;
-      email: string;
-      createdAt: Date;
-      updatedAt: Date;
-      _count: { nodes: number };
-    }>({
-      where: { key },
-      select: {
-        id: true,
-        tier: true,
-        status: true,
-        validUntil: true,
-        maxNodes: true,
-        maxConcurrentJobs: true,
-        features: true,
-        email: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            nodes: { where: { status: 'ONLINE' } },
-          },
-        },
-      },
-    });
-
-    if (!license) {
-      throw new NotFoundException('License not found');
-    }
-
-    if (license.status !== LicenseStatus.ACTIVE) {
-      throw new BadRequestException('License is not active');
-    }
-
-    if (license.validUntil && license.validUntil < new Date()) {
-      throw new BadRequestException('License has expired');
-    }
-
-    const features = license.features as unknown as LicenseFeatures;
-
-    return {
-      id: license.id,
-      key,
-      tier: license.tier,
-      status: license.status,
-      validUntil: license.validUntil,
-      maxNodes: license.maxNodes,
-      maxConcurrentJobs: license.maxConcurrentJobs,
-      features,
-      email: license.email,
-      createdAt: license.createdAt,
-      updatedAt: license.updatedAt,
-      canAddNode: license._count.nodes < license.maxNodes,
-      activeNodes: license._count.nodes,
-    };
+  async validateLicense(_key: string): Promise<never> {
+    throw new NotFoundException('License validation is no longer supported. Use cloud account.');
   }
 
   /**
@@ -121,51 +46,8 @@ export class LicenseService {
    * @param data - License creation data
    * @returns The created license
    */
-  async createLicense(data: CreateLicenseDto): Promise<License> {
-    const tierConfig = {
-      // Free tier - single node, limited concurrency
-      [LicenseTier.FREE]: { maxNodes: 1, maxConcurrentJobs: 2 },
-      // Patreon tiers - individual supporters
-      [LicenseTier.PATREON]: { maxNodes: 2, maxConcurrentJobs: 3 }, // Legacy
-      [LicenseTier.PATREON_SUPPORTER]: { maxNodes: 2, maxConcurrentJobs: 3 }, // $3/mo
-      [LicenseTier.PATREON_PLUS]: { maxNodes: 3, maxConcurrentJobs: 5 }, // $5/mo
-      [LicenseTier.PATREON_PRO]: { maxNodes: 5, maxConcurrentJobs: 10 }, // $10/mo
-      [LicenseTier.PATREON_ULTIMATE]: { maxNodes: 10, maxConcurrentJobs: 20 }, // $20/mo
-      // Commercial tiers - businesses
-      [LicenseTier.COMMERCIAL_STARTER]: { maxNodes: 15, maxConcurrentJobs: 30 },
-      [LicenseTier.COMMERCIAL_PRO]: { maxNodes: 50, maxConcurrentJobs: 100 },
-      [LicenseTier.COMMERCIAL_ENTERPRISE]: {
-        maxNodes: 999,
-        maxConcurrentJobs: 999,
-      },
-    };
-
-    const config = tierConfig[data.tier];
-
-    const _isPatreon = data.tier.startsWith('PATREON');
-    const isCommercial = data.tier.startsWith('COMMERCIAL');
-    const isPatreonProOrHigher =
-      data.tier === LicenseTier.PATREON_PRO || data.tier === LicenseTier.PATREON_ULTIMATE;
-
-    const features: LicenseFeatures = {
-      multiNode: data.tier !== LicenseTier.FREE,
-      advancedPresets: data.tier !== LicenseTier.FREE,
-      api: isPatreonProOrHigher || isCommercial,
-      priorityQueue: isPatreonProOrHigher || isCommercial,
-      cloudStorage: isCommercial,
-      webhooks: isPatreonProOrHigher || isCommercial,
-    };
-
-    return this.licenseRepository.createLicense({
-      key: this.generateLicenseKey(data.tier),
-      tier: data.tier,
-      status: LicenseStatus.ACTIVE,
-      email: data.email,
-      maxNodes: config.maxNodes,
-      maxConcurrentJobs: config.maxConcurrentJobs,
-      features: features as unknown as Prisma.InputJsonValue,
-      validUntil: data.validUntil ? new Date(data.validUntil) : null,
-    });
+  async createLicense(_data: CreateLicenseDto): Promise<never> {
+    throw new BadRequestException('License creation is no longer supported. Use cloud account.');
   }
 
   /**
@@ -177,39 +59,11 @@ export class LicenseService {
    * @returns Boolean indicating if a node can be added
    * @throws NotFoundException if license not found
    */
-  async checkCanAddNode(licenseId: string): Promise<boolean> {
-    const license = await this.licenseRepository.findUnique<{
-      maxNodes: number;
-      _count: { nodes: number };
-    }>({
-      where: { id: licenseId },
-      select: {
-        maxNodes: true,
-        _count: {
-          select: {
-            nodes: true,
-          },
-        },
-      },
-    });
-
-    if (!license) {
-      throw new NotFoundException('License not found');
-    }
-
-    return license._count.nodes < license.maxNodes;
+  async checkCanAddNode(_licenseId: string): Promise<boolean> {
+    return true; // Guard is handled via LicenseGuardService + Settings
   }
 
-  /**
-   * Generate a unique license key
-   *
-   * Format: [TIER_PREFIX]-[RANDOM_STRING]
-   * Example: FRE-x8k2p9m4n7
-   *
-   * @param tier - The license tier
-   * @returns A unique license key
-   */
-  private generateLicenseKey(tier: LicenseTier): string {
+  private generateLicenseKey(tier: string): string {
     const prefix = tier.substring(0, 3).toUpperCase();
     const random = randomBytes(8).toString('hex').substring(0, 10);
     return `${prefix}-${random}`;

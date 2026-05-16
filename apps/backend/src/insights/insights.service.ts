@@ -175,9 +175,8 @@ export class InsightsService {
     this.logger.log(`Calculating node comparison${licenseId ? ` for license ${licenseId}` : ''}`);
 
     // Get all nodes with their metrics
-    const nodes = await this.nodeRepository.findAllWithMetrics(
-      licenseId ? { licenseId } : undefined
-    );
+    // licenseId grouping removed (License model removed) — fetch all nodes
+    const nodes = await this.nodeRepository.findAllWithMetrics();
 
     const nodeMetrics = nodes.map((node) => {
       // Aggregate metrics for this node

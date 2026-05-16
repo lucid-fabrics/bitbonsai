@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { JobRepository } from '../common/repositories/job.repository';
-import { LicenseRepository } from '../common/repositories/license.repository';
 import { NodeRepository } from '../common/repositories/node.repository';
 import { CoreModule } from '../core/core.module';
 import { DistributionModule } from '../distribution/distribution.module';
@@ -48,7 +47,6 @@ import { SystemInfoService } from './services/system-info.service';
     PrismaService,
     NodeRepository,
     JobRepository,
-    LicenseRepository,
     RegistrationRequestRepository,
     {
       provide: 'IStorageShareRepository',

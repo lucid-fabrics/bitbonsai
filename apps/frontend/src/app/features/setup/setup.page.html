@@ -342,6 +342,65 @@
         </div>
       </div>
       }
+      <!-- Step 5: Link Cloud Account -->
+      @if (currentStep() === SetupStep.CloudAccountLink) {
+      <div class="step-content" [@stepTransition]>
+        <div class="account-step">
+          <div class="step-icon">
+            <i class="fa-solid fa-cloud"></i>
+          </div>
+          <h2 class="step-title">Link your bitbonsai.app account</h2>
+          <p class="step-subtitle">Unlock your subscription tier and manage your plan</p>
+
+          @if (pollError()) {
+          <div class="alert alert-error">
+            <i class="fa-solid fa-exclamation-circle"></i>
+            <span>{{ pollError() }}</span>
+          </div>
+          }
+
+          <div class="cloud-link-card">
+            @if (!userCode()) {
+            <div class="cloud-link-loading">
+              <span class="spinner"></span>
+              <span>Generating code...</span>
+            </div>
+            } @else {
+            <p class="cloud-link-instruction">
+              Visit <strong>bitbonsai.app/device</strong> and enter this code:
+            </p>
+            <div class="user-code-display">
+              {{ userCode() }}
+            </div>
+
+            <a
+              [href]="verificationUri()"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn btn-primary btn-open-browser"
+              [class.disabled]="!userCode()"
+            >
+              <i class="fa-solid fa-external-link-alt"></i>
+              <span>Open bitbonsai.app/device</span>
+            </a>
+
+            @if (isPolling()) {
+            <div class="polling-status">
+              <span class="spinner spinner-sm"></span>
+              <span class="polling-text">Waiting for authorization<span class="dot-animation">...</span></span>
+            </div>
+            }
+            }
+          </div>
+
+          <div class="step-actions step-actions-center">
+            <button type="button" class="btn-skip-link" (click)="skipCloudLink()">
+              Skip for now (Free tier)
+            </button>
+          </div>
+        </div>
+      </div>
+      }
     </div>
 
     <!-- Footer -->

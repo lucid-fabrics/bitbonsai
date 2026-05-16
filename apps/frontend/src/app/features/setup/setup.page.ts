@@ -11,7 +11,10 @@ import {
 import { Router } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { TranslocoModule } from '@ngneat/transloco';
+import { interval, Subscription } from 'rxjs';
+import { switchMap, takeWhile } from 'rxjs/operators';
 import { SetupService } from '../../core/services/setup.service';
+import { CloudAccountService } from '../settings/services/cloud-account.service';
 
 /**
  * Custom validator to ensure password confirmation matches
@@ -35,6 +38,7 @@ enum SetupStep {
   NodeType = 1,
   LocalNetworkAccess = 2,
   AdminAccount = 3,
+  CloudAccountLink = 4,
 }
 
 /**
@@ -77,6 +81,7 @@ enum NodeType {
 export class SetupComponent {
   private readonly fb = inject(FormBuilder);
   private readonly setupService = inject(SetupService);
+  private readonly cloudAccountService = inject(CloudAccountService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -91,6 +96,15 @@ export class SetupComponent {
   readonly showConfirmPassword = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
+
+  // Cloud account link signals
+  readonly userCode = signal<string | null>(null);
+  readonly verificationUri = signal<string | null>(null);
+  readonly isPolling = signal(false);
+  readonly pollError = signal<string | null>(null);
+
+  private redirectUrl = '/';
+  private pollSubscription: Subscription | null = null;
 
   // Node type form
   readonly nodeTypeForm = this.fb.nonNullable.group({
@@ -215,6 +229,8 @@ export class SetupComponent {
     const { allowLocalNetworkWithoutAuth } = this.networkForm.getRawValue();
     const { nodeType } = this.nodeTypeForm.getRawValue();
 
+    this.redirectUrl = allowLocalNetworkWithoutAuth ? '/' : '/login';
+
     this.setupService
       .initializeSetup({
         username,
@@ -226,20 +242,8 @@ export class SetupComponent {
       .subscribe({
         next: (_response) => {
           this.isLoading.set(false);
-
-          // If local network bypass is enabled, redirect to main app
-          // Otherwise redirect to login
-          const redirectUrl = allowLocalNetworkWithoutAuth ? '/' : '/login';
-          const message = allowLocalNetworkWithoutAuth
-            ? 'Setup completed successfully! Redirecting to app...'
-            : 'Setup completed successfully! Redirecting to login...';
-
-          this.successMessage.set(message);
-
-          // Navigate after 1 second
-          setTimeout(() => {
-            this.router.navigate([redirectUrl]);
-          }, 1000);
+          this.currentStep.set(SetupStep.CloudAccountLink);
+          this.startCloudLinkFlow();
         },
         error: (error) => {
           this.isLoading.set(false);
@@ -260,6 +264,60 @@ export class SetupComponent {
           }
         },
       });
+  }
+
+  private startCloudLinkFlow(): void {
+    this.pollError.set(null);
+    this.cloudAccountService
+      .startDeviceFlow()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.userCode.set(response.userCode);
+          this.verificationUri.set(response.verificationUri);
+          this.startPolling();
+        },
+        error: () => {
+          this.pollError.set(
+            'Failed to start device flow. You can skip and link later in Settings.'
+          );
+        },
+      });
+  }
+
+  private startPolling(): void {
+    this.isPolling.set(true);
+    const deadline = Date.now() + 10 * 60 * 1000;
+
+    this.pollSubscription = interval(3000)
+      .pipe(
+        takeWhile(() => Date.now() < deadline && this.isPolling()),
+        switchMap(() => this.cloudAccountService.getStatus()),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (status) => {
+          if (status.linked) {
+            this.stopPolling();
+            this.router.navigate([this.redirectUrl]);
+          }
+        },
+        error: () => {
+          this.stopPolling();
+          this.pollError.set('Polling failed. You can skip and link later in Settings.');
+        },
+      });
+  }
+
+  private stopPolling(): void {
+    this.isPolling.set(false);
+    this.pollSubscription?.unsubscribe();
+    this.pollSubscription = null;
+  }
+
+  skipCloudLink(): void {
+    this.stopPolling();
+    this.router.navigate([this.redirectUrl]);
   }
 
   /**

@@ -24,7 +24,7 @@ export class MetricsRepository extends BaseRepository {
     startDate: Date;
     endDate: Date;
     nodeId?: string;
-    licenseId?: string;
+    licenseId?: string; // kept for call-site compatibility — ignored (column removed)
   }): Promise<Metric[]> {
     return this.findMany<Metric>({
       where: {
@@ -33,16 +33,15 @@ export class MetricsRepository extends BaseRepository {
           lte: params.endDate,
         },
         nodeId: params.nodeId || undefined,
-        licenseId: params.licenseId || undefined,
       },
       orderBy: { date: 'asc' },
     });
   }
 
-  async aggregateByLicense(licenseId?: string): Promise<MetricAggregateResult> {
-    const where = licenseId ? { licenseId } : {};
+  async aggregateByLicense(_licenseId?: string): Promise<MetricAggregateResult> {
+    // licenseId column removed — aggregate across all metrics
     return this.aggregate<MetricAggregateResult>({
-      where,
+      where: {},
       _sum: {
         jobsCompleted: true,
         jobsFailed: true,
@@ -54,9 +53,10 @@ export class MetricsRepository extends BaseRepository {
     });
   }
 
-  async findCodecDistributions(licenseId?: string): Promise<Pick<Metric, 'codecDistribution'>[]> {
+  async findCodecDistributions(_licenseId?: string): Promise<Pick<Metric, 'codecDistribution'>[]> {
+    // licenseId column removed — return all
     return this.findMany<Pick<Metric, 'codecDistribution'>>({
-      where: licenseId ? { licenseId } : {},
+      where: {},
       select: { codecDistribution: true },
     });
   }
@@ -64,21 +64,15 @@ export class MetricsRepository extends BaseRepository {
   async findByDateRangeOrdered(params: {
     startDate: Date;
     endDate: Date;
-    licenseId?: string;
+    licenseId?: string; // kept for call-site compatibility — ignored (column removed)
   }): Promise<Metric[]> {
-    const where: Record<string, unknown> = {
-      date: {
-        gte: params.startDate,
-        lte: params.endDate,
-      },
-    };
-
-    if (params.licenseId) {
-      where.licenseId = params.licenseId;
-    }
-
     return this.findMany<Metric>({
-      where,
+      where: {
+        date: {
+          gte: params.startDate,
+          lte: params.endDate,
+        },
+      },
       orderBy: { date: 'asc' },
     });
   }

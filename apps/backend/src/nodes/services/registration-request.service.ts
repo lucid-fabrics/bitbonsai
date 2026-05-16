@@ -266,27 +266,13 @@ export class RegistrationRequestService {
         throw new BadRequestException(`Request has expired`);
       }
 
-      // Get MAIN node's license (within transaction)
+      // Verify MAIN node exists
       const mainNode = await tx.node.findUnique({
         where: { id: request.mainNodeId },
-        include: {
-          license: {
-            include: {
-              _count: { select: { nodes: true } },
-            },
-          },
-        },
       });
 
       if (!mainNode) {
         throw new NotFoundException(`MAIN node ${request.mainNodeId} not found`);
-      }
-
-      // Check license node limit
-      if (mainNode.license._count.nodes >= mainNode.license.maxNodes) {
-        throw new ConflictException(
-          `Maximum nodes (${mainNode.license.maxNodes}) reached for this license`
-        );
       }
 
       // DUPLICATE PREVENTION: Check if a node with this IP or MAC address already exists
@@ -349,7 +335,6 @@ export class RegistrationRequestService {
           lastHeartbeat: new Date(),
           maxWorkers: approveDto?.maxWorkers || 2,
           cpuLimit: approveDto?.cpuLimit || 80,
-          licenseId: mainNode.licenseId,
           // Hybrid architecture fields
           networkLocation: capabilities.networkLocation,
           hasSharedStorage: capabilities.hasSharedStorage,

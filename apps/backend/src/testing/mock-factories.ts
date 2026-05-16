@@ -9,14 +9,12 @@
  *   import { createMockJob, createMockPolicy, createMockNode } from '../../../testing/mock-factories';
  *   const job = createMockJob({ stage: JobStage.ENCODING, progress: 50 });
  */
-import type { Job, Library, License, Metric, Node, Policy } from '@prisma/client';
+import type { Job, Library, Metric, Node, Policy } from '@prisma/client';
 import {
   AccelerationType,
   FileHealthStatus,
   JobStage,
   JobType,
-  LicenseStatus,
-  LicenseTier,
   MediaType,
   NetworkLocation,
   NodeRole,
@@ -227,7 +225,6 @@ export function createMockNode(overrides: Partial<Node> = {}): Node {
     recentFailureCount: 0,
     lastFailureAt: null,
     failureRate24h: null,
-    licenseId: 'license-1',
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -258,23 +255,22 @@ export function createMockLibrary(overrides: Partial<Library> = {}): Library {
 }
 
 /**
- * Create a complete mock License with all required fields.
+ * Create a stub license object (License model removed from schema).
  */
-export function createMockLicense(overrides: Partial<License> = {}): License {
+export function createMockLicense(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
   const now = new Date();
   return {
     id: 'license-1',
     key: 'test-license-key',
-    tier: LicenseTier.FREE,
-    status: LicenseStatus.ACTIVE,
+    tier: 'FREE',
+    status: 'ACTIVE',
     email: 'test@example.com',
     maxNodes: 1,
     maxConcurrentJobs: 4,
     features: { multiNode: false },
     validUntil: null,
-    patreonId: null,
-    stripeCustomerId: null,
-    stripeSubscriptionId: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -290,7 +286,6 @@ export function createMockMetric(overrides: Partial<Metric> = {}): Metric {
     id: 'metric-1',
     date: now,
     nodeId: null,
-    licenseId: null,
     jobsCompleted: 0,
     jobsFailed: 0,
     totalSavedBytes: BigInt(0),
