@@ -23,6 +23,7 @@ import type { JobHistoryEvent } from './models/job-history-event.model';
 import { JobEventType } from './models/job-history-event.model';
 import { JobStatus } from './models/job-status.enum';
 import type { QueueJob } from './models/queue-job.model';
+import type { QueueResponse } from './models/queue-response.model';
 import { CodecBadgeClassPipe } from './pipes/codec-badge-class.pipe';
 import { StatusClassPipe } from './pipes/status-class.pipe';
 import { QueueDataService } from './services/queue-data.service';
@@ -241,6 +242,105 @@ export class QueueComponent implements OnInit {
   }
   protected getNodeTooltipContent(node: NodeCapacity): string {
     return this.display.getNodeTooltipContent(node);
+  }
+  protected formatETA(eta: number | null | undefined): string {
+    return this.display.formatETA(eta);
+  }
+  protected formatTimestamp(ts: string | null | undefined): string {
+    return this.display.formatTimestamp(ts);
+  }
+  protected formatRelativeTime(ts: string | null | undefined): string {
+    return this.display.formatRelativeTime(ts);
+  }
+  protected getElapsedTime(startedAt?: string): string {
+    return this.display.getElapsedTime(startedAt);
+  }
+  protected getEncodingDuration(startedAt?: string, completedAt?: string): string {
+    return this.display.getEncodingDuration(startedAt, completedAt);
+  }
+  protected getEstimatedCompression(job: { sourceCodec?: string; targetCodec?: string }): number {
+    return this.display.getEstimatedCompression(job);
+  }
+  protected getEstimatedSize(job: {
+    originalSize: number;
+    sourceCodec?: string;
+    targetCodec?: string;
+  }): number {
+    return this.display.getEstimatedSize(job);
+  }
+  protected calculateExpectedSavings(job: QueueJob): string {
+    return this.display.calculateExpectedSavings(job);
+  }
+  protected isJobStuck(job: QueueJob): boolean {
+    return this.display.isJobStuck(job);
+  }
+  protected getStuckJobMessage(job: QueueJob, advanced = false): string {
+    return this.display.getStuckJobMessage(job, advanced);
+  }
+  protected hasRecoveryHistory(job: QueueJob): boolean {
+    return this.display.hasRecoveryHistory(job);
+  }
+  protected getRecoveryTooltip(job: QueueJob): string {
+    return this.display.getRecoveryTooltip(job);
+  }
+  protected isApproachingBlacklist(job: QueueJob): boolean {
+    return this.display.isApproachingBlacklist(job);
+  }
+  protected getShortFailureReason(error: string | null | undefined): string {
+    return this.display.getShortFailureReason(error);
+  }
+  protected getStorageAccessType(
+    job: { transferRequired?: boolean; nodeId?: string },
+    nodes: import('../../nodes/models/node.model').Node[]
+  ): 'local' | 'nfs' | 'copied' {
+    return this.display.getStorageAccessType(job, nodes);
+  }
+  protected formatAbsoluteDateTime(ts: string | null | undefined): string {
+    return this.display.formatAbsoluteDateTime(ts);
+  }
+  protected calculateEncodingSpeed(job: {
+    startedAt?: string;
+    currentSize: number;
+    originalSize: number;
+  }): string {
+    return this.display.calculateEncodingSpeed(job);
+  }
+  protected calculateEstimatedTime(totalSizeBytes: number): { hours: number; minutes: number } {
+    return this.display.calculateEstimatedTime(totalSizeBytes);
+  }
+  protected getAvgEncodingSpeed(): number {
+    return this.display.getAvgEncodingSpeed();
+  }
+  protected getUniqueFailureReasons(
+    data: QueueResponse
+  ): Array<{ error: string; count: number; category: string }> {
+    return this.display.getUniqueFailureReasons(data);
+  }
+  protected getFilteredFailedJobs(
+    data: QueueResponse,
+    errorFilter: string | null
+  ): QueueResponse['jobs'] {
+    return this.display.getFilteredFailedJobs(data, errorFilter);
+  }
+  protected getCancelledJobs(data: QueueResponse): QueueResponse['jobs'] {
+    return this.display.getCancelledJobs(data);
+  }
+  protected getFailedJobs(data: QueueResponse): QueueResponse['jobs'] {
+    return this.display.getFailedJobs(data);
+  }
+  protected calculateTotalSize(jobs: QueueResponse['jobs']): number {
+    return this.display.calculateTotalSize(jobs);
+  }
+  protected parseDecisionIssues(
+    json: string | null | undefined
+  ): import('./models/health-check-issue.model').HealthCheckIssue[] {
+    return this.display.parseDecisionIssues(json);
+  }
+  protected parsePreviewImages(
+    paths: string | null | undefined,
+    jobId: string
+  ): import('@bitbonsai/shared-ui').CarouselImage[] {
+    return this.display.parsePreviewImages(paths, jobId);
   }
 
   protected clearAllFilters(): void {
