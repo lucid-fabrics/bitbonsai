@@ -1,4 +1,3 @@
-import { Dialog } from '@angular/cdk/dialog';
 import { AsyncPipe, DecimalPipe, KeyValuePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -12,7 +11,6 @@ import { Store } from '@ngrx/store';
 import {
   BehaviorSubject,
   catchError,
-  firstValueFrom,
   fromEvent,
   interval,
   map,
@@ -25,15 +23,9 @@ import {
 import { selectCurrentNode } from '../../core/+state/current-node.selectors';
 import { DistributionClient, type NodeCapacity } from '../../core/clients/distribution.client';
 import { NodesClient } from '../../core/clients/nodes.client';
-import { QueueClient } from '../../core/clients/queue.client';
 import { SettingsClient } from '../../core/clients/settings.client';
 import { ErrorLoggerService } from '../../core/services/error-logger.service';
-import { ToastService } from '../../core/services/toast.service';
 import { FileHealthStatus } from '../../features/libraries/models/library.model';
-import {
-  ConfirmationDialogComponent,
-  type ConfirmationDialogData,
-} from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { DiskSpaceWarningBannerComponent } from '../../shared/components/disk-space-warning-banner/disk-space-warning-banner.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
 import { type Node as NodeModel } from '../nodes/models/node.model';
@@ -43,10 +35,6 @@ import type { QueueJobBo } from './bos/queue-job.bo';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
 import { DecisionIssueCardComponent } from './components/decision-issue-card/decision-issue-card.component';
 import { ErrorDetailsModalComponent } from './components/error-details-modal/error-details-modal.component';
-import {
-  JobDelegationDialogComponent,
-  type JobDelegationDialogData,
-} from './components/job-delegation-dialog/job-delegation-dialog.component';
 import { JobHistoryModalComponent } from './components/job-history-modal/job-history-modal.component';
 import type {
   HealthCheckIssue,
@@ -61,6 +49,7 @@ import type { QueueResponse } from './models/queue-response.model';
 import { CodecBadgeClassPipe } from './pipes/codec-badge-class.pipe';
 import { StatusClassPipe } from './pipes/status-class.pipe';
 import { QueueService } from './services/queue.service';
+import { QueueJobActionsService } from './services/queue-job-actions.service';
 
 @Component({
   selector: 'app-queue',
@@ -88,17 +77,15 @@ import { QueueService } from './services/queue.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QueueComponent implements OnInit {
-  private readonly queueApi = inject(QueueClient);
   private readonly queueService = inject(QueueService);
+  private readonly jobActions = inject(QueueJobActionsService);
   private readonly nodesApi = inject(NodesClient);
   private readonly settingsApi = inject(SettingsClient);
   private readonly distributionApi = inject(DistributionClient);
-  private readonly toastService = inject(ToastService);
   private readonly errorLogger = inject(ErrorLoggerService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly dialog = inject(Dialog);
   private readonly store = inject(Store);
 
   // Expose Number for template
@@ -494,20 +481,12 @@ export class QueueComponent implements OnInit {
 
     // Fetch job history when expanding a job (if not already cached)
     if (this.expandedJobId && !this.jobHistoryCache.has(jobId)) {
-      this.queueApi
-        .getJobHistory(jobId)
+      this.jobActions
+        .loadJobHistory(jobId)
         .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: (history) => {
-            this.maintainCacheSize();
-            this.jobHistoryCache.set(jobId, history);
-          },
-          error: (error) => {
-            this.errorLogger.error(`Failed to fetch job history for ${jobId}`, error);
-            // Set empty array to prevent retrying on every expand
-            this.maintainCacheSize();
-            this.jobHistoryCache.set(jobId, []);
-          },
+        .subscribe((history) => {
+          this.maintainCacheSize();
+          this.jobHistoryCache.set(jobId, history);
         });
     }
   }
@@ -541,20 +520,17 @@ export class QueueComponent implements OnInit {
     if (!jobId) return;
 
     this.cancelDialogLoading = true;
-
-    this.queueApi
-      .cancelJob(jobId, false) // blacklist = false
+    this.jobActions
+      .cancelJob(jobId, false)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.cancelDialogLoading = false;
-          this.toastService.success('Job cancelled');
           this.closeCancelDialog();
           this.refreshQueue();
         },
-        error: () => {
+        complete: () => {
           this.cancelDialogLoading = false;
-          this.toastService.error('Failed to cancel job');
           this.closeCancelDialog();
         },
       });
@@ -565,20 +541,17 @@ export class QueueComponent implements OnInit {
     if (!jobId) return;
 
     this.cancelDialogLoading = true;
-
-    this.queueApi
-      .cancelJob(jobId, true) // blacklist = true
+    this.jobActions
+      .cancelJob(jobId, true)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.cancelDialogLoading = false;
-          this.toastService.success('Job cancelled and blacklisted');
           this.closeCancelDialog();
           this.refreshQueue();
         },
-        error: () => {
+        complete: () => {
           this.cancelDialogLoading = false;
-          this.toastService.error('Failed to cancel job');
           this.closeCancelDialog();
         },
       });
@@ -586,34 +559,18 @@ export class QueueComponent implements OnInit {
 
   protected retryJob(jobId: string, event: Event): void {
     event.stopPropagation();
-    this.queueApi
+    this.jobActions
       .retryJob(jobId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.toastService.success('Job moved back to queue');
-          this.refreshQueue();
-        },
-        error: () => {
-          this.toastService.error('Failed to retry job');
-        },
-      });
+      .subscribe(() => this.refreshQueue());
   }
 
   protected unblockJob(jobId: string, event: Event): void {
     event.stopPropagation();
-    this.queueApi
-      .unblacklistJob(jobId)
+    this.jobActions
+      .unblockJob(jobId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.toastService.success('File unblocked — it can now be retried');
-          this.refreshQueue(false);
-        },
-        error: () => {
-          this.toastService.error('Failed to unblock job');
-        },
-      });
+      .subscribe(() => this.refreshQueue(false));
   }
 
   protected hasRecoveryHistory(job: QueueJob): boolean {
@@ -643,97 +600,26 @@ export class QueueComponent implements OnInit {
 
   protected recheckJob(jobId: string, event: Event): void {
     event.stopPropagation();
-    this.queueApi
+    this.jobActions
       .recheckJob(jobId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updatedJob) => {
-          if (updatedJob.stage === 'COMPLETED') {
-            this.toastService.success('Job rechecked and moved to COMPLETED');
-          } else {
-            this.toastService.warning(
-              'Job still FAILED after recheck - file is invalid or missing'
-            );
-          }
-          this.refreshQueue();
-        },
-        error: (err) => {
-          this.toastService.error(
-            `Failed to recheck job: ${err.error?.message || 'Unknown error'}`
-          );
-        },
-      });
+      .subscribe(() => this.refreshQueue());
   }
 
   protected detectAndRequeue(jobId: string, event: Event): void {
     event.stopPropagation();
-    this.queueApi
+    this.jobActions
       .detectAndRequeue(jobId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updatedJob) => {
-          if (updatedJob.stage === 'QUEUED') {
-            this.toastService.success('No compression detected - job requeued for retry');
-          } else {
-            this.toastService.info('Compression was successful - no action taken');
-          }
-          this.refreshQueue();
-        },
-        error: (err) => {
-          const message = err.error?.message || 'Unknown error';
-          // If the error is about successful compression, show it as info instead of error
-          if (message.includes('successfully compressed')) {
-            this.toastService.info(message);
-          } else {
-            this.toastService.error(`Failed to detect compression: ${message}`);
-          }
-        },
-      });
+      .subscribe(() => this.refreshQueue());
   }
 
   protected deleteJob(job: QueueJobBo, event: Event): void {
     event.stopPropagation();
-
-    const dialogData: ConfirmationDialogData = {
-      title: 'Delete Job Entry?',
-      itemName: job.fileName,
-      itemType: 'job entry',
-      willHappen: [
-        'Permanently remove this job record from the database',
-        'Clean up the queue view',
-      ],
-      wontHappen: [
-        'Delete or modify the actual media file',
-        'Affect other jobs or their progress',
-        'Delete any encoded videos',
-      ],
-      irreversible: true,
-      confirmButtonText: 'Delete Job Entry',
-      cancelButtonText: 'Keep Job Entry',
-    };
-
-    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-      data: dialogData,
-      disableClose: false,
-    });
-
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
-      if (result === true) {
-        this.queueApi
-          .deleteJob(job.id)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: () => {
-              this.toastService.success('Job deleted successfully');
-              this.refreshQueue();
-            },
-            error: (err) => {
-              const errorMessage = err?.error?.message || 'Failed to delete job';
-              this.toastService.error(errorMessage);
-            },
-          });
-      }
-    });
+    this.jobActions
+      .deleteJob(job)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refreshQueue());
   }
 
   protected togglePriorityMenu(jobId: string): void {
@@ -742,70 +628,41 @@ export class QueueComponent implements OnInit {
 
   protected setPriority(jobId: string, priority: number, event: Event): void {
     event.stopPropagation();
-    this.openPriorityMenuId = null; // Close menu after selection
-    this.queueApi
-      .updateJobPriority(jobId, priority)
+    this.openPriorityMenuId = null;
+    this.jobActions
+      .setPriority(jobId, priority)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          const priorityNames = ['Normal', 'High', 'Top Priority'];
-          this.toastService.success(`Priority set to ${priorityNames[priority]}`);
-          this.refreshQueue();
-        },
-        error: (err) => {
-          const errorMessage = err?.error?.message || 'Failed to update priority';
-          this.toastService.error(errorMessage);
-        },
-      });
+      .subscribe(() => this.refreshQueue());
   }
 
   protected pauseJob(jobId: string, event: Event): void {
     event.stopPropagation();
-    this.queueApi
+    this.jobActions
       .pauseJob(jobId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.toastService.info('Job paused');
-          this.refreshQueue();
-        },
-        error: () => {
-          this.toastService.error('Failed to pause job');
-        },
-      });
+      .subscribe(() => this.refreshQueue());
   }
 
   protected resumeJob(jobId: string, event: Event): void {
     event.stopPropagation();
-    this.queueApi
+    this.jobActions
       .resumeJob(jobId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.toastService.info('Job resumed');
-          this.refreshQueue();
-        },
-        error: () => {
-          this.toastService.error('Failed to resume job');
-        },
-      });
+      .subscribe(() => this.refreshQueue());
   }
 
   protected captureCurrentFrame(jobId: string, event: Event): void {
     event.stopPropagation();
     this.capturingJobId = jobId;
-
-    this.queueApi
-      .capturePreview(jobId)
+    this.jobActions
+      .captureCurrentFrame(jobId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.toastService.success('Preview captured successfully');
           this.capturingJobId = null;
           this.refreshQueue();
         },
-        error: (err) => {
-          this.toastService.error(err?.error?.message || 'Failed to capture preview');
+        complete: () => {
           this.capturingJobId = null;
         },
       });
@@ -813,95 +670,34 @@ export class QueueComponent implements OnInit {
 
   protected forceStartJob(jobId: string, event: Event): void {
     event.stopPropagation();
-    this.queueApi
+    this.jobActions
       .forceStartJob(jobId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.toastService.success('Job prioritized and will start encoding within seconds');
-          this.refreshQueue();
-        },
-        error: () => {
-          this.toastService.error('Failed to force-start job');
-        },
-      });
+      .subscribe(() => this.refreshQueue());
   }
 
   protected keepOriginal(job: QueueJob, event: Event): void {
     event.stopPropagation();
-    this.queueApi
-      .keepOriginal(job.id)
+    this.jobActions
+      .keepOriginal(job)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.toastService.success(`Will keep original for: ${job.fileName}`);
-          this.refreshQueue();
-        },
-        error: (err) => {
-          const errorMessage = err?.error?.message || 'Failed to keep original';
-          this.toastService.error(errorMessage);
-        },
-      });
+      .subscribe(() => this.refreshQueue());
   }
 
   protected deleteOriginal(job: QueueJob, event: Event): void {
     event.stopPropagation();
-
-    const sizeInMB = job.originalSizeBytes
-      ? (job.originalSizeBytes / (1024 * 1024)).toFixed(2)
-      : '0';
-
-    const dialogData: ConfirmationDialogData = {
-      title: 'Delete Original File?',
-      itemName: job.fileName || 'Original file',
-      itemType: 'video file',
-      willHappen: [`Free up ${sizeInMB} MB of disk space`, 'Remove the source file permanently'],
-      wontHappen: ['Affect the encoded output file', 'Remove the job from history'],
-      irreversible: true,
-      confirmButtonText: 'Delete Original',
-      cancelButtonText: 'Keep File',
-    };
-
-    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-      data: dialogData,
-      disableClose: false,
-    });
-
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
-      if (confirmed === true) {
-        this.queueApi
-          .deleteOriginal(job.id)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (result) => {
-              const freedMB = (Number(result.freedSpace) / (1024 * 1024)).toFixed(2);
-              this.toastService.success(`Freed ${freedMB} MB of disk space`);
-              this.refreshQueue();
-            },
-            error: (err) => {
-              const errorMessage = err?.error?.message || 'Failed to delete original';
-              this.toastService.error(errorMessage);
-            },
-          });
-      }
-    });
+    this.jobActions
+      .deleteOriginal(job)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refreshQueue());
   }
 
   protected restoreOriginal(job: QueueJob, event: Event): void {
     event.stopPropagation();
-    this.queueApi
-      .restoreOriginal(job.id)
+    this.jobActions
+      .restoreOriginal(job)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.toastService.success('Original file restored');
-          this.refreshQueue();
-        },
-        error: (err) => {
-          const errorMessage = err?.error?.message || 'Failed to restore original';
-          this.toastService.error(errorMessage);
-        },
-      });
+      .subscribe(() => this.refreshQueue());
   }
 
   protected openCancelAllDialog(): void {
@@ -913,20 +709,15 @@ export class QueueComponent implements OnInit {
   }
 
   protected confirmCancelAll(): void {
-    this.queueApi
+    this.jobActions
       .cancelAllQueued()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result) => {
-          const count = result.cancelledCount;
-          this.toastService.success(count === 1 ? '1 job cancelled' : `${count} jobs cancelled`);
+        next: () => {
           this.closeCancelAllDialog();
           this.refreshQueue();
         },
-        error: () => {
-          this.toastService.error('Failed to cancel jobs');
-          this.closeCancelAllDialog();
-        },
+        complete: () => this.closeCancelAllDialog(),
       });
   }
 
@@ -939,28 +730,15 @@ export class QueueComponent implements OnInit {
   }
 
   protected confirmSkipCodecMatch(): void {
-    this.queueApi
+    this.jobActions
       .skipAllCodecMatch()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result) => {
-          const count = result.skippedCount;
-          if (count === 0) {
-            this.toastService.info('No codec-match jobs found to skip');
-          } else {
-            this.toastService.success(
-              count === 1
-                ? '1 job marked as completed (codec already matches)'
-                : `${count} jobs marked as completed (codec already matches)`
-            );
-          }
+        next: () => {
           this.closeSkipCodecMatchDialog();
           this.refreshQueue();
         },
-        error: () => {
-          this.toastService.error('Failed to skip codec-match jobs');
-          this.closeSkipCodecMatchDialog();
-        },
+        complete: () => this.closeSkipCodecMatchDialog(),
       });
   }
 
@@ -973,26 +751,15 @@ export class QueueComponent implements OnInit {
   }
 
   protected confirmForceEncodeCodecMatch(): void {
-    this.queueApi
+    this.jobActions
       .forceEncodeAllCodecMatch()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result) => {
-          const count = result.queuedCount;
-          if (count === 0) {
-            this.toastService.info('No codec-match jobs found to re-encode');
-          } else {
-            this.toastService.success(
-              count === 1 ? '1 job queued for re-encoding' : `${count} jobs queued for re-encoding`
-            );
-          }
+        next: () => {
           this.closeForceEncodeCodecMatchDialog();
           this.refreshQueue();
         },
-        error: () => {
-          this.toastService.error('Failed to queue codec-match jobs for re-encoding');
-          this.closeForceEncodeCodecMatchDialog();
-        },
+        complete: () => this.closeForceEncodeCodecMatchDialog(),
       });
   }
 
@@ -1005,22 +772,15 @@ export class QueueComponent implements OnInit {
   }
 
   protected confirmRetryAll(): void {
-    this.queueApi
+    this.jobActions
       .retryAllCancelled()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result) => {
-          const count = result.retriedCount;
-          this.toastService.success(
-            count === 1 ? '1 job moved back to queue' : `${count} jobs moved back to queue`
-          );
+        next: () => {
           this.closeRetryAllDialog();
           this.refreshQueue();
         },
-        error: () => {
-          this.toastService.error('Failed to retry jobs');
-          this.closeRetryAllDialog();
-        },
+        complete: () => this.closeRetryAllDialog(),
       });
   }
 
@@ -1035,24 +795,15 @@ export class QueueComponent implements OnInit {
   }
 
   protected confirmRetryFailed(): void {
-    this.queueApi
+    this.jobActions
       .retryAllFailed(this.retryFailedSelectedError || undefined)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result) => {
-          const count = result.retriedCount;
-          this.toastService.success(
-            count === 1
-              ? '1 failed job moved back to queue'
-              : `${count} failed jobs moved back to queue`
-          );
+        next: () => {
           this.closeRetryFailedDialog();
           this.refreshQueue();
         },
-        error: () => {
-          this.toastService.error('Failed to retry failed jobs');
-          this.closeRetryFailedDialog();
-        },
+        complete: () => this.closeRetryFailedDialog(),
       });
   }
 
@@ -1067,45 +818,23 @@ export class QueueComponent implements OnInit {
   }
 
   protected confirmClearJobs(): void {
-    this.queueApi
+    this.jobActions
       .clearJobs(this.clearJobsStages.length > 0 ? this.clearJobsStages : undefined)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result) => {
-          const count = result.deleted;
-          this.toastService.success(count === 1 ? '1 job deleted' : `${count} jobs deleted`);
+        next: () => {
           this.closeClearJobsDialog();
           this.refreshQueue();
         },
-        error: () => {
-          this.toastService.error('Failed to clear jobs');
-          this.closeClearJobsDialog();
-        },
+        complete: () => this.closeClearJobsDialog(),
       });
   }
 
   protected rebalanceJobs(): void {
-    this.queueApi
+    this.jobActions
       .rebalanceJobs()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => {
-          const count = result.jobsRebalanced;
-          if (count > 0) {
-            this.toastService.success(
-              count === 1
-                ? '1 job redistributed across nodes'
-                : `${count} jobs redistributed across nodes`
-            );
-          } else {
-            this.toastService.info('No rebalancing needed - jobs are already well distributed');
-          }
-          this.refreshQueue();
-        },
-        error: () => {
-          this.toastService.error('Failed to rebalance jobs');
-        },
-      });
+      .subscribe(() => this.refreshQueue());
   }
 
   protected openAddFilesModal(): void {
@@ -1141,26 +870,18 @@ export class QueueComponent implements OnInit {
 
     // Fetch history if not cached
     if (!this.jobHistoryCache.has(job.id)) {
-      this.queueApi
-        .getJobHistory(job.id)
+      this.jobActions
+        .loadJobHistory(job.id)
         .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: (history) => {
-            this.maintainCacheSize();
-            this.jobHistoryCache.set(job.id, history);
-            this.jobHistoryModalData = {
-              fileName: job.fileName,
-              jobId: job.id,
-              history: history,
-            };
-            this.showJobHistoryModal = true;
-          },
-          error: (error) => {
-            this.errorLogger.error(`Failed to fetch job history for ${job.id}`, error);
-            this.toastService.error('Failed to load job history');
-            this.maintainCacheSize();
-            this.jobHistoryCache.set(job.id, []);
-          },
+        .subscribe((history) => {
+          this.maintainCacheSize();
+          this.jobHistoryCache.set(job.id, history);
+          this.jobHistoryModalData = {
+            fileName: job.fileName,
+            jobId: job.id,
+            history,
+          };
+          this.showJobHistoryModal = true;
         });
     } else {
       // Use cached history
@@ -1330,46 +1051,15 @@ export class QueueComponent implements OnInit {
     }
   }
 
-  /**
-   * Handle action selection from decision issue card
-   * DEEP AUDIT P2: Added defaultValue to firstValueFrom to handle empty observables
-   */
   protected async onDecisionActionSelected(event: {
     issue: HealthCheckIssue;
     action: HealthCheckSuggestedAction;
   }): Promise<void> {
-    // Find the job ID from the currently expanded job
     const jobId = this.expandedJobId;
-    if (!jobId) {
-      this.toastService.error('No job selected');
-      return;
-    }
+    if (!jobId) return;
 
-    // Show loading toast
-    this.toastService.info(`Applying fix: ${event.action.label}...`);
-
-    try {
-      // DEEP AUDIT P2: Add defaultValue to handle empty observable case
-      const result = await firstValueFrom(
-        this.queueApi.resolveDecision(jobId, event.action.config || {}),
-        { defaultValue: null }
-      );
-
-      if (result === null) {
-        this.toastService.error('No response from server');
-        return;
-      }
-
-      // Show success message
-      this.toastService.success(`${event.action.label} applied successfully. Job moved to queue.`);
-
-      // Refresh the queue to show updated job status
-      this.refreshQueue();
-    } catch (error: unknown) {
-      this.errorLogger.error('Failed to resolve decision', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.toastService.error(`Failed to apply fix: ${errorMessage}`);
-    }
+    await this.jobActions.resolveDecision(jobId, event);
+    this.refreshQueue();
   }
 
   protected formatBytes(bytes: number): string {
@@ -2105,27 +1795,13 @@ export class QueueComponent implements OnInit {
     this.goToPage(this.currentPage - 1);
   }
 
-  /**
-   * Open delegation dialog to assign job to specific node
-   */
   protected openDelegationDialog(job: QueueJobBo, event: Event): void {
     event.stopPropagation();
-
-    const dialogData: JobDelegationDialogData = {
-      job: job,
-    };
-
-    const dialogRef = this.dialog.open(JobDelegationDialogComponent, {
-      data: dialogData,
-      disableClose: false,
-      width: '600px',
-    });
-
-    dialogRef.closed.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
-      if (result === true) {
-        this.toastService.success('Job delegated successfully');
-        this.refreshQueue();
-      }
-    });
+    this.jobActions
+      .openDelegationDialog(job)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((delegated) => {
+        if (delegated) this.refreshQueue();
+      });
   }
 }

@@ -29,6 +29,7 @@ import { FileTransferService } from './services/file-transfer.service';
 import { HealthCheckCodecAnalyzerService } from './services/health-check-codec-analyzer.service';
 import { JobBulkOperationsService } from './services/job-bulk-operations.service';
 import { JobCleanupService } from './services/job-cleanup.service';
+import { JobCreationValidatorService } from './services/job-creation-validator.service';
 import { JobFileOperationsService } from './services/job-file-operations.service';
 import { JobHistoryService } from './services/job-history.service';
 import { JobMetricsService } from './services/job-metrics.service';
@@ -71,6 +72,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
   providers: [
     QueueService,
     FileFailureTrackingService,
+    JobCreationValidatorService,
     QueueJobCrudService,
     QueueJobStatsService,
     QueueJobStateService,

@@ -9,11 +9,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../common/repositories/job.repository';
 import { NodeRepository } from '../../common/repositories/node.repository';
-import { ContentFingerprintService } from '../../core/services/content-fingerprint.service';
 import { NodeConfigService } from '../../core/services/node-config.service';
-import { PreflightService } from '../../encoding/services/preflight.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { FileFailureTrackingService } from './file-failure-tracking.service';
+import { JobCreationValidatorService } from './job-creation-validator.service';
 import { QueueJobCrudService } from './queue-job-crud.service';
 import { QueueJobStatsService } from './queue-job-stats.service';
 
@@ -23,8 +21,7 @@ describe('QueueJobCrudService', () => {
   let mockNodeRepository: jest.Mocked<NodeRepository>;
   let mockNodeConfig: jest.Mocked<NodeConfigService>;
   let mockPrisma: jest.Mocked<PrismaService>;
-  let mockContentFingerprint: jest.Mocked<ContentFingerprintService>;
-  let mockFileFailureTracking: jest.Mocked<FileFailureTrackingService>;
+  let mockCreationValidator: jest.Mocked<JobCreationValidatorService>;
   let mockHttpService: { post: jest.Mock; patch: jest.Mock; get: jest.Mock };
 
   beforeEach(async () => {
@@ -59,16 +56,11 @@ describe('QueueJobCrudService', () => {
     mockPrisma = {
       library: { findUnique: jest.fn() },
       policy: { findUnique: jest.fn() },
-      processedFileRecord: { findUnique: jest.fn() },
       job: { findFirst: jest.fn().mockResolvedValue(null) },
     } as any;
 
-    mockContentFingerprint = {
-      computeFingerprint: jest.fn().mockResolvedValue(null),
-    } as any;
-
-    mockFileFailureTracking = {
-      isBlacklisted: jest.fn().mockResolvedValue(false),
+    mockCreationValidator = {
+      validate: jest.fn().mockResolvedValue({ fingerprint: null }),
     } as any;
 
     mockHttpService = {
@@ -85,22 +77,8 @@ describe('QueueJobCrudService', () => {
         { provide: NodeRepository, useValue: mockNodeRepository },
         { provide: NodeConfigService, useValue: mockNodeConfig },
         { provide: PrismaService, useValue: mockPrisma },
-        {
-          provide: ContentFingerprintService,
-          useValue: mockContentFingerprint,
-        },
-        {
-          provide: FileFailureTrackingService,
-          useValue: mockFileFailureTracking,
-        },
+        { provide: JobCreationValidatorService, useValue: mockCreationValidator },
         { provide: HttpService, useValue: mockHttpService },
-        {
-          provide: PreflightService,
-          useValue: {
-            runPreflight: jest.fn().mockResolvedValue({ ok: true }),
-            checkDiskSpace: jest.fn().mockResolvedValue(undefined),
-          },
-        },
       ],
     }).compile();
 
@@ -478,11 +456,11 @@ describe('QueueJobCrudService', () => {
         id: 'policy-1',
       } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
-      mockContentFingerprint.computeFingerprint.mockResolvedValue('fp-abc123');
-      (mockPrisma.processedFileRecord.findUnique as jest.Mock).mockResolvedValue({
-        filePath: '/old/movie.mkv',
-        contentFingerprint: 'fp-abc123',
-      } as any);
+      mockCreationValidator.validate.mockRejectedValue(
+        new BadRequestException(
+          'File content already encoded (previously processed as "/old/movie.mkv"). Skipping duplicate.'
+        )
+      );
 
       const dtoWithTmpPath = { ...baseDto, filePath: '/tmp/movie.mkv' };
       await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow(BadRequestException);
@@ -499,9 +477,11 @@ describe('QueueJobCrudService', () => {
         id: 'policy-1',
       } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
-      mockContentFingerprint.computeFingerprint.mockResolvedValue('fp-blacklisted');
-      (mockPrisma.processedFileRecord.findUnique as jest.Mock).mockResolvedValue(null);
-      mockFileFailureTracking.isBlacklisted.mockResolvedValue(true);
+      mockCreationValidator.validate.mockRejectedValue(
+        new BadRequestException(
+          'File content is auto-blacklisted due to repeated failures across jobs.'
+        )
+      );
 
       const dtoWithTmpPath = { ...baseDto, filePath: '/tmp/movie.mkv' };
       await expect(service.create(dtoWithTmpPath as any)).rejects.toThrow(BadRequestException);
@@ -517,9 +497,9 @@ describe('QueueJobCrudService', () => {
       (mockPrisma.policy.findUnique as jest.Mock).mockResolvedValue({
         id: 'policy-1',
       } as any);
-      // First call: active job check returns null, second call: old jobs returns []
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
-      mockContentFingerprint.computeFingerprint.mockRejectedValue(new Error('IO error'));
+      // validator still resolves (fingerprint failure is non-critical, handled inside validator)
+      mockCreationValidator.validate.mockResolvedValue({ fingerprint: null });
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       const createdJob = { id: 'new-job', fileLabel: 'movie.mkv' };
       mockJobRepository.createJob.mockResolvedValue(createdJob as any);
@@ -540,7 +520,7 @@ describe('QueueJobCrudService', () => {
         id: 'policy-1',
       } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
-      mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
+      mockCreationValidator.validate.mockResolvedValue({ fingerprint: null });
       mockJobRepository.findManyWithInclude.mockResolvedValue([
         { id: 'old-1', stage: JobStage.FAILED },
         { id: 'old-2', stage: JobStage.CANCELLED },
@@ -573,7 +553,7 @@ describe('QueueJobCrudService', () => {
           id: 'race-job',
           stage: JobStage.QUEUED,
         } as any); // conflict lookup
-      mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
+      mockCreationValidator.validate.mockResolvedValue({ fingerprint: null });
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       const prismaError = {
         code: 'P2002',
@@ -596,7 +576,7 @@ describe('QueueJobCrudService', () => {
         id: 'policy-1',
       } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
-      mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
+      mockCreationValidator.validate.mockResolvedValue({ fingerprint: null });
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       mockJobRepository.createJob.mockRejectedValue(new Error('DB connection lost'));
 
@@ -1206,7 +1186,7 @@ describe('QueueJobCrudService', () => {
       mockJobRepository.findFirstWhere
         .mockResolvedValueOnce(null) // active job check
         .mockResolvedValueOnce(null); // conflict lookup returns null
-      mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
+      mockCreationValidator.validate.mockResolvedValue({ fingerprint: null });
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       const prismaError = {
         code: 'P2002',
@@ -1229,7 +1209,7 @@ describe('QueueJobCrudService', () => {
         id: 'policy-1',
       } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
-      mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
+      mockCreationValidator.validate.mockResolvedValue({ fingerprint: null });
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       const createdJob = { id: 'new-job', type: 'ENCODE' };
       mockJobRepository.createJob.mockResolvedValue(createdJob as any);
@@ -1255,7 +1235,7 @@ describe('QueueJobCrudService', () => {
         id: 'policy-1',
       } as any);
       mockJobRepository.findFirstWhere.mockResolvedValue(null);
-      mockContentFingerprint.computeFingerprint.mockResolvedValue(null);
+      mockCreationValidator.validate.mockResolvedValue({ fingerprint: null });
       mockJobRepository.findManyWithInclude.mockResolvedValue([]);
       const createdJob = { id: 'new-job' };
       mockJobRepository.createJob.mockResolvedValue(createdJob as any);

@@ -32,7 +32,7 @@ describe('QualityGateService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-    process.env.VMAF_THRESHOLD = undefined;
+    delete process.env.VMAF_THRESHOLD;
   });
 
   // ---------------------------------------------------------------------------

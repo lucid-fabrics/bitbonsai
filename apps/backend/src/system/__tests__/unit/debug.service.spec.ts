@@ -106,7 +106,7 @@ describe('DebugService (__tests__/unit)', () => {
 
       const result = await service.getSystemLoad();
       expect(result.loadThresholdMultiplier).toBe(4.0);
-      process.env.LOAD_THRESHOLD_MULTIPLIER = undefined;
+      delete process.env.LOAD_THRESHOLD_MULTIPLIER;
     });
 
     it('handles node fetch error gracefully', async () => {

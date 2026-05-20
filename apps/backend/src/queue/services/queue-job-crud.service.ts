@@ -12,14 +12,12 @@ import { type Job, JobStage, Prisma } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import { JobRepository } from '../../common/repositories/job.repository';
 import { NodeRepository } from '../../common/repositories/node.repository';
-import { ContentFingerprintService } from '../../core/services/content-fingerprint.service';
 import { NodeConfigService } from '../../core/services/node-config.service';
-import { PreflightService } from '../../encoding/services/preflight.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CreateJobDto } from '../dto/create-job.dto';
 import type { JobStatsDto } from '../dto/job-stats.dto';
 import type { UpdateJobDto } from '../dto/update-job.dto';
-import { FileFailureTrackingService } from './file-failure-tracking.service';
+import { JobCreationValidatorService } from './job-creation-validator.service';
 import { QueueJobStatsService } from './queue-job-stats.service';
 
 /**
@@ -37,10 +35,8 @@ export class QueueJobCrudService {
     private nodeRepository: NodeRepository,
     private nodeConfig: NodeConfigService,
     private httpService: HttpService,
-    private contentFingerprint: ContentFingerprintService,
-    private fileFailureTracking: FileFailureTrackingService,
-    private jobStats: QueueJobStatsService,
-    private preflight: PreflightService
+    private creationValidator: JobCreationValidatorService,
+    private jobStats: QueueJobStatsService
   ) {}
 
   /**
@@ -276,18 +272,6 @@ export class QueueJobCrudService {
       );
     }
 
-    // Pre-flight: validate file integrity before queuing
-    const preflightResult = await this.preflight.runPreflight(createJobDto.filePath);
-    if (!preflightResult.ok) {
-      this.logger.warn(`Pre-flight failed for ${createJobDto.filePath}: ${preflightResult.reason}`);
-      await this.fileFailureTracking.recordFailure(
-        createJobDto.filePath,
-        createJobDto.libraryId,
-        preflightResult.reason
-      );
-      throw new BadRequestException(`File failed pre-flight validation: ${preflightResult.reason}`);
-    }
-
     const existingActiveJob = await this.jobRepository.findFirstWhere({
       filePath: createJobDto.filePath,
       stage: {
@@ -311,53 +295,7 @@ export class QueueJobCrudService {
       );
     }
 
-    // Compute content fingerprint and check for already-processed files
-    let fingerprint: string | null = null;
-    try {
-      fingerprint = await this.contentFingerprint.computeFingerprint(createJobDto.filePath);
-
-      if (fingerprint) {
-        // Check if this content was already processed (handles renamed/moved files)
-        const alreadyProcessed = await this.prisma.processedFileRecord.findUnique({
-          where: { contentFingerprint: fingerprint },
-        });
-
-        if (alreadyProcessed) {
-          this.logger.log(
-            `Skipping already-processed file (fingerprint match): ${createJobDto.fileLabel} ` +
-              `(previously completed as ${alreadyProcessed.filePath})`
-          );
-          throw new BadRequestException(
-            `File content already encoded (previously processed as "${alreadyProcessed.filePath}"). Skipping duplicate.`
-          );
-        }
-
-        // Check if fingerprint is blacklisted in failure tracking
-        const isBlacklistedByHash = await this.fileFailureTracking.isBlacklisted(
-          createJobDto.filePath,
-          createJobDto.libraryId,
-          fingerprint
-        );
-
-        if (isBlacklistedByHash) {
-          this.logger.debug(
-            `Skipping auto-blacklisted file (fingerprint match): ${createJobDto.fileLabel}`
-          );
-          throw new BadRequestException(
-            'File content is auto-blacklisted due to repeated failures across jobs.'
-          );
-        }
-      }
-    } catch (error: unknown) {
-      // Re-throw BadRequestExceptions (our intentional blocks)
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      // Non-critical: fingerprinting failure shouldn't block job creation
-      this.logger.warn(
-        `Fingerprint computation failed for ${createJobDto.filePath}: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    const { fingerprint } = await this.creationValidator.validate(createJobDto);
 
     const oldJobs = await this.jobRepository.findManyWithInclude<Job>({
       where: {

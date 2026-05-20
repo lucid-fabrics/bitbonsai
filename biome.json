@@ -81,7 +81,7 @@
       },
       "performance": {
         "noAccumulatingSpread": "warn",
-        "noDelete": "warn"
+        "noDelete": "off"
       },
       "nursery": {
         "useSortedClasses": "off"
@@ -121,6 +121,16 @@
           },
           "suspicious": {
             "noExplicitAny": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.bo.ts"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noStaticOnlyClass": "off"
           }
         }
       }

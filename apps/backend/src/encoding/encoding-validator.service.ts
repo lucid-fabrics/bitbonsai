@@ -3,7 +3,6 @@ import type { Library, Policy } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
 import { LibraryRepository } from '../common/repositories/library.repository';
 import { PolicyRepository } from '../common/repositories/policy.repository';
-import { SettingsRepository } from '../common/repositories/settings.repository';
 import { QueueService } from '../queue/queue.service';
 import { CompletionOutboxService } from '../queue/services/completion-outbox.service';
 import { EncodingFileService, type JobResult, type JobWithPolicy } from './encoding-file.service';
@@ -28,8 +27,7 @@ export class EncodingValidatorService {
     private readonly codecFallbackService: CodecFallbackService,
     private readonly completionOutbox: CompletionOutboxService,
     private readonly encodingFileService: EncodingFileService,
-    private readonly jobRetryStrategyService: JobRetryStrategyService,
-    private readonly settingsRepository: SettingsRepository
+    private readonly jobRetryStrategyService: JobRetryStrategyService
   ) {}
 
   /**
@@ -72,9 +70,7 @@ export class EncodingValidatorService {
       // Update library statistics
       await this.encodingFileService.updateLibraryStats(job.libraryId, result.savedBytes);
 
-      this.logger.log(
-        `Job ${job.id} saved ${this.formatBytes(Number(result.savedBytes))} (${result.savedPercent.toFixed(2)}%)`
-      );
+      this.logger.log(`Job ${job.id} saved ${result.savedPercent.toFixed(2)}%`);
     } catch (error: unknown) {
       this.logger.error(`Error completing job ${job.id}:`, error);
       throw error;
@@ -185,50 +181,5 @@ export class EncodingValidatorService {
     );
 
     return updatedJob as JobWithPolicy;
-  }
-
-  /**
-   * Get VMAF threshold from system settings
-   *
-   * @returns VMAF threshold (default: 85)
-   */
-  async getVmafThreshold(): Promise<number> {
-    try {
-      const settings = await this.settingsRepository.findFirst();
-      return settings?.vmafThreshold ?? 85;
-    } catch {
-      return 85; // Default threshold
-    }
-  }
-
-  /**
-   * Check if quality metrics (VMAF) is enabled in system settings
-   *
-   * @returns Whether quality metrics are enabled (default: true)
-   */
-  async isQualityMetricsEnabled(): Promise<boolean> {
-    try {
-      const settings = await this.settingsRepository.findFirst();
-      return settings?.qualityMetricsEnabled ?? true;
-    } catch {
-      return true; // Default enabled
-    }
-  }
-
-  /**
-   * Format bytes to human-readable string
-   *
-   * @param bytes - Bytes to format
-   * @returns Formatted string (e.g., "1.5 GB")
-   * @private
-   */
-  private formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   }
 }
