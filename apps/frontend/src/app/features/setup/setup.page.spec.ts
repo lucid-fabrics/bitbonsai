@@ -4,7 +4,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Router } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
-import { of, throwError } from 'rxjs';
+import { throwError } from 'rxjs';
 import { SetupService } from '../../core/services/setup.service';
 import { CloudAccountService } from '../settings/services/cloud-account.service';
 import { SetupComponent } from './setup.page';

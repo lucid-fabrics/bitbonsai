@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-// LicenseTier / LicenseStatus / License types removed from Prisma schema — use local strings
-import { randomBytes } from 'crypto';
 import { LicenseRepository } from '../common/repositories/license.repository';
 import type { CreateLicenseDto } from './dto/create-license.dto';
 
@@ -14,7 +12,7 @@ import type { CreateLicenseDto } from './dto/create-license.dto';
  */
 @Injectable()
 export class LicenseService {
-  constructor(private readonly licenseRepository: LicenseRepository) {}
+  constructor(readonly _licenseRepository: LicenseRepository) {}
 
   /**
    * Validate a license key
@@ -60,11 +58,5 @@ export class LicenseService {
    */
   async checkCanAddNode(_licenseId: string): Promise<boolean> {
     return true; // Guard is handled via LicenseGuardService + Settings
-  }
-
-  private generateLicenseKey(tier: string): string {
-    const prefix = tier.substring(0, 3).toUpperCase();
-    const random = randomBytes(8).toString('hex').substring(0, 10);
-    return `${prefix}-${random}`;
   }
 }

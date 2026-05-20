@@ -131,7 +131,7 @@ describe('CodecFallbackService', () => {
 
     it('logs the fallback codec after update', async () => {
       mockPrisma.job.update.mockResolvedValueOnce({ gpuAttempts: 2 });
-      const logSpy = jest.spyOn(service['logger'], 'log').mockImplementation(() => undefined);
+      const logSpy = jest.spyOn(service.logger, 'log').mockImplementation(() => undefined);
 
       await service.applyFallback('job-1', 'hevc_nvenc');
 

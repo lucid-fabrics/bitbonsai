@@ -19,7 +19,11 @@ import { EncodingPreviewService } from './encoding-preview.service';
 import { EncodingProcessorService } from './encoding-processor.service';
 import { EncodingSchedulerService } from './encoding-scheduler.service';
 import { EncodingStartupService } from './encoding-startup.service';
+import { EncodingValidatorService } from './encoding-validator.service';
 import { EncodingWatchdogService } from './encoding-watchdog.service';
+import { FfmpegHealthMonitor } from './ffmpeg/ffmpeg-health-monitor.service';
+import { FfmpegProcessManager } from './ffmpeg/ffmpeg-process-manager.service';
+import { FfmpegProgressTracker } from './ffmpeg/ffmpeg-progress-tracker.service';
 import { FfmpegService } from './ffmpeg.service';
 import { FfmpegFileVerificationService } from './ffmpeg-file-verification.service';
 import { FfmpegFlagBuilderService } from './ffmpeg-flag-builder.service';
@@ -74,6 +78,7 @@ import { WorkerPoolService } from './worker-pool.service';
     EncodingFileReplacementService,
     EncodingOutputVerificationService,
     EncodingProcessorService,
+    EncodingValidatorService,
     EncodingStartupService,
     EncodingWatchdogService,
     FfmpegFlagBuilderService,
@@ -81,6 +86,9 @@ import { WorkerPoolService } from './worker-pool.service';
     FfprobeService,
     FfmpegProcessCleanupService,
     FfmpegFileVerificationService,
+    FfmpegProcessManager,
+    FfmpegProgressTracker,
+    FfmpegHealthMonitor,
     FfmpegService,
     HardwareAccelerationService,
     DiskSpaceGuardService,

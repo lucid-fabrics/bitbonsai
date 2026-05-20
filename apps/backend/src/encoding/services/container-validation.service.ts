@@ -173,7 +173,7 @@ export class ContainerValidationService {
         }
 
         const duration = fmt.duration ? parseFloat(fmt.duration) : undefined;
-        if (duration !== undefined && (isNaN(duration) || duration <= 0)) {
+        if (duration !== undefined && (Number.isNaN(duration) || duration <= 0)) {
           resolve({ valid: false, reason: `Invalid duration: ${fmt.duration}` });
           return;
         }

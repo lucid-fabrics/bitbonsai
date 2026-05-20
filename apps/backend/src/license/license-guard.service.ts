@@ -1,5 +1,5 @@
 import type { LicenseFeatures } from '@bitbonsai/prisma-types';
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { CloudAuthService } from '../cloud-auth/cloud-auth.service';
 import { JobRepository } from '../common/repositories/job.repository';
 import { NodeRepository } from '../common/repositories/node.repository';
@@ -46,8 +46,6 @@ function defaultFeatures(tier: string): LicenseFeatures {
  */
 @Injectable()
 export class LicenseGuardService {
-  private readonly logger = new Logger(LicenseGuardService.name);
-
   constructor(
     private readonly cloudAuth: CloudAuthService,
     private readonly nodeRepository: NodeRepository,

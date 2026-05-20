@@ -22,7 +22,7 @@ describe('NodesService', () => {
   let mockNodeRepo: Record<string, jest.Mock>;
   let mockLicenseRepo: Record<string, jest.Mock>;
 
-  const mockLicense = {
+  const _mockLicense = {
     id: 'license-1',
     key: 'BB-XXXX-XXXX-XXXX-XXXX',
     tier: 'PRO',

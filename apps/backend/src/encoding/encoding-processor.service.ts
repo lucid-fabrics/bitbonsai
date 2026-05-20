@@ -1,28 +1,20 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import type { Library, Policy } from '@prisma/client';
 import { JobStage } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
-import { LibraryRepository } from '../common/repositories/library.repository';
-import { PolicyRepository } from '../common/repositories/policy.repository';
-import { SettingsRepository } from '../common/repositories/settings.repository';
 import { DataAccessService } from '../core/services/data-access.service';
 import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { LibrariesService } from '../libraries/libraries.service';
 import { NodesService } from '../nodes/nodes.service';
 import { QueueService } from '../queue/queue.service';
-import { CompletionOutboxService } from '../queue/services/completion-outbox.service';
 import { OwnershipLeaseService } from '../queue/services/ownership-lease.service';
 import { EncodingFileService, type JobResult, type JobWithPolicy } from './encoding-file.service';
 import { EncodingStartupService } from './encoding-startup.service';
+import { EncodingValidatorService } from './encoding-validator.service';
 import { EncodingWatchdogService } from './encoding-watchdog.service';
 import { FfmpegService } from './ffmpeg.service';
-import { JobRetryStrategyService } from './job-retry-strategy.service';
 import { PoolLockService } from './pool-lock.service';
-import { QualityMetricsService } from './quality-metrics.service';
-import { CodecFallbackService } from './services/codec-fallback.service';
-import { QualityGateService } from './services/quality-gate.service';
 import { SystemResourceService } from './system-resource.service';
 import { WorkerPoolService } from './worker-pool.service';
 
@@ -56,8 +48,6 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   private readonly AUTO_HEAL_STABILIZATION_DELAY_MS = 3000; // 3 seconds
   constructor(
     private readonly jobRepository: JobRepository,
-    private readonly libraryRepository: LibraryRepository,
-    private readonly policyRepository: PolicyRepository,
     private readonly queueService: QueueService,
     readonly _dataAccessService: DataAccessService,
     private readonly ffmpegService: FfmpegService,
@@ -68,15 +58,10 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly systemResourceService: SystemResourceService,
     private readonly encodingFileService: EncodingFileService,
     private readonly workerPoolService: WorkerPoolService,
-    private readonly jobRetryStrategyService: JobRetryStrategyService,
     private readonly encodingStartupService: EncodingStartupService,
     private readonly encodingWatchdogService: EncodingWatchdogService,
-    private readonly qualityMetricsService: QualityMetricsService,
-    private readonly qualityGateService: QualityGateService,
-    private readonly codecFallbackService: CodecFallbackService,
-    private readonly completionOutbox: CompletionOutboxService,
-    private readonly ownershipLease: OwnershipLeaseService,
-    private readonly settingsRepository: SettingsRepository
+    private readonly encodingValidator: EncodingValidatorService,
+    private readonly ownershipLease: OwnershipLeaseService
   ) {}
 
   /**
@@ -403,158 +388,24 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Handle job completion
-   *
-   * Updates job statistics, metrics, and library totals.
-   *
-   * @param job - Completed job
-   * @param result - Job result with file sizes
+   * Handle job completion — delegates to EncodingValidatorService.
    */
   async handleJobCompletion(job: JobWithPolicy, result: JobResult): Promise<void> {
-    this.logger.log(`Job ${job.id} completed successfully`);
-
-    try {
-      // GPU→CPU FALLBACK: clear any codec override now that encoding succeeded
-      if (job.codecOverride) {
-        await this.codecFallbackService.clearFallback(job.id);
-      }
-
-      // OUTBOX: Persist completion data before the final DB update so a crash
-      // between ffmpeg success and job.update(COMPLETED) can be replayed on restart.
-      await this.completionOutbox.writeOutbox(job.id, {
-        outputPath: job.filePath,
-        outputSizeBytes: Number(result.afterSizeBytes),
-        savedBytes: Number(result.savedBytes),
-        savedPercent: result.savedPercent,
-        codec: job.codecOverride ?? job.targetCodec,
-      });
-
-      // Update job to completed status
-      await this.queueService.completeJob(job.id, {
-        afterSizeBytes: result.afterSizeBytes.toString(),
-        savedBytes: result.savedBytes.toString(),
-        savedPercent: result.savedPercent,
-      });
-
-      // OUTBOX: Clear the entry now that the DB update succeeded.
-      await this.completionOutbox.clearOutbox(job.id);
-
-      // Update library statistics
-      await this.encodingFileService.updateLibraryStats(job.libraryId, result.savedBytes);
-
-      this.logger.log(
-        `Job ${job.id} saved ${this.formatBytes(Number(result.savedBytes))} (${result.savedPercent.toFixed(2)}%)`
-      );
-    } catch (error: unknown) {
-      this.logger.error(`Error completing job ${job.id}:`, error);
-      throw error;
-    }
+    return this.encodingValidator.handleJobCompletion(job, result);
   }
 
   /**
-   * Handle job failure — delegates retry logic to JobRetryStrategyService.
-   *
-   * @param job - Failed job
-   * @param error - Error that caused failure
+   * Handle job failure — delegates to EncodingValidatorService.
    */
   async handleJobFailure(job: JobWithPolicy, error: unknown): Promise<void> {
-    return this.jobRetryStrategyService.handleJobFailure(job, error);
+    return this.encodingValidator.handleJobFailure(job, error);
   }
 
   /**
-   * SELF-HEALING: Validate and heal job's policy assignment
-   *
-   * Handles cases where:
-   * - Policy was deleted after job was queued
-   * - targetCodec doesn't match policy's targetCodec (orphaned setting)
-   *
-   * Resolution priority:
-   * 1. Library's default policy
-   * 2. Any policy assigned to the library
-   * 3. First available policy in the system
-   *
-   * UX Philosophy: Auto-heal silently - user shouldn't need to know or intervene
-   *
-   * @param job - Job to validate and potentially heal
-   * @returns Updated job with valid policy, or original if no changes needed
+   * Validate and heal job's policy assignment — delegates to EncodingValidatorService.
    */
   private async validateAndHealJobPolicy(job: JobWithPolicy): Promise<JobWithPolicy> {
-    // Fetch current policy from database
-    const currentPolicy = job.policyId ? await this.policyRepository.findById(job.policyId) : null;
-
-    // Case 1: Policy exists and codec matches - no healing needed
-    if (currentPolicy && job.targetCodec === currentPolicy.targetCodec) {
-      return job;
-    }
-
-    // Case 2: Policy exists but codec mismatches - update job's codec
-    if (currentPolicy && job.targetCodec !== currentPolicy.targetCodec) {
-      this.logger.warn(
-        `[${job.id}] POLICY HEAL: targetCodec mismatch (job: ${job.targetCodec}, policy: ${currentPolicy.targetCodec}) - updating job`
-      );
-
-      const updatedJob = await this.jobRepository.updateByIdWithInclude<JobWithPolicy>(
-        job.id,
-        { targetCodec: currentPolicy.targetCodec },
-        { policy: true }
-      );
-
-      return updatedJob;
-    }
-
-    // Case 3: Policy is missing - need to find alternative
-    this.logger.warn(
-      `[${job.id}] POLICY HEAL: Policy ${job.policyId} not found - finding alternative`
-    );
-
-    // Get library for this job to find appropriate policy
-    const library = (await this.libraryRepository.findUniqueWithInclude(
-      { id: job.libraryId },
-      { defaultPolicy: true, policies: true }
-    )) as (Library & { defaultPolicy: Policy | null; policies: Policy[] }) | null;
-
-    // Find replacement policy in priority order
-    let newPolicy = null;
-
-    // Priority 1: Library's default policy
-    if (library?.defaultPolicy) {
-      newPolicy = library.defaultPolicy;
-      this.logger.log(`[${job.id}] POLICY HEAL: Using library default policy: ${newPolicy.name}`);
-    }
-    // Priority 2: Any policy assigned to this library
-    else if (library?.policies && library.policies.length > 0) {
-      newPolicy = library.policies[0];
-      this.logger.log(`[${job.id}] POLICY HEAL: Using library's first policy: ${newPolicy.name}`);
-    }
-    // Priority 3: First available policy in system
-    else {
-      const allPolicies = await this.policyRepository.findAll();
-      newPolicy = allPolicies[0] ?? null;
-      if (newPolicy) {
-        this.logger.log(`[${job.id}] POLICY HEAL: Using system's first policy: ${newPolicy.name}`);
-      }
-    }
-
-    // If no policy found anywhere, this is a critical configuration issue
-    if (!newPolicy) {
-      throw new Error(
-        `No policies available to assign to job ${job.id}. ` +
-          `Please create at least one encoding policy.`
-      );
-    }
-
-    // Update job with new policy and matching targetCodec
-    const updatedJob = await this.jobRepository.updateByIdWithInclude<JobWithPolicy>(
-      job.id,
-      { policyId: newPolicy.id, targetCodec: newPolicy.targetCodec },
-      { policy: true }
-    );
-
-    this.logger.log(
-      `[${job.id}] POLICY HEAL: Job updated - policy: ${newPolicy.name}, codec: ${newPolicy.targetCodec}`
-    );
-
-    return updatedJob as JobWithPolicy;
+    return this.encodingValidator.validateAndHealJobPolicy(job);
   }
 
   /**
@@ -637,52 +488,5 @@ export class EncodingProcessorService implements OnModuleInit, OnModuleDestroy {
    */
   private async sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Format bytes to human-readable string
-   *
-   * @param bytes - Bytes to format
-   * @returns Formatted string (e.g., "1.5 GB")
-   * @private
-   */
-  private formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
-  }
-
-  /**
-   * Get VMAF threshold from system settings
-   *
-   * @returns VMAF threshold (default: 85)
-   * @private
-   */
-  private async getVmafThreshold(): Promise<number> {
-    try {
-      const settings = await this.settingsRepository.findFirst();
-      return settings?.vmafThreshold ?? 85;
-    } catch {
-      return 85; // Default threshold
-    }
-  }
-
-  /**
-   * Check if quality metrics (VMAF) is enabled in system settings
-   *
-   * @returns Whether quality metrics are enabled (default: true)
-   * @private
-   */
-  private async isQualityMetricsEnabled(): Promise<boolean> {
-    try {
-      const settings = await this.settingsRepository.findFirst();
-      return settings?.qualityMetricsEnabled ?? true;
-    } catch {
-      return true; // Default enabled
-    }
   }
 }

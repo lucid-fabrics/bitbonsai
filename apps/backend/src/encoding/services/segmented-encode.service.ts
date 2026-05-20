@@ -156,7 +156,7 @@ export class SegmentedEncodeService {
         clearTimeout(timeout);
         if (code !== 0) return reject(new Error(`ffprobe exited ${code} for ${segmentPath}`));
         const actual = parseFloat(stdout.trim());
-        if (isNaN(actual))
+        if (Number.isNaN(actual))
           return reject(new Error(`ffprobe returned non-numeric duration for ${segmentPath}`));
         const diff = Math.abs(actual - expectedDuration);
         // Use a proportional tolerance (10% of segment, min 0.5s, max 2s) so that short
