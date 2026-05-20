@@ -16,9 +16,15 @@ import type { CompleteJobDto } from '../../../dto/complete-job.dto';
 import { FileFailureTrackingService } from '../../file-failure-tracking.service';
 import { FileTransferService } from '../../file-transfer.service';
 import { JobBulkOperationsService } from '../../job-bulk-operations.service';
+import { JobCancellationService } from '../../job-cancellation.service';
+import { JobCompletionService } from '../../job-completion.service';
+import { JobDecisionService } from '../../job-decision.service';
+import { JobEncodingControlService } from '../../job-encoding-control.service';
+import { JobFailureService } from '../../job-failure.service';
 import { JobFileOperationsService } from '../../job-file-operations.service';
 import { JobHistoryService } from '../../job-history.service';
 import { JobMetricsService } from '../../job-metrics.service';
+import { JobQueueManipulationService } from '../../job-queue-manipulation.service';
 import { QueueJobCrudService } from '../../queue-job-crud.service';
 import { QueueJobStateService } from '../../queue-job-state.service';
 
@@ -48,6 +54,7 @@ const makeJob = (overrides: Record<string, unknown> = {}) => ({
 
 describe('QueueJobStateService', () => {
   let service: QueueJobStateService;
+  let jobFailureService: JobFailureService;
   let jobRepository: jest.Mocked<JobRepository>;
   let nodeConfig: jest.Mocked<NodeConfigService>;
   let ffmpegService: jest.Mocked<FfmpegService>;
@@ -67,6 +74,12 @@ describe('QueueJobStateService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QueueJobStateService,
+        JobCompletionService,
+        JobFailureService,
+        JobCancellationService,
+        JobEncodingControlService,
+        JobDecisionService,
+        JobQueueManipulationService,
         { provide: PrismaService, useValue: prisma },
         {
           provide: JobRepository,
@@ -160,11 +173,7 @@ describe('QueueJobStateService', () => {
     jobMetricsService = module.get(JobMetricsService);
     jobBulkOperationsService = module.get(JobBulkOperationsService);
     jobFileOperationsService = module.get(JobFileOperationsService);
-
-    jest.spyOn((service as any).logger, 'log').mockImplementation();
-    jest.spyOn((service as any).logger, 'warn').mockImplementation();
-    jest.spyOn((service as any).logger, 'debug').mockImplementation();
-    jest.spyOn((service as any).logger, 'error').mockImplementation();
+    jobFailureService = module.get(JobFailureService);
   });
 
   afterEach(() => {
@@ -309,12 +318,11 @@ describe('QueueJobStateService', () => {
       jobRepository.updateById.mockResolvedValue(job);
       jobHistoryService.recordEvent.mockResolvedValue(undefined);
       fileFailureTracking.recordFailure.mockResolvedValue(true);
+      const warnSpy = jest.spyOn((jobFailureService as any).logger, 'warn').mockImplementation();
 
       await service.failJob('job-1', 'codec error');
 
-      expect((service as any).logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('auto-blacklisted')
-      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('auto-blacklisted'));
     });
 
     it('should not throw when fileFailureTracking.recordFailure rejects', async () => {
@@ -325,8 +333,10 @@ describe('QueueJobStateService', () => {
       jobHistoryService.recordEvent.mockResolvedValue(undefined);
       fileFailureTracking.recordFailure.mockRejectedValue(new Error('tracking fail'));
 
+      const errorSpy = jest.spyOn((jobFailureService as any).logger, 'error').mockImplementation();
+
       await expect(service.failJob('job-1', 'err')).resolves.not.toBeUndefined();
-      expect((service as any).logger.error).toHaveBeenCalledWith(
+      expect(errorSpy).toHaveBeenCalledWith(
         'Failed to record file failure tracking',
         expect.anything()
       );

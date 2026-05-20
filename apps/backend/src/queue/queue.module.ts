@@ -28,11 +28,17 @@ import { FileFailureTrackingService } from './services/file-failure-tracking.ser
 import { FileTransferService } from './services/file-transfer.service';
 import { HealthCheckCodecAnalyzerService } from './services/health-check-codec-analyzer.service';
 import { JobBulkOperationsService } from './services/job-bulk-operations.service';
+import { JobCancellationService } from './services/job-cancellation.service';
 import { JobCleanupService } from './services/job-cleanup.service';
+import { JobCompletionService } from './services/job-completion.service';
 import { JobCreationValidatorService } from './services/job-creation-validator.service';
+import { JobDecisionService } from './services/job-decision.service';
+import { JobEncodingControlService } from './services/job-encoding-control.service';
+import { JobFailureService } from './services/job-failure.service';
 import { JobFileOperationsService } from './services/job-file-operations.service';
 import { JobHistoryService } from './services/job-history.service';
 import { JobMetricsService } from './services/job-metrics.service';
+import { JobQueueManipulationService } from './services/job-queue-manipulation.service';
 import { JobRouterService } from './services/job-router.service';
 import { OwnershipLeaseService } from './services/ownership-lease.service';
 import { QueueDelegationService } from './services/queue-delegation.service';
@@ -76,6 +82,12 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     QueueJobCrudService,
     QueueJobStatsService,
     QueueJobStateService,
+    JobCompletionService,
+    JobFailureService,
+    JobCancellationService,
+    JobEncodingControlService,
+    JobDecisionService,
+    JobQueueManipulationService,
     JobMetricsService,
     JobBulkOperationsService,
     JobFileOperationsService,
@@ -110,6 +122,12 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     FileFailureTrackingService,
     QueueJobCrudService,
     QueueJobStateService,
+    JobCompletionService,
+    JobFailureService,
+    JobCancellationService,
+    JobEncodingControlService,
+    JobDecisionService,
+    JobQueueManipulationService,
     QueueDelegationService,
     QueueProcessingService,
     JobHistoryService,
