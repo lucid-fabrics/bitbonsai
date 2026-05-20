@@ -59,6 +59,29 @@ export class QueueComponent implements OnInit {
   private readonly jobActions = inject(QueueJobActionsService);
   private readonly destroyRef = inject(DestroyRef);
 
+  // Template aliases for service observables
+  protected get queueData$() {
+    return this.queueData.queueData$;
+  }
+  protected get nodeCapacity$() {
+    return this.queueData.nodeCapacity$;
+  }
+  protected get availableLibraries$() {
+    return this.queueData.availableLibraries$;
+  }
+  protected get availableNodes$() {
+    return this.queueData.availableNodes$;
+  }
+  protected get availableNodesWithRole$() {
+    return this.queueData.availableNodesWithRole$;
+  }
+  protected get isLoading$() {
+    return this.queueData.isLoading$;
+  }
+  protected get isMainNode$() {
+    return this.queueData.isMainNode$;
+  }
+
   // Expose Number for template
   protected readonly Number = Number;
 
