@@ -6,6 +6,7 @@ import { CarouselImage, ImageCarouselComponent } from '@bitbonsai/shared-ui';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faBolt, faFire, faLayerGroup } from '@fortawesome/pro-solid-svg-icons';
 import { TranslocoModule } from '@ngneat/transloco';
+import type { NodeCapacity } from '../../core/clients/distribution.client';
 import { FileHealthStatus } from '../../features/libraries/models/library.model';
 import { DiskSpaceWarningBannerComponent } from '../../shared/components/disk-space-warning-banner/disk-space-warning-banner.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
@@ -205,6 +206,41 @@ export class QueueComponent implements OnInit {
 
   protected onSearchChange(query: string): void {
     this.queueData.onSearchChange(query);
+  }
+
+  // ============================================================================
+  // DISPLAY DELEGATES — forward to QueueDisplayService
+  // ============================================================================
+
+  protected getStatusIcon(status: JobStatus): string {
+    return this.display.getStatusIcon(status);
+  }
+  protected getStatusLabel(status: JobStatus | 'ALL'): string {
+    return this.display.getStatusLabel(status);
+  }
+  protected getStatusExplanation(status: JobStatus): string {
+    return this.display.getStatusExplanation(status);
+  }
+  protected formatBytes(bytes: number): string {
+    return this.display.formatBytes(bytes);
+  }
+  protected wasHealedFreshStart(job: QueueJob): boolean {
+    return this.display.wasHealedFreshStart(job);
+  }
+  protected wasHealedWithResume(job: QueueJob): boolean {
+    return this.display.wasHealedWithResume(job);
+  }
+  protected getNodeStatusClass(node: NodeCapacity): string {
+    return this.display.getNodeStatusClass(node);
+  }
+  protected getNodeStatusIcon(node: NodeCapacity): string {
+    return this.display.getNodeStatusIcon(node);
+  }
+  protected getNodeStatusLabel(node: NodeCapacity): string {
+    return this.display.getNodeStatusLabel(node);
+  }
+  protected getNodeTooltipContent(node: NodeCapacity): string {
+    return this.display.getNodeTooltipContent(node);
   }
 
   protected clearAllFilters(): void {
