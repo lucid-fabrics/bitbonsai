@@ -122,7 +122,7 @@ export class LoadMonitorService {
    * Check if node is overloaded
    */
   isOverloaded(
-    node: Node,
+    node: Pick<Node, 'cpuCores' | 'loadThresholdMultiplier'>,
     loadData: HeartbeatLoadData | null
   ): { isOverloaded: boolean; reason?: string } {
     if (!loadData) {
@@ -162,7 +162,7 @@ export class LoadMonitorService {
     }
 
     const loadData = await this.getNodeLoad(nodeId);
-    const overloadCheck = this.isOverloaded(node as unknown as Node, loadData);
+    const overloadCheck = this.isOverloaded(node, loadData);
 
     // Count queued jobs
     const queuedCount = await this.jobRepository.countForNode(nodeId, 'QUEUED');

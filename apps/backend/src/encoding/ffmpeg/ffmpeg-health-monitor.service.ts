@@ -1,4 +1,6 @@
+import * as fsSync from 'node:fs';
 import { existsSync, promises as fs } from 'node:fs';
+import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Job, Policy } from '@prisma/client';
@@ -28,11 +30,6 @@ export class FfmpegHealthMonitor {
    * SECURITY: Validate file path to prevent directory traversal attacks
    */
   validateFilePath(filePath: string, libraryPath: string): void {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const path = require('node:path');
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fsSync = require('node:fs');
-
     if (
       filePath.includes('..') ||
       filePath.includes('%2e') ||

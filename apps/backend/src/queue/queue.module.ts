@@ -42,10 +42,13 @@ import { JobQueueManipulationService } from './services/job-queue-manipulation.s
 import { JobRouterService } from './services/job-router.service';
 import { OwnershipLeaseService } from './services/ownership-lease.service';
 import { QueueDelegationService } from './services/queue-delegation.service';
+import { QueueFileDetectionService } from './services/queue-file-detection.service';
 import { QueueJobCrudService } from './services/queue-job-crud.service';
+import { QueueJobOwnershipService } from './services/queue-job-ownership.service';
 import { QueueJobStateService } from './services/queue-job-state.service';
 import { QueueJobStatsService } from './services/queue-job-stats.service';
 import { QueueProcessingService } from './services/queue-processing.service';
+import { QueueStartupHealingService } from './services/queue-startup-healing.service';
 import { RetrySchedulerService } from './services/retry-scheduler.service';
 import { WebhookNotificationService } from './services/webhook-notification.service';
 import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
@@ -80,6 +83,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     FileFailureTrackingService,
     JobCreationValidatorService,
     QueueJobCrudService,
+    QueueJobOwnershipService,
     QueueJobStatsService,
     QueueJobStateService,
     JobCompletionService,
@@ -93,6 +97,8 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     JobFileOperationsService,
     QueueDelegationService,
     QueueProcessingService,
+    QueueStartupHealingService,
+    QueueFileDetectionService,
     JobCleanupService,
     JobHistoryService,
     JobRouterService,
@@ -121,6 +127,7 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     QueueService,
     FileFailureTrackingService,
     QueueJobCrudService,
+    QueueJobOwnershipService,
     QueueJobStateService,
     JobCompletionService,
     JobFailureService,

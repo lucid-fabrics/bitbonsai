@@ -62,7 +62,7 @@ describe('ProcessorLifecycleService', () => {
     } as unknown as jest.Mocked<WorkerPoolService>;
 
     encodingWatchdogService = {
-      startStuckJobWatchdog: jest.fn().mockReturnValue(setInterval(() => {}, 999999)),
+      startStuckJobWatchdog: jest.fn().mockReturnValue(setInterval(jest.fn(), 999999)),
     } as unknown as jest.Mocked<EncodingWatchdogService>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -195,7 +195,7 @@ describe('ProcessorLifecycleService', () => {
     });
 
     it('clears all stale intervals from static set even without initialized watchdog', () => {
-      const stale = setInterval(() => {}, 999999);
+      const stale = setInterval(jest.fn(), 999999) as unknown as NodeJS.Timeout;
       (
         ProcessorLifecycleService as unknown as { activeIntervals: Set<NodeJS.Timeout> }
       ).activeIntervals.add(stale);

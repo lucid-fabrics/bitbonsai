@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../common/repositories/job.repository';
 import { normalizeCodec } from '../../common/utils/codec.util';
+import { PrismaService } from '../../prisma/prisma.service';
 import type { JobStatsDto } from '../dto/job-stats.dto';
 
 /**
@@ -14,7 +15,10 @@ import type { JobStatsDto } from '../dto/job-stats.dto';
 export class QueueJobStatsService {
   private readonly logger = new Logger(QueueJobStatsService.name);
 
-  constructor(private readonly jobRepository: JobRepository) {}
+  constructor(
+    private readonly jobRepository: JobRepository,
+    private readonly prisma: PrismaService
+  ) {}
 
   /**
    * Get job statistics
@@ -85,5 +89,51 @@ export class QueueJobStatsService {
       totalSavedBytes: ((totalSaved._sum.savedBytes as bigint | null) || BigInt(0)).toString(),
       nodeId,
     };
+  }
+
+  /**
+   * Get Dead Letter Queue jobs (circuit-broken, permanently failed)
+   */
+  async getDlqJobs(
+    skip = 0,
+    take = 50
+  ): Promise<{
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      filePath: string;
+      dlqEnteredAt: Date | null;
+      circuitBrokenReason: string | null;
+      totalAttempts: number;
+      error: string | null;
+    }>;
+    total: number;
+    skip: number;
+    take: number;
+  }> {
+    this.logger.log(`Fetching DLQ jobs (skip: ${skip}, take: ${take})`);
+
+    const where = { dlqEnteredAt: { not: null } };
+
+    const [jobs, total] = await Promise.all([
+      this.prisma.job.findMany({
+        where,
+        select: {
+          id: true,
+          fileLabel: true,
+          filePath: true,
+          dlqEnteredAt: true,
+          circuitBrokenReason: true,
+          totalAttempts: true,
+          error: true,
+        },
+        orderBy: { dlqEnteredAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.job.count({ where }),
+    ]);
+
+    return { jobs, total, skip, take };
   }
 }

@@ -12,6 +12,7 @@ import {
 import { DiskSpaceGuardService } from '../services/disk-space-guard.service';
 import { NfsHealthService } from '../services/nfs-health.service';
 import { TempFileGuardService } from '../services/temp-file-guard.service';
+import { analyzeFfmpegError, formatErrorForDisplay } from '../utils/ffmpeg-error-analyzer.util';
 import { FfmpegHealthMonitor } from './ffmpeg-health-monitor.service';
 import { FfmpegProcessManager } from './ffmpeg-process-manager.service';
 import { FfmpegProgressTracker } from './ffmpeg-progress-tracker.service';
@@ -122,12 +123,6 @@ export class FfmpegEncoderService {
   // ─── Error interpretation ──────────────────────────────────────────────────
 
   interpretFfmpegExitCode(code: number, stderr: string, progress = 0, retryCount = 0): string {
-    const {
-      analyzeFfmpegError,
-      formatErrorForDisplay,
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-    } = require('../utils/ffmpeg-error-analyzer.util');
-
     const analysis = analyzeFfmpegError(code, stderr, progress, retryCount);
     const formatted = formatErrorForDisplay(analysis);
 

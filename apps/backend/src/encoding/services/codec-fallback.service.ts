@@ -30,7 +30,7 @@ const CPU_FALLBACK_MAP: Record<string, string> = {
 
 @Injectable()
 export class CodecFallbackService {
-  private readonly logger = new Logger(CodecFallbackService.name);
+  readonly logger = new Logger(CodecFallbackService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 

@@ -13,6 +13,7 @@ import { NodeConfigService } from '../../core/services/node-config.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JobCreationValidatorService } from './job-creation-validator.service';
 import { QueueJobCrudService } from './queue-job-crud.service';
+import { QueueJobOwnershipService } from './queue-job-ownership.service';
 import { QueueJobStatsService } from './queue-job-stats.service';
 
 describe('QueueJobCrudService', () => {
@@ -73,6 +74,7 @@ describe('QueueJobCrudService', () => {
       providers: [
         QueueJobCrudService,
         QueueJobStatsService,
+        QueueJobOwnershipService,
         { provide: JobRepository, useValue: mockJobRepository },
         { provide: NodeRepository, useValue: mockNodeRepository },
         { provide: NodeConfigService, useValue: mockNodeConfig },

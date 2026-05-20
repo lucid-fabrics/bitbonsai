@@ -3,7 +3,6 @@ import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -18,6 +17,7 @@ import type { CreateJobDto } from '../dto/create-job.dto';
 import type { JobStatsDto } from '../dto/job-stats.dto';
 import type { UpdateJobDto } from '../dto/update-job.dto';
 import { JobCreationValidatorService } from './job-creation-validator.service';
+import { QueueJobOwnershipService } from './queue-job-ownership.service';
 import { QueueJobStatsService } from './queue-job-stats.service';
 
 /**
@@ -36,7 +36,8 @@ export class QueueJobCrudService {
     private nodeConfig: NodeConfigService,
     private httpService: HttpService,
     private creationValidator: JobCreationValidatorService,
-    private jobStats: QueueJobStatsService
+    private jobStats: QueueJobStatsService,
+    private jobOwnership: QueueJobOwnershipService
   ) {}
 
   /**
@@ -47,146 +48,21 @@ export class QueueJobCrudService {
     operation: string,
     callerNodeId?: string
   ): Promise<{ nodeId: string | null; updatedAt: Date }> {
-    const currentNodeId = this.nodeConfig.getNodeId();
-    const isMainNode = this.nodeConfig.isMainNode();
-
-    if (!currentNodeId) {
-      const job = await this.jobRepository.findUniqueSelect<{
-        nodeId: string | null;
-        updatedAt: Date;
-      }>({ id: jobId }, { nodeId: true, updatedAt: true });
-      if (!job) throw new NotFoundException(`Job ${jobId} not found`);
-      return job;
-    }
-
-    const job = await this.jobRepository.findUniqueSelect<{
-      nodeId: string | null;
-      fileLabel: string;
-      updatedAt: Date;
-    }>({ id: jobId }, { nodeId: true, fileLabel: true, updatedAt: true });
-
-    if (!job) {
-      throw new NotFoundException(`Job ${jobId} not found`);
-    }
-
-    // LINKED node: check caller matches job owner
-    if (!isMainNode && job.nodeId && job.nodeId !== currentNodeId) {
-      this.logger.error(
-        `Cross-node ${operation} rejected: ` +
-          `Node ${currentNodeId} attempted to modify job ${jobId} owned by ${job.nodeId} (${job.fileLabel})`
-      );
-      throw new ForbiddenException(
-        `Node ${currentNodeId} cannot ${operation} job ${jobId} - job is assigned to node ${job.nodeId}`
-      );
-    }
-
-    // MAIN node receiving proxied call: validate the caller node owns this job.
-    // callerNodeId comes from the x-node-id header set by LINKED proxy calls.
-    // User-initiated actions won't include this header (callerNodeId undefined) and are always allowed.
-    if (isMainNode && callerNodeId && job.nodeId && job.nodeId !== callerNodeId) {
-      this.logger.error(
-        `Cross-node ${operation} rejected on MAIN: ` +
-          `LINKED node ${callerNodeId} attempted to modify job ${jobId} owned by ${job.nodeId} (${job.fileLabel})`
-      );
-      throw new ForbiddenException(
-        `Node ${callerNodeId} cannot ${operation} job ${jobId} - job is assigned to node ${job.nodeId}`
-      );
-    }
-
-    return { nodeId: job.nodeId, updatedAt: job.updatedAt };
+    return this.jobOwnership.validateJobOwnership(jobId, operation, callerNodeId);
   }
 
   /**
    * Validate file path to prevent directory traversal attacks
    */
   validateFilePath(filePath: string, libraryPath: string): void {
-    const path = require('node:path');
-    const fs = require('node:fs');
-
-    if (
-      filePath.includes('..') ||
-      filePath.includes('%2e') ||
-      filePath.includes('%2E') ||
-      filePath.includes('\u2024')
-    ) {
-      throw new BadRequestException('File path contains directory traversal attempt');
-    }
-
-    const resolvedFile = path.resolve(filePath);
-    const resolvedLibrary = path.resolve(libraryPath);
-
-    try {
-      const O_NOFOLLOW = 0o400000;
-      const fd = fs.openSync(resolvedFile, fs.constants.O_RDONLY | O_NOFOLLOW);
-
-      let realFile: string;
-      try {
-        realFile = fs.readlinkSync(`/proc/self/fd/${fd}`);
-      } catch {
-        realFile = resolvedFile;
-      }
-
-      fs.closeSync(fd);
-      const realLibrary = fs.realpathSync(resolvedLibrary);
-
-      if (!realFile.startsWith(realLibrary + path.sep)) {
-        throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
-      }
-    } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'code' in err && err.code === 'ELOOP') {
-        throw new BadRequestException('Symlink detected - operation rejected for security');
-      }
-
-      if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
-        let currentPath = path.dirname(resolvedFile);
-        let depth = 0;
-        const maxDepth = 20;
-
-        while (depth < maxDepth) {
-          try {
-            const realParent = fs.realpathSync(currentPath);
-            const realLibrary = fs.realpathSync(resolvedLibrary);
-
-            if (!realParent.startsWith(realLibrary + path.sep)) {
-              throw new BadRequestException(`File path '${filePath}' is outside library boundary`);
-            }
-
-            return;
-          } catch (parentErr: unknown) {
-            if (parentErr && typeof parentErr === 'object' && 'code' in parentErr) {
-              if (parentErr.code === 'ENOENT') {
-                const nextParent = path.dirname(currentPath);
-                if (nextParent === currentPath) {
-                  throw new BadRequestException(
-                    `File path '${filePath}' parent directories do not exist and cannot be validated`
-                  );
-                }
-                currentPath = nextParent;
-                depth++;
-                continue;
-              }
-            }
-            const message = parentErr instanceof Error ? parentErr.message : 'Unknown error';
-            throw new BadRequestException(`Invalid file path: ${message}`);
-          }
-        }
-
-        throw new BadRequestException(
-          `File path '${filePath}' validation failed: too many missing parent directories (depth > ${maxDepth})`
-        );
-      } else {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        throw new BadRequestException(`Path validation error: ${message}`);
-      }
-    }
+    this.jobOwnership.validateFilePath(filePath, libraryPath);
   }
 
   /**
    * Check if a file exists on disk (extracted for testability)
    */
   fileExists(filePath: string): boolean {
-    const fs = require('fs') as typeof import('fs');
-    return fs.existsSync(filePath);
+    return this.jobOwnership.fileExists(filePath);
   }
 
   /**
@@ -752,30 +628,7 @@ export class QueueJobCrudService {
     skip: number;
     take: number;
   }> {
-    this.logger.log(`Fetching DLQ jobs (skip: ${skip}, take: ${take})`);
-
-    const where = { dlqEnteredAt: { not: null } };
-
-    const [jobs, total] = await Promise.all([
-      this.prisma.job.findMany({
-        where,
-        select: {
-          id: true,
-          fileLabel: true,
-          filePath: true,
-          dlqEnteredAt: true,
-          circuitBrokenReason: true,
-          totalAttempts: true,
-          error: true,
-        },
-        orderBy: { dlqEnteredAt: 'desc' },
-        skip,
-        take,
-      }),
-      this.prisma.job.count({ where }),
-    ]);
-
-    return { jobs, total, skip, take };
+    return this.jobStats.getDlqJobs(skip, take);
   }
 
   /**

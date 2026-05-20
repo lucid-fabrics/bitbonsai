@@ -291,18 +291,18 @@ export class QueueDisplayService {
     const source = sourceCodec.toLowerCase();
     const target = targetCodec.toLowerCase();
 
-    if (source.includes('h.264') || source.includes('avc')) {
-      if (target.includes('hevc') || target.includes('h.265')) return 0.45;
-      if (target.includes('av1')) return 0.5;
-    }
-    if (source.includes('hevc') || source.includes('h.265')) {
-      if (target.includes('av1')) return 0.25;
-    }
-    if (source.includes('vp9')) {
-      if (target.includes('av1')) return 0.2;
-      if (target.includes('hevc')) return 0.15;
-    }
     if (source === target) return 0.05;
+
+    const isH264 = (c: string) => c.includes('h.264') || c.includes('avc');
+    const isHevc = (c: string) => c.includes('hevc') || c.includes('h.265');
+    const isAv1 = (c: string) => c.includes('av1');
+    const isVp9 = (c: string) => c.includes('vp9');
+
+    if (isH264(source) && isHevc(target)) return 0.45;
+    if (isH264(source) && isAv1(target)) return 0.5;
+    if (isHevc(source) && isAv1(target)) return 0.25;
+    if (isVp9(source) && isAv1(target)) return 0.2;
+    if (isVp9(source) && isHevc(target)) return 0.15;
     return 0.4;
   }
 
@@ -404,53 +404,41 @@ export class QueueDisplayService {
   // ============================================================================
 
   private categorizeError(error: string): string {
-    const errorLower = error.toLowerCase();
-
     const ffmpegExitMatch = error.match(/ffmpeg.*exit code (\d+)/i);
     if (ffmpegExitMatch) return `FFmpeg Error Code ${ffmpegExitMatch[1]}`;
-    if (errorLower.includes('ffmpeg') && errorLower.includes('error'))
-      return 'FFmpeg Error (Other)';
-    if (
-      errorLower.includes('timeout') ||
-      errorLower.includes('timed out') ||
-      errorLower.includes('stuck') ||
-      errorLower.includes('no progress')
-    )
-      return 'Job Timeout/Stuck';
-    if (
-      errorLower.includes('file not found') ||
-      errorLower.includes('no such file') ||
-      errorLower.includes('enoent') ||
-      errorLower.includes('does not exist')
-    )
-      return 'File Not Found';
-    if (
-      errorLower.includes('codec') ||
-      errorLower.includes('unsupported') ||
-      errorLower.includes('invalid codec')
-    )
-      return 'Codec Error';
-    if (
-      errorLower.includes('network') ||
-      errorLower.includes('connection') ||
-      errorLower.includes('econnrefused') ||
-      errorLower.includes('econnreset')
-    )
-      return 'Network Error';
-    if (
-      errorLower.includes('no space') ||
-      errorLower.includes('enospc') ||
-      errorLower.includes('disk full')
-    )
-      return 'Disk Space Error';
-    if (
-      errorLower.includes('permission') ||
-      errorLower.includes('eacces') ||
-      errorLower.includes('eperm')
-    )
-      return 'Permission Error';
-    if (errorLower.includes('out of memory') || errorLower.includes('enomem'))
-      return 'Memory Error';
+
+    const errorLower = error.toLowerCase();
+
+    const categories: { keywords: string[]; label: string }[] = [
+      { keywords: ['ffmpeg', 'error'], label: 'FFmpeg Error (Other)' },
+      { keywords: ['timeout'], label: 'Job Timeout/Stuck' },
+      { keywords: ['timed out'], label: 'Job Timeout/Stuck' },
+      { keywords: ['stuck'], label: 'Job Timeout/Stuck' },
+      { keywords: ['no progress'], label: 'Job Timeout/Stuck' },
+      { keywords: ['file not found'], label: 'File Not Found' },
+      { keywords: ['no such file'], label: 'File Not Found' },
+      { keywords: ['enoent'], label: 'File Not Found' },
+      { keywords: ['does not exist'], label: 'File Not Found' },
+      { keywords: ['codec'], label: 'Codec Error' },
+      { keywords: ['unsupported'], label: 'Codec Error' },
+      { keywords: ['invalid codec'], label: 'Codec Error' },
+      { keywords: ['network'], label: 'Network Error' },
+      { keywords: ['connection'], label: 'Network Error' },
+      { keywords: ['econnrefused'], label: 'Network Error' },
+      { keywords: ['econnreset'], label: 'Network Error' },
+      { keywords: ['no space'], label: 'Disk Space Error' },
+      { keywords: ['enospc'], label: 'Disk Space Error' },
+      { keywords: ['disk full'], label: 'Disk Space Error' },
+      { keywords: ['permission'], label: 'Permission Error' },
+      { keywords: ['eacces'], label: 'Permission Error' },
+      { keywords: ['eperm'], label: 'Permission Error' },
+      { keywords: ['out of memory'], label: 'Memory Error' },
+      { keywords: ['enomem'], label: 'Memory Error' },
+    ];
+
+    for (const { keywords, label } of categories) {
+      if (keywords.every((kw) => errorLower.includes(kw))) return label;
+    }
 
     return error;
   }

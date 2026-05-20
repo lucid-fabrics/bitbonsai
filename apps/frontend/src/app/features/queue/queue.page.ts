@@ -134,14 +134,26 @@ export class QueueComponent implements OnInit {
   protected get selectedStatus(): JobStatus | 'ALL' {
     return this.queueData.selectedStatus;
   }
+  protected set selectedStatus(v: JobStatus | 'ALL') {
+    this.queueData.selectedStatus = v;
+  }
   protected get selectedNodeId(): string {
     return this.queueData.selectedNodeId;
+  }
+  protected set selectedNodeId(v: string) {
+    this.queueData.selectedNodeId = v;
   }
   protected get selectedLibraryId(): string {
     return this.queueData.selectedLibraryId;
   }
+  protected set selectedLibraryId(v: string) {
+    this.queueData.selectedLibraryId = v;
+  }
   protected get searchQuery(): string {
     return this.queueData.searchQuery;
+  }
+  protected set searchQuery(v: string) {
+    this.queueData.searchQuery = v;
   }
   protected get currentPage(): number {
     return this.queueData.currentPage;
@@ -154,19 +166,6 @@ export class QueueComponent implements OnInit {
   }
   protected get advancedMode() {
     return this.queueData.advancedMode;
-  }
-
-  protected set selectedStatus(v: JobStatus | 'ALL') {
-    this.queueData.selectedStatus = v;
-  }
-  protected set selectedNodeId(v: string) {
-    this.queueData.selectedNodeId = v;
-  }
-  protected set selectedLibraryId(v: string) {
-    this.queueData.selectedLibraryId = v;
-  }
-  protected set searchQuery(v: string) {
-    this.queueData.searchQuery = v;
   }
 
   protected onStatusFilterChange(status: JobStatus | 'ALL'): void {
