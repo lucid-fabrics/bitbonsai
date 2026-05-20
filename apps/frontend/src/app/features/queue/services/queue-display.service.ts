@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { CarouselImage } from '@bitbonsai/shared-ui';
-import { DistributionClient, type NodeCapacity } from '../../../core/clients/distribution.client';
+import type { NodeCapacity } from '../../../core/clients/distribution.client';
 import { ErrorLoggerService } from '../../../core/services/error-logger.service';
 import { FileHealthStatus } from '../../libraries/models/library.model';
 import type { Node as NodeModel } from '../../nodes/models/node.model';

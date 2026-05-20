@@ -232,7 +232,7 @@ export class QueueDataService {
     this.settingsApi
       .updateDefaultQueueView(status)
       .pipe(takeUntilDestroyed(destroyRef))
-      .subscribe({ error: () => {} });
+      .subscribe({ error: (err) => console.debug('Failed to persist default queue view', err) });
   }
 
   onNodeFilterChange(nodeId: string): void {

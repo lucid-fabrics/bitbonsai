@@ -5,7 +5,6 @@ import { firstValueFrom } from 'rxjs';
 import { NodeConfigService } from '../../core/services/node-config.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CompleteJobDto } from '../dto/complete-job.dto';
-import { JobHistoryService } from './job-history.service';
 import { JobMetricsService } from './job-metrics.service';
 import { QueueJobCrudService } from './queue-job-crud.service';
 
@@ -18,7 +17,6 @@ export class JobCompletionService {
     private readonly nodeConfig: NodeConfigService,
     private readonly httpService: HttpService,
     private readonly jobCrudService: QueueJobCrudService,
-    private readonly jobHistoryService: JobHistoryService,
     private readonly jobMetricsService: JobMetricsService
   ) {}
 
