@@ -1,36 +1,14 @@
 import { AsyncPipe, DecimalPipe, KeyValuePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
 import { CarouselImage, ImageCarouselComponent } from '@bitbonsai/shared-ui';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faBolt, faFire, faLayerGroup } from '@fortawesome/pro-solid-svg-icons';
 import { TranslocoModule } from '@ngneat/transloco';
-import { Store } from '@ngrx/store';
-import {
-  BehaviorSubject,
-  catchError,
-  fromEvent,
-  interval,
-  map,
-  type Observable,
-  of,
-  shareReplay,
-  startWith,
-  switchMap,
-} from 'rxjs';
-import { selectCurrentNode } from '../../core/+state/current-node.selectors';
-import { DistributionClient, type NodeCapacity } from '../../core/clients/distribution.client';
-import { NodesClient } from '../../core/clients/nodes.client';
-import { SettingsClient } from '../../core/clients/settings.client';
-import { ErrorLoggerService } from '../../core/services/error-logger.service';
 import { FileHealthStatus } from '../../features/libraries/models/library.model';
 import { DiskSpaceWarningBannerComponent } from '../../shared/components/disk-space-warning-banner/disk-space-warning-banner.component';
 import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.directive';
-import { type Node as NodeModel } from '../nodes/models/node.model';
-import { SettingsActions } from '../settings/+state/settings.actions';
-import { SettingsSelectors } from '../settings/+state/settings.selectors';
 import type { QueueJobBo } from './bos/queue-job.bo';
 import { AddFilesModalComponent } from './components/add-files-modal/add-files-modal.component';
 import { DecisionIssueCardComponent } from './components/decision-issue-card/decision-issue-card.component';
@@ -43,12 +21,11 @@ import type {
 import type { JobHistoryEvent } from './models/job-history-event.model';
 import { JobEventType } from './models/job-history-event.model';
 import { JobStatus } from './models/job-status.enum';
-import type { QueueFilters } from './models/queue-filters.model';
 import type { QueueJob } from './models/queue-job.model';
-import type { QueueResponse } from './models/queue-response.model';
 import { CodecBadgeClassPipe } from './pipes/codec-badge-class.pipe';
 import { StatusClassPipe } from './pipes/status-class.pipe';
-import { QueueService } from './services/queue.service';
+import { QueueDataService } from './services/queue-data.service';
+import { QueueDisplayService } from './services/queue-display.service';
 import { QueueJobActionsService } from './services/queue-job-actions.service';
 
 @Component({
@@ -77,16 +54,10 @@ import { QueueJobActionsService } from './services/queue-job-actions.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QueueComponent implements OnInit {
-  private readonly queueService = inject(QueueService);
+  protected readonly queueData = inject(QueueDataService);
+  protected readonly display = inject(QueueDisplayService);
   private readonly jobActions = inject(QueueJobActionsService);
-  private readonly nodesApi = inject(NodesClient);
-  private readonly settingsApi = inject(SettingsClient);
-  private readonly distributionApi = inject(DistributionClient);
-  private readonly errorLogger = inject(ErrorLoggerService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
-  private readonly store = inject(Store);
 
   // Expose Number for template
   protected readonly Number = Number;
@@ -98,25 +69,19 @@ export class QueueComponent implements OnInit {
     layers: faLayerGroup,
   };
 
-  // Observables for reactive state
-  private readonly refreshTrigger$ = new BehaviorSubject<{
-    showLoading: boolean;
-  }>({
-    showLoading: true,
-  });
-  private readonly loadingSubject$ = new BehaviorSubject<boolean>(true);
-  protected readonly queueData$: Observable<QueueResponse | null>;
-  protected readonly isLoading$: Observable<boolean>;
-  protected readonly availableNodes$: Observable<Map<string, string>>;
-  protected readonly availableNodesWithRole$: Observable<NodeModel[]>;
-  protected readonly availableLibraries$: Observable<
-    Map<string, { name: string; nodeName: string }>
-  >;
-  protected readonly isMainNode$: Observable<boolean>;
-  protected readonly nodeCapacity$: Observable<NodeCapacity[]>;
-  protected readonly advancedMode: ReturnType<typeof toSignal<boolean>>;
+  // Expose Math for template
+  protected readonly Math = Math;
 
-  // State
+  // Expose FileHealthStatus enum for template
+  protected readonly FileHealthStatus = FileHealthStatus;
+
+  // Expose JobStatus enum for template
+  protected readonly JobStatus = JobStatus;
+
+  // Expose JobEventType enum for template
+  protected readonly JobEventType = JobEventType;
+
+  // UI-only state (not delegatable)
   protected expandedJobId: string | null = null;
   protected openPriorityMenuId: string | null = null;
   protected showCancelDialog = false;
@@ -158,328 +123,99 @@ export class QueueComponent implements OnInit {
   protected fullscreenCarouselImages: CarouselImage[] = [];
   protected fullscreenCarouselInitialIndex = 0;
 
-  // Expose Math for template
-  protected readonly Math = Math;
-
-  // Expose FileHealthStatus enum for template
-  protected readonly FileHealthStatus = FileHealthStatus;
-
-  // Expose JobStatus enum for template
-  protected readonly JobStatus = JobStatus;
-
-  // Expose JobEventType enum for template
-  protected readonly JobEventType = JobEventType;
-
-  // Filter state
-  protected selectedStatus: JobStatus | 'ALL' = JobStatus.ENCODING; // Default to ENCODING, overridden by user settings
-  protected selectedNodeId = '';
-  protected selectedLibraryId = '';
-  protected searchQuery = '';
-
-  // Pagination state
-  protected currentPage = 1;
-  protected pageSize = 20;
-
-  // Available statuses for filter (exclude transient statuses that jobs pass through quickly)
-  protected readonly statuses: Array<JobStatus | 'ALL'> = [
-    'ALL',
-    JobStatus.NEEDS_DECISION,
-    JobStatus.QUEUED,
-    JobStatus.TRANSFERRING,
-    JobStatus.ENCODING,
-    JobStatus.PAUSED,
-    JobStatus.COMPLETED,
-    JobStatus.FAILED,
-    JobStatus.CANCELLED,
-  ];
-
-  constructor() {
-    // Create observable stream for queue data
-    this.queueData$ = this.refreshTrigger$.pipe(
-      switchMap(({ showLoading }) => {
-        // Only show loading for user-initiated actions, not polling
-        if (showLoading) {
-          this.loadingSubject$.next(true);
-        }
-
-        // Fetch jobs from queue API
-        return this.queueService.getQueue(this.buildFilters()).pipe(
-          map((data) => {
-            // Always clear loading when data arrives
-            this.loadingSubject$.next(false);
-            return data;
-          }),
-          catchError(() => {
-            // Always clear loading on error
-            this.loadingSubject$.next(false);
-            return of(null);
-          })
-        );
-      }),
-      shareReplay({ bufferSize: 1, refCount: true })
-    );
-
-    // Use the loading subject as the loading observable
-    this.isLoading$ = this.loadingSubject$.asObservable();
-
-    // Fetch all available nodes from the API (not just nodes with jobs)
-    const nodesData$ = this.nodesApi
-      .getNodes()
-      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
-
-    this.availableNodes$ = nodesData$.pipe(
-      map((nodes) => {
-        const nodeMap = new Map<string, string>();
-        for (const node of nodes) {
-          nodeMap.set(node.id, node.name);
-        }
-        return nodeMap;
-      })
-    );
-
-    this.availableNodesWithRole$ = nodesData$;
-
-    // Extract available libraries from queue data (Map of libraryId -> { name, nodeName })
-    this.availableLibraries$ = this.queueData$.pipe(
-      map((data) => {
-        const jobs = data?.jobs || [];
-        const libraryMap = new Map<string, { name: string; nodeName: string }>();
-        for (const job of jobs) {
-          if (job.libraryId && job.libraryName && job.nodeName) {
-            libraryMap.set(job.libraryId, {
-              name: job.libraryName,
-              nodeName: job.nodeName,
-            });
-          }
-        }
-        return libraryMap;
-      })
-    );
-
-    // Check if current node is MAIN (to show/hide node filter)
-    this.isMainNode$ = this.store.select(selectCurrentNode).pipe(
-      map((node) => node?.role === 'MAIN'),
-      shareReplay({ bufferSize: 1, refCount: true })
-    );
-
-    // Fetch node capacity (load, workers) - refresh every 10 seconds
-    // Sort nodes consistently: MAIN first, then LINKED alphabetically by name
-    this.nodeCapacity$ = interval(10000).pipe(
-      startWith(0),
-      switchMap(() =>
-        this.distributionApi.getCapacity().pipe(
-          map((response) => {
-            // Sort nodes: MAIN role first, then LINKED nodes alphabetically by name
-            return [...response.nodes].sort((a, b) => {
-              // MAIN node always first
-              if (a.role === 'MAIN') return -1;
-              if (b.role === 'MAIN') return 1;
-              // Then sort LINKED nodes by name
-              return a.nodeName.localeCompare(b.nodeName);
-            });
-          }),
-          catchError(() => of([]))
-        )
-      ),
-      shareReplay({ bufferSize: 1, refCount: true })
-    );
-
-    // Advanced mode from settings store
-    this.advancedMode = toSignal(this.store.select(SettingsSelectors.selectAdvancedMode), {
-      initialValue: false,
-    });
-  }
-
   ngOnInit(): void {
-    // Load advanced mode setting
-    this.store.dispatch(SettingsActions.loadAdvancedMode());
-
-    // Auto-select current node ONLY for LINKED nodes (child nodes show only their own jobs)
-    // MAIN nodes show all nodes by default (empty filter = "All Nodes")
-    this.store
-      .select(selectCurrentNode)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((currentNode) => {
-        if (currentNode && !this.selectedNodeId && currentNode.role === 'LINKED') {
-          // For LINKED nodes: auto-select current node to show only their jobs
-          this.selectedNodeId = currentNode.id;
-          // Trigger refresh to load jobs for the selected node
-          this.onNodeFilterChange(currentNode.id);
-        }
-      });
-
-    // Load default queue view from settings
-    this.settingsApi
-      .getDefaultQueueView()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (settings) => {
-          // Apply default queue view if it's valid and no query param is set
-          if (
-            settings.defaultQueueView &&
-            this.statuses.includes(settings.defaultQueueView as JobStatus | 'ALL')
-          ) {
-            this.selectedStatus = settings.defaultQueueView as JobStatus | 'ALL';
-          }
-        },
-        error: () => {
-          // If settings can't be loaded, fallback to ENCODING (default behavior)
-        },
-      });
-
-    // Restore filter state from query params (takes precedence over default setting)
-    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      if (params.status) {
-        const status = params.status;
-        // Validate the status is a valid filter option
-        if (this.statuses.includes(status as JobStatus | 'ALL')) {
-          this.selectedStatus = status as JobStatus | 'ALL';
-        }
-      }
-      if (params.nodeId) {
-        this.selectedNodeId = params.nodeId;
-      }
-      if (params.libraryId) {
-        this.selectedLibraryId = params.libraryId;
-      }
-      if (params.search) {
-        this.searchQuery = params.search;
-      }
-    });
-
-    this.startPolling();
+    this.queueData.init(this.destroyRef);
   }
 
-  private startPolling(): void {
-    // Create visibility change observable
-    const visibilityChange$ = fromEvent(document, 'visibilitychange').pipe(
-      startWith(null), // Emit immediately on subscription
-      map(() => document.visibilityState === 'visible')
-    );
+  // ============================================================================
+  // FILTER / PAGINATION — delegate to QueueDataService
+  // ============================================================================
 
-    // Poll only when page is visible
-    visibilityChange$
-      .pipe(
-        switchMap(
-          (isVisible) =>
-            isVisible
-              ? interval(5000).pipe(startWith(0)) // Poll immediately and every 5s when visible
-              : [] // Stop polling when hidden
-        ),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(() => {
-        // Silent refresh for polling - don't show loading spinner
-        this.refreshTrigger$.next({ showLoading: false });
-      });
+  protected get selectedStatus(): JobStatus | 'ALL' {
+    return this.queueData.selectedStatus;
+  }
+  protected get selectedNodeId(): string {
+    return this.queueData.selectedNodeId;
+  }
+  protected get selectedLibraryId(): string {
+    return this.queueData.selectedLibraryId;
+  }
+  protected get searchQuery(): string {
+    return this.queueData.searchQuery;
+  }
+  protected get currentPage(): number {
+    return this.queueData.currentPage;
+  }
+  protected get pageSize(): number {
+    return this.queueData.pageSize;
+  }
+  protected get statuses(): Array<JobStatus | 'ALL'> {
+    return this.queueData.statuses;
+  }
+  protected get advancedMode() {
+    return this.queueData.advancedMode;
   }
 
-  private buildFilters(): QueueFilters {
-    const filters: QueueFilters = {};
-    // Send status filter to API for proper server-side pagination
-    if (this.selectedStatus !== 'ALL') {
-      filters.status = this.selectedStatus as JobStatus;
-    }
-    if (this.selectedNodeId) {
-      filters.nodeId = this.selectedNodeId;
-    }
-    if (this.selectedLibraryId) {
-      filters.libraryId = this.selectedLibraryId;
-    }
-    if (this.searchQuery) {
-      filters.search = this.searchQuery;
-    }
-    // Add pagination parameters
-    filters.page = this.currentPage;
-    filters.limit = this.pageSize;
-    return filters;
+  protected set selectedStatus(v: JobStatus | 'ALL') {
+    this.queueData.selectedStatus = v;
+  }
+  protected set selectedNodeId(v: string) {
+    this.queueData.selectedNodeId = v;
+  }
+  protected set selectedLibraryId(v: string) {
+    this.queueData.selectedLibraryId = v;
+  }
+  protected set searchQuery(v: string) {
+    this.queueData.searchQuery = v;
   }
 
   protected onStatusFilterChange(status: JobStatus | 'ALL'): void {
-    this.selectedStatus = status;
-    this.currentPage = 1; // Reset to page 1 when filter changes
-    this.updateQueryParams();
-    this.refreshQueue(true); // Show loading for user action
-
-    // Save the new default queue view preference to backend
-    this.settingsApi
-      .updateDefaultQueueView(status)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        error: () => {
-          // Silent failure - preference save is non-critical
-        },
-      });
+    this.queueData.onStatusFilterChange(status, this.destroyRef);
   }
 
   protected onNodeFilterChange(nodeId: string): void {
-    this.selectedNodeId = nodeId;
-    this.currentPage = 1; // Reset to page 1 when filter changes
-    this.updateQueryParams();
-    this.refreshQueue(true); // Show loading for user action
+    this.queueData.onNodeFilterChange(nodeId);
   }
 
   protected onLibraryFilterChange(libraryId: string): void {
-    this.selectedLibraryId = libraryId;
-    this.currentPage = 1; // Reset to page 1 when filter changes
-    this.updateQueryParams();
-    this.refreshQueue(true); // Show loading for user action
+    this.queueData.onLibraryFilterChange(libraryId);
   }
 
   protected onSearchChange(query: string): void {
-    this.searchQuery = query;
-    this.currentPage = 1; // Reset to page 1 when filter changes
-    this.updateQueryParams();
-    this.refreshQueue(true); // Show loading for user action
-  }
-
-  protected updateQueryParams(): void {
-    // DEEP AUDIT P2-1: Fix any type with proper interface
-    const queryParams: {
-      status?: string;
-      nodeId?: string;
-      libraryId?: string;
-      search?: string;
-    } = {};
-
-    if (this.selectedStatus !== 'ALL') {
-      queryParams.status = this.selectedStatus;
-    }
-    if (this.selectedNodeId) {
-      queryParams.nodeId = this.selectedNodeId;
-    }
-    if (this.selectedLibraryId) {
-      queryParams.libraryId = this.selectedLibraryId;
-    }
-    if (this.searchQuery) {
-      queryParams.search = this.searchQuery;
-    }
-
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams,
-      queryParamsHandling: 'merge',
-      replaceUrl: true, // Don't add to browser history
-    });
-  }
-
-  protected refreshQueue(showLoading = false): void {
-    this.refreshTrigger$.next({ showLoading });
+    this.queueData.onSearchChange(query);
   }
 
   protected clearAllFilters(): void {
-    this.selectedStatus = 'ALL';
-    this.selectedNodeId = '';
-    this.selectedLibraryId = '';
-    this.searchQuery = '';
-    this.updateQueryParams();
-    this.refreshQueue(true);
+    this.queueData.clearAllFilters();
   }
+
+  protected refreshQueue(showLoading = false): void {
+    this.queueData.refreshQueue(showLoading);
+  }
+
+  protected onPageSizeChange(newSize: number): void {
+    this.queueData.onPageSizeChange(newSize);
+  }
+
+  protected goToPage(page: number): void {
+    this.queueData.goToPage(page);
+  }
+
+  protected nextPage(): void {
+    this.queueData.goToPage(this.queueData.currentPage + 1);
+  }
+
+  protected previousPage(): void {
+    this.queueData.goToPage(this.queueData.currentPage - 1);
+  }
+
+  // ============================================================================
+  // JOB DETAIL EXPANSION & HISTORY CACHE
+  // ============================================================================
 
   protected toggleJobDetails(jobId: string): void {
     this.expandedJobId = this.expandedJobId === jobId ? null : jobId;
 
-    // Fetch job history when expanding a job (if not already cached)
     if (this.expandedJobId && !this.jobHistoryCache.has(jobId)) {
       this.jobActions
         .loadJobHistory(jobId)
@@ -493,16 +229,17 @@ export class QueueComponent implements OnInit {
 
   /**
    * DEEP AUDIT P2: Maintain cache size to prevent unbounded memory growth
-   * Evicts oldest entry when cache reaches max size
    */
   private maintainCacheSize(): void {
     if (this.jobHistoryCache.size >= this.JOB_HISTORY_CACHE_MAX_SIZE) {
       const firstKey = this.jobHistoryCache.keys().next().value;
-      if (firstKey) {
-        this.jobHistoryCache.delete(firstKey);
-      }
+      if (firstKey) this.jobHistoryCache.delete(firstKey);
     }
   }
+
+  // ============================================================================
+  // CANCEL DIALOG
+  // ============================================================================
 
   protected openCancelDialog(jobId: string, event: Event): void {
     event.stopPropagation();
@@ -557,6 +294,10 @@ export class QueueComponent implements OnInit {
       });
   }
 
+  // ============================================================================
+  // JOB ACTIONS
+  // ============================================================================
+
   protected retryJob(jobId: string, event: Event): void {
     event.stopPropagation();
     this.jobActions
@@ -571,31 +312,6 @@ export class QueueComponent implements OnInit {
       .unblockJob(jobId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.refreshQueue(false));
-  }
-
-  protected hasRecoveryHistory(job: QueueJob): boolean {
-    return (job.stuckRecoveryCount || 0) > 0 || (job.corruptedRequeueCount || 0) > 0;
-  }
-
-  protected getRecoveryTooltip(job: QueueJob): string {
-    const parts: string[] = [];
-    if ((job.stuckRecoveryCount || 0) > 0) {
-      parts.push(
-        `${job.stuckRecoveryCount} stuck ${job.stuckRecoveryCount === 1 ? 'recovery' : 'recoveries'}`
-      );
-    }
-    if ((job.corruptedRequeueCount || 0) > 0) {
-      parts.push(
-        `${job.corruptedRequeueCount} corruption ${job.corruptedRequeueCount === 1 ? 'requeue' : 'requeues'}`
-      );
-    }
-    return parts.join(', ');
-  }
-
-  protected isApproachingBlacklist(job: QueueJob): boolean {
-    const totalFailures =
-      (job.retryCount || 0) + (job.corruptedRequeueCount || 0) + (job.stuckRecoveryCount || 0);
-    return totalFailures >= 3;
   }
 
   protected recheckJob(jobId: string, event: Event): void {
@@ -700,10 +416,13 @@ export class QueueComponent implements OnInit {
       .subscribe(() => this.refreshQueue());
   }
 
+  // ============================================================================
+  // BULK ACTION DIALOGS
+  // ============================================================================
+
   protected openCancelAllDialog(): void {
     this.showCancelAllDialog = true;
   }
-
   protected closeCancelAllDialog(): void {
     this.showCancelAllDialog = false;
   }
@@ -724,7 +443,6 @@ export class QueueComponent implements OnInit {
   protected openSkipCodecMatchDialog(): void {
     this.showSkipCodecMatchDialog = true;
   }
-
   protected closeSkipCodecMatchDialog(): void {
     this.showSkipCodecMatchDialog = false;
   }
@@ -745,7 +463,6 @@ export class QueueComponent implements OnInit {
   protected openForceEncodeCodecMatchDialog(): void {
     this.showForceEncodeCodecMatchDialog = true;
   }
-
   protected closeForceEncodeCodecMatchDialog(): void {
     this.showForceEncodeCodecMatchDialog = false;
   }
@@ -766,7 +483,6 @@ export class QueueComponent implements OnInit {
   protected openRetryAllDialog(): void {
     this.showRetryAllDialog = true;
   }
-
   protected closeRetryAllDialog(): void {
     this.showRetryAllDialog = false;
   }
@@ -837,17 +553,20 @@ export class QueueComponent implements OnInit {
       .subscribe(() => this.refreshQueue());
   }
 
+  // ============================================================================
+  // MODALS
+  // ============================================================================
+
   protected openAddFilesModal(): void {
     this.showAddFilesModal = true;
   }
-
   protected closeAddFilesModal(): void {
     this.showAddFilesModal = false;
   }
 
   protected handleJobsCreated(): void {
     this.closeAddFilesModal();
-    this.refreshQueue(true); // Refresh with loading indicator
+    this.refreshQueue(true);
   }
 
   protected openErrorDetailsModal(job: QueueJob): void {
@@ -868,7 +587,6 @@ export class QueueComponent implements OnInit {
   protected openJobHistoryModal(job: QueueJobBo, event: Event): void {
     event.stopPropagation();
 
-    // Fetch history if not cached
     if (!this.jobHistoryCache.has(job.id)) {
       this.jobActions
         .loadJobHistory(job.id)
@@ -876,15 +594,10 @@ export class QueueComponent implements OnInit {
         .subscribe((history) => {
           this.maintainCacheSize();
           this.jobHistoryCache.set(job.id, history);
-          this.jobHistoryModalData = {
-            fileName: job.fileName,
-            jobId: job.id,
-            history,
-          };
+          this.jobHistoryModalData = { fileName: job.fileName, jobId: job.id, history };
           this.showJobHistoryModal = true;
         });
     } else {
-      // Use cached history
       this.jobHistoryModalData = {
         fileName: job.fileName,
         jobId: job.id,
@@ -899,157 +612,9 @@ export class QueueComponent implements OnInit {
     this.jobHistoryModalData = null;
   }
 
-  protected getStatusClass(status: JobStatus): string {
-    return status ? `status-${status.toLowerCase()}` : 'status-unknown';
-  }
-
-  protected getStatusIcon(status: JobStatus): string {
-    switch (status) {
-      case JobStatus.NEEDS_DECISION:
-        return 'fa-exclamation-triangle';
-      case JobStatus.QUEUED:
-        return 'fa-clock';
-      case JobStatus.TRANSFERRING:
-        return 'fa-exchange-alt';
-      case JobStatus.ENCODING:
-        return 'fa-spinner fa-spin';
-      case JobStatus.PAUSED:
-        return 'fa-pause-circle';
-      case JobStatus.COMPLETED:
-        return 'fa-check-circle';
-      case JobStatus.FAILED:
-        return 'fa-exclamation-circle';
-      case JobStatus.CANCELLED:
-        return 'fa-ban';
-      default:
-        return 'fa-question-circle';
-    }
-  }
-
-  protected getStatusLabel(status: JobStatus | 'ALL'): string {
-    if (status === 'ALL') return 'All Jobs';
-
-    const labels: Record<JobStatus, string> = {
-      [JobStatus.DETECTED]: 'Detected',
-      [JobStatus.HEALTH_CHECK]: 'Health Check',
-      [JobStatus.NEEDS_DECISION]: '⚠️ Needs Attention',
-      [JobStatus.QUEUED]: 'Queued',
-      [JobStatus.TRANSFERRING]: 'Transferring',
-      [JobStatus.ENCODING]: 'Encoding',
-      [JobStatus.PAUSED]: 'Paused',
-      [JobStatus.VERIFYING]: 'Verifying',
-      [JobStatus.COMPLETED]: 'Completed',
-      [JobStatus.FAILED]: 'Failed',
-      [JobStatus.CANCELLED]: 'Cancelled',
-    };
-
-    return labels[status] || status;
-  }
-
-  /**
-   * Check if job was auto-healed but had to start fresh (temp file was missing)
-   */
-  protected wasHealedFreshStart(job: QueueJob): boolean {
-    // Fresh start occurs when:
-    // 1. Job was auto-healed (autoHealedAt exists)
-    // 2. Job had made progress before (autoHealedProgress > 0)
-    // 3. But current progress is 0 (had to start fresh)
-    return !!job.autoHealedAt && (job.autoHealedProgress || 0) > 0 && job.progress === 0;
-  }
-
-  /**
-   * Check if job was auto-healed and successfully resumed from checkpoint
-   */
-  protected wasHealedWithResume(job: QueueJob): boolean {
-    // Resume occurs when:
-    // 1. Job was auto-healed (autoHealedAt exists)
-    // 2. Job had made progress before (autoHealedProgress > 0)
-    // 3. Current progress matches or exceeds the healed progress (resumed successfully)
-    return (
-      !!job.autoHealedAt &&
-      (job.autoHealedProgress || 0) > 0 &&
-      job.progress >= (job.autoHealedProgress || 0)
-    );
-  }
-
-  protected getStatusExplanation(status: JobStatus): string {
-    switch (status) {
-      case JobStatus.NEEDS_DECISION:
-        return 'This job requires your attention before it can proceed. The issue and suggested fixes are displayed below. Common issues include incompatible audio codecs or container formats that need to be adjusted.';
-      case JobStatus.QUEUED:
-        return 'This job is waiting in the queue for an available encoding node. It will start automatically when a node becomes free.';
-      case JobStatus.TRANSFERRING:
-        return 'This file is being transferred to the encoding node. Transfer speed and progress are shown. Once complete, encoding will begin automatically.';
-      case JobStatus.ENCODING:
-        return 'This job is currently being encoded by a node. Progress is shown as a percentage. Encoding time depends on file size, quality settings, and node hardware.';
-      case JobStatus.PAUSED:
-        return 'This job has been paused and encoding has stopped. You can resume it at any time to continue from where it left off.';
-      case JobStatus.COMPLETED:
-        return 'This job has finished encoding successfully. The file has been optimized and space savings are shown. The original file has been replaced or backed up according to your settings.';
-      case JobStatus.FAILED:
-        return 'This job encountered an error during encoding. Common causes include corrupted source files, insufficient disk space, or node crashes. You can retry the job or check the error details.';
-      case JobStatus.CANCELLED:
-        return "This job was manually cancelled and won't be encoded. The original file remains unchanged.";
-      default:
-        return 'Unknown job status.';
-    }
-  }
-
-  protected getHealthStatusIcon(status: FileHealthStatus): string {
-    switch (status) {
-      case FileHealthStatus.HEALTHY:
-        return 'fas fa-check-circle';
-      case FileHealthStatus.WARNING:
-        return 'fas fa-exclamation-triangle';
-      case FileHealthStatus.CORRUPTED:
-        return 'fas fa-times-circle';
-      default:
-        return 'fas fa-question-circle';
-    }
-  }
-
-  protected getHealthStatusTitle(status: FileHealthStatus): string {
-    switch (status) {
-      case FileHealthStatus.HEALTHY:
-        return 'File is Healthy';
-      case FileHealthStatus.WARNING:
-        return 'File has Warnings';
-      case FileHealthStatus.CORRUPTED:
-        return 'File is Corrupted';
-      default:
-        return 'Health Status Unknown';
-    }
-  }
-
-  /**
-   * Parse decision issues JSON string into HealthCheckIssue array
-   * DEEP AUDIT P2: Added schema validation for parsed JSON
-   */
-  protected parseDecisionIssues(decisionIssuesJson: string | null | undefined): HealthCheckIssue[] {
-    if (!decisionIssuesJson) {
-      return [];
-    }
-
-    try {
-      const issues = JSON.parse(decisionIssuesJson);
-      if (!Array.isArray(issues)) {
-        return [];
-      }
-
-      // DEEP AUDIT P2: Validate each issue has required properties
-      // FIX: Validate 'category' (not 'type') to match HealthCheckIssue interface
-      return issues.filter(
-        (issue): issue is HealthCheckIssue =>
-          issue !== null &&
-          typeof issue === 'object' &&
-          typeof issue.category === 'string' &&
-          typeof issue.message === 'string'
-      );
-    } catch (error: unknown) {
-      this.errorLogger.error('Failed to parse decision issues', error);
-      return [];
-    }
-  }
+  // ============================================================================
+  // DECISION ACTIONS
+  // ============================================================================
 
   protected async onDecisionActionSelected(event: {
     issue: HealthCheckIssue;
@@ -1057,743 +622,13 @@ export class QueueComponent implements OnInit {
   }): Promise<void> {
     const jobId = this.expandedJobId;
     if (!jobId) return;
-
     await this.jobActions.resolveDecision(jobId, event);
     this.refreshQueue();
   }
 
-  protected formatBytes(bytes: number): string {
-    // Handle invalid inputs (NaN, null, undefined)
-    if (!bytes || Number.isNaN(bytes) || bytes < 0) return '0 B';
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`;
-  }
-
-  protected formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  }
-
-  protected formatETA(etaSeconds: number | null | undefined): string {
-    if (!etaSeconds || etaSeconds <= 0) return 'Calculating...';
-
-    const hours = Math.floor(etaSeconds / 3600);
-    const minutes = Math.floor((etaSeconds % 3600) / 60);
-    const seconds = Math.floor(etaSeconds % 60);
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m remaining`;
-    }
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s remaining`;
-    }
-    return `${seconds}s remaining`;
-  }
-
-  protected calculateEncodingSpeed(job: {
-    startedAt?: string;
-    currentSize: number;
-    originalSize: number;
-  }): string {
-    if (!job.startedAt || job.currentSize <= 0) return '-';
-
-    const startTime = new Date(job.startedAt).getTime();
-    const now = Date.now();
-    const elapsedSeconds = (now - startTime) / 1000;
-
-    if (elapsedSeconds <= 0) return '-';
-
-    const bytesProcessed = job.originalSize - job.currentSize;
-    const bytesPerSecond = bytesProcessed / elapsedSeconds;
-
-    return `${this.formatBytes(bytesPerSecond)}/s`;
-  }
-
-  protected getElapsedTime(startedAt?: string): string {
-    if (!startedAt) return '-';
-
-    const start = new Date(startedAt).getTime();
-    const now = Date.now();
-    const elapsedSeconds = Math.floor((now - start) / 1000);
-
-    const hours = Math.floor(elapsedSeconds / 3600);
-    const minutes = Math.floor((elapsedSeconds % 3600) / 60);
-    const seconds = elapsedSeconds % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${seconds}s`;
-    }
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    }
-    return `${seconds}s`;
-  }
-
-  /**
-   * Calculate encoding duration for completed jobs
-   */
-  protected getEncodingDuration(startedAt?: string, completedAt?: string): string {
-    if (!startedAt || !completedAt) return '-';
-
-    const start = new Date(startedAt).getTime();
-    const end = new Date(completedAt).getTime();
-    const durationSeconds = Math.floor((end - start) / 1000);
-
-    const hours = Math.floor(durationSeconds / 3600);
-    const minutes = Math.floor((durationSeconds % 3600) / 60);
-    const seconds = durationSeconds % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${seconds}s`;
-    }
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    }
-    return `${seconds}s`;
-  }
-
   // ============================================================================
-  // NODE STATUS BAR - UX-friendly status indicators
-  // Per UX philosophy: hide technical details, show meaningful status
+  // DELEGATION
   // ============================================================================
-
-  /**
-   * Get CSS class for node status card based on workload
-   */
-  protected getNodeStatusClass(node: NodeCapacity): string {
-    if (node.isOverloaded) return 'node-status overloaded';
-    if (node.activeJobs >= node.maxWorkers) return 'node-status at-capacity';
-    if (node.activeJobs > 0) return 'node-status working';
-    return 'node-status idle';
-  }
-
-  /**
-   * Get icon class based on node status
-   */
-  protected getNodeStatusIcon(node: NodeCapacity): string {
-    if (node.isOverloaded) return 'fas fa-exclamation-triangle';
-    if (node.activeJobs >= node.maxWorkers) return 'fas fa-fire';
-    if (node.activeJobs > 0) return 'fas fa-cog fa-spin';
-    return 'fas fa-check-circle';
-  }
-
-  /**
-   * Get human-readable status label
-   */
-  protected getNodeStatusLabel(node: NodeCapacity): string {
-    if (node.isOverloaded) return 'Overloaded';
-    if (node.activeJobs >= node.maxWorkers) return 'At Capacity';
-    if (node.activeJobs > node.maxWorkers * 0.5) return 'Busy';
-    if (node.activeJobs > 0) return 'Working';
-    return 'Ready';
-  }
-
-  /**
-   * Build tooltip content with technical details for power users
-   */
-  protected getNodeTooltipContent(node: NodeCapacity): string {
-    const lines: string[] = [];
-
-    // Workers info
-    lines.push(`Workers: ${node.activeJobs} active / ${node.maxWorkers} max`);
-    lines.push(`Available slots: ${node.availableSlots}`);
-
-    // Load average (if available)
-    if (node.loadAvg1m !== undefined && node.cpuCount !== undefined) {
-      const loadPercent = ((node.loadAvg1m / node.cpuCount) * 100).toFixed(0);
-      lines.push(
-        `CPU Load: ${node.loadAvg1m.toFixed(1)} / ${node.cpuCount} cores (${loadPercent}%)`
-      );
-    }
-
-    // Memory (if available)
-    if (node.freeMemoryGB !== undefined && node.totalMemoryGB !== undefined) {
-      const usedMemory = node.totalMemoryGB - node.freeMemoryGB;
-      const memPercent = ((usedMemory / node.totalMemoryGB) * 100).toFixed(0);
-      lines.push(
-        `Memory: ${usedMemory.toFixed(1)}GB / ${node.totalMemoryGB.toFixed(1)}GB (${memPercent}% used)`
-      );
-    } else if (node.freeMemoryGB !== undefined) {
-      lines.push(`Free Memory: ${node.freeMemoryGB.toFixed(1)}GB`);
-    }
-
-    // Overload reason
-    if (node.isOverloaded && node.overloadReason) {
-      lines.push(`⚠️ ${node.overloadReason}`);
-    }
-
-    // Estimated free time (only show if reasonable - under 4 hours)
-    if (node.estimatedFreeAt) {
-      const freeAt = new Date(node.estimatedFreeAt);
-      const now = new Date();
-      const diffMs = freeAt.getTime() - now.getTime();
-      const diffMins = Math.ceil(diffMs / 60000);
-      // Only show if positive and under 4 hours (240 mins) - longer estimates are unreliable
-      if (diffMins > 0 && diffMins < 240) {
-        if (diffMins >= 60) {
-          const hours = Math.floor(diffMins / 60);
-          const mins = diffMins % 60;
-          lines.push(`Next slot available: ~${hours}h ${mins}m`);
-        } else {
-          lines.push(`Next slot available: ~${diffMins} min`);
-        }
-      }
-    }
-
-    return lines.join('\n');
-  }
-
-  protected getCodecBadgeClass(codec: string | undefined): string {
-    if (!codec) return 'codec-unknown';
-    const codecLower = codec.toLowerCase();
-    if (codecLower.includes('hevc') || codecLower.includes('h.265')) return 'codec-hevc';
-    if (codecLower.includes('av1')) return 'codec-av1';
-    if (codecLower.includes('h.264') || codecLower.includes('avc')) return 'codec-h264';
-    if (codecLower.includes('vp9')) return 'codec-vp9';
-    return 'codec-other';
-  }
-
-  protected getCancelledJobs(data: QueueResponse): QueueResponse['jobs'] {
-    return data.jobs.filter((job) => job.status === 'CANCELLED');
-  }
-
-  protected getFailedJobs(data: QueueResponse): QueueResponse['jobs'] {
-    return data.jobs.filter((job) => job.status === 'FAILED');
-  }
-
-  /**
-   * Categorize an error message into a meaningful group
-   */
-  private categorizeError(error: string): string {
-    const errorLower = error.toLowerCase();
-
-    // FFmpeg exit code errors
-    const ffmpegExitMatch = error.match(/ffmpeg.*exit code (\d+)/i);
-    if (ffmpegExitMatch) {
-      const exitCode = ffmpegExitMatch[1];
-      return `FFmpeg Error Code ${exitCode}`;
-    }
-
-    // Generic FFmpeg errors without exit code
-    if (errorLower.includes('ffmpeg') && errorLower.includes('error')) {
-      return 'FFmpeg Error (Other)';
-    }
-
-    // Timeout/stuck errors
-    if (
-      errorLower.includes('timeout') ||
-      errorLower.includes('timed out') ||
-      errorLower.includes('stuck') ||
-      errorLower.includes('no progress')
-    ) {
-      return 'Job Timeout/Stuck';
-    }
-
-    // File not found/missing
-    if (
-      errorLower.includes('file not found') ||
-      errorLower.includes('no such file') ||
-      errorLower.includes('enoent') ||
-      errorLower.includes('does not exist')
-    ) {
-      return 'File Not Found';
-    }
-
-    // Codec errors
-    if (
-      errorLower.includes('codec') ||
-      errorLower.includes('unsupported') ||
-      errorLower.includes('invalid codec')
-    ) {
-      return 'Codec Error';
-    }
-
-    // Network/connection errors
-    if (
-      errorLower.includes('network') ||
-      errorLower.includes('connection') ||
-      errorLower.includes('econnrefused') ||
-      errorLower.includes('econnreset')
-    ) {
-      return 'Network Error';
-    }
-
-    // Disk space errors
-    if (
-      errorLower.includes('no space') ||
-      errorLower.includes('enospc') ||
-      errorLower.includes('disk full')
-    ) {
-      return 'Disk Space Error';
-    }
-
-    // Permission errors
-    if (
-      errorLower.includes('permission') ||
-      errorLower.includes('eacces') ||
-      errorLower.includes('eperm')
-    ) {
-      return 'Permission Error';
-    }
-
-    // Memory errors
-    if (errorLower.includes('out of memory') || errorLower.includes('enomem')) {
-      return 'Memory Error';
-    }
-
-    // If no category matches, return original error
-    return error;
-  }
-
-  /**
-   * Group failed jobs by error category
-   */
-  protected getUniqueFailureReasons(
-    data: QueueResponse
-  ): Array<{ error: string; count: number; category: string }> {
-    const failedJobs = this.getFailedJobs(data);
-    const categoryCounts = new Map<string, { count: number; originalErrors: Set<string> }>();
-
-    for (const job of failedJobs) {
-      const originalError = job.error || 'Unknown error';
-      const category = this.categorizeError(originalError);
-
-      if (!categoryCounts.has(category)) {
-        categoryCounts.set(category, { count: 0, originalErrors: new Set() });
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const entry = categoryCounts.get(category)!;
-      entry.count++;
-      entry.originalErrors.add(originalError);
-    }
-
-    return Array.from(categoryCounts.entries())
-      .map(([category, data]) => ({
-        error: category,
-        count: data.count,
-        category: category,
-      }))
-      .sort((a, b) => b.count - a.count); // Sort by count descending
-  }
-
-  /**
-   * Filter failed jobs by error category
-   */
-  protected getFilteredFailedJobs(
-    data: QueueResponse,
-    errorFilter: string | null
-  ): QueueResponse['jobs'] {
-    const failedJobs = this.getFailedJobs(data);
-    if (!errorFilter) {
-      return failedJobs;
-    }
-
-    // Filter by matching category
-    return failedJobs.filter((job) => {
-      const category = this.categorizeError(job.error || 'Unknown error');
-      return category === errorFilter;
-    });
-  }
-
-  protected calculateTotalSize(jobs: QueueResponse['jobs']): number {
-    return jobs.reduce((sum, job) => sum + Number(job.originalSize), 0);
-  }
-
-  /**
-   * Format timestamp to human-readable format
-   */
-  protected formatTimestamp(timestamp: string | null | undefined): string {
-    if (!timestamp) return 'N/A';
-
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
-    // If less than 1 hour ago, show relative time
-    if (diffMins < 60) {
-      if (diffMins < 1) return 'Just now';
-      if (diffMins === 1) return '1 minute ago';
-      return `${diffMins} minutes ago`;
-    }
-
-    // Otherwise show formatted date
-    const options: Intl.DateTimeFormatOptions = {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    };
-    return date.toLocaleDateString('en-US', options);
-  }
-
-  /**
-   * Format as relative time (always shows "X ago" format)
-   */
-  protected formatRelativeTime(timestamp: string | null | undefined): string {
-    if (!timestamp) return 'N/A';
-
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSecs = Math.floor(diffMs / 1000);
-    const diffMins = Math.floor(diffSecs / 60);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffSecs < 60) return 'Just now';
-    if (diffMins < 60) {
-      return diffMins === 1 ? '1 minute ago' : `${diffMins} minutes ago`;
-    }
-    if (diffHours < 24) {
-      return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
-    }
-    if (diffDays < 30) {
-      return diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
-    }
-    const diffMonths = Math.floor(diffDays / 30);
-    if (diffMonths < 12) {
-      return diffMonths === 1 ? '1 month ago' : `${diffMonths} months ago`;
-    }
-    const diffYears = Math.floor(diffMonths / 12);
-    return diffYears === 1 ? '1 year ago' : `${diffYears} years ago`;
-  }
-
-  /**
-   * Format absolute datetime for timeline (full precision)
-   */
-  protected formatAbsoluteDateTime(timestamp: string | null | undefined): string {
-    if (!timestamp) return '';
-
-    const date = new Date(timestamp);
-    const options: Intl.DateTimeFormatOptions = {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    };
-    return date.toLocaleDateString('en-US', options);
-  }
-
-  /**
-   * Get user-friendly label for job event type (fallback when systemMessage is not available)
-   */
-  protected getEventTypeLabel(eventType: JobEventType): string {
-    switch (eventType) {
-      case JobEventType.FAILED:
-        return 'Encoding Failed';
-      case JobEventType.CANCELLED:
-        return 'Job Cancelled';
-      case JobEventType.RESTARTED:
-        return 'Job Restarted';
-      case JobEventType.AUTO_HEALED:
-        return 'Auto-Healed';
-      case JobEventType.BACKEND_RESTART:
-        return 'Backend Restart';
-      case JobEventType.TIMEOUT:
-        return 'Encoding Timeout';
-      default:
-        return 'Job Event';
-    }
-  }
-
-  /**
-   * Calculate expected final file size based on estimated compression
-   */
-  protected calculateExpectedSize(job: QueueJob): string {
-    const compressionPercent = this.getEstimatedCompression(job);
-    const expectedSize = job.originalSize * (1 - compressionPercent / 100);
-    return this.formatBytes(expectedSize);
-  }
-
-  /**
-   * Calculate and format expected savings with color coding
-   */
-  protected calculateExpectedSavings(job: QueueJob): string {
-    const compressionPercent = this.getEstimatedCompression(job);
-    const savedBytes = job.originalSize * (compressionPercent / 100);
-    return `~${this.formatBytes(savedBytes)} (${compressionPercent}%)`;
-  }
-
-  protected calculateEstimatedTime(totalSizeBytes: number): {
-    hours: number;
-    minutes: number;
-  } {
-    const avgEncodingSpeed = 50 * 1024 * 1024; // 50 MB/s
-    const estimatedSeconds = totalSizeBytes / avgEncodingSpeed;
-    const hours = Math.floor(estimatedSeconds / 3600);
-    const minutes = Math.floor((estimatedSeconds % 3600) / 60);
-    return { hours, minutes };
-  }
-
-  protected getAvgEncodingSpeed(): number {
-    return 50 * 1024 * 1024; // 50 MB/s
-  }
-
-  /**
-   * Detect if a job appears to be stuck
-   * A job is considered stuck if:
-   * - It's in ENCODING status
-   * - Progress is 0% or hasn't changed
-   * - It's been running for more than 5 minutes
-   */
-  protected isJobStuck(job: QueueJob): boolean {
-    if (job.status !== JobStatus.ENCODING || !job.startedAt) {
-      return false;
-    }
-
-    const startTime = new Date(job.startedAt).getTime();
-    const now = Date.now();
-    const elapsedMinutes = (now - startTime) / (1000 * 60);
-
-    // Job is stuck if it's been encoding for 5+ minutes with 0% progress
-    return elapsedMinutes >= 5 && job.progress === 0;
-  }
-
-  /**
-   * Get stuck job warning message
-   */
-  protected getStuckJobMessage(job: QueueJob, advanced = false): string {
-    if (!job.startedAt) return 'Job may be stuck';
-
-    const elapsedTime = this.getElapsedTime(job.startedAt);
-    let message = `No progress for ${elapsedTime}. The system is monitoring this job and will auto-recover it if needed.`;
-    if (advanced && (job.stuckRecoveryCount || 0) > 0) {
-      message += ` Recovery count: ${job.stuckRecoveryCount}/5`;
-    }
-    return message;
-  }
-
-  /**
-   * Estimate final size based on codec conversion
-   * Returns estimated size in bytes
-   */
-  protected getEstimatedSize(job: {
-    originalSize: number;
-    sourceCodec?: string;
-    targetCodec?: string;
-  }): number {
-    const compressionRatio = this.getCompressionRatio(job.sourceCodec, job.targetCodec);
-    return Math.round(job.originalSize * (1 - compressionRatio));
-  }
-
-  /**
-   * Get estimated compression percentage
-   * Returns percentage as number (e.g., 50 for 50%)
-   */
-  protected getEstimatedCompression(job: { sourceCodec?: string; targetCodec?: string }): number {
-    return Math.round(this.getCompressionRatio(job.sourceCodec, job.targetCodec) * 100);
-  }
-
-  /**
-   * Calculate compression ratio based on codec conversion
-   * Returns ratio (e.g., 0.5 for 50% compression)
-   */
-  private getCompressionRatio(sourceCodec?: string, targetCodec?: string): number {
-    if (!sourceCodec || !targetCodec) {
-      return 0.4; // Default 40% compression
-    }
-
-    const source = sourceCodec.toLowerCase();
-    const target = targetCodec.toLowerCase();
-
-    // H.264 to HEVC: 40-50% savings (typical)
-    if (source.includes('h.264') || source.includes('avc')) {
-      if (target.includes('hevc') || target.includes('h.265')) {
-        return 0.45;
-      }
-      if (target.includes('av1')) {
-        return 0.5;
-      }
-    }
-
-    // HEVC to AV1: 20-30% additional savings
-    if (source.includes('hevc') || source.includes('h.265')) {
-      if (target.includes('av1')) {
-        return 0.25;
-      }
-    }
-
-    // VP9 conversions
-    if (source.includes('vp9')) {
-      if (target.includes('av1')) {
-        return 0.2;
-      }
-      if (target.includes('hevc')) {
-        return 0.15;
-      }
-    }
-
-    // Same codec or unknown: minimal compression
-    if (source === target) {
-      return 0.05;
-    }
-
-    // Default conservative estimate
-    return 0.4;
-  }
-
-  /**
-   * Extract a short, simple failure reason from error message
-   * Returns a brief user-friendly explanation (max ~50 chars)
-   */
-  protected getShortFailureReason(error: string | null | undefined): string {
-    if (!error) return 'Unknown error';
-
-    // Common error patterns with short explanations
-    const patterns = [
-      { regex: /no space left/i, reason: 'Out of disk space' },
-      { regex: /permission denied/i, reason: 'Permission denied' },
-      { regex: /file not found/i, reason: 'File not found' },
-      { regex: /invalid data found/i, reason: 'Invalid or corrupted file' },
-      { regex: /codec.*not (found|supported)/i, reason: 'Codec not supported' },
-      { regex: /invalid argument/i, reason: 'Invalid encoding parameters' },
-      { regex: /timed out/i, reason: 'Encoding timed out' },
-      { regex: /connection (refused|reset)/i, reason: 'Connection failed' },
-      { regex: /segmentation fault/i, reason: 'FFmpeg crashed' },
-      { regex: /killed/i, reason: 'Process terminated' },
-      { regex: /out of memory/i, reason: 'Out of memory' },
-    ];
-
-    // Check for known patterns
-    for (const { regex, reason } of patterns) {
-      if (regex.test(error)) {
-        return reason;
-      }
-    }
-
-    // Extract first line if error is multi-line
-    const firstLine = error.split('\n')[0].trim();
-
-    // If first line is very long, truncate it intelligently
-    if (firstLine.length > 50) {
-      // Try to extract meaningful part before common delimiters
-      const meaningfulPart =
-        firstLine.split(':')[0] || firstLine.split('-')[0] || firstLine.substring(0, 50);
-      return `${meaningfulPart.trim()}...`;
-    }
-
-    return firstLine || 'Unknown error';
-  }
-
-  /**
-   * Parse preview image paths from JSON string and convert to HTTP URLs
-   * Uses existing endpoint: GET /:id/preview/:index (1-based)
-   * Returns empty array if paths are not available
-   */
-  protected parsePreviewPaths(paths: string | null | undefined, jobId: string): string[] {
-    if (!paths) return [];
-    try {
-      const filePaths = JSON.parse(paths) as string[];
-      return filePaths.map((_, index) => {
-        // Convert to HTTP URL using existing endpoint (1-based index)
-        return `/api/v1/queue/${jobId}/preview/${index + 1}`;
-      });
-    } catch {
-      return [];
-    }
-  }
-
-  /**
-   * Get preview image URL for a specific job and index
-   * Index is 1-based (1-4 for the 4 preview images)
-   */
-  protected getPreviewUrl(jobId: string, index: number): string {
-    return `/api/v1/queue/${jobId}/preview/${index}`;
-  }
-
-  /**
-   * Get preview label for a specific index
-   * Returns label like "Manual #1", "Manual #2", etc.
-   */
-  protected getPreviewLabel(index: number): string {
-    return `Manual #${index + 1}`;
-  }
-
-  /**
-   * Get storage access type for a job
-   * @param job - Job object with transferRequired and node info
-   * @param nodes - List of all nodes with role information
-   * @returns 'local' for MAIN node direct mounts, 'nfs' for CHILD node network mounts, 'copied' for file transfers
-   */
-  protected getStorageAccessType(
-    job: { transferRequired?: boolean; nodeId?: string },
-    nodes: NodeModel[]
-  ): 'local' | 'nfs' | 'copied' {
-    if (job.transferRequired) return 'copied';
-
-    const node = nodes.find((n) => n.id === job.nodeId);
-    if (node?.role === 'MAIN') return 'local';
-
-    return 'nfs';
-  }
-
-  /**
-   * Convert preview paths to carousel images
-   */
-  protected parsePreviewImages(paths: string | null | undefined, jobId: string): CarouselImage[] {
-    if (!paths) return [];
-    try {
-      const filePaths = JSON.parse(paths) as string[];
-      return filePaths.map((_, index) => ({
-        src: `/api/v1/queue/${jobId}/preview/${index + 1}`,
-        alt: `Preview ${index + 1}`,
-        label: this.getPreviewLabel(index),
-      }));
-    } catch {
-      return [];
-    }
-  }
-
-  /**
-   * Open fullscreen carousel for a job's preview images
-   */
-  protected openFullscreenCarousel(
-    jobId: string,
-    paths: string | null | undefined,
-    initialIndex = 0
-  ): void {
-    this.fullscreenCarouselImages = this.parsePreviewImages(paths, jobId);
-    this.fullscreenCarouselInitialIndex = initialIndex;
-    this.showFullscreenCarousel = true;
-  }
-
-  /**
-   * Close fullscreen carousel
-   */
-  protected closeFullscreenCarousel(): void {
-    this.showFullscreenCarousel = false;
-    this.fullscreenCarouselImages = [];
-    this.fullscreenCarouselInitialIndex = 0;
-  }
-
-  /**
-   * Pagination Methods
-   */
-  protected onPageSizeChange(newSize: number): void {
-    this.pageSize = newSize;
-    this.currentPage = 1; // Reset to page 1 when changing page size
-    this.refreshTrigger$.next({ showLoading: true });
-  }
-
-  protected goToPage(page: number): void {
-    this.currentPage = page;
-    this.refreshTrigger$.next({ showLoading: true });
-  }
-
-  protected nextPage(): void {
-    this.goToPage(this.currentPage + 1);
-  }
-
-  protected previousPage(): void {
-    this.goToPage(this.currentPage - 1);
-  }
 
   protected openDelegationDialog(job: QueueJobBo, event: Event): void {
     event.stopPropagation();
@@ -1803,5 +638,25 @@ export class QueueComponent implements OnInit {
       .subscribe((delegated) => {
         if (delegated) this.refreshQueue();
       });
+  }
+
+  // ============================================================================
+  // CAROUSEL
+  // ============================================================================
+
+  protected openFullscreenCarousel(
+    jobId: string,
+    paths: string | null | undefined,
+    initialIndex = 0
+  ): void {
+    this.fullscreenCarouselImages = this.display.parsePreviewImages(paths, jobId);
+    this.fullscreenCarouselInitialIndex = initialIndex;
+    this.showFullscreenCarousel = true;
+  }
+
+  protected closeFullscreenCarousel(): void {
+    this.showFullscreenCarousel = false;
+    this.fullscreenCarouselImages = [];
+    this.fullscreenCarouselInitialIndex = 0;
   }
 }

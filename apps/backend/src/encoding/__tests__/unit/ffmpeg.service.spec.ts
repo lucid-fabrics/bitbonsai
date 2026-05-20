@@ -9,6 +9,7 @@ import { EncodingCancelledEvent, EncodingFailedEvent } from '../../../common/eve
 import { JobRepository } from '../../../common/repositories/job.repository';
 import { EncodingPreviewService } from '../../../encoding/encoding-preview.service';
 import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
+import { FfmpegEncoderService } from '../../ffmpeg/ffmpeg-encoder.service';
 import { FfmpegHealthMonitor } from '../../ffmpeg/ffmpeg-health-monitor.service';
 import { FfmpegProcessManager } from '../../ffmpeg/ffmpeg-process-manager.service';
 import { FfmpegProgressTracker } from '../../ffmpeg/ffmpeg-progress-tracker.service';
@@ -231,6 +232,7 @@ describe('FfmpegService', () => {
         },
         FfmpegProgressParserService,
         FfmpegProcessManager,
+        FfmpegEncoderService,
         FfmpegProgressTracker,
         FfmpegHealthMonitor,
         {
