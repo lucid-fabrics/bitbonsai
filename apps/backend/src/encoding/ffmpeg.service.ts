@@ -326,7 +326,7 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     hwaccel: HardwareAccelConfig,
     outputPath: string,
     resumeFromTimestamp?: string,
-    passNumber?: 1 | 2
+    _passNumber?: 1 | 2
   ): string[] {
     return this.flagBuilder.buildFfmpegCommand(
       job,
@@ -381,7 +381,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       this.speedTrackers.set(jobId, { samples: [], anomalyStart: null });
     }
 
-    const tracker = this.speedTrackers.get(jobId)!;
+    const tracker = this.speedTrackers.get(jobId) ?? { samples: [], anomalyStart: null };
+    this.speedTrackers.set(jobId, tracker);
 
     // Only push meaningful fps values (skip 0 during initial buffering)
     if (currentFps > 0) {

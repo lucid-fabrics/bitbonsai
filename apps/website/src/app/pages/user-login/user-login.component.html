@@ -34,6 +34,16 @@
         <div class="error-message">{{ error() }}</div>
       }
 
+      @if (resendSuccess()) {
+        <div class="success-message">Verification email sent — check your inbox.</div>
+      }
+
+      @if (showResendVerification()) {
+        <button type="button" class="btn-link" [disabled]="resendLoading()" (click)="resendVerification()">
+          {{ resendLoading() ? 'Sending…' : 'Resend verification email' }}
+        </button>
+      }
+
       <button type="submit" [disabled]="loading()" class="btn-primary">
         @if (loading()) {
           <span>Signing in...</span>

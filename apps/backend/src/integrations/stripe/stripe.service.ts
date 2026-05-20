@@ -100,6 +100,7 @@ export class StripeService {
 
     return {
       sessionId: session.id,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       url: session.url!,
     };
   }

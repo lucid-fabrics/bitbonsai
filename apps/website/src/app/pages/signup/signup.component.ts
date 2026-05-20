@@ -20,6 +20,9 @@ export class SignupComponent implements OnInit {
   name = signal('');
   error = signal<string | null>(null);
   loading = signal(false);
+  registered = signal(false);
+  resendLoading = signal(false);
+  resendSuccess = signal(false);
 
   ngOnInit(): void {
     this.authService.handleOAuthFragment();
@@ -37,7 +40,7 @@ export class SignupComponent implements OnInit {
     this.authService.register(this.email(), this.password(), nameVal).subscribe({
       next: () => {
         this.loading.set(false);
-        this.navigateAfterAuth();
+        this.registered.set(true);
       },
       error: (err: { error?: { message?: string } }) => {
         this.loading.set(false);
@@ -46,12 +49,26 @@ export class SignupComponent implements OnInit {
     });
   }
 
+  resendEmail(): void {
+    this.resendLoading.set(true);
+    this.authService.resendVerificationByEmail(this.email()).subscribe({
+      next: () => {
+        this.resendLoading.set(false);
+        this.resendSuccess.set(true);
+      },
+      error: () => {
+        this.resendLoading.set(false);
+        this.resendSuccess.set(true); // generic — don't reveal if email exists
+      },
+    });
+  }
+
   googleLogin(): void {
-    this.authService.googleLogin();
+    this.authService.googleLogin('account');
   }
 
   githubLogin(): void {
-    this.authService.githubLogin();
+    this.authService.githubLogin('account');
   }
 
   private navigateAfterAuth(): void {

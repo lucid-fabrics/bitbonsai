@@ -1,6 +1,7 @@
 import { version } from '@bitbonsai/version';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { randomBytes, randomInt } from 'crypto';
 import { NodeRepository } from '../common/repositories/node.repository';
 import { SettingsRepository } from '../common/repositories/settings.repository';
 import { UserRepository } from '../common/repositories/user.repository';
@@ -39,9 +40,7 @@ export class SetupService {
    */
   async getSetupStatus(): Promise<SetupStatusDto> {
     // Check if this is a LINKED (child) node
-    const linkedNode = await this.nodeRepository.findFirstByRole(
-      'LINKED' as import('@prisma/client').NodeRole
-    );
+    const linkedNode = await this.nodeRepository.findFirstByRole('LINKED');
 
     // For child nodes, skip user check and just return the flag
     if (linkedNode) {
@@ -126,7 +125,7 @@ export class SetupService {
     if (nodeType === NodeType.Main) {
       const hostname = process.env.HOSTNAME || 'main-node';
       const apiKey = `bb_${this.generateRandomString(64)}`;
-      const pairingToken = (100000 + require('crypto').randomInt(900000)).toString();
+      const pairingToken = randomInt(100000, 1000000).toString();
 
       await this.nodeRepository.createNode({
         name: `Main Node (${hostname})`,
@@ -177,12 +176,7 @@ export class SetupService {
    * @returns Pairing token string
    */
   private generatePairingToken(): string {
-    // Generate a random 8-character token
-    const randomPart = require('crypto')
-      .randomBytes(6)
-      .toString('hex')
-      .substring(0, 8)
-      .toUpperCase();
+    const randomPart = randomBytes(6).toString('hex').substring(0, 8).toUpperCase();
     return `BITBONSAI-${randomPart}`;
   }
 
@@ -193,9 +187,7 @@ export class SetupService {
    * @returns Random string
    */
   private generateRandomString(length: number): string {
-    // Use crypto.randomBytes for cryptographically secure random strings
-    return require('crypto')
-      .randomBytes(Math.ceil((length * 3) / 4))
+    return randomBytes(Math.ceil((length * 3) / 4))
       .toString('base64')
       .slice(0, length);
   }

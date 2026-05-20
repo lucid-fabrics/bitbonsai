@@ -76,7 +76,7 @@ export class QueueService {
     return this.jobCrudService.getJobStatus(jobId);
   }
 
-  async updateJobRaw(jobId: string, data: Record<string, any>): Promise<void> {
+  async updateJobRaw(jobId: string, data: Record<string, unknown>): Promise<void> {
     return this.jobCrudService.updateJobRaw(jobId, data);
   }
 
@@ -233,7 +233,7 @@ export class QueueService {
     return this.jobStateService.detectAndRequeueIfUncompressed(id);
   }
 
-  async resolveDecision(id: string, decisionData?: Record<string, any>): Promise<Job> {
+  async resolveDecision(id: string, decisionData?: Record<string, unknown>): Promise<Job> {
     return this.jobStateService.resolveDecision(id, decisionData);
   }
 

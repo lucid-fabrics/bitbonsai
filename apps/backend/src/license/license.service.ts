@@ -1,4 +1,3 @@
-import type { LicenseFeatures } from '@bitbonsai/prisma-types';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 // LicenseTier / LicenseStatus / License types removed from Prisma schema — use local strings
 import { randomBytes } from 'crypto';

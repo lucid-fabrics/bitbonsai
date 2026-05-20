@@ -115,7 +115,7 @@ export class SegmentedEncodeService {
 
   // Reset a partial segment (completed but not verified) — delete file + reset DB row
   async resetPartialSegment(jobId: string, segmentIndex: number, tempPath: string): Promise<void> {
-    await fs.unlink(tempPath).catch(() => {}); // best-effort delete
+    await fs.unlink(tempPath).catch((_err) => undefined); // best-effort delete
     await this.prisma.jobSegment.update({
       where: { jobId_segmentIndex: { jobId, segmentIndex } },
       data: { completedAt: null, verifiedAt: null, durationVerified: null, sizeBytes: null },
@@ -259,9 +259,9 @@ export class SegmentedEncodeService {
     });
     if (segments.length === 0) return;
     for (const seg of segments) {
-      await fs.unlink(seg.tempPath).catch(() => {});
+      await fs.unlink(seg.tempPath).catch((_err) => undefined);
     }
-    await fs.rm(segmentsDir, { recursive: true, force: true }).catch(() => {});
+    await fs.rm(segmentsDir, { recursive: true, force: true }).catch((_err) => undefined);
     this.logger.log(`Cleaned up segments for job ${jobId}`);
   }
 

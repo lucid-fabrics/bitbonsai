@@ -9,11 +9,22 @@ export interface EndUser {
   id: string;
   email: string;
   name?: string;
+  hasStripeSubscription: boolean;
 }
 
 export interface EndUserAuthResponse {
   accessToken: string;
   user: EndUser;
+}
+
+export interface LinkedDevice {
+  id: string;
+  productId: string;
+  machineId: string;
+  machineName: string | null;
+  createdAt: string;
+  lastSeenAt: string;
+  revokedAt: string | null;
 }
 
 @Injectable({
@@ -40,26 +51,32 @@ export class EndUserAuthService {
     return this.http.post<{ message: string }>(
       `${this.deviceUrl}/authorize`,
       { userCode },
-      { headers: { Authorization: `Bearer ${this.getToken()}` } }
+      this.authHeaders()
     );
   }
 
-  googleLogin(): void {
-    window.location.href = `${this.baseUrl}/oauth/google`;
+  googleLogin(next?: 'account' | 'device'): void {
+    const url = new URL(`${this.baseUrl}/oauth/google`);
+    if (next) url.searchParams.set('next', next);
+    window.location.href = url.toString();
   }
 
-  githubLogin(): void {
-    window.location.href = `${this.baseUrl}/oauth/github`;
+  githubLogin(next?: 'account' | 'device'): void {
+    const url = new URL(`${this.baseUrl}/oauth/github`);
+    if (next) url.searchParams.set('next', next);
+    window.location.href = url.toString();
   }
 
   handleOAuthFragment(): void {
     const fragment = window.location.hash;
-    if (fragment.startsWith('#token=')) {
-      const token = fragment.slice('#token='.length);
-      this.storeToken(token);
-      // Clean up the fragment from the URL
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
+    if (!fragment.startsWith('#token=')) return;
+
+    const token = fragment.slice('#token='.length);
+    // Basic JWT structure check: three base64url segments separated by dots
+    if (!/^[\w-]+\.[\w-]+\.[\w-]+$/.test(token)) return;
+
+    this.storeToken(token);
+    history.replaceState(null, '', window.location.pathname + window.location.search);
   }
 
   isLoggedIn(): boolean {
@@ -70,11 +87,43 @@ export class EndUserAuthService {
     return localStorage.getItem(TOKEN_KEY);
   }
 
+  getMe(): Observable<EndUser> {
+    return this.http.get<EndUser>(`${this.baseUrl}/me`, this.authHeaders());
+  }
+
+  listDevices(): Observable<LinkedDevice[]> {
+    return this.http.get<LinkedDevice[]>(`${this.baseUrl}/devices`, this.authHeaders());
+  }
+
+  revokeDevice(deviceId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/devices/${deviceId}`, this.authHeaders());
+  }
+
+  resendVerificationByEmail(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/resend-verification-public`, {
+      email,
+    });
+  }
+
+  getStripePortalUrl(returnUrl?: string): Observable<{ url: string }> {
+    return this.http.post<{ url: string }>(
+      `${this.baseUrl}/portal`,
+      { returnUrl: returnUrl ?? window.location.href },
+      this.authHeaders()
+    );
+  }
+
   logout(): void {
     localStorage.removeItem(TOKEN_KEY);
   }
 
   private storeToken(token: string): void {
     localStorage.setItem(TOKEN_KEY, token);
+  }
+
+  private authHeaders(): { headers: { Authorization: string } } {
+    const token = this.getToken();
+    if (!token) throw new Error('Not authenticated');
+    return { headers: { Authorization: `Bearer ${token}` } };
   }
 }

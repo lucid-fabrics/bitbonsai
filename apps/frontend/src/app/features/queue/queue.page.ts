@@ -1675,6 +1675,7 @@ export class QueueComponent implements OnInit {
         categoryCounts.set(category, { count: 0, originalErrors: new Set() });
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const entry = categoryCounts.get(category)!;
       entry.count++;
       entry.originalErrors.add(originalError);

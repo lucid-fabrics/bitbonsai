@@ -14,7 +14,6 @@ export interface PricingTier {
   priceYearly?: number;
   stripePriceIdMonthly?: string;
   stripePriceIdYearly?: string;
-  patreonTierId?: string;
   isActive: boolean;
 }
 

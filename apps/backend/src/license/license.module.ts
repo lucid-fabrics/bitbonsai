@@ -5,8 +5,6 @@ import { JobRepository } from '../common/repositories/job.repository';
 import { LicenseRepository } from '../common/repositories/license.repository';
 import { NodeRepository } from '../common/repositories/node.repository';
 import { PrismaModule } from '../prisma/prisma.module';
-import { JobLimitGuard } from './guards/job-limit.guard';
-import { NodeLimitGuard } from './guards/node-limit.guard';
 import { LicenseController } from './license.controller';
 import { LicenseService } from './license.service';
 import { LicenseClientService } from './license-client.service';
@@ -29,16 +27,7 @@ import { LicenseGuardService } from './license-guard.service';
     LicenseService,
     LicenseGuardService,
     LicenseClientService,
-    NodeLimitGuard,
-    JobLimitGuard,
   ],
-  exports: [
-    LicenseRepository,
-    LicenseService,
-    LicenseGuardService,
-    LicenseClientService,
-    NodeLimitGuard,
-    JobLimitGuard,
-  ],
+  exports: [LicenseRepository, LicenseService, LicenseGuardService, LicenseClientService],
 })
 export class LicenseModule {}

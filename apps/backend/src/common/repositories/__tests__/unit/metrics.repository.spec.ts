@@ -6,7 +6,6 @@ const mockMetric = {
   id: 'metric-1',
   date: new Date('2025-01-15'),
   nodeId: 'node-1',
-  licenseId: 'license-1',
   jobsCompleted: 10,
   jobsFailed: 1,
   totalSavedBytes: BigInt(1024),
@@ -62,7 +61,6 @@ describe('MetricsRepository', () => {
         where: {
           date: { gte: startDate, lte: endDate },
           nodeId: undefined,
-          licenseId: undefined,
         },
         orderBy: { date: 'asc' },
       });
@@ -81,13 +79,12 @@ describe('MetricsRepository', () => {
         where: {
           date: { gte: startDate, lte: endDate },
           nodeId: 'node-1',
-          licenseId: undefined,
         },
         orderBy: { date: 'asc' },
       });
     });
 
-    it('should filter by licenseId when provided', async () => {
+    it('should aggregate all metrics (licenseId ignored)', async () => {
       mockPrismaMetric.findMany.mockResolvedValue([mockMetric]);
 
       await repository.findByDateRange({
@@ -100,7 +97,6 @@ describe('MetricsRepository', () => {
         where: {
           date: { gte: startDate, lte: endDate },
           nodeId: undefined,
-          licenseId: 'license-1',
         },
         orderBy: { date: 'asc' },
       });
@@ -138,14 +134,14 @@ describe('MetricsRepository', () => {
       });
     });
 
-    it('should aggregate metrics filtered by licenseId', async () => {
+    it('should aggregate all metrics when licenseId provided (licenseId ignored)', async () => {
       mockPrismaMetric.aggregate.mockResolvedValue(mockAggResult);
 
       const result = await repository.aggregateByLicense('license-1');
 
       expect(result).toEqual(mockAggResult);
       expect(mockPrismaMetric.aggregate).toHaveBeenCalledWith({
-        where: { licenseId: 'license-1' },
+        where: {},
         _sum: { jobsCompleted: true, jobsFailed: true, totalSavedBytes: true },
         _avg: { avgThroughputFilesPerHour: true },
       });
@@ -178,7 +174,7 @@ describe('MetricsRepository', () => {
       });
     });
 
-    it('should filter by licenseId when provided', async () => {
+    it('should return all codec distributions (licenseId ignored)', async () => {
       const distributions = [{ codecDistribution: { AV1: 3 } }];
       mockPrismaMetric.findMany.mockResolvedValue(distributions);
 
@@ -186,7 +182,7 @@ describe('MetricsRepository', () => {
 
       expect(result).toEqual(distributions);
       expect(mockPrismaMetric.findMany).toHaveBeenCalledWith({
-        where: { licenseId: 'license-1' },
+        where: {},
         select: { codecDistribution: true },
       });
     });
@@ -221,7 +217,7 @@ describe('MetricsRepository', () => {
       });
     });
 
-    it('should include licenseId filter when provided', async () => {
+    it('should ignore licenseId filter when provided', async () => {
       mockPrismaMetric.findMany.mockResolvedValue([mockMetric]);
 
       await repository.findByDateRangeOrdered({
@@ -233,7 +229,6 @@ describe('MetricsRepository', () => {
       expect(mockPrismaMetric.findMany).toHaveBeenCalledWith({
         where: {
           date: { gte: startDate, lte: endDate },
-          licenseId: 'license-1',
         },
         orderBy: { date: 'asc' },
       });

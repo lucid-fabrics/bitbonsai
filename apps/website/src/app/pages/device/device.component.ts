@@ -32,6 +32,13 @@ export class DeviceComponent implements OnInit {
       return;
     }
 
+    const storedCode = sessionStorage.getItem('oauth_device_code');
+    if (storedCode) {
+      sessionStorage.removeItem('oauth_device_code');
+      this.userCode.set(this.formatCode(storedCode));
+      return;
+    }
+
     const code = this.route.snapshot.queryParamMap.get('code');
     if (code) {
       this.userCode.set(this.formatCode(code));

@@ -21,7 +21,6 @@ import { HealthModule } from './health/health.module';
 import { InsightsModule } from './insights/insights.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { LibrariesModule } from './libraries/libraries.module';
-import { LicenseModule } from './license/license.module';
 import { LicensesModule } from './licenses/licenses.module';
 import { MediaStatsModule } from './media-stats/media-stats.module';
 import { NodesModule } from './nodes/nodes.module';
@@ -68,7 +67,6 @@ import { SystemModule } from './system/system.module';
     MediaStatsModule,
     NotificationsModule,
     PoliciesModule,
-    LicenseModule,
     LicensesModule,
     LibrariesModule,
     FilesystemModule,

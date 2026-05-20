@@ -19,6 +19,9 @@ export class UserLoginComponent implements OnInit {
   password = signal('');
   error = signal<string | null>(null);
   loading = signal(false);
+  showResendVerification = signal(false);
+  resendLoading = signal(false);
+  resendSuccess = signal(false);
 
   ngOnInit(): void {
     this.authService.handleOAuthFragment();
@@ -38,17 +41,44 @@ export class UserLoginComponent implements OnInit {
       },
       error: (err: { error?: { message?: string } }) => {
         this.loading.set(false);
-        this.error.set(err.error?.message ?? 'Login failed. Please try again.');
+        const msg = err.error?.message ?? 'Login failed. Please try again.';
+        this.error.set(msg);
+        this.showResendVerification.set(msg.toLowerCase().includes('verify'));
       },
     });
   }
 
+  resendVerification(): void {
+    this.resendLoading.set(true);
+    this.authService.resendVerificationByEmail(this.email()).subscribe({
+      next: () => {
+        this.resendLoading.set(false);
+        this.resendSuccess.set(true);
+        this.showResendVerification.set(false);
+      },
+      error: () => this.resendLoading.set(false),
+    });
+  }
+
   googleLogin(): void {
-    this.authService.googleLogin();
+    this.saveDeviceCodeForOAuth();
+    const next =
+      this.route.snapshot.queryParamMap.get('return') === 'device' ? 'device' : 'account';
+    this.authService.googleLogin(next);
   }
 
   githubLogin(): void {
-    this.authService.githubLogin();
+    this.saveDeviceCodeForOAuth();
+    const next =
+      this.route.snapshot.queryParamMap.get('return') === 'device' ? 'device' : 'account';
+    this.authService.githubLogin(next);
+  }
+
+  private saveDeviceCodeForOAuth(): void {
+    const code = this.route.snapshot.queryParamMap.get('code');
+    if (code) {
+      sessionStorage.setItem('oauth_device_code', code);
+    }
   }
 
   private navigateAfterAuth(): void {

@@ -8,12 +8,7 @@ import { ContainerCompatibilityService } from '../encoding/container-compatibili
 import { FfmpegService } from '../encoding/ffmpeg.service';
 import { FileHealthService } from '../encoding/file-health.service';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  HealthCheckIssue,
-  HealthCheckIssueCategory,
-  HealthCheckIssueSeverity,
-  HealthCheckSuggestedAction,
-} from './models/health-check-issue.model';
+import { HealthCheckIssueSeverity } from './models/health-check-issue.model';
 import { CircuitBreakerService } from './services/circuit-breaker.service';
 import { FileFailureTrackingService } from './services/file-failure-tracking.service';
 import { HealthCheckCodecAnalyzerService } from './services/health-check-codec-analyzer.service';

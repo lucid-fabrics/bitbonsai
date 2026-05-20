@@ -22,9 +22,7 @@ import { SegmentedEncodeService, type SegmentPlan } from '../../services/segment
 
 describe('SegmentedEncodeService', () => {
   let service: SegmentedEncodeService;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let prisma: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let nodeConfig: any;
 
   const mockPrisma = {

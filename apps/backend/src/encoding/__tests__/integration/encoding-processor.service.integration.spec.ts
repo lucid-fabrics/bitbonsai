@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { Library, License, Node, Policy } from '@prisma/client';
+import type { Library, Node, Policy } from '@prisma/client';
 import { DataAccessService } from '../../../core/services/data-access.service';
 import { FileRelocatorService } from '../../../core/services/file-relocator.service';
 import { NodeConfigService } from '../../../core/services/node-config.service';
@@ -40,7 +40,6 @@ describe('EncodingProcessorService Integration Tests', () => {
   let service: EncodingProcessorService;
   let prisma: PrismaService;
   let ffmpegService: FfmpegService;
-  let testLicense: License;
   let testNode: Node;
   let testLibrary: Library;
   let testPolicy: Policy;
@@ -153,18 +152,6 @@ describe('EncodingProcessorService Integration Tests', () => {
     ffmpegService = module.get<FfmpegService>(FfmpegService);
 
     // Create test fixtures
-    testLicense = await prisma.license.create({
-      data: {
-        key: 'TEST-ENCODING',
-        tier: 'FREE',
-        status: 'ACTIVE',
-        email: 'encoding@test.com',
-        maxNodes: 5,
-        maxConcurrentJobs: 10,
-        features: {},
-      },
-    });
-
     testNode = await prisma.node.create({
       data: {
         name: 'Encoding Test Node',
@@ -174,7 +161,6 @@ describe('EncodingProcessorService Integration Tests', () => {
         acceleration: 'CPU',
         apiKey: 'test-key',
         lastHeartbeat: new Date(),
-        licenseId: testLicense.id,
       },
     });
 
@@ -205,7 +191,6 @@ describe('EncodingProcessorService Integration Tests', () => {
     await prisma.policy.deleteMany({});
     await prisma.library.deleteMany({});
     await prisma.node.deleteMany({});
-    await prisma.license.deleteMany({});
     await prisma.$disconnect();
     await module.close();
   });
@@ -377,7 +362,6 @@ describe('EncodingProcessorService Integration Tests', () => {
           acceleration: 'CPU',
           apiKey: 'other-key',
           lastHeartbeat: new Date(),
-          licenseId: testLicense.id,
         },
       });
 

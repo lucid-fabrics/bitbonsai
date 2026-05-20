@@ -2,14 +2,21 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import {
   JobStage,
-  LicenseStatus,
-  LicenseTier,
   MediaType,
   NodeRole,
   NodeStatus,
   PolicyPreset,
   TargetCodec,
 } from '@prisma/client';
+
+// LicenseTier / LicenseStatus removed from Prisma schema — use local string constants
+const LicenseTier = {
+  PATREON: 'PATREON',
+} as const;
+const LicenseStatus = {
+  ACTIVE: 'ACTIVE',
+} as const;
+
 import {
   EncodingCancelledEvent,
   EncodingFailedEvent,

@@ -1,7 +1,8 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faSeedling } from '@fortawesome/free-solid-svg-icons';
+import { EndUserAuthService } from '../../services/end-user-auth.service';
 
 @Component({
   selector: 'bb-header',
@@ -29,6 +30,11 @@ import { faSeedling } from '@fortawesome/free-solid-svg-icons';
         </nav>
 
         <div class="header__actions">
+          @if (auth.isLoggedIn()) {
+            <a routerLink="/account" class="header__account">My Account</a>
+          } @else {
+            <a routerLink="/login" class="header__signin">Sign in</a>
+          }
           <a routerLink="/download" class="header__cta">Get Started</a>
         </div>
       </div>
@@ -39,6 +45,7 @@ import { faSeedling } from '@fortawesome/free-solid-svg-icons';
 export class HeaderComponent {
   faSeedling = faSeedling;
   isScrolled = false;
+  readonly auth = inject(EndUserAuthService);
 
   @HostListener('window:scroll')
   onWindowScroll() {

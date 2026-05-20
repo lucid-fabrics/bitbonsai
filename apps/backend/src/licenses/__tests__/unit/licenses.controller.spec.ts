@@ -1,6 +1,14 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { LicenseTier } from '@prisma/client';
+
+// LicenseTier removed from Prisma schema — use local string constants
+const LicenseTier = {
+  FREE: 'FREE',
+  PATREON_PRO: 'PATREON_PRO',
+  PATREON_SUPPORTER: 'PATREON_SUPPORTER',
+  COMMERCIAL_ENTERPRISE: 'COMMERCIAL_ENTERPRISE',
+} as const;
+
 import { LicenseGuardService } from '../../../license/license-guard.service';
 import { LicensesController } from '../../licenses.controller';
 import { LicensesService } from '../../licenses.service';

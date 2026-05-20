@@ -369,7 +369,7 @@ export class NodeCapabilityDetectorService {
       }
 
       const responseBytes = response.headers.get('content-length')
-        ? parseInt(response.headers.get('content-length')!, 10)
+        ? parseInt(response.headers.get('content-length') as string, 10)
         : 0;
 
       // Also try to get response body size if content-length not available

@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { ForbiddenException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createHash, randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -15,6 +15,7 @@ export interface Entitlements {
   maxConcurrentJobs: number;
   subscriptionStatus: string;
   currentPeriodEnd: string | null;
+  email: string;
 }
 
 export interface CloudAuthStatus {
@@ -45,7 +46,7 @@ export class CloudAuthService implements OnModuleInit {
       'https://api.bitbonsai.app'
     );
     this.productId = this.configService.get<string>('LICENSING_PRODUCT_ID', 'bitbonsai');
-    this.adminApiKey = this.configService.get<string>('LICENSING_ADMIN_API_KEY', '');
+    this.adminApiKey = this.configService.getOrThrow<string>('LICENSING_ADMIN_API_KEY');
   }
 
   async onModuleInit() {
@@ -113,13 +114,18 @@ export class CloudAuthService implements OnModuleInit {
 
         if (data.error === 'authorization_pending') continue;
 
+        if (data.error === 'expired') {
+          this.logger.warn('Device flow request expired before user authorized');
+          return;
+        }
+
         if (data.deviceToken) {
           await this.storeToken(data.deviceToken, data.entitlements);
           this.logger.log(`Cloud account linked successfully`);
           return;
         }
-      } catch {
-        // transient errors — keep polling
+      } catch (err) {
+        this.logger.debug('Poll attempt failed (transient)', err);
       }
     }
 
@@ -127,6 +133,14 @@ export class CloudAuthService implements OnModuleInit {
   }
 
   async storeToken(rawToken: string, entitlements: Entitlements): Promise<void> {
+    if (
+      !entitlements?.tier ||
+      entitlements.maxNodes == null ||
+      entitlements.maxConcurrentJobs == null
+    ) {
+      throw new Error(`Invalid entitlements payload: ${JSON.stringify(entitlements)}`);
+    }
+
     const settings = await this.prisma.settings.findFirst();
     if (!settings) return;
 
@@ -134,6 +148,7 @@ export class CloudAuthService implements OnModuleInit {
       where: { id: settings.id },
       data: {
         cloudDeviceToken: rawToken,
+        cloudUserEmail: entitlements.email || null,
         cloudTier: entitlements.tier,
         cloudMaxNodes: entitlements.maxNodes,
         cloudMaxConcurrentJobs: entitlements.maxConcurrentJobs,
@@ -147,8 +162,6 @@ export class CloudAuthService implements OnModuleInit {
     if (!settings?.cloudDeviceToken || !settings.machineId) return false;
 
     try {
-      const tokenHash = createHash('sha256').update(settings.cloudDeviceToken).digest('hex');
-
       const response = await firstValueFrom(
         this.httpService.post(
           `${this.licensingApiUrl}/device/entitlements`,
@@ -165,10 +178,18 @@ export class CloudAuthService implements OnModuleInit {
       );
 
       const entitlements = response.data as Entitlements;
+      if (
+        !entitlements?.tier ||
+        entitlements.maxNodes == null ||
+        entitlements.maxConcurrentJobs == null
+      ) {
+        throw new Error(`Invalid entitlements response: ${JSON.stringify(entitlements)}`);
+      }
 
       await this.prisma.settings.update({
         where: { id: settings.id },
         data: {
+          cloudUserEmail: entitlements.email || null,
           cloudTier: entitlements.tier,
           cloudMaxNodes: entitlements.maxNodes,
           cloudMaxConcurrentJobs: entitlements.maxConcurrentJobs,
@@ -176,7 +197,6 @@ export class CloudAuthService implements OnModuleInit {
         },
       });
 
-      void tokenHash; // used in header, not needed here
       return true;
     } catch (err) {
       this.logger.warn('Entitlement revalidation failed', err);
@@ -228,6 +248,21 @@ export class CloudAuthService implements OnModuleInit {
   async logout(): Promise<void> {
     const settings = await this.prisma.settings.findFirst();
     if (!settings) return;
+
+    if (settings.cloudDeviceToken) {
+      try {
+        await firstValueFrom(
+          this.httpService.delete(`${this.licensingApiUrl}/device/token`, {
+            headers: {
+              'x-admin-api-key': this.adminApiKey,
+              'x-device-token': settings.cloudDeviceToken,
+            },
+          })
+        );
+      } catch (err) {
+        this.logger.warn('Failed to revoke device token on licensing-service', err);
+      }
+    }
 
     await this.prisma.settings.update({
       where: { id: settings.id },

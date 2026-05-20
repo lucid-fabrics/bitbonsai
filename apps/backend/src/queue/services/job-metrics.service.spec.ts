@@ -13,7 +13,7 @@ describe('JobMetricsService', () => {
     fileLabel: 'movie.mkv',
     savedBytes: BigInt(1073741824),
     fps: 25.0,
-    node: { licenseId: 'license-abc' },
+    node: {},
   };
 
   beforeEach(async () => {
@@ -58,9 +58,8 @@ describe('JobMetricsService', () => {
       expect(prisma.metric.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            date_nodeId_licenseId: expect.objectContaining({
+            date_nodeId: expect.objectContaining({
               nodeId: 'node-1',
-              licenseId: 'license-abc',
             }),
           }),
         })
@@ -82,10 +81,10 @@ describe('JobMetricsService', () => {
       expect(prisma.metricsProcessedJob.create).not.toHaveBeenCalled();
     });
 
-    it('should skip when job has no node licenseId', async () => {
-      const jobWithoutLicense = { ...baseJob, node: undefined };
+    it('should skip when job has no nodeId', async () => {
+      const jobWithoutNodeId = { ...baseJob, nodeId: undefined };
 
-      await service.updateMetrics(jobWithoutLicense as never);
+      await service.updateMetrics(jobWithoutNodeId as never);
 
       expect(prisma.metricsProcessedJob.findUnique).not.toHaveBeenCalled();
       expect(prisma.metric.upsert).not.toHaveBeenCalled();

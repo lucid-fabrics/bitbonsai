@@ -121,7 +121,11 @@ export class StorageInitService implements OnModuleInit {
       }
 
       return false;
-    } catch {
+    } catch (err: unknown) {
+      this.logger.debug(
+        'NFS mount check failed (non-NFS system or mount command unavailable)',
+        err
+      );
       return false;
     }
   }

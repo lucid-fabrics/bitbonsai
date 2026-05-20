@@ -1,7 +1,19 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { LicenseStatus, LicenseTier } from '@prisma/client';
 import Stripe from 'stripe';
+
+// LicenseTier / LicenseStatus removed from Prisma schema — use local string constants
+const LicenseTier = {
+  FREE: 'FREE',
+  COMMERCIAL_STARTER: 'COMMERCIAL_STARTER',
+  COMMERCIAL_PRO: 'COMMERCIAL_PRO',
+  COMMERCIAL_ENTERPRISE: 'COMMERCIAL_ENTERPRISE',
+} as const;
+const LicenseStatus = {
+  ACTIVE: 'ACTIVE',
+  EXPIRED: 'EXPIRED',
+} as const;
+
 import { LicenseRepository } from '../../../common/repositories/license.repository';
 import { StripeService } from '../stripe.service';
 

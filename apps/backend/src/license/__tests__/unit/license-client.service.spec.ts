@@ -1,13 +1,14 @@
 import { HttpService } from '@nestjs/axios';
-import {
-  BadRequestException,
-  ServiceUnavailableException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { LicenseStatus } from '@prisma/client';
 import { of, throwError } from 'rxjs';
+
+// LicenseStatus removed from Prisma schema — use local string constants
+const LicenseStatus = {
+  ACTIVE: 'ACTIVE',
+} as const;
+
 import { LicenseRepository } from '../../../common/repositories/license.repository';
 import { LicenseClientService } from '../../license-client.service';
 
@@ -219,39 +220,33 @@ describe('LicenseClientService', () => {
       expect(result.tier).toBe('SUPPORTER');
     });
 
-    it('should fall back to local DB when API fails and no cache', async () => {
+    it('should degrade to FREE when API fails and no cache', async () => {
       mockLicenseRepo.findFirst.mockResolvedValue({ key: 'BB-DB-KEY' });
-      mockLicenseRepo.findFirstActiveDesc.mockResolvedValue({
-        key: 'BB-DB-KEY',
-        email: 'db@test.com',
-        tier: 'PATREON_SUPPORTER',
-        status: LicenseStatus.ACTIVE,
-        maxNodes: 2,
-        maxConcurrentJobs: 3,
-        validUntil: null,
-      });
       mockHttpService.post.mockReturnValue(throwError(() => new Error('Network error')));
 
       const result = await service.verifyLicense();
 
-      expect(result.email).toBe('db@test.com');
-      expect(result.key).toContain('****');
+      expect(result.tier).toBe('FREE');
+      expect(result.maxNodes).toBe(1);
+      expect(result.maxConcurrentJobs).toBe(2);
     });
 
-    it('should throw UnauthorizedException when all fallbacks fail', async () => {
+    it('should degrade to FREE when all fallbacks fail', async () => {
       mockLicenseRepo.findFirst.mockResolvedValue({ key: 'BB-TEST' });
-      mockLicenseRepo.findFirstActiveDesc.mockResolvedValue(null);
       mockHttpService.post.mockReturnValue(throwError(() => new Error('Network error')));
 
-      await expect(service.verifyLicense()).rejects.toThrow(UnauthorizedException);
+      const result = await service.verifyLicense();
+
+      expect(result.tier).toBe('FREE');
     });
 
-    it('should throw when API returns empty response', async () => {
+    it('should degrade to FREE when API returns empty response', async () => {
       mockLicenseRepo.findFirst.mockResolvedValue({ key: 'BB-TEST' });
-      mockLicenseRepo.findFirstActiveDesc.mockResolvedValue(null);
       mockHttpService.post.mockReturnValue(of({ data: null }));
 
-      await expect(service.verifyLicense()).rejects.toThrow(UnauthorizedException);
+      const result = await service.verifyLicense();
+
+      expect(result.tier).toBe('FREE');
     });
   });
 

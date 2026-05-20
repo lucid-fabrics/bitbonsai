@@ -10,7 +10,7 @@ export class JobLimitGuard implements CanActivate {
     private readonly jobRepository: JobRepository
   ) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  async canActivate(_context: ExecutionContext): Promise<boolean> {
     const { maxConcurrentJobs } = await this.licenseClient.getCurrentLimits();
 
     const currentEncodingJobCount = await this.jobRepository.countWhere({

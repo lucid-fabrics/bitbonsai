@@ -1,5 +1,20 @@
 <div class="auth-container">
   <div class="auth-card">
+    @if (registered()) {
+      <div class="verify-prompt">
+        <div class="verify-icon">✉️</div>
+        <h1>Check your email</h1>
+        <p>We sent a verification link to <strong>{{ email() }}</strong>.</p>
+        <p>Click the link in that email to activate your account, then <a routerLink="/login">sign in</a>.</p>
+        @if (resendSuccess()) {
+          <p class="resend-success">Email resent.</p>
+        } @else {
+          <button type="button" class="btn-resend" [disabled]="resendLoading()" (click)="resendEmail()">
+            {{ resendLoading() ? 'Sending…' : 'Resend email' }}
+          </button>
+        }
+      </div>
+    } @else {
     <h1>Create Account</h1>
     <form (ngSubmit)="onSubmit()">
       <div class="form-group">
@@ -77,5 +92,6 @@
     </div>
 
     <p class="auth-link">Already have an account? <a routerLink="/login">Sign in</a></p>
+    }
   </div>
 </div>

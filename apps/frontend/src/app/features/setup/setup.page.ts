@@ -131,8 +131,9 @@ export class SetupComponent {
    */
   get totalSteps(): number {
     const nodeType = this.nodeTypeForm.get('nodeType')?.value;
-    // Welcome (0) + NodeType (1) + LocalNetworkAccess (2) + (AdminAccount (3) OR ChildNodePairing (4))
-    return nodeType === NodeType.Child ? 4 : 4;
+    // Child: Welcome + NodeType + LocalNetworkAccess + ChildNodePairing = 4
+    // Main:  Welcome + NodeType + LocalNetworkAccess + AdminAccount + CloudAccountLink = 5
+    return nodeType === NodeType.Child ? 4 : 5;
   }
 
   /**

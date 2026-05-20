@@ -32,6 +32,7 @@ export class ContentFingerprintService {
       const hasher = await (xxhashWasm.default as () => Promise<typeof this.xxhash>)();
       this.xxhash = hasher;
     }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return this.xxhash!;
   }
 

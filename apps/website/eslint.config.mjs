@@ -12,7 +12,7 @@ export default [
         'error',
         {
           type: 'attribute',
-          prefix: 'app',
+          prefix: ['app', 'bb'],
           style: 'camelCase',
         },
       ],
@@ -20,10 +20,11 @@ export default [
         'error',
         {
           type: 'element',
-          prefix: 'app',
+          prefix: ['app', 'bb'],
           style: 'kebab-case',
         },
       ],
+      '@angular-eslint/prefer-inject': 'off',
     },
   },
   {

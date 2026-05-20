@@ -1,11 +1,5 @@
 import { version as APP_VERSION } from '@bitbonsai/version';
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { type Node, NodeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { NodeRepository } from '../../common/repositories/node.repository';

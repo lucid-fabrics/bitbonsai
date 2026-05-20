@@ -92,6 +92,7 @@ function handle401Error(
       filter((token) => token !== null),
       take(1),
       switchMap((token) => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         return next(addAuthHeader(request, token!));
       })
     );

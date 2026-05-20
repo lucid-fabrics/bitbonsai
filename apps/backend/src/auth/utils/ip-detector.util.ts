@@ -331,6 +331,7 @@ export function isLocalNetworkIp(ip: string): boolean {
  * });
  * ```
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function extractClientIp(request: Request | any): string {
   // Handle edge cases
   if (!request || typeof request !== 'object') {

@@ -1,8 +1,8 @@
 import type { LicenseFeatures } from '@bitbonsai/prisma-types';
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { CloudAuthService } from '../cloud-auth/cloud-auth.service';
 import { JobRepository } from '../common/repositories/job.repository';
 import { NodeRepository } from '../common/repositories/node.repository';
-import { PrismaService } from '../prisma/prisma.service';
 
 /**
  * License feature flags
@@ -18,12 +18,10 @@ export interface LicenseCapabilities {
   canStartJob: boolean;
 }
 
-const GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
-
 function defaultFeatures(tier: string): LicenseFeatures {
   const isNotFree = tier !== 'FREE';
   const isProOrHigher =
-    tier === 'PATREON_PRO' || tier === 'PATREON_ULTIMATE' || tier.startsWith('COMMERCIAL');
+    tier === 'PRO' || tier === 'ULTIMATE' || tier === 'PLUS' || tier.startsWith('COMMERCIAL');
   const isCommercial = tier.startsWith('COMMERCIAL');
 
   return {
@@ -51,7 +49,7 @@ export class LicenseGuardService {
   private readonly logger = new Logger(LicenseGuardService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly cloudAuth: CloudAuthService,
     private readonly nodeRepository: NodeRepository,
     private readonly jobRepository: JobRepository
   ) {}
@@ -60,22 +58,15 @@ export class LicenseGuardService {
    * Get current license capabilities
    */
   async getCapabilities(): Promise<LicenseCapabilities> {
-    const settings = await this.prisma.settings.findFirst();
-
-    const [nodeCount, activeJobCount] = await Promise.all([
+    const [status, nodeCount, activeJobCount] = await Promise.all([
+      this.cloudAuth.getStatus(),
       this.nodeRepository.count({ where: { status: 'ONLINE' } }),
       this.jobRepository.countWhere({ stage: 'ENCODING' }),
     ]);
 
-    // Check 7-day grace period
-    const validatedAt = settings?.cloudValidatedAt ?? null;
-    const gracePeriodExpired = validatedAt
-      ? Date.now() - validatedAt.getTime() > GRACE_PERIOD_MS
-      : false;
-
-    const tier = settings?.cloudTier ?? 'FREE';
-    const maxNodes = gracePeriodExpired ? 0 : (settings?.cloudMaxNodes ?? 1);
-    const maxConcurrentJobs = gracePeriodExpired ? 0 : (settings?.cloudMaxConcurrentJobs ?? 2);
+    const tier = status.tier ?? 'FREE';
+    const maxNodes = status.gracePeriodExpired ? 0 : (status.maxNodes ?? 1);
+    const maxConcurrentJobs = status.gracePeriodExpired ? 0 : (status.maxConcurrentJobs ?? 2);
 
     return {
       tier,

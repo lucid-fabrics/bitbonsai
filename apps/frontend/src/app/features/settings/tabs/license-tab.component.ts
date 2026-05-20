@@ -93,7 +93,7 @@ import { CloudAccountService } from '../services/cloud-account.service';
             <div class="stat-item">
               <span class="stat-label">Last Validated</span>
               <span class="stat-value">
-                {{ status()?.validatedAt ? (status()!.validatedAt | date: 'medium') : 'Never' }}
+                {{ status()?.validatedAt ? (status()?.validatedAt | date: 'medium') : 'Never' }}
               </span>
             </div>
           </div>

@@ -15,5 +15,5 @@ export class ResolveDecisionDto {
   })
   @IsOptional()
   @IsObject()
-  decisionData?: Record<string, any>;
+  decisionData?: Record<string, unknown>;
 }

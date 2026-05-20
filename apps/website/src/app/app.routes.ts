@@ -1,5 +1,6 @@
 import { Route } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
+import { endUserAuthGuard } from './guards/end-user-auth.guard';
 
 export const appRoutes: Route[] = [
   {
@@ -56,6 +57,24 @@ export const appRoutes: Route[] = [
   {
     path: 'device',
     loadComponent: () => import('./pages/device/device.component').then((m) => m.DeviceComponent),
+  },
+  {
+    path: 'account',
+    loadComponent: () =>
+      import('./pages/account/account.component').then((m) => m.AccountComponent),
+    canActivate: [endUserAuthGuard],
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./pages/reset-password/reset-password.component').then(
+        (m) => m.ResetPasswordComponent
+      ),
+  },
+  {
+    path: 'verify-email',
+    loadComponent: () =>
+      import('./pages/verify-email/verify-email.component').then((m) => m.VerifyEmailComponent),
   },
   {
     path: 'admin/login',

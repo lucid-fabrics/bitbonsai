@@ -2,7 +2,7 @@ import { exec } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import { promisify } from 'node:util';
-import { version } from '@bitbonsai/version';
+import { version as APP_VERSION } from '@bitbonsai/version';
 import { Injectable, Logger } from '@nestjs/common';
 import { NodeStatus } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
@@ -28,7 +28,7 @@ const execAsync = promisify(exec);
 export class HealthService {
   private readonly logger = new Logger(HealthService.name);
   private readonly startTime = Date.now();
-  private readonly version = '1.0.0'; // Version hardcoded for lint compliance
+  private readonly version: string;
 
   // Disk space threshold constants (aligned with encoding-processor.service.ts)
   private readonly DISK_SPACE_BUFFER_PERCENT = 20; // 20% buffer for encoding overhead
@@ -41,7 +41,9 @@ export class HealthService {
     private readonly nodeRepository: NodeRepository,
     private readonly jobRepository: JobRepository,
     private readonly libraryRepository: LibraryRepository
-  ) {}
+  ) {
+    this.version = APP_VERSION;
+  }
 
   /**
    * Get basic health information

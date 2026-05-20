@@ -218,14 +218,14 @@ export class DocsComponent {
             'Forever free with 1 node and 2 concurrent jobs. Perfect for testing and small libraries.',
         },
         {
-          title: 'Patreon Tiers',
+          title: 'Subscription Tiers',
           description:
-            'Unlock more nodes and concurrent jobs at $3, $5, $10, or $20/month. Support development and get priority features.',
+            'Unlock more nodes and concurrent jobs at $3, $5, $10, or $20/month. Create a free account at bitbonsai.app to subscribe.',
         },
         {
-          title: 'License Activation',
+          title: 'Account Linking',
           description:
-            'Enter your license key in Settings → License tab. License validation happens automatically every 24 hours.',
+            'Sign in to your bitbonsai.app account from Settings → Cloud Account to activate your subscription.',
         },
         {
           title: 'Node Limits',
