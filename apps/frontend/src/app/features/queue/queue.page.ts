@@ -271,6 +271,9 @@ export class QueueComponent implements OnInit {
   protected calculateExpectedSavings(job: QueueJob): string {
     return this.display.calculateExpectedSavings(job);
   }
+  protected calculateExpectedSize(job: QueueJob): string {
+    return this.display.calculateExpectedSize(job);
+  }
   protected isJobStuck(job: QueueJob): boolean {
     return this.display.isJobStuck(job);
   }
@@ -291,7 +294,7 @@ export class QueueComponent implements OnInit {
   }
   protected getStorageAccessType(
     job: { transferRequired?: boolean; nodeId?: string },
-    nodes: import('../../nodes/models/node.model').Node[]
+    nodes: import('../nodes/models/node.model').Node[]
   ): 'local' | 'nfs' | 'copied' {
     return this.display.getStorageAccessType(job, nodes);
   }
