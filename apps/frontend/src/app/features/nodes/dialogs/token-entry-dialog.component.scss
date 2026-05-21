@@ -1,0 +1,288 @@
+@use 'sass:color';
+@use '../../../../styles/variables' as *;
+
+// Backdrop overlay
+.token-dialog-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+// Main dialog container
+.token-dialog {
+  background: $bg-secondary;
+  border-radius: 12px;
+  width: 550px;
+  max-width: 90vw;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+// Header
+.token-dialog__header {
+  padding: 20px 24px;
+  border-bottom: 1px solid $border-primary;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.token-dialog__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: $text-white;
+}
+
+.token-dialog__close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: $text-secondary;
+  cursor: pointer;
+  padding: 4px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: $bg-tertiary;
+    color: $text-white;
+  }
+}
+
+// Body
+.token-dialog__body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+// Info section (icon + title + description)
+.token-dialog__info {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.token-dialog__icon-wrapper {
+  margin-bottom: 16px;
+}
+
+.token-dialog__icon {
+  font-size: 48px;
+  display: inline-block;
+}
+
+.token-dialog__info-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: $text-white;
+}
+
+.token-dialog__info-description {
+  color: $text-secondary;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+// Form section
+.token-dialog__form {
+  margin-top: 24px;
+}
+
+.token-dialog__form-group {
+  margin-bottom: 20px;
+}
+
+.token-dialog__label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: $text-white;
+  font-size: 14px;
+}
+
+.token-dialog__label-required {
+  color: $danger;
+}
+
+.token-dialog__input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid $border-primary;
+  border-radius: 8px;
+  background: $bg-primary;
+  color: $text-white;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 10px;
+  font-family: 'Courier New', Consolas, monospace;
+  transition: all 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: $accent-primary;
+    box-shadow: 0 0 0 3px rgba($accent-primary, 0.1);
+  }
+
+  &--error {
+    border-color: $danger;
+  }
+
+  &::placeholder {
+    letter-spacing: 10px;
+    color: $text-tertiary;
+    opacity: 0.5;
+  }
+}
+
+.token-dialog__error-text {
+  display: block;
+  margin-top: 8px;
+  color: $danger;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+// Help section
+.token-dialog__help {
+  background: $bg-primary;
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border: 1px solid $border-primary;
+}
+
+.token-dialog__help-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: $text-white;
+}
+
+.token-dialog__help-list {
+  margin: 0;
+  padding-left: 24px;
+  color: $text-secondary;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.token-dialog__help-item {
+  margin-bottom: 8px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+// Alternative section
+.token-dialog__alternative {
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: rgba($accent-primary, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid $accent-primary;
+}
+
+.token-dialog__alternative-text {
+  margin: 0;
+  font-size: 13px;
+  color: $text-secondary;
+  line-height: 1.6;
+
+  strong {
+    color: $text-white;
+  }
+}
+
+// Footer
+.token-dialog__footer {
+  padding: 16px 24px;
+  border-top: 1px solid $border-primary;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+// Buttons
+.token-dialog__btn {
+  padding: 11px 24px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &--secondary {
+    background: transparent;
+    color: $text-white;
+    border: 1px solid $border-primary;
+
+    &:hover:not(:disabled) {
+      background: $bg-tertiary;
+    }
+  }
+
+  &--primary {
+    background: $accent-primary;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: color.adjust($accent-primary, $lightness: -10%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba($accent-primary, 0.4);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+}

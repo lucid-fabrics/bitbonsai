@@ -16,6 +16,7 @@ Opens at `http://localhost:3000` (or next available port).
 ### Option 1: GitHub Integration (Recommended)
 
 1. Push docs to GitHub:
+
    ```bash
    git add docs-mintlify/
    git commit -m "docs: add Mintlify documentation"

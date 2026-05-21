@@ -1,0 +1,66 @@
+<div class="decision-issue-card" [class]="getSeverityClass(issue().severity)">
+  <!-- Severity Badge -->
+  <div class="severity-badge">
+    <fa-icon [icon]="['fas', getSeverityIcon(issue().severity)]"></fa-icon>
+    <span>{{ getSeverityLabel(issue().severity) }}</span>
+  </div>
+
+  <!-- Issue Message -->
+  <div class="issue-content">
+    <h5>{{ issue().message }}</h5>
+
+    <!-- Technical Details (Collapsible) -->
+    @if (issue().technicalDetails) {
+      <div class="technical-details">
+        <button
+          class="details-toggle"
+          (click)="toggleTechnicalDetails()"
+          type="button"
+        >
+          <fa-icon
+            [icon]="[
+              'fas',
+              showTechnicalDetails ? 'chevron-down' : 'chevron-right',
+            ]"
+          ></fa-icon>
+          Technical Details
+        </button>
+
+        @if (showTechnicalDetails) {
+          <p class="details-text">{{ issue().technicalDetails }}</p>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Suggested Actions -->
+  @if (issue().suggestedActions && issue().suggestedActions.length > 0) {
+    <div class="suggested-actions">
+      <h6>{{ 'decisionIssue.quickFixes' | transloco }}</h6>
+      <div class="actions-list">
+        @for (action of issue().suggestedActions; track action.id) {
+          <button
+            class="action-button"
+            [class.recommended]="action.recommended"
+            (click)="onActionClick(action)"
+            type="button"
+          >
+            <div class="action-content">
+              <div class="action-header">
+                <span class="action-label">{{ action.label }}</span>
+                @if (action.recommended) {
+                  <span class="recommended-badge">Recommended</span>
+                }
+              </div>
+              <p class="action-description">{{ action.description }}</p>
+              <p class="action-impact">
+                {{ 'decisionIssue.impact' | transloco }} {{ action.impact }}
+              </p>
+            </div>
+            <fa-icon [icon]="['fas', 'arrow-right']"></fa-icon>
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

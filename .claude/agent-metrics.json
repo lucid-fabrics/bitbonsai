@@ -1,0 +1,109 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2025-10-07T00:00:00Z",
+  "agents": {
+    "debugger": {
+      "invocations": 1,
+      "success_count": 1,
+      "failure_count": 0,
+      "avg_duration_minutes": 0,
+      "last_used": "2025-10-07T00:00:00Z",
+      "common_tasks": [
+        "Fix linter errors",
+        "Resolve TypeScript type issues",
+        "Reduce cognitive complexity"
+      ],
+      "success_patterns": [
+        "Biome linter fixes",
+        "Type safety improvements",
+        "Refactoring complex methods"
+      ]
+    },
+    "fullstack-feature": {
+      "invocations": 0,
+      "success_count": 0,
+      "failure_count": 0,
+      "avg_duration_minutes": 0,
+      "last_used": null,
+      "common_tasks": [],
+      "features_implemented": []
+    },
+    "pr-reviewer": {
+      "invocations": 0,
+      "success_count": 0,
+      "failure_count": 0,
+      "avg_duration_minutes": 0,
+      "last_used": null,
+      "common_tasks": [],
+      "reviews_completed": []
+    },
+    "test-engineer": {
+      "invocations": 0,
+      "success_count": 0,
+      "failure_count": 0,
+      "avg_duration_minutes": 0,
+      "last_used": null,
+      "common_tasks": [],
+      "test_files_created": 0
+    },
+    "performance-optimizer": {
+      "invocations": 0,
+      "success_count": 0,
+      "failure_count": 0,
+      "avg_duration_minutes": 0,
+      "last_used": null,
+      "common_tasks": [],
+      "optimizations_applied": []
+    },
+    "security-auditor": {
+      "invocations": 0,
+      "success_count": 0,
+      "failure_count": 0,
+      "avg_duration_minutes": 0,
+      "last_used": null,
+      "common_tasks": [],
+      "vulnerabilities_found": 0,
+      "vulnerabilities_fixed": 0
+    },
+    "documentation-writer": {
+      "invocations": 0,
+      "success_count": 0,
+      "failure_count": 0,
+      "avg_duration_minutes": 0,
+      "last_used": null,
+      "common_tasks": [],
+      "docs_pages_created": 0
+    },
+    "playwright-test-planner": {
+      "invocations": 0,
+      "success_count": 0,
+      "failure_count": 0,
+      "avg_duration_minutes": 0,
+      "last_used": null,
+      "test_scenarios_created": 0
+    },
+    "playwright-test-generator": {
+      "invocations": 0,
+      "success_count": 0,
+      "failure_count": 0,
+      "avg_duration_minutes": 0,
+      "last_used": null,
+      "test_files_generated": 0
+    },
+    "playwright-test-healer": {
+      "invocations": 0,
+      "success_count": 0,
+      "failure_count": 0,
+      "avg_duration_minutes": 0,
+      "last_used": null,
+      "tests_healed": 0
+    }
+  },
+  "project_stats": {
+    "total_agent_invocations": 1,
+    "total_features_implemented": 0,
+    "total_bugs_fixed": 25,
+    "total_tests_written": 58,
+    "total_docs_created": 2
+  }
+}

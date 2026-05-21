@@ -1,0 +1,127 @@
+@use './variables' as *;
+
+// Card mixin for consistent styling
+@mixin card {
+  background: $bg-secondary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-md;
+  padding: $spacing-lg;
+  box-shadow: $shadow-sm;
+  transition: $transition-fast;
+
+  &:hover {
+    border-color: $border-secondary;
+  }
+}
+
+// Button reset
+@mixin button-reset {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+// Primary button
+@mixin button-primary {
+  @include button-reset;
+  padding: $spacing-sm $spacing-lg;
+  background: $accent-primary;
+  color: $text-dark;
+  border-radius: $border-radius-sm;
+  font-weight: $font-weight-bold;
+  transition: $transition-fast;
+
+  &:hover:not(:disabled) {
+    background: $accent-primary-hover;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Outline button
+@mixin button-outline {
+  @include button-reset;
+  padding: $spacing-sm $spacing-lg;
+  background: transparent;
+  color: $text-primary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-sm;
+  font-weight: $font-weight-bold;
+  transition: $transition-fast;
+
+  &:hover:not(:disabled) {
+    border-color: $accent-primary;
+    color: $accent-primary;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Form field
+@mixin form-field {
+  width: 100%;
+  padding: $spacing-sm $spacing-md;
+  background: $bg-tertiary;
+  border: 1px solid $border-primary;
+  border-radius: $border-radius-sm;
+  color: $text-primary;
+  font-family: $font-family;
+  transition: $transition-fast;
+
+  &:focus {
+    outline: none;
+    border-color: $accent-primary;
+  }
+
+  &::placeholder {
+    color: $text-tertiary;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Badge
+@mixin badge($color) {
+  display: inline-block;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $border-radius-sm;
+  font-size: 0.75rem;
+  font-weight: $font-weight-bold;
+  color: $color;
+  background: rgba($color, 0.15);
+  border: 1px solid rgba($color, 0.3);
+}
+
+// Scrollbar (dark theme)
+@mixin scrollbar {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $bg-primary;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $border-secondary;
+    border-radius: $border-radius-sm;
+
+    &:hover {
+      background: $text-tertiary;
+    }
+  }
+}

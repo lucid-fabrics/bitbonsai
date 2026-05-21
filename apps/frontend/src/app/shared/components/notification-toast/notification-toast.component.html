@@ -1,0 +1,48 @@
+<div
+  class="notification-toast"
+  [class]="getColorClass()"
+  [class.visible]="isVisible()"
+  (mouseenter)="pause()"
+  (mouseleave)="resume()"
+>
+  <!-- Icon -->
+  <div class="notification-icon">
+    <fa-icon [icon]="getIcon()" size="lg" />
+  </div>
+
+  <!-- Content -->
+  <div class="notification-content">
+    <h4 class="notification-title">{{ notification.title }}</h4>
+    <p class="notification-message">{{ notification.message }}</p>
+
+    <!-- Actions for NODE_DISCOVERED -->
+    @if (hasActions()) {
+      <div class="notification-actions">
+        <button
+          type="button"
+          class="btn-action btn-primary"
+          (click)="navigateToDiscovery()"
+        >
+          {{ 'discovery.title' | transloco }}
+        </button>
+        <button
+          type="button"
+          class="btn-action btn-secondary"
+          (click)="dismissToast()"
+        >
+          {{ 'common.close' | transloco }}
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Close button -->
+  <button
+    type="button"
+    class="notification-close"
+    (click)="dismissToast()"
+    aria-label="Dismiss notification"
+  >
+    <fa-icon [icon]="faXmark" />
+  </button>
+</div>

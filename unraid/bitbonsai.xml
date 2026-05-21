@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>BitBonsai</Name>
+  <Repository>lucidfabrics/bitbonsai:latest</Repository>
+  <Registry>https://hub.docker.com/r/lucidfabrics/bitbonsai</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/lucidfabrics/bitbonsai/issues</Support>
+  <Project>https://github.com/lucidfabrics/bitbonsai</Project>
+  <Overview>
+    BitBonsai is a beautiful, modern web application that scans your video collection and reveals fascinating insights about your media library.
+
+    Features:
+    - 📊 Codec Analytics - Real-time breakdown of H.265/HEVC, H.264, AV1, and other video codecs
+    - 💾 Storage Insights - Track library size across multiple folders
+    - 📈 Bitrate Intelligence - Understand your average bitrates and encoding quality
+    - 💰 Savings Calculator - See how much space you could save by re-encoding
+    - 🔄 Smart Scanning - Automated library scans
+    - 🎨 Beautiful UI - Responsive, modern interface with Lucid Fabrics branding
+
+    Built with Angular 19 + NgRx + NestJS for optimal performance.
+  </Overview>
+  <Category>MediaApp:Video Status:Stable</Category>
+  <WebUI>http://[IP]:[PORT:3000]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/lucidfabrics/bitbonsai/main/unraid/bitbonsai.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/lucidfabrics/bitbonsai/main/apps/frontend/public/favicon.ico</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="API Port" Target="3000" Default="3000" Mode="tcp" Description="Port for accessing BitBonsai API and Web UI" Type="Port" Display="always" Required="true" Mask="false">3000</Config>
+  <Config Name="Media Path" Target="/media" Default="/mnt/user/media" Mode="ro" Description="Path to your media library (read-only recommended)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/media</Config>
+  <Config Name="Downloads Path" Target="/downloads" Default="/mnt/user/Downloads" Mode="ro" Description="Path to your downloads folder (optional, read-only)" Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/Downloads</Config>
+  <Config Name="App Data" Target="/app/data" Default="/mnt/user/appdata/bitbonsai" Mode="rw" Description="Path to store BitBonsai configuration and scan results" Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/bitbonsai</Config>
+  <Config Name="Timezone" Target="TZ" Default="America/New_York" Mode="" Description="Timezone for scheduled scans" Type="Variable" Display="advanced" Required="false" Mask="false">America/New_York</Config>
+  <Config Name="Node Environment" Target="NODE_ENV" Default="production" Mode="" Description="Node.js environment (leave as production)" Type="Variable" Display="advanced" Required="false" Mask="false">production</Config>
+  <Config Name="API Prefix" Target="API_PREFIX" Default="api/v1" Mode="" Description="API URL prefix" Type="Variable" Display="advanced" Required="false" Mask="false">api/v1</Config>
+</Container>

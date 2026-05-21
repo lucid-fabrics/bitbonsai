@@ -1,0 +1,31 @@
+name: Performance Optimization
+description: Profile, optimize, and benchmark performance
+
+steps:
+  - name: Baseline Performance
+    agent: performance-optimizer
+    task: "Profile current performance and identify bottlenecks"
+    outputs: [baseline_metrics]
+
+  - name: Implement Optimizations
+    agent: performance-optimizer
+    task: "Optimize top 3 performance bottlenecks"
+    inputs: [baseline_metrics]
+    outputs: [optimizations]
+
+  - name: Benchmark Improvements
+    agent: performance-optimizer
+    task: "Re-profile and compare before/after"
+    inputs: [baseline_metrics, optimizations]
+    outputs: [improvement_report]
+
+  - name: Document Changes
+    agent: documentation-writer
+    task: "Document performance improvements"
+    inputs: [improvement_report]
+    outputs: [docs]
+
+success_criteria:
+  - performance_improved: ">=20%"
+  - no_functionality_broken: true
+  - all_tests_pass: true

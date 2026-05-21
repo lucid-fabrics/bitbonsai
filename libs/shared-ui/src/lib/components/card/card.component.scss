@@ -1,0 +1,23 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.bb-card {
+  @include card;
+
+  &__header {
+    margin-bottom: $spacing-md;
+    padding-bottom: $spacing-md;
+    border-bottom: 1px solid $border-primary;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: $font-weight-bold;
+    color: $text-primary;
+  }
+
+  &__content {
+    color: $text-primary;
+  }
+}

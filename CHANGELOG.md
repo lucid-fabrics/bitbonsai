@@ -5,6 +5,7 @@ All notable changes to BitBonsai will be documented in this file.
 ## [1.0.0-beta] - 2024-12-21
 
 ### Added
+
 - **Core Encoding Engine**
   - Smart codec detection (H.264, H.265, AV1, VP9, MPEG-2, MPEG-4)
   - H.264 to H.265/HEVC conversion with 40-60% space savings
@@ -58,6 +59,7 @@ All notable changes to BitBonsai will be documented in this file.
   - Network host mode for node discovery
 
 ### Known Issues
+
 - AV1 encoding not yet available
 - Plex/Emby integration incomplete
 - Some UI polish still in progress
@@ -67,6 +69,7 @@ All notable changes to BitBonsai will be documented in this file.
 ## Future Releases
 
 ### Planned for Next Release
+
 - AV1 encoding support
 - Plex integration
 - Emby integration
@@ -74,6 +77,7 @@ All notable changes to BitBonsai will be documented in this file.
 - Scheduled encoding (off-peak hours)
 
 ### Roadmap
+
 - Mobile app
 - Cloud storage support (S3, B2)
 - Advanced analytics

@@ -1,0 +1,22 @@
+import { createActionGroup, props } from '@ngrx/store';
+import type { QueueFilters } from '../models/queue-filters.model';
+import type { QueueResponse } from '../models/queue-response.model';
+
+export const QueueActions = createActionGroup({
+  source: 'Queue',
+  events: {
+    'Load Queue': props<{ filters?: QueueFilters }>(),
+    'Load Queue Success': props<{ data: QueueResponse }>(),
+    'Load Queue Failure': props<{ error: string }>(),
+
+    'Cancel Job': props<{ jobId: string }>(),
+    'Cancel Job Success': props<{ jobId: string }>(),
+    'Cancel Job Failure': props<{ error: string }>(),
+
+    'Retry Job': props<{ jobId: string }>(),
+    'Retry Job Success': props<{ jobId: string }>(),
+    'Retry Job Failure': props<{ error: string }>(),
+
+    'Update Filters': props<{ filters: QueueFilters }>(),
+  },
+});

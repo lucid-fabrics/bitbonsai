@@ -1,0 +1,254 @@
+@use 'sass:color';
+@use '../../../../styles/variables' as *;
+
+.error-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease;
+  padding: 20px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.error-container {
+  background: $bg-secondary;
+  border: 2px solid $danger;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 700px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s ease;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.error-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid $border-primary;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  .header-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba($danger, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    i {
+      font-size: 28px;
+      color: $danger;
+    }
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: $text-white;
+  }
+}
+
+.error-body {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  .error-message {
+    margin: 0;
+    font-size: 16px;
+    color: $text-primary;
+    line-height: 1.6;
+  }
+}
+
+.troubleshooting-section {
+  h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: $text-white;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    i {
+      color: $accent-primary;
+      font-size: 18px;
+    }
+  }
+}
+
+.troubleshooting-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  li {
+    padding: 16px;
+    background: $bg-primary;
+    border-radius: 8px;
+    border-left: 3px solid $accent-primary;
+
+    strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: $text-white;
+      margin-bottom: 6px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 13px;
+      color: $text-secondary;
+      line-height: 1.5;
+    }
+  }
+}
+
+.help-banner {
+  background: rgba($accent-primary, 0.1);
+  border: 1px solid $accent-primary;
+  border-radius: 8px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  i {
+    font-size: 18px;
+    color: $accent-primary;
+  }
+
+  span {
+    font-size: 14px;
+    font-weight: 500;
+    color: $accent-primary;
+    line-height: 1.5;
+  }
+}
+
+.error-footer {
+  padding: 20px 32px;
+  border-top: 1px solid $border-primary;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn {
+  padding: 11px 22px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  i {
+    font-size: 13px;
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.btn-primary {
+  background: $accent-primary;
+  color: $text-dark;
+
+  &:hover {
+    background: $accent-primary-hover;
+    box-shadow: 0 4px 12px rgba($accent-primary, 0.4);
+  }
+}
+
+.btn-secondary {
+  background: transparent;
+  color: $text-white;
+  border: 1px solid $border-primary;
+
+  &:hover {
+    background: $bg-tertiary;
+  }
+}
+
+@media (max-width: 768px) {
+  .error-container {
+    max-width: 100%;
+    border-radius: 8px;
+  }
+
+  .error-header {
+    padding: 20px;
+
+    .header-icon {
+      width: 48px;
+      height: 48px;
+
+      i {
+        font-size: 24px;
+      }
+    }
+
+    h2 {
+      font-size: 20px;
+    }
+  }
+
+  .error-body {
+    padding: 20px;
+  }
+
+  .error-footer {
+    padding: 16px 20px;
+    flex-direction: column-reverse;
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}

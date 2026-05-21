@@ -1,0 +1,115 @@
+# Stage 1: Base image with common dependencies
+FROM node:20-alpine AS base
+
+# Install system dependencies
+# NFS and SMB clients for shared storage support
+# Docker CLI for volume auto-detection
+# SSH and rsync for remote file transfer to child nodes
+RUN apk add --no-cache \
+    curl \
+    xz \
+    nfs-utils \
+    cifs-utils \
+    util-linux \
+    docker-cli \
+    openssh-client \
+    rsync
+
+# Download and install John Van Sickle's static FFmpeg build (latest version ~7.1+)
+# These are trusted, well-maintained static builds that work on any Linux distribution
+RUN ARCH="$(uname -m)" && \
+    case "${ARCH}" in \
+        x86_64) FFMPEG_ARCH='amd64' ;; \
+        aarch64) FFMPEG_ARCH='arm64' ;; \
+        i686) FFMPEG_ARCH='i686' ;; \
+        *) echo "Unsupported architecture: ${ARCH}" && exit 1 ;; \
+    esac && \
+    curl -L "https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-${FFMPEG_ARCH}-static.tar.xz" \
+        -o /tmp/ffmpeg.tar.xz && \
+    tar -xf /tmp/ffmpeg.tar.xz -C /tmp && \
+    find /tmp -type f -name "ffmpeg" -exec cp {} /usr/local/bin/ \; && \
+    find /tmp -type f -name "ffprobe" -exec cp {} /usr/local/bin/ \; && \
+    chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe && \
+    rm -rf /tmp/ffmpeg* && \
+    ffmpeg -version
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files and npm config (for Font Awesome Pro)
+COPY package*.json .npmrc ./
+
+# Install ALL dependencies (including devDependencies for development)
+RUN npm install --legacy-peer-deps && \
+    npm cache clean --force
+
+# Copy Prisma schema BEFORE generating client
+COPY prisma ./prisma
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Copy workspace configuration
+COPY nx.json tsconfig.json ./
+
+# Stage 2: Backend development image
+FROM base AS backend
+
+# Copy shared libraries
+COPY libs ./libs
+
+# Copy backend source
+COPY apps/backend ./apps/backend
+
+# Create and copy startup script inline (avoid COPY issues during build)
+RUN echo '#!/bin/sh' > /app/backend-startup.sh && \
+    echo 'set -e' >> /app/backend-startup.sh && \
+    echo 'echo "🔧 BitBonsai Backend Startup..."' >> /app/backend-startup.sh && \
+    echo 'echo ""' >> /app/backend-startup.sh && \
+    echo 'echo "🔄 Regenerating Prisma Client..."' >> /app/backend-startup.sh && \
+    echo 'npx prisma generate' >> /app/backend-startup.sh && \
+    echo 'echo "✅ Prisma Client ready"' >> /app/backend-startup.sh && \
+    echo 'echo ""' >> /app/backend-startup.sh && \
+    echo 'echo "🗄️  Checking for database migrations..."' >> /app/backend-startup.sh && \
+    echo 'npx prisma migrate deploy || echo "⚠️  No migrations to apply or migration failed"' >> /app/backend-startup.sh && \
+    echo 'echo "✅ Database ready"' >> /app/backend-startup.sh && \
+    echo 'echo ""' >> /app/backend-startup.sh && \
+    echo 'echo "🚀 Starting NestJS backend..."' >> /app/backend-startup.sh && \
+    echo 'exec npx nx serve backend --host 0.0.0.0' >> /app/backend-startup.sh && \
+    chmod +x /app/backend-startup.sh
+
+# Expose backend ports (API + debugger)
+EXPOSE 3000 9229
+
+# Use startup script that regenerates Prisma before starting
+CMD ["/app/backend-startup.sh"]
+
+# Stage 3: Frontend development image
+FROM base AS frontend
+
+# Copy Angular configuration
+COPY angular.json ./
+
+# Copy shared libraries
+COPY libs ./libs
+
+# Copy frontend source
+COPY apps/frontend ./apps/frontend
+
+# Expose frontend port
+EXPOSE 4200
+
+# Default command
+CMD ["npx", "nx", "serve", "frontend", "--host", "0.0.0.0"]
+
+# Stage 4: Development environment (both services - for standalone use)
+FROM base AS development
+
+# Copy all workspace files
+COPY . .
+
+# Expose all ports
+EXPOSE 4200 3000 9229
+
+# Default command runs both services
+CMD ["npx", "nx", "run-many", "--target=serve", "--projects=backend,frontend", "--parallel"]

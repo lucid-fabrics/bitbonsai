@@ -1,0 +1,31 @@
+name: Security Audit
+description: Scan for vulnerabilities and fix critical issues
+
+steps:
+  - name: Run Security Scan
+    agent: security-auditor
+    task: "Scan for security vulnerabilities"
+    outputs: [vulnerabilities]
+
+  - name: Fix Critical Issues
+    agent: debugger
+    task: "Fix all critical and high severity vulnerabilities"
+    inputs: [vulnerabilities]
+    outputs: [security_fixes]
+
+  - name: Re-scan
+    agent: security-auditor
+    task: "Verify vulnerabilities are fixed"
+    inputs: [security_fixes]
+    outputs: [final_report]
+
+  - name: Document Security
+    agent: documentation-writer
+    task: "Document security fixes and best practices"
+    inputs: [final_report]
+    outputs: [security_docs]
+
+success_criteria:
+  - critical_vulnerabilities: 0
+  - high_vulnerabilities: 0
+  - npm_audit_clean: true

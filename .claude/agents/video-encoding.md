@@ -1,0 +1,1 @@
+/Users/wassimmehanna/git/code-conventions/.claude/agents/specialized/video-encoding.md
