@@ -1,0 +1,10 @@
+#!/bin/sh
+
+echo "Building backend..."
+npx nx build backend || exit 1
+
+echo "Building frontend..."
+npx nx build frontend || exit 1
+
+echo "Running affected tests..."
+npx nx affected --target=test --base=origin/main --head=HEAD || exit 1

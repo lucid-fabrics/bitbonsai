@@ -1,0 +1,15 @@
+<div class="auth-page">
+  <div class="auth-card">
+    <h1>Email Verification</h1>
+
+    @if (loading()) {
+      <p>Verifying your email…</p>
+    } @else if (success()) {
+      <p class="success-msg">Email verified successfully!</p>
+      <a routerLink="/login">Sign in to your account</a>
+    } @else {
+      <p class="error-msg">{{ error() }}</p>
+      <a routerLink="/login">Back to login</a>
+    }
+  </div>
+</div>

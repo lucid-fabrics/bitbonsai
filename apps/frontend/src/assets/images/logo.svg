@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Simplified version for favicon/small icon -->
+  <circle cx="50" cy="50" r="48" fill="#1a1a1a" stroke="#f9be03" stroke-width="2"/>
+
+  <!-- Bonsai pot -->
+  <path d="M 30 75 L 33 83 L 67 83 L 70 75 Z" fill="#8B4513" stroke="#654321" stroke-width="1"/>
+  <rect x="33" y="83" width="34" height="3" rx="1" fill="#654321"/>
+
+  <!-- Trunk -->
+  <path d="M 47 75 Q 46 65, 45 55 Q 44 45, 47 38"
+        fill="none" stroke="#8B4513" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Branches -->
+  <path d="M 45 55 Q 35 53, 28 50"
+        fill="none" stroke="#2d5016" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 47 45 Q 57 43, 65 41"
+        fill="none" stroke="#2d5016" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 47 38 Q 50 30, 52 25"
+        fill="none" stroke="#2d5016" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Pixelated leaves -->
+  <rect x="23" y="48" width="5" height="5" fill="#4CAF50" opacity="0.9"/>
+  <rect x="28" y="48" width="5" height="5" fill="#66BB6A" opacity="0.9"/>
+  <rect x="25" y="43" width="5" height="5" fill="#81C784" opacity="0.9"/>
+
+  <rect x="62" y="39" width="5" height="5" fill="#4CAF50" opacity="0.9"/>
+  <rect x="67" y="39" width="5" height="5" fill="#66BB6A" opacity="0.9"/>
+  <rect x="64" y="34" width="5" height="5" fill="#81C784" opacity="0.9"/>
+
+  <rect x="50" y="23" width="5" height="5" fill="#4CAF50" opacity="0.9"/>
+  <rect x="55" y="23" width="5" height="5" fill="#66BB6A" opacity="0.9"/>
+  <rect x="52" y="18" width="5" height="5" fill="#81C784" opacity="0.9"/>
+</svg>

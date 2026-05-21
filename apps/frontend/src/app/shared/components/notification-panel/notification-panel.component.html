@@ -1,0 +1,117 @@
+<div class="notification-panel-backdrop" (click)="onClose()">
+  <div class="notification-panel" (click)="$event.stopPropagation()">
+    <div class="notification-panel__header">
+      <h2 class="notification-panel__title">
+        <fa-icon [icon]="icons.bell"></fa-icon>
+        {{ 'notifications.notifications' | transloco }}
+      </h2>
+      <button
+        class="notification-panel__close-btn"
+        (click)="onClose()"
+        type="button"
+      >
+        <fa-icon [icon]="icons.close"></fa-icon>
+      </button>
+    </div>
+
+    <div class="notification-panel__tabs">
+      <button
+        class="notification-panel__tab"
+        [class.notification-panel__tab--active]="activeTab === 'active'"
+        (click)="switchTab('active')"
+        type="button"
+      >
+        Active
+      </button>
+      <button
+        class="notification-panel__tab"
+        [class.notification-panel__tab--active]="activeTab === 'archived'"
+        (click)="switchTab('archived')"
+        type="button"
+      >
+        Archived
+      </button>
+    </div>
+
+    <div class="notification-panel__body">
+      @if (isLoading) {
+        <div class="notification-panel__loading-state">
+          <fa-icon [icon]="icons.loading" [animation]="'spin'"></fa-icon>
+          <p>{{ 'notifications.loading' | transloco }}</p>
+        </div>
+      } @else if (displayedNotifications.length === 0) {
+        <div class="notification-panel__empty-state">
+          <fa-icon [icon]="icons.bellSlash"></fa-icon>
+          <p>
+            {{
+              activeTab === 'active'
+                ? 'No new notifications'
+                : 'No archived notifications'
+            }}
+          </p>
+        </div>
+      } @else {
+        <div class="notification-panel__list">
+          @for (notification of displayedNotifications; track notification.id) {
+            <div
+              class="notification-panel__item notification-panel__item--{{
+                getNotificationColor(notification)
+              }}"
+              [class.notification-panel__item--unread]="!notification.read"
+            >
+              <div class="notification-panel__item-icon">
+                <fa-icon
+                  [icon]="getNotificationIcon(notification.type)"
+                ></fa-icon>
+              </div>
+              <div class="notification-panel__item-content">
+                <div class="notification-panel__item-header">
+                  <h3 class="notification-panel__item-title">
+                    {{ getCleanTitle(notification.title) }}
+                  </h3>
+                  <span class="notification-panel__item-time">{{
+                    getRelativeTime(notification.createdAt)
+                  }}</span>
+                </div>
+                <p class="notification-panel__item-message">
+                  {{ getShortDescription(notification) }}
+                </p>
+              </div>
+              <div class="notification-panel__item-actions">
+                <button
+                  class="notification-panel__item-expand-btn"
+                  (click)="onExpandNotification($event, notification)"
+                  type="button"
+                  title="View details"
+                >
+                  <fa-icon [icon]="icons.expand"></fa-icon>
+                </button>
+                @if (activeTab === 'active') {
+                  @if (!requiresAction(notification)) {
+                    <button
+                      class="notification-panel__item-action-btn"
+                      (click)="onArchive($event, notification)"
+                      type="button"
+                      title="Archive"
+                    >
+                      <fa-icon [icon]="icons.archive"></fa-icon>
+                    </button>
+                  }
+                } @else {
+                  <button
+                    class="notification-panel__item-action-btn"
+                    (click)="onDismiss($event, notification)"
+                    type="button"
+                    title="Delete"
+                  >
+                    <fa-icon [icon]="icons.close"></fa-icon>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

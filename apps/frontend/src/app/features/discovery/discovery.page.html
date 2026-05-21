@@ -1,0 +1,218 @@
+<div class="discovery-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1>{{ 'discovery.title' | transloco }}</h1>
+        <p class="subtitle">{{ 'discovery.subtitle' | transloco }}</p>
+      </div>
+      <div class="header-right">
+        <button
+          class="btn btn-secondary"
+          (click)="searchForMainNodes()"
+          [disabled]="isSearching"
+        >
+          <i
+            class="fas"
+            [class.fa-spinner]="isSearching"
+            [class.fa-spin]="isSearching"
+            [class.fa-search]="!isSearching"
+          ></i>
+          {{ isSearching ? ('common.loading' | transloco) : ('common.refresh' |
+          transloco) }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  @if (error) {
+  <div class="error-alert">
+    <i class="fas fa-exclamation-circle"></i>
+    <span>{{ error }}</span>
+    <button class="close-btn" (click)="error = null">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+  }
+
+  <!-- Current Registration Request Status -->
+  @if (currentRequest && currentRequest.status ===
+  RegistrationRequestStatus.PENDING) {
+  <div class="pending-request-card">
+    <div class="card-header">
+      <div class="status-indicator pulsing"></div>
+      <div class="header-content">
+        <h2>{{ 'discovery.pendingRequests' | transloco }}</h2>
+        <p>{{ 'discovery.pendingSubtitle' | transloco }}</p>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="request-info">
+        <div class="info-row">
+          <span class="label">{{ 'discovery.pairingToken' | transloco }}</span>
+          <span class="value token">{{ currentRequest.pairingToken }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">{{ 'discovery.requested' | transloco }}</span>
+          <span class="value"
+            >{{ formatTimestamp(currentRequest.requestedAt) }}</span
+          >
+        </div>
+        <div class="info-row">
+          <span class="label">{{ 'discovery.expires' | transloco }}</span>
+          <span class="value">{{ getTimeRemaining(currentRequest) }}</span>
+        </div>
+      </div>
+
+      <div class="help-text">
+        <i class="fas fa-info-circle"></i>
+        <p>{{ 'discovery.requestHelpText' | transloco }}</p>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <button
+        class="btn btn-danger"
+        (click)="onCancelRequest()"
+        [disabled]="isLoadingRequest"
+      >
+        <i class="fas fa-times"></i>
+        {{ 'discovery.cancelRequest' | transloco }}
+      </button>
+      <button class="btn btn-secondary" (click)="onBecomeMainNode()">
+        <i class="fas fa-crown"></i>
+        {{ 'discovery.becomeMainNode' | transloco }}
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- Discovered MAIN Nodes -->
+  @if (!currentRequest) {
+  <div class="discovered-nodes-section">
+    <div class="section-header">
+      <h2>{{ 'discovery.discoveredMainNodes' | transloco }}</h2>
+      @if (discoveredMainNodes.length > 0) {
+      <span class="count-badge"
+        >{{ discoveredMainNodes.length }} {{ 'discovery.found' | transloco
+        }}</span
+      >
+      }
+    </div>
+
+    <!-- Empty State -->
+    @if (discoveredMainNodes.length === 0 && !isSearching) {
+    <div class="empty-state">
+      <div class="empty-icon">
+        <i class="fas fa-satellite-dish"></i>
+      </div>
+      <h3>{{ 'discovery.noMainNodesFound' | transloco }}</h3>
+      <p class="empty-description">
+        {{ 'discovery.noMainNodesDesc' | transloco }}
+      </p>
+      <ul class="empty-checklist">
+        <li>{{ 'discovery.checkMainRunning' | transloco }}</li>
+        <li>{{ 'discovery.checkSameNetwork' | transloco }}</li>
+        <li>{{ 'discovery.checkFirewall' | transloco }}</li>
+      </ul>
+
+      <div class="empty-actions">
+        <button class="btn btn-primary" (click)="searchForMainNodes()">
+          <i class="fas fa-search"></i>
+          {{ 'discovery.searchAgain' | transloco }}
+        </button>
+        <button class="btn btn-secondary" (click)="onBecomeMainNode()">
+          <i class="fas fa-crown"></i>
+          {{ 'discovery.becomeMainNode' | transloco }}
+        </button>
+      </div>
+    </div>
+    }
+
+    <!-- Loading State -->
+    @if (isSearching) {
+    <div class="loading-state">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>{{ 'discovery.searchingNetwork' | transloco }}</p>
+      <p class="loading-subtext">
+        {{ 'discovery.searchingSubtext' | transloco }}
+      </p>
+    </div>
+    }
+
+    <!-- Discovered Nodes Grid -->
+    @if (discoveredMainNodes.length > 0 && !isSearching) {
+    <div class="nodes-grid">
+      @for (node of discoveredMainNodes; track node.nodeId) {
+      <div class="node-card">
+        <div class="card-badge">
+          <i class="fas fa-crown"></i>
+          {{ 'discovery.mainNodeBadge' | transloco }}
+        </div>
+
+        <div class="card-header">
+          <h3>{{ node.nodeName }}</h3>
+          <p class="node-version">v{{ node.version }}</p>
+        </div>
+
+        <div class="card-body">
+          <div class="node-details">
+            <div class="detail-row">
+              <i class="fas fa-network-wired"></i>
+              <div class="detail-content">
+                <span class="detail-label"
+                  >{{ 'discovery.network' | transloco }}</span
+                >
+                <span class="detail-value">{{ node.ipAddress }}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <i class="fas fa-server"></i>
+              <div class="detail-content">
+                <span class="detail-label"
+                  >{{ 'discovery.apiEndpoint' | transloco }}</span
+                >
+                <span class="detail-value">{{ node.apiUrl }}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <i class="fas fa-plug"></i>
+              <div class="detail-content">
+                <span class="detail-label"
+                  >{{ 'discovery.port' | transloco }}</span
+                >
+                <span class="detail-value">{{ node.port }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <button
+            class="btn btn-primary btn-block"
+            (click)="onRegisterWithMainNode(node)"
+            [disabled]="isLoadingRequest"
+          >
+            <i class="fas fa-link"></i>
+            {{ 'discovery.connectToMainNode' | transloco }}
+          </button>
+        </div>
+      </div>
+      }
+    </div>
+
+    <div class="alternative-section">
+      <p class="alternative-text">
+        {{ 'discovery.dontSeeMainNode' | transloco }}
+      </p>
+      <button class="btn btn-secondary btn-small" (click)="onBecomeMainNode()">
+        <i class="fas fa-crown"></i>
+        {{ 'discovery.orBecomeMainNode' | transloco }}
+      </button>
+    </div>
+    }
+  </div>
+  }
+</div>

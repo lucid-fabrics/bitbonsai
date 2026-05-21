@@ -1,0 +1,58 @@
+when:
+  - event: push
+    branch: main
+  - event: manual
+
+labels:
+  platform: linux
+
+clone:
+  - name: clone
+    image: woodpeckerci/plugin-git
+    settings:
+      lfs: false
+
+steps:
+  - name: check_affected
+    image: node:22
+    commands:
+      - |
+        CHANGED=$(git diff --name-only ${CI_COMMIT_BEFORE_SHA:-HEAD~1} ${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "all")
+        echo "$CHANGED" | grep -qE "^apps/backend/|^libs/|^prisma/" || { echo "backend not affected, skipping"; exit 0; }
+
+        npm ci --legacy-peer-deps
+        AFFECTED=$(npx nx show projects --affected --base=${CI_COMMIT_BEFORE_SHA:-HEAD~1} --head=${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "backend")
+        echo "Affected: $AFFECTED"
+        echo "$AFFECTED" | grep -q "backend" || { echo "backend not in nx affected, skipping"; exit 0; }
+
+        npx prisma generate
+        npx nx run-many --target=test --projects=backend --passWithNoTests
+        npx nx build backend --configuration=production --skip-nx-cache
+        touch $CI_WORKSPACE/.backend_built
+
+  - name: notify_result
+    image: alpine
+    when:
+      - status: [success, failure]
+    environment:
+      TELEGRAM_BOT_TOKEN:
+        from_secret: TELEGRAM_BOT_TOKEN
+      TELEGRAM_CHAT_ID:
+        from_secret: TELEGRAM_CHAT_ID
+    commands:
+      - apk add --no-cache curl
+      - |
+        if [ "$CI_PIPELINE_STATUS" = "success" ] && [ ! -f $CI_WORKSPACE/.backend_built ]; then
+          echo "Skipping notification: backend not affected"
+          exit 0
+        fi
+        if [ "$CI_PIPELINE_STATUS" = "success" ]; then TG_EMOJI="✅"; else TG_EMOJI="❌"; fi
+        COMMIT_SHORT="${CI_COMMIT_SHA:0:7}"
+        COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        COMMIT_AUTHOR=$(echo "$CI_COMMIT_AUTHOR" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        COMMIT_MSG=$(echo "$CI_COMMIT_MESSAGE" | head -1 | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+        MSG=$(printf '⚙️ <b>BitBonsai Backend</b> — %s\n\n🌿 <code>%s</code>\n🔖 <code>%s</code> · %s\n📝 %s\n\n🔗 %s' \
+          "$TG_EMOJI" "$COMMIT_BRANCH" "$COMMIT_SHORT" "$COMMIT_AUTHOR" "$COMMIT_MSG" "$CI_PIPELINE_URL")
+        curl -s --max-time 30 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+          -d "chat_id=${TELEGRAM_CHAT_ID}&parse_mode=HTML&disable_web_page_preview=true" \
+          --data-urlencode "text=$MSG" || true

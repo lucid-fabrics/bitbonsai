@@ -1,0 +1,172 @@
+@if (isOpen) {
+  <div class="dialog-overlay" (click)="close()">
+    <div class="dialog-content" (click)="$event.stopPropagation()">
+      <!-- Header -->
+      <div class="dialog-header">
+        <div class="header-content">
+          <i class="fas fa-history"></i>
+          <div>
+            <h3>{{ 'jobHistory.title' | transloco }}</h3>
+            <span class="file-name">{{ fileName }}</span>
+          </div>
+        </div>
+        <button class="dialog-close" (click)="close()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="dialog-body">
+        @if (history.length === 0) {
+          <div class="empty-history">
+            <i class="fas fa-inbox"></i>
+            <p>{{ 'jobHistory.noHistory' | transloco }}</p>
+          </div>
+        } @else {
+          <div class="history-timeline">
+            @for (event of history; track event.id) {
+              <div
+                class="timeline-event"
+                [class.event-failed]="event.eventType === JobEventType.FAILED"
+                [class.event-cancelled]="
+                  event.eventType === JobEventType.CANCELLED
+                "
+                [class.event-restarted]="
+                  event.eventType === JobEventType.RESTARTED
+                "
+                [class.event-auto-healed]="
+                  event.eventType === JobEventType.AUTO_HEALED
+                "
+                [class.event-backend-restart]="
+                  event.eventType === JobEventType.BACKEND_RESTART
+                "
+                [class.event-timeout]="event.eventType === JobEventType.TIMEOUT"
+              >
+                <!-- Event Icon -->
+                <div class="event-icon">
+                  <i class="fas {{ getEventIcon(event.eventType) }}"></i>
+                </div>
+
+                <!-- Event Content -->
+                <div class="event-content">
+                  <!-- Title & Metadata -->
+                  <div class="event-header">
+                    <div class="event-title">
+                      {{ getErrorSummary(event) }}
+                    </div>
+                    <div class="event-time">
+                      <span class="relative-time">{{
+                        getRelativeTime(event.createdAt)
+                      }}</span>
+                      <span class="absolute-time">{{
+                        formatTimestamp(event.createdAt)
+                      }}</span>
+                    </div>
+                  </div>
+
+                  <!-- System Message (if different from summary) -->
+                  @if (
+                    event.systemMessage &&
+                    event.systemMessage !== getErrorSummary(event)
+                  ) {
+                    <div class="event-system-message">
+                      <i class="fas fa-info-circle"></i>
+                      <span>{{ event.systemMessage }}</span>
+                    </div>
+                  }
+
+                  <!-- Event Metadata Pills -->
+                  <div class="event-metadata">
+                    <span class="meta-pill">
+                      <i class="fas fa-layer-group"></i>
+                      {{ event.stage }}
+                    </span>
+                    <span class="meta-pill">
+                      <i class="fas fa-percentage"></i>
+                      {{ event.progress.toFixed(1) }}%
+                    </span>
+                    @if (event.fps) {
+                      <span class="meta-pill">
+                        <i class="fas fa-tachometer-alt"></i>
+                        {{ event.fps }} FPS
+                      </span>
+                    }
+                    @if (
+                      event.retryNumber !== undefined &&
+                      event.retryNumber !== null
+                    ) {
+                      <span class="meta-pill">
+                        <i class="fas fa-redo"></i>
+                        Attempt {{ event.retryNumber + 1 }}/3
+                      </span>
+                    }
+                    @if (event.triggeredBy) {
+                      <span class="meta-pill">
+                        <i class="fas fa-user-tag"></i>
+                        {{ event.triggeredBy }}
+                      </span>
+                    }
+                  </div>
+
+                  <!-- Technical Details (collapsible) -->
+                  @if (event.errorMessage || event.errorDetails) {
+                    <div class="event-error">
+                      <button
+                        class="toggle-details-btn"
+                        (click)="
+                          toggleEventDetails(event.id); $event.stopPropagation()
+                        "
+                      >
+                        <i
+                          class="fas"
+                          [class.fa-chevron-down]="!isEventExpanded(event.id)"
+                          [class.fa-chevron-up]="isEventExpanded(event.id)"
+                        ></i>
+                        {{
+                          isEventExpanded(event.id)
+                            ? ('common.hide' | transloco)
+                            : ('common.show' | transloco)
+                        }}
+                        {{ 'errorDetails.technicalDetails' | transloco }}
+                      </button>
+
+                      @if (isEventExpanded(event.id)) {
+                        <div class="error-details">
+                          @if (event.errorMessage) {
+                            <div class="error-section">
+                              <div class="error-section-title">
+                                Error Message
+                              </div>
+                              <pre>{{ event.errorMessage }}</pre>
+                            </div>
+                          }
+                          @if (event.errorDetails) {
+                            <div class="error-section">
+                              <div class="error-section-title">Stack Trace</div>
+                              <pre>{{ event.errorDetails }}</pre>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Footer -->
+      <div class="dialog-footer">
+        <button class="btn btn-secondary" (click)="copyToClipboard()">
+          <i class="fas fa-copy"></i>
+          {{ 'errorDetails.copyDetails' | transloco }}
+        </button>
+        <button class="btn btn-primary" (click)="close()">
+          {{ 'common.close' | transloco }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

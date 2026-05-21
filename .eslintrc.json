@@ -1,0 +1,19 @@
+{
+  "extends": ["eslint:recommended"],
+  "plugins": ["markdown", "mdx"],
+  "overrides": [
+    {
+      "files": ["*.md", "*.mdx"],
+      "parser": "eslint-mdx",
+      "rules": {
+        "no-unused-vars": "off",
+        "no-undef": "off"
+      }
+    }
+  ],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2021": true
+  }
+}

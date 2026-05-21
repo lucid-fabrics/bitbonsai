@@ -1,0 +1,642 @@
+import { createHash } from 'node:crypto';
+import { HttpService } from '@nestjs/axios';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { type Job, JobStage, Prisma } from '@prisma/client';
+import { firstValueFrom } from 'rxjs';
+import { JobRepository } from '../../common/repositories/job.repository';
+import { LibraryRepository } from '../../common/repositories/library.repository';
+import { NodeRepository } from '../../common/repositories/node.repository';
+import { NodeConfigService } from '../../core/services/node-config.service';
+import { PolicyRepository } from '../../policies/repositories/policy.repository';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { CreateJobDto } from '../dto/create-job.dto';
+import type { JobStatsDto } from '../dto/job-stats.dto';
+import type { UpdateJobDto } from '../dto/update-job.dto';
+import { JobCreationValidatorService } from './job-creation-validator.service';
+import { QueueJobOwnershipService } from './queue-job-ownership.service';
+import { QueueJobStatsService } from './queue-job-stats.service';
+
+/**
+ * QueueJobCrudService
+ *
+ * Handles job CRUD operations, queries, and generic updates.
+ */
+@Injectable()
+export class QueueJobCrudService {
+  private readonly logger = new Logger(QueueJobCrudService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private jobRepository: JobRepository,
+    private nodeRepository: NodeRepository,
+    private libraryRepository: LibraryRepository,
+    private policyRepository: PolicyRepository,
+    private nodeConfig: NodeConfigService,
+    private httpService: HttpService,
+    private creationValidator: JobCreationValidatorService,
+    private jobStats: QueueJobStatsService,
+    private jobOwnership: QueueJobOwnershipService
+  ) {}
+
+  /**
+   * Validate job ownership with optimistic locking support
+   */
+  async validateJobOwnership(
+    jobId: string,
+    operation: string,
+    callerNodeId?: string
+  ): Promise<{ nodeId: string | null; updatedAt: Date }> {
+    return this.jobOwnership.validateJobOwnership(jobId, operation, callerNodeId);
+  }
+
+  /**
+   * Validate file path to prevent directory traversal attacks
+   */
+  validateFilePath(filePath: string, libraryPath: string): void {
+    this.jobOwnership.validateFilePath(filePath, libraryPath);
+  }
+
+  /**
+   * Check if a file exists on disk (extracted for testability)
+   */
+  fileExists(filePath: string): boolean {
+    return this.jobOwnership.fileExists(filePath);
+  }
+
+  /**
+   * Create a new encoding job
+   */
+  async create(createJobDto: CreateJobDto): Promise<Job> {
+    this.logger.log(`Creating job for: ${createJobDto.fileLabel}`);
+
+    const fileSizeBytes = BigInt(createJobDto.beforeSizeBytes);
+    const maxFileSizeBytes = BigInt(500) * BigInt(1024) * BigInt(1024) * BigInt(1024);
+    const minFileSizeBytes = BigInt(1024);
+
+    if (fileSizeBytes > maxFileSizeBytes) {
+      throw new BadRequestException(
+        `File size ${fileSizeBytes} bytes exceeds maximum allowed size of ${maxFileSizeBytes} bytes (500 GB)`
+      );
+    }
+
+    if (fileSizeBytes < minFileSizeBytes) {
+      throw new BadRequestException(
+        `File size ${fileSizeBytes} bytes is below minimum size of ${minFileSizeBytes} bytes (1 KB)`
+      );
+    }
+
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      const url = `${mainApiUrl}/api/v1/queue`;
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying job creation to MAIN: ${url}`);
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.post(url, createJobDto, { timeout: 30000 })
+        );
+        this.logger.debug(`✅ MULTI-NODE: Job creation successful`);
+        return response.data;
+      } catch (error: unknown) {
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job creation to MAIN:`, error);
+        throw error;
+      }
+    }
+
+    const [node, library, policy] = await Promise.all([
+      this.nodeRepository.findById(createJobDto.nodeId),
+      this.libraryRepository.findById(createJobDto.libraryId),
+      this.policyRepository.findById(createJobDto.policyId),
+    ]);
+
+    if (!node) {
+      throw new NotFoundException(`Node with ID "${createJobDto.nodeId}" not found`);
+    }
+
+    if (!library) {
+      throw new NotFoundException(`Library with ID "${createJobDto.libraryId}" not found`);
+    }
+
+    if (!policy) {
+      throw new NotFoundException(`Policy with ID "${createJobDto.policyId}" not found`);
+    }
+
+    this.validateFilePath(createJobDto.filePath, library.path);
+
+    // Idempotent deduplication: reject if an active job with identical settings already exists
+    const jobFingerprint = createHash('sha256')
+      .update(
+        `${createJobDto.filePath}:${createJobDto.targetCodec}:${policy.targetQuality}:${createJobDto.targetContainer ?? ''}`
+      )
+      .digest('hex')
+      .slice(0, 16);
+
+    const duplicateJob = await this.jobRepository.findFirstWhere({
+      jobFingerprint,
+      stage: { notIn: [JobStage.COMPLETED, JobStage.FAILED, JobStage.CANCELLED] },
+    });
+
+    if (duplicateJob) {
+      this.logger.log(
+        `Duplicate job fingerprint detected for: ${createJobDto.filePath} (existing job: ${duplicateJob.id})`
+      );
+      throw new ConflictException(
+        `Job already active for this file+settings (id: ${duplicateJob.id})`
+      );
+    }
+
+    const existingActiveJob = await this.jobRepository.findFirstWhere({
+      filePath: createJobDto.filePath,
+      stage: {
+        in: [
+          JobStage.DETECTED,
+          JobStage.HEALTH_CHECK,
+          JobStage.QUEUED,
+          JobStage.ENCODING,
+          JobStage.VERIFYING,
+          JobStage.COMPLETED,
+        ],
+      },
+    });
+
+    if (existingActiveJob) {
+      this.logger.log(
+        `Job already exists for file: ${createJobDto.filePath} (stage: ${existingActiveJob.stage}, id: ${existingActiveJob.id})`
+      );
+      throw new BadRequestException(
+        `Job already exists for this file (stage: ${existingActiveJob.stage}). Cannot create duplicate.`
+      );
+    }
+
+    const { fingerprint } = await this.creationValidator.validate(createJobDto);
+
+    const oldJobs = await this.jobRepository.findManyWithInclude<Job>({
+      where: {
+        filePath: createJobDto.filePath,
+        stage: {
+          in: [JobStage.FAILED, JobStage.CANCELLED],
+        },
+      },
+    });
+
+    if (oldJobs.length > 0) {
+      this.logger.log(
+        `Deleting ${oldJobs.length} old job(s) for file: ${createJobDto.filePath} (stages: ${oldJobs.map((j) => j.stage).join(', ')})`
+      );
+      await this.jobRepository.deleteManyWhere({
+        id: {
+          in: oldJobs.map((j) => j.id),
+        },
+      });
+    }
+
+    try {
+      const job = await this.jobRepository.createJob({
+        filePath: createJobDto.filePath,
+        fileLabel: createJobDto.fileLabel,
+        sourceCodec: createJobDto.sourceCodec,
+        targetCodec: createJobDto.targetCodec,
+        beforeSizeBytes: BigInt(createJobDto.beforeSizeBytes),
+        stage: JobStage.DETECTED,
+        nodeId: createJobDto.nodeId,
+        libraryId: createJobDto.libraryId,
+        policyId: createJobDto.policyId,
+        warning: createJobDto.warning,
+        resourceThrottled: createJobDto.resourceThrottled ?? false,
+        resourceThrottleReason: createJobDto.resourceThrottleReason,
+        ffmpegThreads: createJobDto.ffmpegThreads,
+        type: createJobDto.type || 'ENCODE',
+        sourceContainer: createJobDto.sourceContainer,
+        targetContainer: createJobDto.targetContainer,
+        contentFingerprint: fingerprint,
+      });
+
+      this.logger.log(`Job created: ${job.id} (${job.fileLabel})`);
+      return job;
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'P2002' &&
+        'meta' in error &&
+        error.meta &&
+        typeof error.meta === 'object' &&
+        'target' in error.meta &&
+        Array.isArray(error.meta.target) &&
+        error.meta.target.includes('unique_active_job_per_file')
+      ) {
+        const existingJob = await this.jobRepository.findFirstWhere({
+          filePath: createJobDto.filePath,
+          libraryId: createJobDto.libraryId,
+          stage: {
+            notIn: [JobStage.COMPLETED, JobStage.FAILED, JobStage.CANCELLED],
+          },
+        });
+
+        if (existingJob) {
+          this.logger.log(
+            `Job already exists for file: ${createJobDto.filePath} (stage: ${existingJob.stage}, id: ${existingJob.id})`
+          );
+          throw new BadRequestException(
+            `Job already exists for this file (stage: ${existingJob.stage}). Cannot create duplicate.`
+          );
+        }
+      }
+
+      this.logger.error('Failed to create job', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all jobs with optional filtering
+   */
+  async findAll(
+    stage?: JobStage,
+    nodeId?: string,
+    search?: string,
+    libraryId?: string,
+    page?: number,
+    limit?: number
+  ): Promise<{
+    jobs: Job[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const currentPage = page && page > 0 ? page : 1;
+    const pageSize = limit && limit > 0 ? limit : 20;
+    const skip = (currentPage - 1) * pageSize;
+
+    this.logger.log(
+      `Fetching jobs (stage: ${stage || 'all'}, node: ${nodeId || 'all'}, library: ${libraryId || 'all'}, search: ${search || 'none'}, page: ${currentPage}, limit: ${pageSize})`
+    );
+
+    const where: Record<string, unknown> = {};
+    if (stage) {
+      where.stage = stage;
+    }
+    if (nodeId) {
+      where.nodeId = nodeId;
+    }
+    if (libraryId) {
+      where.libraryId = libraryId;
+    }
+    if (search) {
+      where.OR = [{ filePath: { contains: search } }, { fileLabel: { contains: search } }];
+    }
+
+    const includeClause = {
+      node: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+        },
+      },
+      library: {
+        select: {
+          id: true,
+          name: true,
+          mediaType: true,
+        },
+      },
+      policy: {
+        select: {
+          id: true,
+          name: true,
+          preset: true,
+        },
+      },
+    };
+
+    const orderByClause =
+      stage === 'FAILED' ? { failedAt: 'desc' as const } : { createdAt: 'asc' as const };
+
+    const [jobs, total] = await Promise.all([
+      this.jobRepository.findManyWithInclude<Job>({
+        where,
+        include: includeClause,
+        orderBy: orderByClause,
+        skip,
+        take: pageSize,
+      }),
+      this.jobRepository.countWhere(where),
+    ]);
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      jobs,
+      total,
+      page: currentPage,
+      limit: pageSize,
+      totalPages,
+    };
+  }
+
+  /**
+   * Get a single job by ID
+   */
+  async findOne(id: string): Promise<Job> {
+    this.logger.log(`Fetching job: ${id}`);
+
+    const job = await this.jobRepository
+      .findManyWithInclude<Job>({
+        where: { id },
+        include: {
+          node: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              acceleration: true,
+            },
+          },
+          library: {
+            select: {
+              id: true,
+              name: true,
+              path: true,
+              mediaType: true,
+            },
+          },
+          policy: {
+            select: {
+              id: true,
+              name: true,
+              preset: true,
+              targetCodec: true,
+              targetQuality: true,
+              advancedSettings: true,
+            },
+          },
+        },
+        take: 1,
+      })
+      .then((results) => results[0] ?? null);
+
+    if (!job) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    return job;
+  }
+
+  /**
+   * Get job status for pause/cancel checks
+   */
+  async getJobStatus(jobId: string): Promise<{
+    pauseRequestedAt: Date | null;
+    pauseProcessedAt: Date | null;
+    cancelRequestedAt: Date | null;
+    cancelProcessedAt: Date | null;
+  } | null> {
+    const job = await this.jobRepository.findStatusFields(jobId);
+    return job;
+  }
+
+  /**
+   * Raw job update for internal system operations
+   */
+  async updateJobRaw(jobId: string, data: Record<string, unknown>): Promise<void> {
+    await this.jobRepository.updateRaw(jobId, data);
+  }
+
+  /**
+   * Update job progress
+   */
+  async updateProgress(id: string, updateJobDto: UpdateJobDto): Promise<Job> {
+    this.logger.debug(`Updating progress for job: ${id}`);
+
+    if (!this.nodeConfig.getMainApiUrl()) {
+      await this.validateJobOwnership(id, 'update progress');
+    }
+
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      const url = `${mainApiUrl}/api/v1/queue/${id}`;
+      this.logger.debug(`🔍 MULTI-NODE: LINKED node proxying progress update to MAIN: ${url}`);
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.patch(url, updateJobDto, {
+            timeout: 30000,
+          })
+        );
+
+        this.logger.debug(`✅ MULTI-NODE: Progress update successful for ${id}`);
+        return response.data;
+      } catch (error: unknown) {
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy progress update to MAIN:`, error);
+        if (error instanceof Error) {
+          this.logger.error(`❌ MULTI-NODE: Error: ${error.message}`);
+        }
+        throw error;
+      }
+    }
+
+    const existingJob = await this.jobRepository.findById(id);
+
+    if (!existingJob) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    if (updateJobDto.progress !== undefined) {
+      if (updateJobDto.progress < 0 || updateJobDto.progress > 100) {
+        throw new BadRequestException('Progress must be between 0 and 100');
+      }
+    }
+
+    if (updateJobDto.etaSeconds !== undefined && updateJobDto.etaSeconds < 0) {
+      throw new BadRequestException('ETA cannot be negative');
+    }
+
+    if (updateJobDto.stage === JobStage.HEALTH_CHECK) {
+      throw new BadRequestException(
+        'Cannot manually set HEALTH_CHECK stage. This is an internal stage managed by the health check worker. ' +
+          'To prioritize a job, use the force-start endpoint instead.'
+      );
+    }
+
+    try {
+      const { tempFilePath, ...restDto } = updateJobDto;
+      const updateData: Record<string, unknown> = { ...restDto };
+
+      if (updateJobDto.resumeTimestamp) {
+        updateData.resumeTimestamp = updateJobDto.resumeTimestamp;
+        updateData.lastProgressUpdate = new Date();
+      }
+      if (tempFilePath) {
+        if (this.fileExists(tempFilePath)) {
+          updateData.tempFilePath = tempFilePath;
+        } else {
+          this.logger.warn(`Temp file not found: ${tempFilePath}, ignoring resume state`);
+        }
+      }
+
+      if (existingJob.stage === 'ENCODING') {
+        updateData.lastHeartbeat = new Date();
+        updateData.heartbeatNodeId = existingJob.nodeId;
+      }
+
+      const job = await this.jobRepository.updateRaw(id, updateData);
+
+      this.logger.debug(`Job ${id} progress updated: ${job.progress}%`);
+      return job;
+    } catch (error: unknown) {
+      this.logger.error(`Failed to update job progress: ${id}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update job preview image paths
+   */
+  async updateJobPreview(id: string, previewPaths: string[]): Promise<Job> {
+    this.logger.debug(`Updating preview paths for job: ${id}`);
+
+    try {
+      const job = await this.jobRepository.updateById(id, {
+        previewImagePaths: JSON.stringify(previewPaths),
+      });
+
+      this.logger.debug(`Job ${id} preview paths updated: ${previewPaths.length} images`);
+      return job;
+    } catch (error: unknown) {
+      this.logger.error(`Failed to update job preview paths: ${id}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a job with arbitrary data
+   */
+  async update(id: string, data: Prisma.JobUpdateInput): Promise<Job> {
+    const mainApiUrl = this.nodeConfig.getMainApiUrl();
+    if (mainApiUrl) {
+      const url = `${mainApiUrl}/api/v1/queue/${id}`;
+      this.logger.log(`🔍 MULTI-NODE: LINKED node proxying job update to MAIN: ${url}`);
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.patch(url, data, {
+            timeout: 30000,
+          })
+        );
+
+        this.logger.log(`✅ MULTI-NODE: Job update successful for ${id}`);
+        return response.data;
+      } catch (error: unknown) {
+        this.logger.error(`❌ MULTI-NODE: Failed to proxy job update to MAIN:`, error);
+        if (error instanceof Error) {
+          this.logger.error(`❌ MULTI-NODE: Error: ${error.message}`);
+        }
+        throw error;
+      }
+    }
+
+    const ownership = await this.validateJobOwnership(id, 'update');
+
+    const updateData = { ...data };
+    if (data.stage !== undefined) {
+      updateData.lastStageChangeAt = new Date();
+    }
+
+    const result = await this.jobRepository.atomicUpdateMany(
+      { id, updatedAt: ownership.updatedAt },
+      updateData as Prisma.JobUncheckedUpdateInput
+    );
+
+    if (result.count === 0) {
+      throw new ConflictException(`Job ${id} was modified by another process - update failed`);
+    }
+
+    const job = await this.jobRepository.findById(id);
+    if (!job) throw new NotFoundException(`Job ${id} not found after update`);
+    return job;
+  }
+
+  /**
+   * Delete a job
+   */
+  async remove(id: string): Promise<void> {
+    this.logger.log(`Deleting job: ${id}`);
+
+    const existingJob = await this.jobRepository.findById(id);
+
+    if (!existingJob) {
+      throw new NotFoundException(`Job with ID "${id}" not found`);
+    }
+
+    try {
+      await this.jobRepository.deleteById(id);
+
+      this.logger.log(`Job deleted: ${id}`);
+    } catch (error: unknown) {
+      this.logger.error(`Failed to delete job: ${id}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear all jobs or jobs matching specific statuses
+   */
+  async clearJobs(stages?: JobStage[]): Promise<number> {
+    const where = stages && stages.length > 0 ? { stage: { in: stages } } : {};
+
+    const logMessage =
+      stages && stages.length > 0
+        ? `Clearing jobs with stages: ${stages.join(', ')}`
+        : 'Clearing ALL jobs';
+
+    this.logger.warn(logMessage);
+
+    try {
+      const result = await this.jobRepository.deleteManyWhere(where);
+
+      this.logger.warn(`Deleted ${result.count} job(s)`);
+      return result.count;
+    } catch (error: unknown) {
+      this.logger.error('Failed to clear jobs', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get Dead Letter Queue jobs (circuit-broken, permanently failed)
+   */
+  async getDlqJobs(
+    skip = 0,
+    take = 50
+  ): Promise<{
+    jobs: Array<{
+      id: string;
+      fileLabel: string;
+      filePath: string;
+      dlqEnteredAt: Date | null;
+      circuitBrokenReason: string | null;
+      totalAttempts: number;
+      error: string | null;
+    }>;
+    total: number;
+    skip: number;
+    take: number;
+  }> {
+    return this.jobStats.getDlqJobs(skip, take);
+  }
+
+  /**
+   * Get job statistics
+   */
+  async getJobStats(nodeId?: string): Promise<JobStatsDto> {
+    return this.jobStats.getJobStats(nodeId);
+  }
+}
