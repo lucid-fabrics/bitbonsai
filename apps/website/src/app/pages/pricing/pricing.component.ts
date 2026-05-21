@@ -190,8 +190,7 @@ export class PricingComponent implements OnInit {
       // Use Stripe checkout with price ID
       cta = `/checkout?tier=${encodeURIComponent(tier.displayName)}&priceId=${tier.stripePriceIdMonthly}&price=${priceInDollars}`;
     } else {
-      // Fallback to Patreon if no Stripe price configured
-      cta = 'https://patreon.com/bitbonsai';
+      cta = '/signup';
     }
 
     // Mark middle tier as popular (Plus)
@@ -289,7 +288,7 @@ export class PricingComponent implements OnInit {
           'Early access to features',
           'Support development',
         ],
-        cta: 'https://patreon.com/bitbonsai',
+        cta: '/signup',
       },
       {
         name: 'Plus',
@@ -309,7 +308,7 @@ export class PricingComponent implements OnInit {
           'Custom encoding policies',
           'Email support',
         ],
-        cta: 'https://patreon.com/bitbonsai',
+        cta: '/signup',
       },
       {
         name: 'Pro',
@@ -328,7 +327,7 @@ export class PricingComponent implements OnInit {
           'Webhook integrations',
           'Priority email support',
         ],
-        cta: 'https://patreon.com/bitbonsai',
+        cta: '/signup',
       },
       {
         name: 'Ultimate',
@@ -347,7 +346,7 @@ export class PricingComponent implements OnInit {
           'Custom integrations',
           '1-on-1 support',
         ],
-        cta: 'https://patreon.com/bitbonsai',
+        cta: '/signup',
       },
     ];
   }
@@ -381,7 +380,7 @@ export class PricingComponent implements OnInit {
     {
       question: 'What payment methods do you accept?',
       answer:
-        'We accept all major credit cards via Patreon. For commercial licenses, we also offer invoicing and annual contracts.',
+        'We accept all major credit cards via Stripe. For commercial licenses, we also offer invoicing and annual contracts.',
     },
   ];
 }

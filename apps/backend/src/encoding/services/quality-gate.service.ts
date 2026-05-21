@@ -117,9 +117,9 @@ export class QualityGateService {
         return 0; // Disabled → always pass
       }
 
-      return settings?.vmafThreshold ?? Number(process.env['VMAF_THRESHOLD'] ?? '85');
+      return settings?.vmafThreshold ?? Number(process.env.VMAF_THRESHOLD ?? '85');
     } catch {
-      return Number(process.env['VMAF_THRESHOLD'] ?? '85');
+      return Number(process.env.VMAF_THRESHOLD ?? '85');
     }
   }
 

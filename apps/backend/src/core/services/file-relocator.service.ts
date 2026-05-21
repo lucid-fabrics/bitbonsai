@@ -180,12 +180,12 @@ export class FileRelocatorService {
                 nameSimilarity,
               });
             }
-          } catch {
-            // Skip files we can't stat
+          } catch (err: unknown) {
+            this.logger.debug(`Skipping unreadable file at ${candidatePath}`, err);
           }
         }
-      } catch {
-        // Skip directories we can't read
+      } catch (err: unknown) {
+        this.logger.debug(`Skipping unreadable directory`, err);
       }
     }
 
@@ -262,8 +262,8 @@ export class FileRelocatorService {
             }
           }
         }
-      } catch {
-        // Skip if can't read parent
+      } catch (err: unknown) {
+        this.logger.debug(`Skipping unreadable parent directory at ${parentDir}`, err);
       }
 
       // Go up one more level if depth allows
@@ -292,14 +292,14 @@ export class FileRelocatorService {
                         }
                       }
                     }
-                  } catch {
-                    // Skip
+                  } catch (err: unknown) {
+                    this.logger.debug(`Skipping unreadable subdirectory`, err);
                   }
                 }
               }
             }
-          } catch {
-            // Skip
+          } catch (err: unknown) {
+            this.logger.debug(`Skipping unreadable grandparent directory`, err);
           }
         }
       }

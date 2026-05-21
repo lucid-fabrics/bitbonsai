@@ -1,15 +1,14 @@
 import type { LicenseFeatures } from '@bitbonsai/prisma-types';
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
-import { LicenseTier } from '@prisma/client';
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import { CloudAuthService } from '../cloud-auth/cloud-auth.service';
 import { JobRepository } from '../common/repositories/job.repository';
-import { LicenseRepository } from '../common/repositories/license.repository';
 import { NodeRepository } from '../common/repositories/node.repository';
 
 /**
  * License feature flags
  */
 export interface LicenseCapabilities {
-  tier: LicenseTier;
+  tier: string;
   maxNodes: number;
   maxConcurrentJobs: number;
   currentNodes: number;
@@ -19,36 +18,36 @@ export interface LicenseCapabilities {
   canStartJob: boolean;
 }
 
+function defaultFeatures(tier: string): LicenseFeatures {
+  const isNotFree = tier !== 'FREE';
+  const isProOrHigher =
+    tier === 'PRO' || tier === 'ULTIMATE' || tier === 'PLUS' || tier.startsWith('COMMERCIAL');
+  const isCommercial = tier.startsWith('COMMERCIAL');
+
+  return {
+    multiNode: isNotFree,
+    advancedPresets: isNotFree,
+    api: isProOrHigher,
+    priorityQueue: isProOrHigher,
+    cloudStorage: isCommercial,
+    webhooks: isProOrHigher,
+    qualityAnalysis: isProOrHigher,
+    hardwareAcceleration: isNotFree,
+    customBranding: isCommercial,
+  };
+}
+
 /**
  * LicenseGuardService
  *
- * Enforces license limits across the application:
- * - Node limits: Prevents adding nodes beyond tier limit
- * - Concurrent job limits: Prevents starting jobs beyond limit
- * - Feature access: Gates features based on tier
- *
- * UX Philosophy: Graceful degradation with clear upgrade prompts
+ * Enforces license limits across the application.
+ * Reads entitlements from Settings (cloud-auth cache) instead of
+ * the legacy License DB table (which has been removed).
  */
 @Injectable()
 export class LicenseGuardService {
-  private readonly logger = new Logger(LicenseGuardService.name);
-
-  // Default limits for FREE tier (no license record)
-  private readonly FREE_DEFAULTS = {
-    maxNodes: 1,
-    maxConcurrentJobs: 2,
-    features: {
-      multiNode: false,
-      advancedPresets: false,
-      api: false,
-      priorityQueue: false,
-      cloudStorage: false,
-      webhooks: false,
-    } as LicenseFeatures,
-  };
-
   constructor(
-    private readonly licenseRepository: LicenseRepository,
+    private readonly cloudAuth: CloudAuthService,
     private readonly nodeRepository: NodeRepository,
     private readonly jobRepository: JobRepository
   ) {}
@@ -57,78 +56,25 @@ export class LicenseGuardService {
    * Get current license capabilities
    */
   async getCapabilities(): Promise<LicenseCapabilities> {
-    // Find active license
-    const license = await this.licenseRepository.findFirstActiveWithSelect<{
-      tier: LicenseTier;
-      maxNodes: number;
-      maxConcurrentJobs: number;
-      features: unknown;
-      validUntil: Date | null;
-    }>({
-      tier: true,
-      maxNodes: true,
-      maxConcurrentJobs: true,
-      features: true,
-      validUntil: true,
-    });
-
-    // Check expiration
-    if (license?.validUntil && license.validUntil < new Date()) {
-      this.logger.warn('License has expired, reverting to FREE tier limits');
-      return this.getFreeTierCapabilities();
-    }
-
-    // Count current usage
-    const [nodeCount, activeJobCount] = await Promise.all([
+    const [status, nodeCount, activeJobCount] = await Promise.all([
+      this.cloudAuth.getStatus(),
       this.nodeRepository.count({ where: { status: 'ONLINE' } }),
       this.jobRepository.countWhere({ stage: 'ENCODING' }),
     ]);
 
-    if (!license) {
-      return {
-        tier: LicenseTier.FREE,
-        maxNodes: this.FREE_DEFAULTS.maxNodes,
-        maxConcurrentJobs: this.FREE_DEFAULTS.maxConcurrentJobs,
-        currentNodes: nodeCount,
-        currentConcurrentJobs: activeJobCount,
-        features: this.FREE_DEFAULTS.features,
-        canAddNode: nodeCount < this.FREE_DEFAULTS.maxNodes,
-        canStartJob: activeJobCount < this.FREE_DEFAULTS.maxConcurrentJobs,
-      };
-    }
-
-    const features = license.features as unknown as LicenseFeatures;
+    const tier = status.tier ?? 'FREE';
+    const maxNodes = status.gracePeriodExpired ? 0 : (status.maxNodes ?? 1);
+    const maxConcurrentJobs = status.gracePeriodExpired ? 0 : (status.maxConcurrentJobs ?? 2);
 
     return {
-      tier: license.tier,
-      maxNodes: license.maxNodes,
-      maxConcurrentJobs: license.maxConcurrentJobs,
+      tier,
+      maxNodes,
+      maxConcurrentJobs,
       currentNodes: nodeCount,
       currentConcurrentJobs: activeJobCount,
-      features,
-      canAddNode: nodeCount < license.maxNodes,
-      canStartJob: activeJobCount < license.maxConcurrentJobs,
-    };
-  }
-
-  /**
-   * Get FREE tier capabilities (used when no license or expired)
-   */
-  private async getFreeTierCapabilities(): Promise<LicenseCapabilities> {
-    const [nodeCount, activeJobCount] = await Promise.all([
-      this.nodeRepository.count({ where: { status: 'ONLINE' } }),
-      this.jobRepository.countWhere({ stage: 'ENCODING' }),
-    ]);
-
-    return {
-      tier: LicenseTier.FREE,
-      maxNodes: this.FREE_DEFAULTS.maxNodes,
-      maxConcurrentJobs: this.FREE_DEFAULTS.maxConcurrentJobs,
-      currentNodes: nodeCount,
-      currentConcurrentJobs: activeJobCount,
-      features: this.FREE_DEFAULTS.features,
-      canAddNode: nodeCount < this.FREE_DEFAULTS.maxNodes,
-      canStartJob: activeJobCount < this.FREE_DEFAULTS.maxConcurrentJobs,
+      features: defaultFeatures(tier),
+      canAddNode: nodeCount < maxNodes,
+      canStartJob: activeJobCount < maxConcurrentJobs,
     };
   }
 
@@ -142,11 +88,11 @@ export class LicenseGuardService {
     if (!capabilities.canAddNode) {
       throw new ForbiddenException({
         error: 'NODE_LIMIT_REACHED',
-        message: `Your ${capabilities.tier} license allows ${capabilities.maxNodes} node(s). Currently using ${capabilities.currentNodes}.`,
+        message: `Your ${capabilities.tier} plan allows ${capabilities.maxNodes} node(s). Currently using ${capabilities.currentNodes}.`,
         currentNodes: capabilities.currentNodes,
         maxNodes: capabilities.maxNodes,
         tier: capabilities.tier,
-        upgradeUrl: '/settings?tab=license',
+        upgradeUrl: '/settings?tab=account',
       });
     }
   }
@@ -161,11 +107,11 @@ export class LicenseGuardService {
     if (!capabilities.canStartJob) {
       throw new ForbiddenException({
         error: 'CONCURRENT_JOB_LIMIT_REACHED',
-        message: `Your ${capabilities.tier} license allows ${capabilities.maxConcurrentJobs} concurrent job(s). Currently running ${capabilities.currentConcurrentJobs}.`,
+        message: `Your ${capabilities.tier} plan allows ${capabilities.maxConcurrentJobs} concurrent job(s). Currently running ${capabilities.currentConcurrentJobs}.`,
         currentJobs: capabilities.currentConcurrentJobs,
         maxJobs: capabilities.maxConcurrentJobs,
         tier: capabilities.tier,
-        upgradeUrl: '/settings?tab=license',
+        upgradeUrl: '/settings?tab=account',
       });
     }
   }
@@ -178,7 +124,7 @@ export class LicenseGuardService {
     const capabilities = await this.getCapabilities();
 
     if (!capabilities.features[feature]) {
-      const featureNames: Record<keyof LicenseFeatures, string> = {
+      const featureNames: Record<string, string> = {
         multiNode: 'Multi-Node Support',
         advancedPresets: 'Advanced Presets',
         api: 'API Access',
@@ -192,10 +138,10 @@ export class LicenseGuardService {
 
       throw new ForbiddenException({
         error: 'FEATURE_NOT_AVAILABLE',
-        message: `${featureNames[feature]} requires a higher tier license.`,
+        message: `${featureNames[feature as string] ?? String(feature)} requires a higher tier plan.`,
         feature,
         tier: capabilities.tier,
-        upgradeUrl: '/settings?tab=license',
+        upgradeUrl: '/settings?tab=account',
       });
     }
   }
@@ -205,7 +151,7 @@ export class LicenseGuardService {
    */
   async isFeatureEnabled(feature: keyof LicenseFeatures): Promise<boolean> {
     const capabilities = await this.getCapabilities();
-    return capabilities.features[feature] ?? false;
+    return (capabilities.features[feature] as boolean) ?? false;
   }
 
   /**
@@ -228,41 +174,29 @@ export class LicenseGuardService {
   async getUpgradeRecommendation(): Promise<{
     shouldUpgrade: boolean;
     reason?: string;
-    recommendedTier?: LicenseTier;
+    recommendedTier?: string;
   }> {
     const capabilities = await this.getCapabilities();
 
-    // Already at enterprise level
-    if (capabilities.tier === LicenseTier.COMMERCIAL_ENTERPRISE) {
+    if (capabilities.tier === 'COMMERCIAL_ENTERPRISE') {
       return { shouldUpgrade: false };
     }
 
-    // Check if near limits
-    const nodeUsage = capabilities.currentNodes / capabilities.maxNodes;
-    const jobUsage = capabilities.currentConcurrentJobs / capabilities.maxConcurrentJobs;
+    const nodeUsage =
+      capabilities.maxNodes > 0 ? capabilities.currentNodes / capabilities.maxNodes : 1;
+    const jobUsage =
+      capabilities.maxConcurrentJobs > 0
+        ? capabilities.currentConcurrentJobs / capabilities.maxConcurrentJobs
+        : 1;
 
     if (nodeUsage >= 0.8 || jobUsage >= 0.8) {
-      const tierOrder: LicenseTier[] = [
-        LicenseTier.FREE,
-        LicenseTier.PATREON_SUPPORTER,
-        LicenseTier.PATREON_PLUS,
-        LicenseTier.PATREON_PRO,
-        LicenseTier.PATREON_ULTIMATE,
-        LicenseTier.COMMERCIAL_STARTER,
-        LicenseTier.COMMERCIAL_PRO,
-        LicenseTier.COMMERCIAL_ENTERPRISE,
-      ];
-
-      const currentIndex = tierOrder.indexOf(capabilities.tier);
-      const nextTier = tierOrder[currentIndex + 1];
-
       return {
         shouldUpgrade: true,
         reason:
           nodeUsage >= 0.8
             ? `Using ${capabilities.currentNodes}/${capabilities.maxNodes} nodes`
             : `Running ${capabilities.currentConcurrentJobs}/${capabilities.maxConcurrentJobs} concurrent jobs`,
-        recommendedTier: nextTier,
+        recommendedTier: 'PATREON_PRO',
       };
     }
 

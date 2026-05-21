@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import {
-  type LicenseStatus,
-  type LicenseTier,
   type MediaType,
   type Node,
   type NodeRole,
@@ -16,12 +14,6 @@ export interface NodeWithJobCount extends Node {
 }
 
 export interface NodeWithStats extends Node {
-  license: {
-    tier: LicenseTier;
-    maxConcurrentJobs: number;
-    maxNodes: number;
-    status: LicenseStatus;
-  } | null;
   libraries: {
     id: string;
     name: string;
@@ -122,13 +114,10 @@ export class NodeRepository extends BaseRepository {
     });
   }
 
-  async findFirstWithLicense(
-    where: Record<string, unknown>
-  ): Promise<(Node & { license: { key: string } }) | null> {
-    return this.findFirst<(Node & { license: { key: string } }) | null>({
-      where,
-      include: { license: true },
-    });
+  async findFirstWithLicense(where: Record<string, unknown>): Promise<Node | null> {
+    // license relation removed — returning plain Node
+    const { licenseId: _licenseId, ...safeWhere } = where as Record<string, unknown>;
+    return this.findFirst<Node | null>({ where: safeWhere });
   }
 
   async findManyByIp(ipAddress: string): Promise<Node[]> {
@@ -149,19 +138,9 @@ export class NodeRepository extends BaseRepository {
   }
 
   async findAllWithLicense(): Promise<Node[]> {
+    // license relation removed — return plain nodes ordered by role/createdAt
     return this.findMany<Node>({
       orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
-      include: {
-        license: {
-          select: {
-            id: true,
-            tier: true,
-            maxNodes: true,
-            maxConcurrentJobs: true,
-            status: true,
-          },
-        },
-      },
     });
   }
 
@@ -169,14 +148,6 @@ export class NodeRepository extends BaseRepository {
     return this.findUnique<NodeWithStats | null>({
       where: { id },
       include: {
-        license: {
-          select: {
-            tier: true,
-            maxConcurrentJobs: true,
-            maxNodes: true,
-            status: true,
-          },
-        },
         libraries: {
           select: {
             id: true,

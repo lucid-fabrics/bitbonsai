@@ -1,4 +1,4 @@
-import { Controller, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
+import { Controller, HttpCode, HttpStatus, ParseArrayPipe, Post, Query } from '@nestjs/common';
 import {
   ApiInternalServerErrorResponse,
   ApiOkResponse,
@@ -306,11 +306,10 @@ export class QueueManagementController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while clearing jobs',
   })
-  async clearJobs(@Query('stages') stagesParam?: string): Promise<{ deleted: number }> {
-    const stages = stagesParam
-      ? (stagesParam.split(',').map((s) => s.trim()) as JobStage[])
-      : undefined;
-
+  async clearJobs(
+    @Query('stages', new ParseArrayPipe({ items: String, separator: ',', optional: true }))
+    stages?: JobStage[]
+  ): Promise<{ deleted: number }> {
     const deleted = await this.queueService.clearJobs(stages);
     return { deleted };
   }

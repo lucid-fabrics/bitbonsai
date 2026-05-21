@@ -20,6 +20,9 @@ module.exports = {
     'jest-preset-angular/build/serializers/ng-snapshot',
     'jest-preset-angular/build/serializers/html-comment',
   ],
+  moduleNameMapper: {
+    '^.+/assets/i18n/(.+\\.json)$': '<rootDir>/src/assets/i18n/$1',
+  },
   testPathIgnorePatterns: ['/node_modules/', '/e2e/'],
   collectCoverageFrom: [
     'src/**/*.ts',

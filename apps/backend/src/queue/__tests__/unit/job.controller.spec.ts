@@ -1,8 +1,7 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { type Job } from '@prisma/client';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
-import { NodeConfigService } from '../../../core/services/node-config.service';
 import { JobController } from '../../controllers/job.controller';
 import { type CancelJobDto } from '../../dto/cancel-job.dto';
 import { type CompleteJobDto } from '../../dto/complete-job.dto';
@@ -12,6 +11,7 @@ import { type FailJobDto } from '../../dto/fail-job.dto';
 import { type ResolveDecisionDto } from '../../dto/resolve-decision.dto';
 import { type UpdateJobDto } from '../../dto/update-job.dto';
 import { type UpdatePriorityDto } from '../../dto/update-priority.dto';
+import { JobOwnershipGuard } from '../../guards/job-ownership.guard';
 import { QueueService } from '../../queue.service';
 import { JobHistoryService } from '../../services/job-history.service';
 
@@ -57,11 +57,6 @@ describe('JobController', () => {
     getJobHistory: jest.fn(),
   };
 
-  const mockNodeConfig = {
-    getNodeId: jest.fn(),
-    isMainNode: jest.fn(),
-  };
-
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -70,10 +65,11 @@ describe('JobController', () => {
       providers: [
         { provide: QueueService, useValue: mockQueueService },
         { provide: JobHistoryService, useValue: mockJobHistoryService },
-        { provide: NodeConfigService, useValue: mockNodeConfig },
       ],
     })
       .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(JobOwnershipGuard)
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -153,59 +149,21 @@ describe('JobController', () => {
   // update
   // ---------------------------------------------------------------------------
   describe('update', () => {
-    it('should allow main node to update any job', async () => {
-      const job = makeJob({ nodeId: 'other-node' });
+    it('should delegate update to QueueService (ownership enforced by JobOwnershipGuard)', async () => {
       const updated = makeJob({ progress: 50 });
-      mockNodeConfig.getNodeId.mockReturnValue('node-main');
-      mockNodeConfig.isMainNode.mockReturnValue(true);
-      mockQueueService.findOne.mockResolvedValue(job);
       mockQueueService.update.mockResolvedValue(updated);
 
-      const result = await controller.update('job-1', {
-        progress: 50,
-      } as UpdateJobDto);
+      const result = await controller.update('job-1', { progress: 50 } as UpdateJobDto);
 
+      expect(mockQueueService.update).toHaveBeenCalledWith('job-1', { progress: 50 });
       expect(result).toEqual(updated);
     });
 
-    it('should allow owner node to update its own job', async () => {
-      const job = makeJob({ nodeId: 'node-1' });
-      const updated = makeJob({ progress: 30 });
-      mockNodeConfig.getNodeId.mockReturnValue('node-1');
-      mockNodeConfig.isMainNode.mockReturnValue(false);
-      mockQueueService.findOne.mockResolvedValue(job);
-      mockQueueService.update.mockResolvedValue(updated);
-
-      const result = await controller.update('job-1', {
-        progress: 30,
-      } as UpdateJobDto);
-
-      expect(result).toEqual(updated);
-    });
-
-    it('should allow update when job has no nodeId assigned', async () => {
-      const job = makeJob({ nodeId: null as unknown as string });
-      const updated = makeJob({ stage: 'ENCODING' });
-      mockNodeConfig.getNodeId.mockReturnValue('node-1');
-      mockNodeConfig.isMainNode.mockReturnValue(false);
-      mockQueueService.findOne.mockResolvedValue(job);
-      mockQueueService.update.mockResolvedValue(updated);
-
-      const result = await controller.update('job-1', {} as UpdateJobDto);
-
-      expect(result).toEqual(updated);
-    });
-
-    it('should throw ForbiddenException when non-owner node tries to update', async () => {
-      const job = makeJob({ nodeId: 'node-other' });
-      mockNodeConfig.getNodeId.mockReturnValue('node-1');
-      mockNodeConfig.isMainNode.mockReturnValue(false);
-      mockQueueService.findOne.mockResolvedValue(job);
-
-      await expect(controller.update('job-1', {} as UpdateJobDto)).rejects.toThrow(
-        ForbiddenException
-      );
-      expect(mockQueueService.update).not.toHaveBeenCalled();
+    it('ownership enforcement is delegated to JobOwnershipGuard (not tested at controller level)', () => {
+      // The ForbiddenException for cross-node updates is now thrown by JobOwnershipGuard.
+      // Controller unit tests bypass guards via .overrideGuard(). Guard logic is covered
+      // by JobOwnershipGuard unit tests.
+      expect(true).toBe(true);
     });
   });
 

@@ -108,89 +108,73 @@ export class JobHistoryModalComponent {
    * Generate a human-readable summary from error message and details
    */
   getErrorSummary(event: JobHistoryEvent): string {
-    const errorMsg = event.errorMessage?.toLowerCase() || '';
-    const errorDetails = event.errorDetails?.toLowerCase() || '';
-    const combinedError = `${errorMsg} ${errorDetails}`;
+    const combinedError = `${event.errorMessage?.toLowerCase() ?? ''} ${event.errorDetails?.toLowerCase() ?? ''}`;
+    return this.matchErrorPattern(combinedError) ?? this.getEventTypeSummary(event);
+  }
 
-    // FFmpeg specific errors
+  private matchErrorPattern(combinedError: string): string | null {
     if (
-      combinedError.includes('invalid data found when processing input') ||
-      combinedError.includes('moov atom not found')
+      this.errorIncludes(combinedError, [
+        'invalid data found when processing input',
+        'moov atom not found',
+      ])
     ) {
       return 'The video file appears to be corrupted or incomplete. The file may have been damaged during transfer or recording.';
     }
-
-    if (combinedError.includes('no such file or directory') || combinedError.includes('enoent')) {
+    if (this.errorIncludes(combinedError, ['no such file or directory', 'enoent'])) {
       return 'The source video file could not be found. It may have been moved, deleted, or the path is incorrect.';
     }
-
-    if (combinedError.includes('permission denied') || combinedError.includes('eacces')) {
+    if (this.errorIncludes(combinedError, ['permission denied', 'eacces'])) {
       return 'BitBonsai does not have permission to access the video file or output directory.';
     }
-
-    if (
-      combinedError.includes('disk') &&
-      (combinedError.includes('full') || combinedError.includes('space'))
-    ) {
+    if (combinedError.includes('disk') && this.errorIncludes(combinedError, ['full', 'space'])) {
       return 'The disk is full. Free up space on the destination drive to continue encoding.';
     }
-
     if (combinedError.includes('codec') && combinedError.includes('not supported')) {
       return 'The video uses an unsupported codec. The file may need to be re-encoded with different settings.';
     }
-
-    if (combinedError.includes('timeout') || combinedError.includes('timed out')) {
+    if (this.errorIncludes(combinedError, ['timeout', 'timed out'])) {
       return 'The encoding process took too long and was stopped. This may indicate a problem with the video file or encoding settings.';
     }
-
-    if (
-      combinedError.includes('killed') ||
-      combinedError.includes('sigkill') ||
-      combinedError.includes('sigterm')
-    ) {
+    if (this.errorIncludes(combinedError, ['killed', 'sigkill', 'sigterm'])) {
       return 'The encoding process was terminated unexpectedly. This usually happens when the system runs out of memory or the backend was restarted.';
     }
-
-    if (
-      combinedError.includes('conversion failed') ||
-      combinedError.includes('error while') ||
-      combinedError.includes('failed')
-    ) {
-      return 'The video encoding failed. Check the technical details below for specific error information.';
-    }
-
-    // Additional specific error patterns
-    if (
-      combinedError.includes('av_interleaved_write_frame') ||
-      combinedError.includes('broken pipe')
-    ) {
+    if (this.errorIncludes(combinedError, ['av_interleaved_write_frame', 'broken pipe'])) {
       return 'The encoding process was interrupted while writing output. This may indicate a disk write error or insufficient space.';
     }
-
-    if (combinedError.includes('invalid argument') || combinedError.includes('invalid option')) {
+    if (this.errorIncludes(combinedError, ['invalid argument', 'invalid option'])) {
       return 'The encoding settings contain an invalid configuration. The encoding profile may need to be adjusted.';
     }
-
     if (combinedError.includes('decoder') && combinedError.includes('not found')) {
       return 'The required video decoder is missing or not available. The video format may not be supported.';
     }
-
-    // Generic event type summaries
-    switch (event.eventType) {
-      case JobEventType.CANCELLED:
-        return 'The encoding job was manually cancelled by a user or administrator.';
-      case JobEventType.TIMEOUT:
-        return 'The encoding process exceeded the maximum allowed time and was automatically stopped.';
-      case JobEventType.BACKEND_RESTART:
-        return 'The BitBonsai backend service was restarted while this job was processing.';
-      case JobEventType.AUTO_HEALED:
-        return 'The job automatically recovered from a previous failure and will retry encoding.';
-      case JobEventType.RESTARTED:
-        return 'The job was manually restarted to attempt encoding again.';
-      default:
-        // Fall back to system message or event type - no generic "error occurred" message
-        return event.systemMessage || this.getEventTypeLabel(event.eventType);
+    if (this.errorIncludes(combinedError, ['conversion failed', 'error while', 'failed'])) {
+      return 'The video encoding failed. Check the technical details below for specific error information.';
     }
+    return null;
+  }
+
+  private errorIncludes(text: string, terms: string[]): boolean {
+    return terms.some((t) => text.includes(t));
+  }
+
+  private getEventTypeSummary(event: JobHistoryEvent): string {
+    const eventSummaries: Partial<Record<JobEventType, string>> = {
+      [JobEventType.CANCELLED]:
+        'The encoding job was manually cancelled by a user or administrator.',
+      [JobEventType.TIMEOUT]:
+        'The encoding process exceeded the maximum allowed time and was automatically stopped.',
+      [JobEventType.BACKEND_RESTART]:
+        'The BitBonsai backend service was restarted while this job was processing.',
+      [JobEventType.AUTO_HEALED]:
+        'The job automatically recovered from a previous failure and will retry encoding.',
+      [JobEventType.RESTARTED]: 'The job was manually restarted to attempt encoding again.',
+    };
+    return (
+      eventSummaries[event.eventType] ??
+      event.systemMessage ??
+      this.getEventTypeLabel(event.eventType)
+    );
   }
 
   copyToClipboard() {

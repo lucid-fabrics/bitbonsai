@@ -19,8 +19,12 @@ interface EnvConfig {
   NODE_ROLE?: string;
   MAIN_API_URL?: string;
 
-  // License API
+  // License API (legacy)
   LICENSE_API_URL?: string;
+
+  // Cloud Auth
+  LICENSING_SERVICE_URL?: string;
+  LICENSING_ADMIN_API_KEY?: string;
 
   // CORS
   FRONTEND_URL?: string;
@@ -112,7 +116,7 @@ export function envValidationSchema(config: EnvConfig): EnvConfig {
   }
 
   // ==========================================================================
-  // LICENSE API URL
+  // LICENSE API URL (legacy)
   // ==========================================================================
   if (config.LICENSE_API_URL) {
     try {
@@ -120,6 +124,29 @@ export function envValidationSchema(config: EnvConfig): EnvConfig {
     } catch {
       errors.push(`LICENSE_API_URL is not a valid URL: ${config.LICENSE_API_URL}`);
     }
+  }
+
+  // ==========================================================================
+  // CLOUD AUTH (licensing-service device-binding flow)
+  // ==========================================================================
+  if (isProduction && !config.LICENSING_SERVICE_URL) {
+    errors.push(
+      'LICENSING_SERVICE_URL is required in production. Example: https://api.bitbonsai.app/api'
+    );
+  }
+
+  if (config.LICENSING_SERVICE_URL) {
+    try {
+      new URL(config.LICENSING_SERVICE_URL);
+    } catch {
+      errors.push(`LICENSING_SERVICE_URL is not a valid URL: ${config.LICENSING_SERVICE_URL}`);
+    }
+  }
+
+  if (isProduction && !config.LICENSING_ADMIN_API_KEY) {
+    errors.push(
+      'LICENSING_ADMIN_API_KEY is required in production. Generate with: openssl rand -base64 32'
+    );
   }
 
   // ==========================================================================

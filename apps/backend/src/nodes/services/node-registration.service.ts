@@ -1,14 +1,7 @@
 import { version as APP_VERSION } from '@bitbonsai/version';
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { type Node, NodeRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
-import { LicenseRepository } from '../../common/repositories/license.repository';
 import { NodeRepository } from '../../common/repositories/node.repository';
 import type { NodeRegistrationResponseDto } from '../dto/node-registration-response.dto';
 import type { RegisterNodeDto } from '../dto/register-node.dto';
@@ -26,68 +19,30 @@ export class NodeRegistrationService {
 
   constructor(
     private readonly nodeRepository: NodeRepository,
-    private readonly licenseRepository: LicenseRepository,
     private readonly storageShareService: StorageShareService
   ) {}
 
   /**
-   * Register a new node with license validation
+   * Register a new node
    */
   async registerNode(data: RegisterNodeDto): Promise<NodeRegistrationResponseDto> {
-    let licenseKey = data.licenseKey;
-    if (!licenseKey) {
-      const mainNode = await this.nodeRepository.findFirstWithLicense({
-        role: NodeRole.MAIN,
-      });
+    const existingNodeCount = await this.nodeRepository.count({});
+    const role = existingNodeCount === 0 ? NodeRole.MAIN : NodeRole.LINKED;
 
-      if (!mainNode) {
-        throw new BadRequestException(
-          'No main node found. License key is required for first node registration.'
+    if (role === NodeRole.MAIN) {
+      const existingMainNode = await this.nodeRepository.findMain();
+      if (existingMainNode) {
+        this.logger.error(
+          `Attempted to create duplicate MAIN node! Existing MAIN: ${existingMainNode.name} (${existingMainNode.id})`
         );
+        throw new ConflictException('A MAIN node already exists. Only one MAIN node is allowed.');
       }
-
-      licenseKey = mainNode.license.key;
-      this.logger.debug(`Using main node's license (${licenseKey}) for child node registration`);
-    }
-
-    const license = await this.licenseRepository.findByKeyWithInclude<{
-      id: string;
-      status: string;
-      maxNodes: number;
-      _count: { nodes: number };
-    }>(licenseKey, { _count: { select: { nodes: true } } });
-
-    if (!license || license.status !== 'ACTIVE') {
-      throw new BadRequestException('Invalid or inactive license key');
-    }
-
-    if (license._count.nodes >= license.maxNodes) {
-      throw new ConflictException(`Maximum nodes (${license.maxNodes}) reached for this license`);
     }
 
     const pairingToken = this.generatePairingToken();
     const pairingExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-    const role = license._count.nodes === 0 ? NodeRole.MAIN : NodeRole.LINKED;
-
-    if (role === NodeRole.MAIN) {
-      const existingMainNode = await this.nodeRepository.findFirstWithLicense({
-        role: NodeRole.MAIN,
-        licenseId: license.id,
-      });
-
-      if (existingMainNode) {
-        this.logger.error(
-          `❌ Attempted to create duplicate MAIN node! Existing MAIN: ${existingMainNode.name} (${existingMainNode.id})`
-        );
-        throw new ConflictException(
-          'A MAIN node already exists for this license. Only one MAIN node is allowed per license.'
-        );
-      }
-    }
-
     const nodeName =
-      data.name || `${role === NodeRole.MAIN ? 'Main' : 'Linked'} Node ${license._count.nodes + 1}`;
+      data.name || `${role === NodeRole.MAIN ? 'Main' : 'Linked'} Node ${existingNodeCount + 1}`;
     const nodeVersion = data.version || APP_VERSION;
     const nodeAcceleration = data.acceleration || 'CPU';
 
@@ -101,7 +56,6 @@ export class NodeRegistrationService {
       pairingToken,
       pairingExpiresAt,
       lastHeartbeat: new Date(),
-      licenseId: license.id,
     });
 
     return {

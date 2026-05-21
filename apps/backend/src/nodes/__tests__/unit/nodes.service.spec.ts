@@ -1,17 +1,20 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import {
-  AccelerationType,
-  LicenseStatus,
-  NetworkLocation,
-  NodeRole,
-  NodeStatus,
-} from '@prisma/client';
+import { AccelerationType, NetworkLocation, NodeRole, NodeStatus } from '@prisma/client';
+
+// LicenseStatus removed from Prisma schema — use local string constants
+const LicenseStatus = {
+  ACTIVE: 'ACTIVE',
+  EXPIRED: 'EXPIRED',
+} as const;
+
 import { LicenseRepository } from '../../../common/repositories/license.repository';
 import { NodeRepository } from '../../../common/repositories/node.repository';
 import { DataAccessService } from '../../../core/services/data-access.service';
 import { NodesService } from '../../nodes.service';
 import { NodeCapabilityDetectorService } from '../../services/node-capability-detector.service';
+import { NodeHeartbeatService } from '../../services/node-heartbeat.service';
+import { NodeQueryService } from '../../services/node-query.service';
 import { NodeRegistrationService } from '../../services/node-registration.service';
 import { StorageShareService } from '../../services/storage-share.service';
 import { SystemInfoService } from '../../services/system-info.service';
@@ -21,7 +24,7 @@ describe('NodesService', () => {
   let mockNodeRepo: Record<string, jest.Mock>;
   let mockLicenseRepo: Record<string, jest.Mock>;
 
-  const mockLicense = {
+  const _mockLicense = {
     id: 'license-1',
     key: 'BB-XXXX-XXXX-XXXX-XXXX',
     tier: 'PRO',
@@ -89,6 +92,8 @@ describe('NodesService', () => {
       findManyByRole: jest.fn(),
       findFirstByRole: jest.fn(),
       deleteById: jest.fn(),
+      count: jest.fn(),
+      findMain: jest.fn(),
     };
 
     mockLicenseRepo = {
@@ -137,6 +142,8 @@ describe('NodesService', () => {
             detectCapabilities: jest.fn(),
           },
         },
+        NodeHeartbeatService,
+        NodeQueryService,
       ],
     }).compile();
 
@@ -150,16 +157,13 @@ describe('NodesService', () => {
   describe('registerNode', () => {
     const registerDto = {
       name: 'Main Encoding Server',
-      licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX',
       version: '1.0.0',
       acceleration: AccelerationType.NVIDIA,
     };
 
     it('should register a new node as MAIN role when no nodes exist', async () => {
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
-        ...mockLicense,
-      });
-      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null); // no duplicate MAIN
+      mockNodeRepo.count.mockResolvedValue(0);
+      mockNodeRepo.findMain.mockResolvedValue(null); // no duplicate MAIN
       mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
       const result = await service.registerNode(registerDto);
@@ -180,65 +184,29 @@ describe('NodesService', () => {
           pairingToken: expect.any(String),
           pairingExpiresAt: expect.any(Date),
           lastHeartbeat: expect.any(Date),
-          licenseId: mockLicense.id,
         })
       );
     });
 
     it('should register a new node as LINKED role when nodes already exist', async () => {
-      const licenseWithNodes = {
-        ...mockLicense,
-        _count: { nodes: 1 },
-      };
       const linkedNode = { ...mockNode, role: NodeRole.LINKED };
-
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(licenseWithNodes);
+      mockNodeRepo.count.mockResolvedValue(1);
       mockNodeRepo.createNode.mockResolvedValue(linkedNode);
 
       const result = await service.registerNode(registerDto);
 
       expect(result.role).toBe(NodeRole.LINKED);
       expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
-        expect.objectContaining({
-          role: NodeRole.LINKED,
-        })
+        expect.objectContaining({ role: NodeRole.LINKED })
       );
     });
 
-    it('should throw BadRequestException if license is invalid', async () => {
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(null);
-
-      await expect(service.registerNode(registerDto)).rejects.toThrow(BadRequestException);
-      await expect(service.registerNode(registerDto)).rejects.toThrow(
-        'Invalid or inactive license key'
-      );
-    });
-
-    it('should throw BadRequestException if license is inactive', async () => {
-      const inactiveLicense = {
-        ...mockLicense,
-        status: LicenseStatus.EXPIRED,
-      };
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(inactiveLicense);
-
-      await expect(service.registerNode(registerDto)).rejects.toThrow(BadRequestException);
-      await expect(service.registerNode(registerDto)).rejects.toThrow(
-        'Invalid or inactive license key'
-      );
-    });
-
-    it('should throw ConflictException if maximum nodes reached', async () => {
-      const fullLicense = {
-        ...mockLicense,
-        maxNodes: 3,
-        _count: { nodes: 3 },
-      };
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue(fullLicense);
+    it('should throw ConflictException if duplicate MAIN node detected', async () => {
+      mockNodeRepo.count.mockResolvedValue(0);
+      mockNodeRepo.findMain.mockResolvedValue(mockNode); // existing MAIN found
 
       await expect(service.registerNode(registerDto)).rejects.toThrow(ConflictException);
-      await expect(service.registerNode(registerDto)).rejects.toThrow(
-        'Maximum nodes (3) reached for this license'
-      );
+      await expect(service.registerNode(registerDto)).rejects.toThrow('A MAIN node already exists');
     });
   });
 
@@ -378,7 +346,6 @@ describe('NodesService', () => {
       const result = await service.getNodeStats('node-1');
 
       expect(result.id).toBe('node-1');
-      expect(result.license).toEqual(mockNodeWithStats.license);
       expect(result.libraries).toHaveLength(1);
       expect(result.activeJobCount).toBe(5);
       expect(mockNodeRepo.findWithStats).toHaveBeenCalledWith('node-1');
@@ -452,20 +419,15 @@ describe('NodesService', () => {
 
   describe('API Key Generation', () => {
     it('should generate API keys with correct format', async () => {
-      const registerDto = {
-        name: 'Test Node',
-        licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX',
-        version: '1.0.0',
-        acceleration: AccelerationType.NVIDIA,
-      };
-
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
-        ...mockLicense,
-      });
-      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.count.mockResolvedValue(0);
+      mockNodeRepo.findMain.mockResolvedValue(null);
       mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
-      const result = await service.registerNode(registerDto);
+      const result = await service.registerNode({
+        name: 'Test Node',
+        version: '1.0.0',
+        acceleration: AccelerationType.NVIDIA,
+      });
 
       expect(result.apiKey).toMatch(/^bb_[a-f0-9]{64}$/);
     });
@@ -473,44 +435,35 @@ describe('NodesService', () => {
 
   describe('Pairing Token Generation', () => {
     it('should generate 6-digit pairing tokens', async () => {
-      const registerDto = {
-        name: 'Test Node',
-        licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX',
-        version: '1.0.0',
-        acceleration: AccelerationType.NVIDIA,
-      };
-
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
-        ...mockLicense,
-      });
-      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.count.mockResolvedValue(0);
+      mockNodeRepo.findMain.mockResolvedValue(null);
       mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
-      const result = await service.registerNode(registerDto);
+      const result = await service.registerNode({
+        name: 'Test Node',
+        version: '1.0.0',
+        acceleration: AccelerationType.NVIDIA,
+      });
 
       expect(result.pairingToken).toMatch(/^\d{6}$/);
     });
 
     it('should set pairing expiration to 10 minutes from now', async () => {
-      const registerDto = {
-        name: 'Test Node',
-        licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX',
-        version: '1.0.0',
-        acceleration: AccelerationType.NVIDIA,
-      };
-
       const now = Date.now();
       const futureExpiration = new Date(now + 10 * 60 * 1000);
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
-        ...mockLicense,
-      });
-      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+
+      mockNodeRepo.count.mockResolvedValue(0);
+      mockNodeRepo.findMain.mockResolvedValue(null);
       mockNodeRepo.createNode.mockResolvedValue({
         ...mockNode,
         pairingExpiresAt: futureExpiration,
       });
 
-      const result = await service.registerNode(registerDto);
+      const result = await service.registerNode({
+        name: 'Test Node',
+        version: '1.0.0',
+        acceleration: AccelerationType.NVIDIA,
+      });
 
       const expirationTime = result.pairingExpiresAt.getTime();
       const expectedExpiration = now + 10 * 60 * 1000;
@@ -924,68 +877,31 @@ describe('NodesService', () => {
     });
   });
 
-  describe('registerNode', () => {
-    it('should use main node license when no licenseKey provided', async () => {
-      const mainNodeWithLicense = {
-        ...mockNode,
-        license: { key: 'BB-MAIN-LICENSE' },
-      };
-      mockNodeRepo.findFirstWithLicense
-        .mockResolvedValueOnce(mainNodeWithLicense) // find main node for license
-        .mockResolvedValueOnce(null); // duplicate MAIN check
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
-        ...mockLicense,
-        _count: { nodes: 1 },
-      });
-      mockNodeRepo.createNode.mockResolvedValue({
-        ...mockNode,
-        role: NodeRole.LINKED,
-      });
+  describe('registerNode (additional)', () => {
+    it('should register as LINKED when existing nodes present', async () => {
+      mockNodeRepo.count.mockResolvedValue(2);
+      mockNodeRepo.createNode.mockResolvedValue({ ...mockNode, role: NodeRole.LINKED });
 
       const result = await service.registerNode({ name: 'Child Node' } as any);
 
       expect(result.role).toBe(NodeRole.LINKED);
-      expect(mockLicenseRepo.findByKeyWithInclude).toHaveBeenCalledWith(
-        'BB-MAIN-LICENSE',
-        expect.anything()
-      );
-    });
-
-    it('should throw BadRequestException when no licenseKey and no main node found', async () => {
-      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
-
-      await expect(service.registerNode({} as any)).rejects.toThrow(BadRequestException);
-      await expect(service.registerNode({} as any)).rejects.toThrow(
-        'No main node found. License key is required for first node registration.'
-      );
     });
 
     it('should throw ConflictException when duplicate MAIN node detected', async () => {
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
-        ...mockLicense,
-        _count: { nodes: 0 },
-      });
-      mockNodeRepo.findFirstWithLicense.mockResolvedValue(mockNode); // existing MAIN found
+      mockNodeRepo.count.mockResolvedValue(0);
+      mockNodeRepo.findMain.mockResolvedValue(mockNode); // existing MAIN found
 
-      await expect(
-        service.registerNode({
-          name: 'Duplicate',
-          licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX',
-        } as any)
-      ).rejects.toThrow(ConflictException);
+      await expect(service.registerNode({ name: 'Duplicate' } as any)).rejects.toThrow(
+        ConflictException
+      );
     });
 
     it('should use default name when name not provided', async () => {
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
-        ...mockLicense,
-        _count: { nodes: 0 },
-      });
-      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.count.mockResolvedValue(0);
+      mockNodeRepo.findMain.mockResolvedValue(null);
       mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
-      await service.registerNode({
-        licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX',
-      } as any);
+      await service.registerNode({} as any);
 
       expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Main Node 1' })
@@ -993,17 +909,11 @@ describe('NodesService', () => {
     });
 
     it('should use default acceleration CPU when not provided', async () => {
-      mockLicenseRepo.findByKeyWithInclude.mockResolvedValue({
-        ...mockLicense,
-        _count: { nodes: 0 },
-      });
-      mockNodeRepo.findFirstWithLicense.mockResolvedValue(null);
+      mockNodeRepo.count.mockResolvedValue(0);
+      mockNodeRepo.findMain.mockResolvedValue(null);
       mockNodeRepo.createNode.mockResolvedValue(mockNode);
 
-      await service.registerNode({
-        licenseKey: 'BB-XXXX-XXXX-XXXX-XXXX',
-        name: 'Test',
-      } as any);
+      await service.registerNode({ name: 'Test' } as any);
 
       expect(mockNodeRepo.createNode).toHaveBeenCalledWith(
         expect.objectContaining({ acceleration: 'CPU' })
@@ -1160,13 +1070,13 @@ describe('NodesService', () => {
       expect(result.uptimeSeconds).toBeLessThanOrEqual(125);
     });
 
-    it('should return license as undefined when node has no license (null)', async () => {
+    it('should return node stats when node has no license (null)', async () => {
       const nodeNoLicense = { ...mockNodeWithStats, license: null };
       mockNodeRepo.findWithStats.mockResolvedValue(nodeNoLicense);
 
       const result = await service.getNodeStats('node-1');
 
-      expect(result.license).toBeUndefined();
+      expect(result.id).toBe('node-1');
     });
   });
 
@@ -1391,12 +1301,12 @@ describe('NodesService', () => {
     });
 
     it('should skip IP match when systemInfo returns no IP address', async () => {
-      // Override systemInfoService to return no IP
+      // Override systemInfoService to return no IP (now lives on nodeQuery sub-service)
       const systemInfoService = (
         service as unknown as {
-          systemInfoService: { collectSystemInfo: jest.Mock };
+          nodeQuery: { systemInfoService: { collectSystemInfo: jest.Mock } };
         }
-      ).systemInfoService;
+      ).nodeQuery.systemInfoService;
       systemInfoService.collectSystemInfo = jest.fn().mockResolvedValue({ ipAddress: null });
 
       const mainNode = { ...mockNode, ipAddress: null };
@@ -1414,9 +1324,9 @@ describe('NodesService', () => {
       process.env.NODE_ID = 'node-1';
       const systemInfoService = (
         service as unknown as {
-          systemInfoService: { collectSystemInfo: jest.Mock };
+          nodeQuery: { systemInfoService: { collectSystemInfo: jest.Mock } };
         }
-      ).systemInfoService;
+      ).nodeQuery.systemInfoService;
       systemInfoService.collectSystemInfo = jest.fn().mockResolvedValue({ ipAddress: '127.0.0.1' });
 
       const node = { ...mockNode, ipAddress: '192.168.1.100' };

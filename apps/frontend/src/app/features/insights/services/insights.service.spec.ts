@@ -28,22 +28,25 @@ describe('InsightsService', () => {
     client = TestBed.inject(InsightsClient) as jest.Mocked<InsightsClient>;
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
+  it('exposes a getStats method that returns an observable', () => {
+    expect(typeof service.getStats).toBe('function');
   });
 
   describe('data retrieval', () => {
     it('should transform client responses to BOs', (done) => {
       const mockData = {
         totalJobsCompleted: 100,
-        totalStorageSavedGB: 50,
-        averageSuccessRate: 95,
-        averageThroughput: 10,
+        totalSavedGB: 50,
+        successRate: 95,
+        avgThroughput: 10,
       };
       client.getStats.mockReturnValue(of(mockData));
 
       service.getStats().subscribe((result) => {
-        expect(result).toBeDefined();
+        expect(result.totalJobsCompleted).toBe(100);
+        expect(result.totalStorageSavedGB).toBe(50);
+        expect(result.averageSuccessRate).toBe(95);
+        expect(result.averageThroughput).toBe(10);
         expect(client.getStats).toHaveBeenCalled();
         done();
       });

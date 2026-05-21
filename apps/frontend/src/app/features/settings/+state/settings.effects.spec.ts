@@ -44,8 +44,20 @@ describe('SettingsEffects', () => {
     licenseService = TestBed.inject(LicenseService) as jest.Mocked<LicenseService>;
   });
 
-  it('should be created', () => {
-    expect(effects).toBeTruthy();
+  it('dispatches loadLicenseSuccess when license loads', (done) => {
+    const mockData = {
+      key: 'test-key',
+      status: 'active',
+      expiresAt: '2025-12-31',
+    } as never;
+    licenseService.getCurrentLicense.mockReturnValue(of(mockData));
+
+    actions$ = of(SettingsActions.loadLicense());
+
+    effects.loadLicense$.subscribe((action) => {
+      expect(action.type).toBe(SettingsActions.loadLicenseSuccess.type);
+      done();
+    });
   });
 
   describe('load license effect', () => {

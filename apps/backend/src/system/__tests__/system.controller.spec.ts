@@ -55,22 +55,23 @@ describe('SystemController', () => {
     service = module.get<SystemService>(SystemService);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+  it('is wired to SystemService', () => {
+    controller.getSystemResources();
+    expect(service.getSystemResources).toHaveBeenCalledTimes(1);
   });
 
   describe('getSystemResources', () => {
     it('should return system resources with worker capacity', () => {
       const result = controller.getSystemResources();
 
-      expect(result).toBeDefined();
-      expect(result.cpu).toBeDefined();
       expect(result.cpu.cores).toBe(16);
-      expect(result.memory).toBeDefined();
+      expect(result.cpu.model).toBe('Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz');
       expect(result.memory.usedPercent).toBe(75.0);
+      expect(result.memory.total).toBe(34359738368);
       expect(result.scenarios).toBeInstanceOf(Array);
-      expect(result.scenarios.length).toBeGreaterThan(0);
-      expect(result.recommendation).toBeDefined();
+      expect(result.scenarios).toHaveLength(1);
+      expect(result.scenarios[0].risk).toBe('medium');
+      expect(result.recommendation.current).toBe('balanced');
       expect(service.getSystemResources).toHaveBeenCalled();
     });
   });

@@ -18,7 +18,7 @@ interface NodeRegistrationRequestWithApiKey extends NodeRegistrationRequest {
   apiKey?: string;
 }
 
-import { randomBytes } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import * as os from 'os';
 import { NodeRepository } from '../../common/repositories/node.repository';
 import { NotificationsGateway } from '../../notifications/notifications.gateway';
@@ -31,7 +31,6 @@ import { RegistrationRequestRepository } from '../repositories/registration-requ
 import { NodeCapabilityDetectorService } from './node-capability-detector.service';
 import { SshKeyService } from './ssh-key.service';
 import { StorageShareService } from './storage-share.service';
-import { SystemInfoService } from './system-info.service';
 
 export interface CreateRegistrationRequestDto {
   mainNodeId: string;
@@ -73,7 +72,6 @@ export class RegistrationRequestService {
 
   constructor(
     private readonly registrationRequestRepository: RegistrationRequestRepository,
-    readonly _systemInfoService: SystemInfoService,
     private readonly capabilityDetector: NodeCapabilityDetectorService,
     private readonly notificationsService: NotificationsService,
     private readonly notificationsGateway: NotificationsGateway,
@@ -266,27 +264,13 @@ export class RegistrationRequestService {
         throw new BadRequestException(`Request has expired`);
       }
 
-      // Get MAIN node's license (within transaction)
+      // Verify MAIN node exists
       const mainNode = await tx.node.findUnique({
         where: { id: request.mainNodeId },
-        include: {
-          license: {
-            include: {
-              _count: { select: { nodes: true } },
-            },
-          },
-        },
       });
 
       if (!mainNode) {
         throw new NotFoundException(`MAIN node ${request.mainNodeId} not found`);
-      }
-
-      // Check license node limit
-      if (mainNode.license._count.nodes >= mainNode.license.maxNodes) {
-        throw new ConflictException(
-          `Maximum nodes (${mainNode.license.maxNodes}) reached for this license`
-        );
       }
 
       // DUPLICATE PREVENTION: Check if a node with this IP or MAC address already exists
@@ -349,7 +333,6 @@ export class RegistrationRequestService {
           lastHeartbeat: new Date(),
           maxWorkers: approveDto?.maxWorkers || 2,
           cpuLimit: approveDto?.cpuLimit || 80,
-          licenseId: mainNode.licenseId,
           // Hybrid architecture fields
           networkLocation: capabilities.networkLocation,
           hasSharedStorage: capabilities.hasSharedStorage,
@@ -564,11 +547,7 @@ export class RegistrationRequestService {
    * Generate a 6-digit numeric pairing token
    */
   private generatePairingToken(): string {
-    // Generate random 6-digit number (100000-999999)
-    const min = 100000;
-    const max = 999999;
-    const randomNum = min + Math.floor(Math.random() * (max - min + 1));
-    return randomNum.toString();
+    return randomInt(100000, 1000000).toString();
   }
 
   /**

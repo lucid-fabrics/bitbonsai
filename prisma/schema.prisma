@@ -29,24 +29,6 @@ enum UserRole {
   USER
 }
 
-enum LicenseTier {
-  FREE
-  PATREON              // Legacy - maps to PATREON_SUPPORTER
-  PATREON_SUPPORTER    // $3/mo - 2 nodes, 3 concurrent
-  PATREON_PLUS         // $5/mo - 3 nodes, 5 concurrent
-  PATREON_PRO          // $10/mo - 5 nodes, 10 concurrent
-  PATREON_ULTIMATE     // $20/mo - 10 nodes, 20 concurrent
-  COMMERCIAL_STARTER
-  COMMERCIAL_PRO
-  COMMERCIAL_ENTERPRISE
-}
-
-enum LicenseStatus {
-  ACTIVE
-  EXPIRED
-  REVOKED
-}
-
 enum NodeRole {
   MAIN
   LINKED
@@ -186,9 +168,15 @@ model Settings {
   vmafThreshold                Int      @default(85)    // Minimum VMAF score (0-100), auto-requeue if below
   qualityMetricsEnabled        Boolean  @default(true)   // Enable VMAF/PSNR/SSIM scoring post-encode
 
-  // ============ License Settings ============
-  licenseKey                   String?   @map("license_key") // License key (stored in DB for seamless UX)
-  licenseLastVerified          DateTime? @map("license_last_verified") // Last successful verification timestamp
+  // ============ Cloud Account Settings ============
+  machineId                    String?   @unique @map("machine_id") // Persistent UUID for device binding
+  machineName                  String?   @map("machine_name") // Human-readable machine name
+  cloudDeviceToken             String?   @map("cloud_device_token") // Device token from licensing-service
+  cloudUserEmail               String?   @map("cloud_user_email") // Linked account email
+  cloudTier                    String?   @map("cloud_tier") // Cached tier (FREE, SUPPORTER, PLUS, PRO, ULTIMATE, COMMERCIAL_*)
+  cloudMaxNodes                Int?      @map("cloud_max_nodes") // Cached max nodes from tier
+  cloudMaxConcurrentJobs       Int?      @map("cloud_max_concurrent_jobs") // Cached max concurrent jobs
+  cloudValidatedAt             DateTime? @map("cloud_validated_at") // Last successful entitlement check
 
   // ============ Notification Settings ============
   // Discord webhook
@@ -303,56 +291,13 @@ model User {
   refreshToken          String?
   refreshTokenExpiresAt DateTime?
 
-  // Patreon OAuth Integration
-  patreonId           String?   @unique // Patreon user ID
-  patreonAccessToken  String?   // OAuth access token (encrypted)
-  patreonRefreshToken String?   // OAuth refresh token (encrypted)
-  patreonTokenExpiry  DateTime? // When access token expires
-  patreonEmail        String?   // Email from Patreon
-  patreonFullName     String?   // Full name from Patreon
-  patreonTier         LicenseTier? // Current Patreon tier
-  patreonLastSync     DateTime? // Last successful sync with Patreon API
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([username])
   @@index([email])
   @@index([isActive])
-  @@index([patreonId])
-  @@index([patreonTier])
   @@map("users")
-}
-
-// ============================================================================
-// LICENSE MODEL
-// ============================================================================
-
-model License {
-  id                   String        @id @default(cuid())
-  key                  String        @unique
-  tier                 LicenseTier
-  status               LicenseStatus
-  email                String        @unique
-  maxNodes             Int
-  maxConcurrentJobs    Int
-  features             Json // Feature flags: { multiNode: true, advancedPresets: true, api: true }
-  validUntil           DateTime? // Null = perpetual/lifetime
-  // Payment integrations
-  patreonId            String?   @unique  // Patreon user ID for OAuth
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
-
-  // Relations
-  nodes   Node[]
-  metrics Metric[]
-
-  @@index([status])
-  @@index([tier])
-  @@index([validUntil])
-  @@map("licenses")
 }
 
 // ============================================================================
@@ -434,9 +379,6 @@ model Node {
   failureRate24h      Float?    // Failure rate percentage over last 24h
 
   // Relations
-  licenseId String
-  license   License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
-
   libraries Library[]
   jobs      Job[]
   metrics   Metric[]
@@ -455,7 +397,6 @@ model Node {
 
   @@index([status])
   @@index([role])
-  @@index([licenseId])
   @@index([lastHeartbeat])
   @@index([syncStatus])
   @@index([networkLocation]) // For filtering by network location
@@ -1058,9 +999,6 @@ model Metric {
   nodeId String? // Null = system-wide metric
   node   Node?   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
 
-  licenseId String? // For license-level aggregation
-  license   License? @relation(fields: [licenseId], references: [id], onDelete: Cascade)
-
   // Metrics
   jobsCompleted             Int    @default(0)
   jobsFailed                Int    @default(0)
@@ -1070,11 +1008,10 @@ model Metric {
 
   createdAt DateTime @default(now())
 
-  @@unique([date, nodeId, licenseId]) // One metric per date/node/license combination
+  @@unique([date, nodeId])
   @@index([date])
   @@index([nodeId])
-  @@index([licenseId])
-  @@index([date, nodeId]) // For time-series node queries
+  @@index([date, nodeId])
   @@map("metrics")
 }
 

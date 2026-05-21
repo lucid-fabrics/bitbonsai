@@ -136,8 +136,8 @@ export class PreflightService {
     const format = parsed.format ?? {};
 
     // Must have at least one video stream
-    const videoStream = (streams as Array<Record<string, unknown>>).find(
-      (s) => s['codec_type'] === 'video'
+    const videoStream = (streams as Record<string, unknown>[]).find(
+      (s) => s.codec_type === 'video'
     );
 
     if (!videoStream) {
@@ -145,7 +145,7 @@ export class PreflightService {
     }
 
     // Codec must be readable
-    const codec = String(videoStream['codec_name'] ?? '').toLowerCase();
+    const codec = String(videoStream.codec_name ?? '').toLowerCase();
     if (!codec || codec === 'none' || codec === 'unknown') {
       return {
         ok: false,
@@ -156,9 +156,9 @@ export class PreflightService {
     }
 
     // Duration must be non-zero and finite
-    const durationRaw = (format as Record<string, unknown>)['duration'];
+    const durationRaw = (format as Record<string, unknown>).duration;
     const duration = parseFloat(String(durationRaw ?? ''));
-    if (!durationRaw || isNaN(duration) || duration <= 0) {
+    if (!durationRaw || Number.isNaN(duration) || duration <= 0) {
       return {
         ok: false,
         reason: 'File has zero duration — possibly truncated',

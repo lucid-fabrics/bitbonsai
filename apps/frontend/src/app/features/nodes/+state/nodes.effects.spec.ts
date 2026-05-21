@@ -32,8 +32,16 @@ describe('NodesEffects', () => {
     client = TestBed.inject(NodesClient) as jest.Mocked<NodesClient>;
   });
 
-  it('should be created', () => {
-    expect(effects).toBeTruthy();
+  it('dispatches loadNodesSuccess when nodes load', (done) => {
+    const mockNodes = [{ id: '1', name: 'Test Node' }] as never;
+    client.getNodes.mockReturnValue(of(mockNodes));
+
+    actions$ = of(NodesActions.loadNodes());
+
+    effects.loadNodes$.subscribe((action) => {
+      expect(action.type).toBe(NodesActions.loadNodesSuccess.type);
+      done();
+    });
   });
 
   describe('loadNodes$ effect', () => {

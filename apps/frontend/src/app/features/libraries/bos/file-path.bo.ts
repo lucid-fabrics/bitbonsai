@@ -7,7 +7,9 @@ export class FilePathBo {
    * Extract filename from full file path
    */
   static getFileName(filePath: string): string {
-    return filePath.split('/').pop() || filePath;
+    const parts = filePath.split('/');
+    const last = parts[parts.length - 1];
+    return last !== undefined ? last : filePath;
   }
 
   /**

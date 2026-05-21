@@ -4,6 +4,10 @@ import { LibraryRepository } from '../../../common/repositories/library.reposito
 import { NodeRepository } from '../../../common/repositories/node.repository';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { HealthService } from '../../health.service';
+import { DatabaseHealthService } from '../../services/database-health.service';
+import { DiskHealthService } from '../../services/disk-health.service';
+import { NodeHealthService } from '../../services/node-health.service';
+import { SystemHealthService } from '../../services/system-health.service';
 
 // Mock node:fs/promises for statfs calls in monitorLibraryDiskSpace
 // We only need to mock the statfs used by HealthService; use jest.spyOn in tests instead
@@ -82,6 +86,10 @@ describe('HealthService', () => {
           provide: LibraryRepository,
           useValue: mockLibraryRepository,
         },
+        DatabaseHealthService,
+        DiskHealthService,
+        SystemHealthService,
+        NodeHealthService,
       ],
     }).compile();
 
@@ -799,25 +807,25 @@ describe('HealthService', () => {
 
   describe('formatBytes - private method', () => {
     it('returns 0 B for zero bytes', () => {
-      expect((service as any).formatBytes(0)).toBe('0 B');
+      expect((service as any).diskHealth.formatBytes(0)).toBe('0 B');
     });
 
     it('formats bytes correctly', () => {
-      expect((service as any).formatBytes(1024)).toBe('1KB');
+      expect((service as any).diskHealth.formatBytes(1024)).toBe('1KB');
     });
 
     it('formats GB correctly', () => {
-      const result = (service as any).formatBytes(1024 ** 3);
+      const result = (service as any).diskHealth.formatBytes(1024 ** 3);
       expect(result).toContain('GB');
     });
 
     it('formats TB correctly', () => {
-      const result = (service as any).formatBytes(1024 ** 4);
+      const result = (service as any).diskHealth.formatBytes(1024 ** 4);
       expect(result).toContain('TB');
     });
 
     it('formats MB correctly', () => {
-      const result = (service as any).formatBytes(1024 ** 2);
+      const result = (service as any).diskHealth.formatBytes(1024 ** 2);
       expect(result).toContain('MB');
     });
   });

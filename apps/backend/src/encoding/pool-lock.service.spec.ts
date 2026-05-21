@@ -112,8 +112,10 @@ describe('PoolLockService', () => {
 
   describe('acquire - timeout and retry', () => {
     it('should throw after max retries when lock never releases', async () => {
-      // Acquire first lock so subsequent acquire must wait
-      await service.acquire('node-timeout', 'worker-1', 50);
+      // Acquire first lock so subsequent acquire must wait.
+      // Use large timeoutMs so staleThreshold = timeoutMs*2 = 60s — prevents
+      // CI slowness from triggering stale-lock auto-release before worker-2 gives up.
+      await service.acquire('node-timeout', 'worker-1', 30000);
 
       // Try to acquire with very short timeout — will timeout 3 times and throw
       await expect(service.acquire('node-timeout', 'worker-2', 10)).rejects.toThrow(

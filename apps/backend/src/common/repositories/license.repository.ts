@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { type License, LicenseStatus, type LicenseTier, type Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BaseRepository } from './base.repository';
 
 /** JSON structure for license feature flags */
 export interface LicenseFeatures {
@@ -11,139 +9,144 @@ export interface LicenseFeatures {
   [key: string]: boolean | undefined;
 }
 
+type StubLicense = {
+  id: string;
+  key: string;
+  tier: string;
+  status: string;
+  email: string;
+  maxNodes: number;
+  maxConcurrentJobs: number;
+  features: Record<string, unknown>;
+  validUntil: null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+function makeStub(data: Record<string, unknown> = {}): StubLicense {
+  return {
+    id: 'stub-license-id',
+    key: (data.key as string) || 'stub-key',
+    tier: (data.tier as string) || 'FREE',
+    status: (data.status as string) || 'ACTIVE',
+    email: (data.email as string) || 'stub@localhost',
+    maxNodes: (data.maxNodes as number) || 1,
+    maxConcurrentJobs: (data.maxConcurrentJobs as number) || 2,
+    features: (data.features as Record<string, unknown>) || {},
+    validUntil: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
+/**
+ * LicenseRepository - STUBBED
+ *
+ * The License model has been removed from the schema.
+ * All methods return null/empty to preserve call-site compatibility
+ * while the codebase migrates to cloud-auth entitlements.
+ */
 @Injectable()
-export class LicenseRepository extends BaseRepository {
+export class LicenseRepository {
+  // Expose prisma for compatibility with any code that accesses it directly
+  readonly prisma: PrismaService;
+
   constructor(prisma: PrismaService) {
-    super(prisma, 'license');
+    this.prisma = prisma;
   }
 
-  async findById(id: string): Promise<License | null> {
-    return super.findUnique<License | null>({ where: { id } });
+  async findById(_id: string): Promise<null> {
+    return null;
   }
 
-  async findByIdWithSelect<T>(id: string, select: Record<string, unknown>): Promise<T | null> {
-    return super.findUnique<T | null>({ where: { id }, select });
+  async findByIdWithSelect<T>(_id: string, _select: Record<string, unknown>): Promise<T | null> {
+    return null;
   }
 
-  async findByKey(key: string): Promise<License | null> {
-    return super.findUnique<License | null>({ where: { key } });
+  async findByKey(_key: string): Promise<null> {
+    return null;
   }
 
-  async findByKeyWithInclude<T>(key: string, include: Record<string, unknown>): Promise<T | null> {
-    return super.findUnique<T | null>({ where: { key }, include });
+  async findByKeyWithInclude<T>(
+    _key: string,
+    _include: Record<string, unknown>
+  ): Promise<T | null> {
+    return null;
   }
 
-  async findByEmail(email: string): Promise<License[]> {
-    return super.findMany<License>({ where: { email } });
+  async findByEmail(_email: string): Promise<StubLicense[]> {
+    return [];
   }
 
-  async findActive(): Promise<License[]> {
-    return super.findMany<License>({ where: { status: LicenseStatus.ACTIVE } });
+  async findActive(): Promise<StubLicense[]> {
+    return [];
   }
 
-  async findFirstActive(): Promise<License | null> {
-    return super.findFirst<License | null>({
-      where: { status: LicenseStatus.ACTIVE },
-    });
+  async findFirstActive(): Promise<StubLicense | null> {
+    return null;
   }
 
-  async findFirstActiveWithSelect<T>(select: Record<string, unknown>): Promise<T | null> {
-    return super.findFirst<T | null>({
-      where: { status: LicenseStatus.ACTIVE },
-      select,
-    });
+  async findFirstActiveWithSelect<T>(_select: Record<string, unknown>): Promise<T | null> {
+    return null;
   }
 
-  async findFirstActiveDesc(): Promise<License | null> {
-    return super.findFirst<License | null>({
-      where: { status: LicenseStatus.ACTIVE },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findFirstActiveDesc(): Promise<StubLicense | null> {
+    return null;
   }
 
-  async findByTier(tier: LicenseTier): Promise<License[]> {
-    return super.findMany<License>({ where: { tier } });
+  async findByTier(_tier: string): Promise<StubLicense[]> {
+    return [];
   }
 
-  async createLicense(data: {
-    key: string;
-    tier: LicenseTier;
-    status: LicenseStatus;
-    email: string;
-    maxNodes: number;
-    maxConcurrentJobs: number;
-    features: LicenseFeatures | Prisma.InputJsonValue;
-    validUntil?: Date | null;
-  }): Promise<License> {
-    return super.create<License>({ data });
+  async createLicense(data: Record<string, unknown>): Promise<StubLicense> {
+    return makeStub(data);
   }
 
-  async updateById(
-    id: string,
-    data: {
-      status?: LicenseStatus;
-      validUntil?: Date | null;
-      maxNodes?: number;
-      maxConcurrentJobs?: number;
-      features?: LicenseFeatures | Prisma.InputJsonValue;
-      updatedAt?: Date;
-      key?: string;
-      tier?: LicenseTier;
-      email?: string;
-    }
-  ): Promise<License> {
-    return super.update<License>({ where: { id }, data });
+  async updateById(_id: string, _data: Record<string, unknown>): Promise<StubLicense | null> {
+    return null;
   }
 
-  async updateByKey(key: string, data: Record<string, unknown>): Promise<License> {
-    return super.update<License>({ where: { key }, data });
+  async updateByKey(_key: string, _data: Record<string, unknown>): Promise<StubLicense | null> {
+    return null;
   }
 
-  async deleteById(id: string): Promise<License> {
-    return super.delete<License>({ where: { id } });
+  async deleteById(_id: string): Promise<StubLicense | null> {
+    return null;
   }
 
   async upsertByEmail(
     email: string,
-    updateData: Record<string, unknown>,
-    createData: Prisma.LicenseCreateInput
-  ): Promise<License> {
-    return this.prisma.license.upsert({
-      where: { email },
-      update: updateData,
-      create: createData,
-    });
+    _updateData: Record<string, unknown>,
+    createData: Record<string, unknown>
+  ): Promise<StubLicense> {
+    return makeStub({ ...createData, email });
   }
 
-  async transactionFindFirstAndUpsert(licenseData: Record<string, unknown>): Promise<License> {
-    return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.license.findFirst();
-      if (existing) {
-        return tx.license.update({
-          where: { id: existing.id },
-          data: licenseData,
-        });
-      }
-      return tx.license.create({
-        data: licenseData as Prisma.LicenseCreateInput,
-      });
-    });
+  async transactionFindFirstAndUpsert(licenseData: Record<string, unknown>): Promise<StubLicense> {
+    return makeStub(licenseData);
   }
 
-  async findFirstWhere(where: Prisma.LicenseWhereInput): Promise<License | null> {
-    return super.findFirst<License | null>({ where });
+  async findFirstWhere(_where: Record<string, unknown>): Promise<StubLicense | null> {
+    return null;
   }
 
-  async countByStatus(): Promise<Record<LicenseStatus, number>> {
-    const result = await this.prisma.license.groupBy({
-      by: ['status'],
-      _count: true,
-    });
+  async findFirst<T = StubLicense>(_args?: Record<string, unknown>): Promise<T | null> {
+    return null;
+  }
 
-    const counts: Partial<Record<LicenseStatus, number>> = {};
-    for (const r of result) {
-      counts[r.status as LicenseStatus] = r._count;
-    }
-    return counts as Record<LicenseStatus, number>;
+  async findUnique<T = StubLicense>(_args: Record<string, unknown>): Promise<T | null> {
+    return null;
+  }
+
+  async findMany<T = StubLicense>(_args?: Record<string, unknown>): Promise<T[]> {
+    return [];
+  }
+
+  async count(_args?: Record<string, unknown>): Promise<number> {
+    return 0;
+  }
+
+  async countByStatus(): Promise<Record<string, number>> {
+    return {};
   }
 }

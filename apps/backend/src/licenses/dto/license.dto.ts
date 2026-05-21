@@ -1,14 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { LicenseTier } from '@prisma/client';
 import { LicenseFeatureDto } from './license-feature.dto';
 
 export class LicenseDto {
   @ApiProperty({
     description: 'License tier',
-    enum: LicenseTier,
-    example: LicenseTier.FREE,
+    example: 'FREE',
   })
-  tier!: LicenseTier;
+  tier!: string;
 
   @ApiProperty({
     description: 'Masked license key',

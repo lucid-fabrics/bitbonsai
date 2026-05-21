@@ -1,5 +1,5 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { LicenseStatus, LicenseTier } from '@prisma/client';
+// LicenseTier / LicenseStatus removed from Prisma schema — using string literals
 import Stripe from 'stripe';
 import { LicenseRepository } from '../../common/repositories/license.repository';
 
@@ -7,7 +7,7 @@ import { LicenseRepository } from '../../common/repositories/license.repository'
  * Stripe price ID to license tier mapping
  */
 interface PriceConfig {
-  tier: LicenseTier;
+  tier: string;
   maxNodes: number;
   maxConcurrentJobs: number;
 }
@@ -34,17 +34,17 @@ export class StripeService {
     // Map Stripe price IDs to license tiers
     // These should match your Stripe product configuration
     [process.env.STRIPE_PRICE_STARTER || 'price_starter']: {
-      tier: LicenseTier.COMMERCIAL_STARTER,
+      tier: 'COMMERCIAL_STARTER',
       maxNodes: 15,
       maxConcurrentJobs: 30,
     },
     [process.env.STRIPE_PRICE_PRO || 'price_pro']: {
-      tier: LicenseTier.COMMERCIAL_PRO,
+      tier: 'COMMERCIAL_PRO',
       maxNodes: 50,
       maxConcurrentJobs: 100,
     },
     [process.env.STRIPE_PRICE_ENTERPRISE || 'price_enterprise']: {
-      tier: LicenseTier.COMMERCIAL_ENTERPRISE,
+      tier: 'COMMERCIAL_ENTERPRISE',
       maxNodes: 999,
       maxConcurrentJobs: 999,
     },
@@ -100,6 +100,7 @@ export class StripeService {
 
     return {
       sessionId: session.id,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       url: session.url!,
     };
   }
@@ -192,7 +193,7 @@ export class StripeService {
     if (license) {
       await this.licenseRepository.updateByKey(license.key, {
         tier: config.tier,
-        status: LicenseStatus.ACTIVE,
+        status: 'ACTIVE',
         maxNodes: config.maxNodes,
         maxConcurrentJobs: config.maxConcurrentJobs,
         stripeCustomerId: customerId,
@@ -207,7 +208,7 @@ export class StripeService {
         {
           key: this.generateLicenseKey(config.tier),
           tier: config.tier,
-          status: LicenseStatus.ACTIVE,
+          status: 'ACTIVE',
           email,
           maxNodes: config.maxNodes,
           maxConcurrentJobs: config.maxConcurrentJobs,
@@ -242,7 +243,7 @@ export class StripeService {
         tier: config.tier,
         maxNodes: config.maxNodes,
         maxConcurrentJobs: config.maxConcurrentJobs,
-        status: subscription.status === 'active' ? LicenseStatus.ACTIVE : LicenseStatus.EXPIRED,
+        status: subscription.status === 'active' ? 'ACTIVE' : 'EXPIRED',
       });
       this.logger.log(`Updated subscription for license ${license.id} to ${config.tier}`);
     }
@@ -260,8 +261,8 @@ export class StripeService {
 
     if (license) {
       await this.licenseRepository.updateById(license.id, {
-        tier: LicenseTier.FREE,
-        status: LicenseStatus.EXPIRED,
+        tier: 'FREE',
+        status: 'EXPIRED',
         maxNodes: 1,
         maxConcurrentJobs: 2,
         features: {
@@ -316,7 +317,7 @@ export class StripeService {
   async getPlans(): Promise<
     Array<{
       priceId: string;
-      tier: LicenseTier;
+      tier: string;
       name: string;
       price: number;
       interval: string;
@@ -359,7 +360,7 @@ export class StripeService {
   /**
    * Generate license key
    */
-  private generateLicenseKey(tier: LicenseTier): string {
+  private generateLicenseKey(tier: string): string {
     const prefix = tier.substring(0, 3).toUpperCase();
     const random = require('crypto').randomBytes(8).toString('hex').substring(0, 10);
     return `${prefix}-${random}`;

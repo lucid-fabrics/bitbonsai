@@ -1,12 +1,7 @@
-import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, inject, type OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslocoModule } from '@ngneat/transloco';
-import {
-  DebugClient,
-  type FfmpegProcessesResponse,
-  type SystemLoadInfo,
-} from '../../../core/clients/debug.client';
+import { DebugFacadeService } from '../services/debug-facade.service';
 
 @Component({
   selector: 'app-debug-tab',
@@ -620,129 +615,55 @@ import {
   ],
 })
 export class DebugTabComponent implements OnInit {
-  private readonly debugClient = inject(DebugClient);
-  private readonly destroyRef = inject(DestroyRef);
+  protected readonly facade = inject(DebugFacadeService);
 
-  // System load
-  systemLoadInfo = signal<SystemLoadInfo | null>(null);
-  loadingSystemInfo = signal(false);
-  loadThresholdMultiplier = signal(5.0); // Default 5.0x - smart default that works for most systems
-  savingThreshold = signal(false);
+  // Expose facade signals directly for template binding
+  readonly systemLoadInfo = this.facade.systemLoadInfo;
+  readonly loadingSystemInfo = this.facade.loadingSystemInfo;
+  readonly loadThresholdMultiplier = this.facade.loadThresholdMultiplier;
+  readonly savingThreshold = this.facade.savingThreshold;
+  readonly ffmpegData = this.facade.ffmpegData;
+  readonly loadingProcesses = this.facade.loadingProcesses;
+  readonly killingZombies = this.facade.killingZombies;
 
-  // FFmpeg processes
-  ffmpegData = signal<FfmpegProcessesResponse | null>(null);
-  loadingProcesses = signal(false);
-  killingZombies = signal(false);
-
-  // Messages
-  successMessage = signal<string | null>(null);
-  errorMessage = signal<string | null>(null);
+  // Messages (local UI state only)
+  readonly successMessage = signal<string | null>(null);
+  readonly errorMessage = signal<string | null>(null);
 
   ngOnInit(): void {
-    this.loadSystemInfo();
-    this.loadFfmpegProcesses();
+    this.facade.loadSystemInfo();
+    this.facade.loadFfmpegProcesses();
   }
 
   loadSystemInfo(): void {
-    this.loadingSystemInfo.set(true);
-    this.debugClient
-      .getSystemLoad()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (info) => {
-          this.systemLoadInfo.set(info);
-          this.loadThresholdMultiplier.set(info.loadThresholdMultiplier);
-          this.loadingSystemInfo.set(false);
-        },
-        error: () => {
-          this.loadingSystemInfo.set(false);
-          this.showError('Failed to load system info');
-        },
-      });
+    this.facade.loadSystemInfo();
   }
 
   loadFfmpegProcesses(): void {
-    this.loadingProcesses.set(true);
-    this.debugClient
-      .getFfmpegProcesses()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (data) => {
-          this.ffmpegData.set(data);
-          this.loadingProcesses.set(false);
-        },
-        error: () => {
-          this.loadingProcesses.set(false);
-          this.showError('Failed to load FFmpeg processes');
-        },
-      });
+    this.facade.loadFfmpegProcesses();
   }
 
   updateLoadThreshold(): void {
-    const multiplier = this.loadThresholdMultiplier();
-    if (multiplier < 1.0 || multiplier > 10.0) {
-      this.showError('Multiplier must be between 1.0 and 10.0');
-      return;
-    }
-
-    this.savingThreshold.set(true);
-    this.debugClient
-      .updateLoadThreshold(multiplier)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => {
-          this.savingThreshold.set(false);
-          if (result.success) {
-            this.showSuccess(
-              `Load threshold updated to ${result.loadThresholdMultiplier}x (max load: ${result.maxLoad})`
-            );
-            this.loadSystemInfo(); // Refresh to show new values
-          } else {
-            this.showError(result.message || 'Failed to update threshold');
-          }
-        },
-        error: () => {
-          this.savingThreshold.set(false);
-          this.showError('Failed to update load threshold');
-        },
-      });
+    this.facade.updateLoadThreshold(
+      this.facade.loadThresholdMultiplier(),
+      (msg) => this.showSuccess(msg),
+      (msg) => this.showError(msg)
+    );
   }
 
   killProcess(pid: number): void {
-    this.debugClient
-      .killFfmpegProcess(pid)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => {
-          if (result.success) {
-            this.showSuccess(result.message);
-            this.loadFfmpegProcesses(); // Refresh list
-          } else {
-            this.showError(result.message);
-          }
-        },
-        error: () => {
-          this.showError(`Failed to kill process ${pid}`);
-        },
-      });
+    this.facade.killProcess(
+      pid,
+      (msg) => this.showSuccess(msg),
+      (msg) => this.showError(msg)
+    );
   }
 
   killAllZombies(): void {
-    this.killingZombies.set(true);
-    this.debugClient
-      .killAllZombies()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => {
-          this.killingZombies.set(false);
-          this.showSuccess(`Killed ${result.killed} zombie processes (${result.failed} failed)`);
-          this.loadFfmpegProcesses(); // Refresh list
-        },
-        error: () => {
-          this.killingZombies.set(false);
-          this.showError('Failed to kill zombie processes');
-        },
-      });
+    this.facade.killAllZombies(
+      (msg) => this.showSuccess(msg),
+      (msg) => this.showError(msg)
+    );
   }
 
   formatDuration(seconds: number): string {

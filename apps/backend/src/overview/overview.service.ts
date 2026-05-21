@@ -311,6 +311,7 @@ export class OverviewService {
   async getRecentActivity(): Promise<RecentActivityDto[]> {
     this.logger.debug('Fetching recent activity');
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recentJobs = await this.jobRepository.findManyWithInclude<any>({
       where: {
         OR: [

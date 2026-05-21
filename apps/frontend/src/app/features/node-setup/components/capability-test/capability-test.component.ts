@@ -383,6 +383,7 @@ export class CapabilityTestComponent implements OnInit {
 
             // Emit completion event after brief delay
             setTimeout(() => {
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               this.testComplete.emit(progressUpdate.results!);
             }, 1000);
           }

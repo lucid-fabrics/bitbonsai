@@ -1,0 +1,81 @@
+<div class="account-page">
+  @if (loading()) {
+    <div class="loading">Loading account…</div>
+  } @else if (error()) {
+    <div class="error">{{ error() }}</div>
+  } @else {
+    <div class="account-container">
+      <header class="account-header">
+        <h1>My Account</h1>
+        <button type="button" class="btn-secondary" (click)="signOut()">Sign out</button>
+      </header>
+
+      @if (user(); as u) {
+        <section class="account-section" aria-label="Profile">
+          <h2>Profile</h2>
+          <p><strong>Email:</strong> {{ u.email }}</p>
+          @if (u.name) {
+            <p><strong>Name:</strong> {{ u.name }}</p>
+          }
+        </section>
+      }
+
+      <section class="account-section" aria-label="Subscription">
+        <h2>Subscription</h2>
+        @if (user()?.hasStripeSubscription) {
+          <button
+            type="button"
+            class="btn-secondary"
+            [disabled]="portalLoading()"
+            (click)="openStripePortal()"
+          >
+            {{ portalLoading() ? 'Loading…' : 'Manage subscription' }}
+          </button>
+        } @else {
+          <p>You are on the free plan. <a routerLink="/pricing">View plans</a></p>
+        }
+      </section>
+
+      <section class="account-section" aria-label="Linked devices">
+        <h2>Linked Devices</h2>
+        @if (devices().length === 0) {
+          <p class="empty">No devices linked yet.</p>
+        } @else {
+          <table class="devices-table">
+            <thead>
+              <tr>
+                <th>Machine</th>
+                <th>Product</th>
+                <th>Last seen</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (device of devices(); track device.id) {
+                <tr [class.revoked]="device.revokedAt">
+                  <td>{{ device.machineName || device.machineId }}</td>
+                  <td>{{ device.productId }}</td>
+                  <td>{{ device.lastSeenAt | date:'medium' }}</td>
+                  <td>{{ device.revokedAt ? 'Revoked' : 'Active' }}</td>
+                  <td>
+                    @if (!device.revokedAt) {
+                      <button
+                        type="button"
+                        class="btn-danger-sm"
+                        [disabled]="revokingId() === device.id"
+                        (click)="revokeDevice(device.id)"
+                      >
+                        {{ revokingId() === device.id ? 'Revoking…' : 'Revoke' }}
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </section>
+    </div>
+  }
+</div>

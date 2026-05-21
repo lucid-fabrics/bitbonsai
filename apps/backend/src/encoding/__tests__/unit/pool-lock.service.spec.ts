@@ -18,10 +18,19 @@ describe('PoolLockService', () => {
   });
 
   describe('initialize', () => {
-    it('clears locks and starts watchdog', () => {
+    it('clears locks and starts watchdog', async () => {
+      // Acquire a lock before initializing to verify locks are cleared
+      await service.acquire('node-pre-init', 'holder-before');
+
       service.initialize();
-      // No error thrown — watchdog started
-      expect(service).toBeDefined();
+
+      // After initialize, previous locks are cleared — re-acquire should succeed immediately
+      await expect(service.acquire('node-pre-init', 'new-holder', 100)).resolves.toBeUndefined();
+
+      // Watchdog is running: stale locks should be force-released after interval elapses
+      await service.acquire('node-watchdog-test', 'stale-holder', 100, 0);
+      jest.advanceTimersByTime(90000);
+      await expect(service.acquire('node-watchdog-test', 'new-holder')).resolves.toBeUndefined();
     });
   });
 

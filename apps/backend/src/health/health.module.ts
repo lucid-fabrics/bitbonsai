@@ -5,11 +5,24 @@ import { NodeRepository } from '../common/repositories/node.repository';
 import { PrismaModule } from '../prisma/prisma.module';
 import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
+import { DatabaseHealthService } from './services/database-health.service';
+import { DiskHealthService } from './services/disk-health.service';
+import { NodeHealthService } from './services/node-health.service';
+import { SystemHealthService } from './services/system-health.service';
 
 @Module({
   imports: [PrismaModule],
   controllers: [HealthController],
-  providers: [HealthService, NodeRepository, JobRepository, LibraryRepository],
+  providers: [
+    HealthService,
+    DatabaseHealthService,
+    DiskHealthService,
+    SystemHealthService,
+    NodeHealthService,
+    NodeRepository,
+    JobRepository,
+    LibraryRepository,
+  ],
   exports: [HealthService],
 })
 export class HealthModule {}

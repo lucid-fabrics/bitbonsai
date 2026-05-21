@@ -9,6 +9,7 @@ import { CoreModule } from '../core/core.module';
 import { EncodingModule } from '../encoding/encoding.module';
 import { MediaModule } from '../media/media.module';
 import { NodesModule } from '../nodes/nodes.module';
+import { PolicyRepository } from '../policies/repositories/policy.repository';
 import { PrismaService } from '../prisma/prisma.service';
 import { BackupCleanupWorker } from './backup-cleanup.worker';
 import { BatchController } from './batch.controller';
@@ -18,6 +19,7 @@ import { JobPreviewController } from './controllers/job-preview.controller';
 import { JobTransferController } from './controllers/job-transfer.controller';
 import { QueueManagementController } from './controllers/queue-management.controller';
 import { FileTransferWorker } from './file-transfer.worker';
+import { JobOwnershipGuard } from './guards/job-ownership.guard';
 import { HealthCheckWorker } from './health-check.worker';
 import { QueueService } from './queue.service';
 import { AutoHealingService } from './services/auto-healing.service';
@@ -28,17 +30,27 @@ import { FileFailureTrackingService } from './services/file-failure-tracking.ser
 import { FileTransferService } from './services/file-transfer.service';
 import { HealthCheckCodecAnalyzerService } from './services/health-check-codec-analyzer.service';
 import { JobBulkOperationsService } from './services/job-bulk-operations.service';
+import { JobCancellationService } from './services/job-cancellation.service';
 import { JobCleanupService } from './services/job-cleanup.service';
+import { JobCompletionService } from './services/job-completion.service';
+import { JobCreationValidatorService } from './services/job-creation-validator.service';
+import { JobDecisionService } from './services/job-decision.service';
+import { JobEncodingControlService } from './services/job-encoding-control.service';
+import { JobFailureService } from './services/job-failure.service';
 import { JobFileOperationsService } from './services/job-file-operations.service';
 import { JobHistoryService } from './services/job-history.service';
 import { JobMetricsService } from './services/job-metrics.service';
+import { JobQueueManipulationService } from './services/job-queue-manipulation.service';
 import { JobRouterService } from './services/job-router.service';
 import { OwnershipLeaseService } from './services/ownership-lease.service';
 import { QueueDelegationService } from './services/queue-delegation.service';
+import { QueueFileDetectionService } from './services/queue-file-detection.service';
 import { QueueJobCrudService } from './services/queue-job-crud.service';
+import { QueueJobOwnershipService } from './services/queue-job-ownership.service';
 import { QueueJobStateService } from './services/queue-job-state.service';
 import { QueueJobStatsService } from './services/queue-job-stats.service';
 import { QueueProcessingService } from './services/queue-processing.service';
+import { QueueStartupHealingService } from './services/queue-startup-healing.service';
 import { RetrySchedulerService } from './services/retry-scheduler.service';
 import { WebhookNotificationService } from './services/webhook-notification.service';
 import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
@@ -71,14 +83,24 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
   providers: [
     QueueService,
     FileFailureTrackingService,
+    JobCreationValidatorService,
     QueueJobCrudService,
+    QueueJobOwnershipService,
     QueueJobStatsService,
     QueueJobStateService,
+    JobCompletionService,
+    JobFailureService,
+    JobCancellationService,
+    JobEncodingControlService,
+    JobDecisionService,
+    JobQueueManipulationService,
     JobMetricsService,
     JobBulkOperationsService,
     JobFileOperationsService,
     QueueDelegationService,
     QueueProcessingService,
+    QueueStartupHealingService,
+    QueueFileDetectionService,
     JobCleanupService,
     JobHistoryService,
     JobRouterService,
@@ -95,19 +117,28 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
     BatchOperationsService,
     WebhookNotificationService,
     OwnershipLeaseService,
+    JobOwnershipGuard,
     PrismaService,
     FileFailureRecordRepository,
     JobHistoryRepository,
     JobRepository,
     LibraryRepository,
     NodeRepository,
+    PolicyRepository,
     SettingsRepository,
   ],
   exports: [
     QueueService,
     FileFailureTrackingService,
     QueueJobCrudService,
+    QueueJobOwnershipService,
     QueueJobStateService,
+    JobCompletionService,
+    JobFailureService,
+    JobCancellationService,
+    JobEncodingControlService,
+    JobDecisionService,
+    JobQueueManipulationService,
     QueueDelegationService,
     QueueProcessingService,
     JobHistoryService,

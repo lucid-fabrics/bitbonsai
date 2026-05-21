@@ -7,7 +7,6 @@ import {
   ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { LicenseTier } from '@prisma/client';
 import { LicenseGuardService } from '../license/license-guard.service';
 import { ActivateLicenseDto } from './dto/activate-license.dto';
 import { LicenseDto } from './dto/license.dto';
@@ -44,7 +43,7 @@ export class LicensesController {
 
     return {
       tier: capabilities.tier,
-      licenseKey: capabilities.tier === LicenseTier.FREE ? 'FREE-TIER' : 'ACTIVATED',
+      licenseKey: capabilities.tier === 'FREE' ? 'FREE-TIER' : 'ACTIVATED',
       email: null,
       validUntil: 'Lifetime',
       maxNodes: capabilities.maxNodes,
@@ -94,7 +93,7 @@ export class LicensesController {
     return {
       tiers: [
         {
-          id: LicenseTier.FREE,
+          id: 'FREE',
           name: 'Free',
           price: 0,
           maxNodes: 1,
@@ -102,7 +101,7 @@ export class LicensesController {
           features: ['Single node', 'Basic presets', 'Community support'],
         },
         {
-          id: LicenseTier.PATREON_SUPPORTER,
+          id: 'PATREON_SUPPORTER',
           name: 'Supporter',
           price: 3,
           priceUnit: 'month',
@@ -111,7 +110,7 @@ export class LicensesController {
           features: ['Multi-node (2)', 'Advanced presets', 'Email support'],
         },
         {
-          id: LicenseTier.PATREON_PLUS,
+          id: 'PATREON_PLUS',
           name: 'Plus',
           price: 5,
           priceUnit: 'month',
@@ -120,7 +119,7 @@ export class LicensesController {
           features: ['Multi-node (3)', 'Advanced presets', 'Email support'],
         },
         {
-          id: LicenseTier.PATREON_PRO,
+          id: 'PATREON_PRO',
           name: 'Pro',
           price: 10,
           priceUnit: 'month',
@@ -130,7 +129,7 @@ export class LicensesController {
           recommended: true,
         },
         {
-          id: LicenseTier.PATREON_ULTIMATE,
+          id: 'PATREON_ULTIMATE',
           name: 'Ultimate',
           price: 20,
           priceUnit: 'month',
@@ -139,7 +138,7 @@ export class LicensesController {
           features: ['Multi-node (10)', 'All Pro features', 'Priority support'],
         },
         {
-          id: LicenseTier.COMMERCIAL_STARTER,
+          id: 'COMMERCIAL_STARTER',
           name: 'Business Starter',
           price: 49,
           priceUnit: 'month',
@@ -148,7 +147,7 @@ export class LicensesController {
           features: ['Multi-node (15)', 'Cloud storage', 'SLA support'],
         },
         {
-          id: LicenseTier.COMMERCIAL_PRO,
+          id: 'COMMERCIAL_PRO',
           name: 'Business Pro',
           price: 149,
           priceUnit: 'month',
@@ -157,7 +156,7 @@ export class LicensesController {
           features: ['Multi-node (50)', 'Cloud storage', 'Dedicated support'],
         },
         {
-          id: LicenseTier.COMMERCIAL_ENTERPRISE,
+          id: 'COMMERCIAL_ENTERPRISE',
           name: 'Enterprise',
           price: null,
           priceUnit: 'contact',
@@ -191,7 +190,7 @@ export class LicensesController {
 
     // Determine features based on tier
     const isPatreonProOrHigher =
-      result.tier === LicenseTier.PATREON_PRO || result.tier === LicenseTier.PATREON_ULTIMATE;
+      result.tier === 'PATREON_PRO' || result.tier === 'PATREON_ULTIMATE';
     const isCommercial = result.tier.startsWith('COMMERCIAL');
 
     return {
@@ -204,8 +203,8 @@ export class LicensesController {
       maxConcurrentJobs: result.maxConcurrentJobs,
       features: [
         { name: 'Single Node', enabled: true },
-        { name: 'Multi-Node', enabled: result.tier !== LicenseTier.FREE },
-        { name: 'Advanced Presets', enabled: result.tier !== LicenseTier.FREE },
+        { name: 'Multi-Node', enabled: result.tier !== 'FREE' },
+        { name: 'Advanced Presets', enabled: result.tier !== 'FREE' },
         { name: 'API Access', enabled: isPatreonProOrHigher || isCommercial },
         {
           name: 'Priority Queue',

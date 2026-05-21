@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { JobRepository } from '../common/repositories/job.repository';
-import { LicenseRepository } from '../common/repositories/license.repository';
 import { NodeRepository } from '../common/repositories/node.repository';
 import { CoreModule } from '../core/core.module';
 import { DistributionModule } from '../distribution/distribution.module';
@@ -16,6 +15,8 @@ import { StorageShareRepository } from './repositories/storage-share.repository'
 import { JobAttributionService } from './services/job-attribution.service';
 import { NodeCapabilityDetectorService } from './services/node-capability-detector.service';
 import { NodeDiscoveryService } from './services/node-discovery.service';
+import { NodeHeartbeatService } from './services/node-heartbeat.service';
+import { NodeQueryService } from './services/node-query.service';
 import { NodeRegistrationService } from './services/node-registration.service';
 import { RegistrationRequestService } from './services/registration-request.service';
 import { ScheduleEnforcementService } from './services/schedule-enforcement.service';
@@ -48,13 +49,14 @@ import { SystemInfoService } from './services/system-info.service';
     PrismaService,
     NodeRepository,
     JobRepository,
-    LicenseRepository,
     RegistrationRequestRepository,
     {
       provide: 'IStorageShareRepository',
       useClass: StorageShareRepository,
     },
     NodeDiscoveryService,
+    NodeHeartbeatService,
+    NodeQueryService,
     NodeRegistrationService,
     RegistrationRequestService,
     SystemInfoService,

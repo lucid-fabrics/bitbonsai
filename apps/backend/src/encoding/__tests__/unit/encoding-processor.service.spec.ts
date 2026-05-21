@@ -20,14 +20,16 @@ import {
 import { EncodingFileService } from '../../encoding-file.service';
 import { EncodingProcessorService } from '../../encoding-processor.service';
 import { EncodingStartupService } from '../../encoding-startup.service';
+import { EncodingValidatorService } from '../../encoding-validator.service';
 import { EncodingWatchdogService } from '../../encoding-watchdog.service';
 import { FfmpegService } from '../../ffmpeg.service';
 import { JobRetryStrategyService } from '../../job-retry-strategy.service';
 import { PoolLockService } from '../../pool-lock.service';
+import { ProcessorLifecycleService } from '../../processor-lifecycle.service';
+import { ProcessorLoopService } from '../../processor-loop.service';
 import { QualityMetricsService } from '../../quality-metrics.service';
 import { CodecFallbackService } from '../../services/codec-fallback.service';
 import { ContainerValidationService } from '../../services/container-validation.service';
-import { GpuHealthService } from '../../services/gpu-health.service';
 import { QualityGateService } from '../../services/quality-gate.service';
 import { SegmentedEncodeService } from '../../services/segmented-encode.service';
 import { SystemResourceService } from '../../system-resource.service';
@@ -234,6 +236,9 @@ describe('EncodingProcessorService', () => {
             resolveShutdown: jest.fn(),
           },
         },
+        EncodingValidatorService,
+        ProcessorLifecycleService,
+        ProcessorLoopService,
         JobRetryStrategyService,
         {
           provide: EncodingStartupService,
@@ -667,8 +672,8 @@ describe('EncodingProcessorService', () => {
   // ── onModuleDestroy ───────────────────────────────────────────────────────
 
   describe('onModuleDestroy', () => {
-    it('resolves without throwing', async () => {
-      await expect(service.onModuleDestroy()).resolves.not.toThrow();
+    it('resolves without throwing', () => {
+      expect(() => service.onModuleDestroy()).not.toThrow();
     });
   });
 
@@ -899,16 +904,16 @@ describe('EncodingProcessorService', () => {
   // ── onModuleDestroy — watchdog interval cleanup ───────────────────────────
 
   describe('onModuleDestroy — watchdog interval cleanup', () => {
-    it('clears watchdog interval when set before destroy', async () => {
-      // Simulate a watchdog interval being registered
+    it('clears watchdog interval when set before destroy', () => {
+      const lifecycleService = module.get(ProcessorLifecycleService);
       const fakeInterval = setInterval(() => {
         /* noop */
       }, 100000);
-      (service as any).watchdogIntervalId = fakeInterval;
+      (lifecycleService as any).watchdogIntervalId = fakeInterval;
 
-      await service.onModuleDestroy();
+      service.onModuleDestroy();
 
-      expect((service as any).watchdogIntervalId).toBeUndefined();
+      expect((lifecycleService as any).watchdogIntervalId).toBeUndefined();
     });
   });
 
@@ -1421,22 +1426,22 @@ describe('EncodingProcessorService', () => {
   // ── onModuleDestroy — stale intervals from previous session ───────────────
 
   describe('onModuleDestroy — clears stale intervals from previous session', () => {
-    it('clears all activeIntervals even when watchdogIntervalId is undefined', async () => {
-      // Inject stale intervals into the static set
+    it('clears all activeIntervals even when watchdogIntervalId is undefined', () => {
+      const lifecycleService = module.get(ProcessorLifecycleService);
       const fakeInterval1 = setInterval(() => {
         /* noop */
       }, 100000);
       const fakeInterval2 = setInterval(() => {
         /* noop */
       }, 100000);
-      (EncodingProcessorService as any).activeIntervals.add(fakeInterval1);
-      (EncodingProcessorService as any).activeIntervals.add(fakeInterval2);
+      (ProcessorLifecycleService as any).activeIntervals.add(fakeInterval1);
+      (ProcessorLifecycleService as any).activeIntervals.add(fakeInterval2);
 
-      (service as any).watchdogIntervalId = undefined;
+      (lifecycleService as any).watchdogIntervalId = undefined;
 
-      await service.onModuleDestroy();
+      service.onModuleDestroy();
 
-      expect((EncodingProcessorService as any).activeIntervals.size).toBe(0);
+      expect((ProcessorLifecycleService as any).activeIntervals.size).toBe(0);
     });
   });
 

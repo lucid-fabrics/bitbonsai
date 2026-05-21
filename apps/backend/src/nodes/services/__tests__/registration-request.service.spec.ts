@@ -476,11 +476,6 @@ describe('RegistrationRequestService', () => {
       };
       const defaultMainNode = {
         id: 'main-1',
-        licenseId: 'license-1',
-        license: {
-          maxNodes: 10,
-          _count: { nodes: 2 },
-        },
       };
       const defaultNewNode = {
         id: 'new-node-1',
@@ -595,42 +590,6 @@ describe('RegistrationRequestService', () => {
       await expect(service.approveRequest('req-1')).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw ConflictException when license node limit reached', async () => {
-      mockRegistrationRequestRepository.approveTransaction.mockImplementation(
-        async (cb: (tx: unknown) => unknown) => {
-          const tx = {
-            nodeRegistrationRequest: {
-              findUnique: jest.fn().mockResolvedValue({
-                id: 'req-1',
-                status: RegistrationRequestStatus.PENDING,
-                mainNodeId: 'main-1',
-                tokenExpiresAt: new Date(Date.now() + 60000),
-                mainNode: {},
-              }),
-            },
-            node: {
-              findUnique: jest.fn().mockResolvedValue({
-                id: 'main-1',
-                licenseId: 'lic-1',
-                license: {
-                  maxNodes: 2,
-                  _count: { nodes: 2 },
-                },
-              }),
-              findFirst: jest.fn().mockResolvedValue(null),
-            },
-          };
-          return cb(tx);
-        }
-      );
-
-      await expect(service.approveRequest('req-1')).rejects.toThrow(
-        expect.objectContaining({
-          message: expect.stringContaining('Maximum nodes'),
-        })
-      );
-    });
-
     it('should successfully approve and create child node', async () => {
       buildTransaction();
 
@@ -688,8 +647,6 @@ describe('RegistrationRequestService', () => {
                 .fn()
                 .mockResolvedValueOnce({
                   id: 'main-1',
-                  licenseId: 'lic-1',
-                  license: { maxNodes: 10, _count: { nodes: 2 } },
                 })
                 .mockResolvedValue(null),
               findFirst: jest.fn().mockResolvedValue(null),

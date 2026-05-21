@@ -191,7 +191,9 @@ export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor
 
     const eventId = resizeInfo.event.id;
     const windowIndex = parseInt(eventId, 10);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const start = resizeInfo.event.start!;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const end = resizeInfo.event.end!;
 
     // Update window
@@ -221,7 +223,9 @@ export class NodeScheduleEditorComponent implements OnInit, ControlValueAccessor
 
     const eventId = dropInfo.event.id;
     const windowIndex = parseInt(eventId, 10);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const start = dropInfo.event.start!;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const end = dropInfo.event.end!;
 
     // Update window

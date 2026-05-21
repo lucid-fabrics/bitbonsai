@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Job, Library, Node, Policy } from '@prisma/client';
+import { JobStage } from '@prisma/client';
 import { DataAccessService } from '../../../core/services/data-access.service';
 import { FileRelocatorService } from '../../../core/services/file-relocator.service';
 import { NodeConfigService } from '../../../core/services/node-config.service';
@@ -167,19 +168,6 @@ export async function createTestModule(): Promise<TestingModule> {
 export async function seedTestDatabase(
   prisma: PrismaService
 ): Promise<{ node: Node; library: Library; policy: Policy }> {
-  // Create test license
-  const license = await prisma.license.create({
-    data: {
-      key: 'test-license-key',
-      tier: 'FREE',
-      status: 'ACTIVE',
-      email: 'test@example.com',
-      maxNodes: 1,
-      maxConcurrentJobs: 4,
-      features: { multiNode: false },
-    },
-  });
-
   // Create test node
   const node = await prisma.node.create({
     data: {
@@ -191,7 +179,6 @@ export async function seedTestDatabase(
       apiKey: 'test-api-key',
       lastHeartbeat: new Date(),
       maxWorkers: 4,
-      licenseId: license.id,
     },
   });
 
@@ -247,7 +234,7 @@ export async function createTestJob(
       sourceCodec: options.sourceCodec || 'H.264',
       targetCodec: options.targetCodec || 'HEVC',
       beforeSizeBytes: options.beforeSizeBytes || BigInt(100000000),
-      stage: (options.stage as any) || 'QUEUED',
+      stage: (options.stage as JobStage) || JobStage.QUEUED,
       nodeId: options.nodeId,
       libraryId: options.libraryId,
       policyId: options.policyId,
@@ -333,7 +320,6 @@ export async function resetDatabase(prisma: PrismaService): Promise<void> {
   await prisma.library.deleteMany({});
   await prisma.metric.deleteMany({});
   await prisma.node.deleteMany({});
-  await prisma.license.deleteMany({});
 }
 
 /**

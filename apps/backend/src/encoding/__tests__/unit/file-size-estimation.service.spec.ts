@@ -31,8 +31,10 @@ describe('FileSizeEstimationService', () => {
     service = module.get<FileSizeEstimationService>(FileSizeEstimationService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('exposes estimateOutputSize, parseBitrate, and getCompressionRatio methods', () => {
+    expect(typeof service.estimateOutputSize).toBe('function');
+    expect(typeof service.parseBitrate).toBe('function');
+    expect(typeof service.getCompressionRatio).toBe('function');
   });
 
   describe('estimateOutputSize', () => {
@@ -53,8 +55,6 @@ describe('FileSizeEstimationService', () => {
         hwAccelType
       );
 
-      expect(result).toBeDefined();
-      expect(result.estimatedSizeFormatted).toBeDefined();
       // HEVC at medium = 50% ratio = 50% savings
       expect(result.savingsPercent).toBe(50);
       expect(result.confidence).toBe('high');
@@ -64,7 +64,6 @@ describe('FileSizeEstimationService', () => {
     it('should estimate AV1 output size with medium preset', () => {
       const result = service.estimateOutputSize(2_000_000_000, null, 7200, 'AV1', 'slow', 'CPU');
 
-      expect(result).toBeDefined();
       expect(result.savingsPercent).toBeGreaterThan(40); // AV1 typically 50-60%
       expect(result.confidence).toBe('medium');
     });
@@ -79,7 +78,6 @@ describe('FileSizeEstimationService', () => {
         'NVIDIA'
       );
 
-      expect(result).toBeDefined();
       expect(result.factors).toContain('Hardware: NVIDIA');
       expect(result.savingsPercent).toBeLessThan(55); // Less compression due to NVENC overhead
     });
@@ -87,14 +85,12 @@ describe('FileSizeEstimationService', () => {
     it('should estimate VP9 output size', () => {
       const result = service.estimateOutputSize(500_000_000, null, 1800, 'VP9', 'medium', 'CPU');
 
-      expect(result).toBeDefined();
       expect(result.savingsPercent).toBeGreaterThan(30);
     });
 
     it('should handle string source size', () => {
       const result = service.estimateOutputSize('1073741824', 8000, 3600, 'HEVC', 'medium', 'CPU');
 
-      expect(result).toBeDefined();
       expect(result.confidence).toBe('high');
     });
 
@@ -108,7 +104,6 @@ describe('FileSizeEstimationService', () => {
         'INTEL_QSV'
       );
 
-      expect(result).toBeDefined();
       expect(result.factors).toContain('Hardware: INTEL_QSV');
     });
 
@@ -122,14 +117,12 @@ describe('FileSizeEstimationService', () => {
         'APPLE_M'
       );
 
-      expect(result).toBeDefined();
       expect(result.confidence).toBe('medium');
     });
 
     it('should handle H.264 (no compression)', () => {
       const result = service.estimateOutputSize(1_000_000_000, null, 3600, 'H264', 'medium', 'CPU');
 
-      expect(result).toBeDefined();
       expect(result.savingsPercent).toBe(0);
     });
 
@@ -143,7 +136,6 @@ describe('FileSizeEstimationService', () => {
         'CPU'
       );
 
-      expect(result).toBeDefined();
       expect(result.savingsPercent).toBeGreaterThan(40); // Default 50%
     });
 
@@ -157,7 +149,6 @@ describe('FileSizeEstimationService', () => {
         'CPU'
       );
 
-      expect(result).toBeDefined();
       expect(result.factors).toContain('Quality preset: veryFast');
     });
 
@@ -171,21 +162,18 @@ describe('FileSizeEstimationService', () => {
         'CPU'
       );
 
-      expect(result).toBeDefined();
       expect(result.savingsPercent).toBeGreaterThan(50);
     });
 
     it('should return high confidence when bitrate is provided', () => {
       const result = service.estimateOutputSize(1_000_000_000, 10000, 0, 'HEVC', 'medium', 'CPU');
 
-      expect(result).toBeDefined();
       expect(result.confidence).toBe('high');
     });
 
     it('should cap savings at 95%', () => {
       const result = service.estimateOutputSize(100_000, 1000000, 1, 'AV1', 'verySlow', 'CPU');
 
-      expect(result).toBeDefined();
       expect(result.savingsPercent).toBeLessThanOrEqual(95);
     });
   });

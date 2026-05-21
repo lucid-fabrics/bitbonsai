@@ -47,7 +47,7 @@ import { RouterModule } from '@angular/router';
             <h2>3. Subscription Terms</h2>
             <h3>3.1 Billing</h3>
             <p>
-              Paid subscriptions are billed monthly through Stripe or Patreon.
+              Paid subscriptions are billed monthly through Stripe.
               Your subscription will automatically renew unless cancelled before
               the renewal date.
             </p>

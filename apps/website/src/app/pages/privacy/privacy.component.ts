@@ -57,7 +57,7 @@ import { RouterModule } from '@angular/router';
 
             <h3>2.4 Payment Information</h3>
             <p>
-              Payments are processed through Stripe or Patreon. We do not store
+              Payments are processed through Stripe. We do not store
               credit card numbers or payment details on our servers. Please
               refer to their respective privacy policies for payment data
               handling.
@@ -104,7 +104,6 @@ import { RouterModule } from '@angular/router';
             <p>We integrate with the following third-party services:</p>
             <ul>
               <li><strong>Stripe:</strong> Payment processing</li>
-              <li><strong>Patreon:</strong> Subscription management</li>
               <li>
                 <strong>GitHub:</strong> Source code hosting and issue tracking
               </li>

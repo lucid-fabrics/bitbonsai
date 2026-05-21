@@ -1,7 +1,7 @@
 import { version } from '@bitbonsai/version';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { LicenseRepository } from '../common/repositories/license.repository';
+import { randomBytes, randomInt } from 'crypto';
 import { NodeRepository } from '../common/repositories/node.repository';
 import { SettingsRepository } from '../common/repositories/settings.repository';
 import { UserRepository } from '../common/repositories/user.repository';
@@ -20,7 +20,6 @@ export class SetupService {
   private readonly BCRYPT_ROUNDS = 10;
 
   constructor(
-    private readonly licenseRepository: LicenseRepository,
     private readonly nodeRepository: NodeRepository,
     private readonly settingsRepository: SettingsRepository,
     private readonly userRepository: UserRepository
@@ -41,9 +40,7 @@ export class SetupService {
    */
   async getSetupStatus(): Promise<SetupStatusDto> {
     // Check if this is a LINKED (child) node
-    const linkedNode = await this.nodeRepository.findFirstByRole(
-      'LINKED' as import('@prisma/client').NodeRole
-    );
+    const linkedNode = await this.nodeRepository.findFirstByRole('LINKED');
 
     // For child nodes, skip user check and just return the flag
     if (linkedNode) {
@@ -124,52 +121,22 @@ export class SetupService {
       allowLocalNetworkWithoutAuth: dto.allowLocalNetworkWithoutAuth,
     });
 
-    // Find or create a license
-    let license = await this.licenseRepository.findFirstWhere({});
-
-    if (!license) {
-      // Create a FREE license if none exists
-      license = await this.licenseRepository.createLicense({
-        key: `FREE-${this.generateRandomString(10)}`,
-        tier: 'FREE',
-        status: 'ACTIVE',
-        email:
-          nodeType === NodeType.Main
-            ? dto.username
-              ? `${dto.username}@local.bitbonsai`
-              : 'admin@bitbonsai.local'
-            : 'child-node@bitbonsai.local',
-        maxNodes: 1,
-        maxConcurrentJobs: 2,
-        features: {
-          multiNode: false,
-          advancedPresets: false,
-          api: false,
-          priorityQueue: false,
-          cloudStorage: false,
-          webhooks: false,
-        },
-      });
-    }
-
     // Create node entry for both MAIN and CHILD nodes
     if (nodeType === NodeType.Main) {
-      // Create a MAIN node entry
       const hostname = process.env.HOSTNAME || 'main-node';
       const apiKey = `bb_${this.generateRandomString(64)}`;
-      const pairingToken = (100000 + require('crypto').randomInt(900000)).toString(); // 6-digit token
+      const pairingToken = randomInt(100000, 1000000).toString();
 
       await this.nodeRepository.createNode({
         name: `Main Node (${hostname})`,
         role: 'MAIN',
         status: 'ONLINE',
-        version, // Read from package.json
-        acceleration: 'CPU', // Will be updated after hardware detection
+        version,
+        acceleration: 'CPU',
         apiKey,
         pairingToken,
-        pairingExpiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes from now
+        pairingExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
         lastHeartbeat: new Date(),
-        licenseId: license.id,
       });
 
       return {
@@ -179,18 +146,16 @@ export class SetupService {
 
     // For child nodes, create a LINKED node entry to mark this as a child node instance
     if (nodeType === NodeType.Child) {
-      // Create a LINKED node entry (represents this child node)
       const hostname = process.env.HOSTNAME || 'child-node';
       await this.nodeRepository.createNode({
         name: `Child Node (${hostname})`,
         role: 'LINKED',
         status: 'ONLINE',
-        version, // Read from package.json
-        acceleration: 'CPU', // Will be updated after hardware detection
+        version,
+        acceleration: 'CPU',
         apiKey: this.generateRandomString(32),
         lastHeartbeat: new Date(),
-        licenseId: license.id,
-        mainNodeUrl: dto.mainNodeUrl, // Save main node URL for unregistration
+        mainNodeUrl: dto.mainNodeUrl,
       });
 
       const pairingToken = this.generatePairingToken();
@@ -211,12 +176,7 @@ export class SetupService {
    * @returns Pairing token string
    */
   private generatePairingToken(): string {
-    // Generate a random 8-character token
-    const randomPart = require('crypto')
-      .randomBytes(6)
-      .toString('hex')
-      .substring(0, 8)
-      .toUpperCase();
+    const randomPart = randomBytes(6).toString('hex').substring(0, 8).toUpperCase();
     return `BITBONSAI-${randomPart}`;
   }
 
@@ -227,9 +187,7 @@ export class SetupService {
    * @returns Random string
    */
   private generateRandomString(length: number): string {
-    // Use crypto.randomBytes for cryptographically secure random strings
-    return require('crypto')
-      .randomBytes(Math.ceil((length * 3) / 4))
+    return randomBytes(Math.ceil((length * 3) / 4))
       .toString('base64')
       .slice(0, length);
   }

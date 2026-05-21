@@ -324,12 +324,15 @@ export class HealthDashboardService {
 
     if (completedJobs.length > 0) {
       const processingTimes = completedJobs
-        .filter((j) => j.startedAt && j.completedAt)
-        .map((j) => j.completedAt!.getTime() - j.startedAt!.getTime());
+        .filter(
+          (j): j is typeof j & { startedAt: Date; completedAt: Date } =>
+            j.startedAt != null && j.completedAt != null
+        )
+        .map((j) => j.completedAt.getTime() - j.startedAt.getTime());
 
       const waitTimes = completedJobs
-        .filter((j) => j.startedAt)
-        .map((j) => j.startedAt!.getTime() - j.createdAt.getTime());
+        .filter((j): j is typeof j & { startedAt: Date } => j.startedAt != null)
+        .map((j) => j.startedAt.getTime() - j.createdAt.getTime());
 
       if (processingTimes.length > 0) {
         avgProcessingTimeMs = processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length;

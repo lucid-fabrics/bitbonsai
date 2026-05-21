@@ -23,13 +23,11 @@ export class JobMetricsService {
    * @param tx - Optional transaction client (used when called inside a transaction)
    */
   async updateMetrics(
-    job: Job & { node?: { licenseId: string } },
+    job: Job & { node?: Record<string, unknown> },
     tx?: Prisma.TransactionClient
   ): Promise<void> {
-    if (!job.node?.licenseId) {
-      this.logger.warn(
-        `Cannot update metrics for job ${job.id}: missing node relation or licenseId`
-      );
+    if (!job.nodeId) {
+      this.logger.warn(`Cannot update metrics for job ${job.id}: missing nodeId`);
       return;
     }
 
@@ -52,16 +50,14 @@ export class JobMetricsService {
     try {
       await prisma.metric.upsert({
         where: {
-          date_nodeId_licenseId: {
+          date_nodeId: {
             date: today,
             nodeId: job.nodeId,
-            licenseId: job.node.licenseId,
           },
         },
         create: {
           date: today,
           nodeId: job.nodeId,
-          licenseId: job.node.licenseId,
           jobsCompleted: 1,
           totalSavedBytes: job.savedBytes || BigInt(0),
           avgThroughputFilesPerHour: 0,

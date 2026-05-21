@@ -242,19 +242,19 @@ describe('QueueManagementController', () => {
       expect(result).toEqual({ deleted: 42 });
     });
 
-    it('should filter by parsed stages when stagesParam is provided', async () => {
+    it('should filter by stages when stages array is provided', async () => {
       mockQueueService.clearJobs.mockResolvedValue(10);
 
-      const result = await controller.clearJobs('COMPLETED,FAILED');
+      const result = await controller.clearJobs(['COMPLETED', 'FAILED'] as any);
 
       expect(mockQueueService.clearJobs).toHaveBeenCalledWith(['COMPLETED', 'FAILED']);
       expect(result).toEqual({ deleted: 10 });
     });
 
-    it('should trim whitespace from stage names', async () => {
+    it('should pass multiple stages to service', async () => {
       mockQueueService.clearJobs.mockResolvedValue(5);
 
-      await controller.clearJobs('COMPLETED, FAILED , CANCELLED');
+      await controller.clearJobs(['COMPLETED', 'FAILED', 'CANCELLED'] as any);
 
       expect(mockQueueService.clearJobs).toHaveBeenCalledWith(['COMPLETED', 'FAILED', 'CANCELLED']);
     });
@@ -262,7 +262,7 @@ describe('QueueManagementController', () => {
     it('should return deleted count of zero when no matching jobs', async () => {
       mockQueueService.clearJobs.mockResolvedValue(0);
 
-      const result = await controller.clearJobs('COMPLETED');
+      const result = await controller.clearJobs(['COMPLETED'] as any);
 
       expect(result).toEqual({ deleted: 0 });
     });

@@ -9,6 +9,10 @@ import { EncodingCancelledEvent, EncodingFailedEvent } from '../../../common/eve
 import { JobRepository } from '../../../common/repositories/job.repository';
 import { EncodingPreviewService } from '../../../encoding/encoding-preview.service';
 import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
+import { FfmpegEncoderService } from '../../ffmpeg/ffmpeg-encoder.service';
+import { FfmpegHealthMonitor } from '../../ffmpeg/ffmpeg-health-monitor.service';
+import { FfmpegProcessManager } from '../../ffmpeg/ffmpeg-process-manager.service';
+import { FfmpegProgressTracker } from '../../ffmpeg/ffmpeg-progress-tracker.service';
 import { FfmpegService } from '../../ffmpeg.service';
 import { FfmpegFileVerificationService } from '../../ffmpeg-file-verification.service';
 import { FfmpegFlagBuilderService } from '../../ffmpeg-flag-builder.service';
@@ -227,6 +231,10 @@ describe('FfmpegService', () => {
           },
         },
         FfmpegProgressParserService,
+        FfmpegProcessManager,
+        FfmpegEncoderService,
+        FfmpegProgressTracker,
+        FfmpegHealthMonitor,
         {
           provide: FfmpegProcessCleanupService,
           useValue: {
@@ -948,6 +956,39 @@ describe('FfmpegService', () => {
 
       // Clean up
       (service as any).activeEncodings.delete('test-job-123');
+    });
+  });
+
+  describe('resumeEncoding', () => {
+    it('should resume paused encoding job', async () => {
+      jest.spyOn(service, 'detectHardwareAcceleration').mockResolvedValue({
+        type: 'CPU',
+        flags: [],
+        videoCodec: 'libx265',
+      });
+      jest.spyOn(service, 'getVideoDuration').mockResolvedValue(3600);
+
+      const ffmpegProc = createMockChildProcess();
+      mockSpawn.mockReturnValue(ffmpegProc);
+
+      const encodePromise = service.encodeFile(mockJob, mockPolicy);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Pause first
+      await service.pauseEncoding(mockJob.id);
+
+      // Then resume
+      const resumeResult = await service.resumeEncoding(mockJob.id);
+      expect(resumeResult).toBe(true);
+
+      // Clean up
+      setTimeout(() => ffmpegProc.emit('close', 1), 10);
+      await encodePromise.catch(() => undefined);
+    });
+
+    it('should return false for non-existent job', async () => {
+      const result = await service.resumeEncoding('non-existent-job');
+      expect(result).toBe(false);
     });
   });
 

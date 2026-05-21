@@ -2,12 +2,10 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
   Logger,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -28,7 +26,6 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { type Job, Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { NodeConfigService } from '../../core/services/node-config.service';
 import { CancelJobDto } from '../dto/cancel-job.dto';
 import { CompleteJobDto } from '../dto/complete-job.dto';
 import { CreateJobDto } from '../dto/create-job.dto';
@@ -37,6 +34,7 @@ import { FailJobDto } from '../dto/fail-job.dto';
 import { ResolveDecisionDto } from '../dto/resolve-decision.dto';
 import { UpdateJobDto } from '../dto/update-job.dto';
 import { UpdatePriorityDto } from '../dto/update-priority.dto';
+import { JobOwnershipGuard } from '../guards/job-ownership.guard';
 import { QueueService } from '../queue.service';
 import { JobHistoryService } from '../services/job-history.service';
 
@@ -47,8 +45,7 @@ export class JobController {
 
   constructor(
     private readonly queueService: QueueService,
-    private readonly jobHistoryService: JobHistoryService,
-    private readonly nodeConfig: NodeConfigService
+    private readonly jobHistoryService: JobHistoryService
   ) {}
 
   /**
@@ -230,34 +227,8 @@ export class JobController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error occurred while updating job',
   })
+  @UseGuards(JobOwnershipGuard)
   async update(@Param('id') id: string, @Body() updateJobDto: UpdateJobDto): Promise<Job> {
-    // MULTI-NODE SECURITY: Validate that the requesting node owns the job
-    // This prevents cross-node status pollution (e.g., zombie FFmpeg from Node B
-    // sending PATCH requests that mark Node A's jobs as FAILED)
-    const currentNodeId = this.nodeConfig.getNodeId();
-    const isMainNode = this.nodeConfig.isMainNode();
-
-    // Get the job to check ownership
-    const job = await this.queueService.findOne(id);
-    if (!job) {
-      throw new NotFoundException(`Job ${id} not found`);
-    }
-
-    // Allow updates if:
-    // 1. This is the MAIN node (can update any job for admin purposes)
-    // 2. Job has no nodeId assigned yet (in DETECTED, QUEUED stages before assignment)
-    // 3. The current node owns the job
-    const isJobOwner = !job.nodeId || job.nodeId === currentNodeId;
-    if (!isMainNode && !isJobOwner) {
-      this.logger.warn(
-        `⚠️ Cross-node update rejected: Node ${currentNodeId} attempted to update job ${id} owned by node ${job.nodeId}`
-      );
-      throw new ForbiddenException(
-        `Node ${currentNodeId} cannot update job ${id} - job is assigned to node ${job.nodeId}`
-      );
-    }
-
-    // MULTI-NODE: Use the generic update() method which supports all fields
     return this.queueService.update(id, updateJobDto as Prisma.JobUpdateInput);
   }
 

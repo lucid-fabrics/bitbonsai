@@ -9,7 +9,6 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LicenseStatus, LicenseTier, type Prisma } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import { LicenseRepository } from '../common/repositories/license.repository';
 import { mapExternalTier } from '../license/tier-mapping';
@@ -61,7 +60,7 @@ export class LicensesService {
    * 4. Return activated license details
    */
   async activateLicense(dto: ActivateLicenseDto): Promise<{
-    tier: LicenseTier;
+    tier: string;
     email: string;
     maxNodes: number;
     maxConcurrentJobs: number;
@@ -131,20 +130,20 @@ export class LicensesService {
       {
         key: dto.licenseKey,
         tier: internalTier,
-        status: LicenseStatus.ACTIVE,
+        status: 'ACTIVE',
         maxNodes: externalLicense.maxNodes,
         maxConcurrentJobs: externalLicense.maxConcurrentJobs,
-        features: features as unknown as Prisma.InputJsonValue,
+        features: features as unknown as Record<string, unknown>,
         validUntil: externalLicense.expiresAt ? new Date(externalLicense.expiresAt) : null,
       },
       {
         key: dto.licenseKey,
         tier: internalTier,
-        status: LicenseStatus.ACTIVE,
+        status: 'ACTIVE',
         email: dto.email,
         maxNodes: externalLicense.maxNodes,
         maxConcurrentJobs: externalLicense.maxConcurrentJobs,
-        features: features as unknown as Prisma.InputJsonValue,
+        features: features as unknown as Record<string, unknown>,
         validUntil: externalLicense.expiresAt ? new Date(externalLicense.expiresAt) : null,
       }
     );
@@ -209,14 +208,13 @@ export class LicensesService {
   /**
    * Get features for a given tier
    */
-  private getTierFeatures(tier: LicenseTier): LicenseFeatures {
-    const isPatreonProOrHigher =
-      tier === LicenseTier.PATREON_PRO || tier === LicenseTier.PATREON_ULTIMATE;
+  private getTierFeatures(tier: string): LicenseFeatures {
+    const isPatreonProOrHigher = tier === 'PATREON_PRO' || tier === 'PATREON_ULTIMATE';
     const isCommercial = tier.startsWith('COMMERCIAL');
 
     return {
-      multiNode: tier !== LicenseTier.FREE,
-      advancedPresets: tier !== LicenseTier.FREE,
+      multiNode: tier !== 'FREE',
+      advancedPresets: tier !== 'FREE',
       api: isPatreonProOrHigher || isCommercial,
       priorityQueue: isPatreonProOrHigher || isCommercial,
       cloudStorage: isCommercial,

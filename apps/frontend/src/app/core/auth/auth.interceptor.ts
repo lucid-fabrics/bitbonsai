@@ -92,7 +92,8 @@ function handle401Error(
       filter((token) => token !== null),
       take(1),
       switchMap((token) => {
-        return next(addAuthHeader(request, token!));
+        // filter(Boolean) above guarantees token is a non-null string at this point
+        return next(addAuthHeader(request, token as string));
       })
     );
   }
