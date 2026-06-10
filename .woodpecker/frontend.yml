@@ -15,6 +15,9 @@ clone:
 steps:
   - name: build
     image: node:22
+    environment:
+      FONTAWESOME_NPM_AUTH_TOKEN:
+        from_secret: FONTAWESOME_NPM_AUTH_TOKEN
     commands:
       - |
         CHANGED=$(git diff --name-only ${CI_COMMIT_BEFORE_SHA:-HEAD~1} ${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "all")
