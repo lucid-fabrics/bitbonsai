@@ -14,6 +14,9 @@ clone:
 steps:
   - name: lint
     image: node:22
+    environment:
+      FONTAWESOME_NPM_AUTH_TOKEN:
+        from_secret: FONTAWESOME_NPM_AUTH_TOKEN
     commands:
       - |
         npm ci --legacy-peer-deps
@@ -24,6 +27,9 @@ steps:
 
   - name: test
     image: node:22
+    environment:
+      FONTAWESOME_NPM_AUTH_TOKEN:
+        from_secret: FONTAWESOME_NPM_AUTH_TOKEN
     commands:
       - |
         npm ci --legacy-peer-deps
@@ -44,6 +50,9 @@ steps:
 
   - name: build
     image: node:22
+    environment:
+      FONTAWESOME_NPM_AUTH_TOKEN:
+        from_secret: FONTAWESOME_NPM_AUTH_TOKEN
     commands:
       - |
         npm ci --legacy-peer-deps
