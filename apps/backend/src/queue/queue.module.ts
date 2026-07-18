@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { FileFailureRecordRepository } from '../common/repositories/file-failure-record.repository';
 import { JobRepository } from '../common/repositories/job.repository';
 import { JobHistoryRepository } from '../common/repositories/job-history.repository';
@@ -71,7 +71,11 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
  * Webhook notifications for job events via WebhookNotificationService.
  */
 @Module({
-  imports: [CoreModule, EncodingModule, MediaModule, NodesModule],
+  // forwardRef required on BOTH sides of the QueueModule ↔ EncodingModule
+  // cycle: with a plain import, webpack's module evaluation order determines
+  // whether EncodingModule is defined when this decorator runs, and that
+  // order shifts with unrelated import changes (undefined imports[1] at boot).
+  imports: [CoreModule, forwardRef(() => EncodingModule), MediaModule, NodesModule],
   controllers: [
     JobController,
     JobMetricsController,
