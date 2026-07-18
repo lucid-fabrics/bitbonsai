@@ -264,7 +264,7 @@ model Settings {
   backupRetentionHours         Int      @default(24)      // Hours to retain backup files
 
   // ============ Segmented Encode Settings ============
-  segmentedEncodeEnabled            Boolean @default(false) // Enable segmented encode for files > threshold
+  segmentedEncodeEnabled            Boolean @default(true) // Enable segmented encode for files > threshold
   segmentedEncodeThresholdMinutes   Int     @default(30)    // Minimum source duration to use segmented encode
   segmentDurationSeconds            Int     @default(300)   // Segment duration in seconds
 
@@ -633,6 +633,7 @@ model Job {
   sourceContainer String? // Original container (mkv, mp4, avi, etc)
   targetCodec     String // Target codec
   targetContainer String? // Target container (mkv, mp4, or null to keep original)
+  streamInfo      Json? // Per-stream inventory from health check: [{index, type, codec, pixFmt?, colorTransfer?}]
   stage           JobStage
   lastStageChangeAt DateTime? // CRITICAL FIX #4: Track when stage last changed (prevents watchdog false positives)
   progress        Float     @default(0) // 0.0 to 100.0
@@ -769,7 +770,7 @@ model Job {
   ownershipEpoch        Int       @default(0) // Incremented on each ownership transfer
 
   // Auto-Recovery Hardening: Completion outbox (survive DB write failure after successful encode)
-  pendingCompletionData String?   // JSON: output path, size, codec, duration — written before final DB update
+  pendingCompletionData String?   // JSON: output path, size, codec, duration - written before final DB update
   pendingCompletionAt   DateTime? // When outbox entry was written
 
   // Auto-Recovery Hardening: Circuit breaker (global cap across all retry systems)
@@ -879,7 +880,7 @@ model FileFailureRecord {
 }
 
 // ============================================================================
-// JOB TEMP FILE REGISTRY (Runtime temp file tracking — survives force-kill)
+// JOB TEMP FILE REGISTRY (Runtime temp file tracking - survives force-kill)
 // ============================================================================
 model JobTempFile {
   id         String   @id @default(cuid())
@@ -897,7 +898,7 @@ model JobTempFile {
 }
 
 // ============================================================================
-// JOB SEGMENT (Segmented encode — true crash resume for long files)
+// JOB SEGMENT (Segmented encode - true crash resume for long files)
 // ============================================================================
 model JobSegment {
   id              String   @id @default(cuid())

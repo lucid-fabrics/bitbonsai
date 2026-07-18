@@ -47,6 +47,8 @@ describe('HealthCheckWorker', () => {
 
     containerCompatibilityService = {
       checkCompatibility: jest.fn(),
+      getStreamInfo: jest.fn().mockResolvedValue([]),
+      toJobStreamInfo: jest.fn().mockReturnValue([]),
     };
 
     ffmpegService = {
@@ -118,6 +120,9 @@ describe('HealthCheckWorker', () => {
     // Restore fileHealthService defaults after clearAllMocks
     fileHealthService.quickHealthCheck.mockResolvedValue({ passed: true });
     fileHealthService.thoroughHealthCheck.mockResolvedValue({ passed: true, errors: [] });
+    // Restore containerCompatibilityService stream inventory defaults after clearAllMocks
+    containerCompatibilityService.getStreamInfo.mockResolvedValue([]);
+    containerCompatibilityService.toJobStreamInfo.mockReturnValue([]);
   });
 
   afterEach(async () => {
@@ -1167,6 +1172,91 @@ describe('HealthCheckWorker', () => {
         'job-healthy',
         expect.objectContaining({ stage: JobStage.NEEDS_DECISION })
       );
+    });
+  });
+
+  // ─── checkJobHealth - stream inventory persistence ────────────────
+
+  describe('checkJobHealth - stream inventory', () => {
+    const streamJob = {
+      id: 'job-stream',
+      filePath: '/media/file.mkv',
+      fileLabel: 'file.mkv',
+      stage: JobStage.DETECTED,
+      sourceCodec: 'h264',
+      targetCodec: 'hevc',
+      targetContainer: 'mkv',
+      beforeSizeBytes: BigInt(1073741824),
+      policy: null,
+    };
+
+    const healthyResult = {
+      status: FileHealthStatus.HEALTHY,
+      score: 90,
+      canEncode: true,
+      issues: [],
+      warnings: [],
+    };
+
+    it('should persist streamInfo in the final update when the probe returns entries', async () => {
+      const fullStreams = [
+        { index: 0, codec_name: 'hevc', codec_type: 'video', pix_fmt: 'yuv420p10le' },
+        { index: 1, codec_name: 'ac3', codec_type: 'audio' },
+      ];
+      const compactEntries = [
+        { index: 0, type: 'video', codec: 'hevc', pixFmt: 'yuv420p10le' },
+        { index: 1, type: 'audio', codec: 'ac3' },
+      ];
+
+      jobRepository.findUniqueWithInclude.mockResolvedValue(streamJob);
+      prisma.$executeRaw.mockResolvedValue(1);
+      containerCompatibilityService.getStreamInfo.mockResolvedValue(fullStreams);
+      containerCompatibilityService.toJobStreamInfo.mockReturnValue(compactEntries);
+      containerCompatibilityService.checkCompatibility.mockResolvedValue([]);
+      fileHealthService.analyzeFile.mockResolvedValue(healthyResult);
+
+      await (worker as any).checkJobHealth('job-stream');
+
+      // Probed once, mapped, and the full streams reused for the compat check
+      expect(containerCompatibilityService.getStreamInfo).toHaveBeenCalledTimes(1);
+      expect(containerCompatibilityService.getStreamInfo).toHaveBeenCalledWith('/media/file.mkv');
+      expect(containerCompatibilityService.toJobStreamInfo).toHaveBeenCalledWith(fullStreams);
+      expect(containerCompatibilityService.checkCompatibility).toHaveBeenCalledWith(
+        '/media/file.mkv',
+        'mkv',
+        fullStreams
+      );
+
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-stream',
+        expect.objectContaining({
+          stage: JobStage.QUEUED,
+          streamInfo: compactEntries,
+        })
+      );
+    });
+
+    it('should survive a probe rejection and update the job without streamInfo', async () => {
+      jobRepository.findUniqueWithInclude.mockResolvedValue(streamJob);
+      prisma.$executeRaw.mockResolvedValue(1);
+      containerCompatibilityService.getStreamInfo.mockRejectedValue(new Error('ffprobe timed out'));
+      containerCompatibilityService.checkCompatibility.mockResolvedValue([]);
+      fileHealthService.analyzeFile.mockResolvedValue(healthyResult);
+
+      await (worker as any).checkJobHealth('job-stream');
+
+      // Compat check falls back to its own probe (no pre-fetched streams)
+      expect(containerCompatibilityService.checkCompatibility).toHaveBeenCalledWith(
+        '/media/file.mkv',
+        'mkv',
+        undefined
+      );
+
+      const updateCall = jobRepository.updateById.mock.calls.find((c) => c[0] === 'job-stream');
+      expect(updateCall).toBeDefined();
+      const payload = updateCall![1];
+      expect(payload.stage).toBe(JobStage.QUEUED);
+      expect('streamInfo' in payload).toBe(false);
     });
   });
 

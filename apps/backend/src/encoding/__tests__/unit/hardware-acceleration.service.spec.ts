@@ -1,5 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { HardwareAccelerationService } from '../../hardware-acceleration.service';
+import { GpuHealthService } from '../../services/gpu-health.service';
 
 // Mock node:child_process before imports resolve
 const mockSpawn = jest.fn();
@@ -46,11 +47,20 @@ describe('HardwareAccelerationService', () => {
   let service: HardwareAccelerationService;
   const originalPlatform = process.platform;
 
+  const mockGpuHealth = {
+    isGpuHealthy: jest.fn(),
+    recordGpuFailure: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockGpuHealth.isGpuHealthy.mockResolvedValue(true);
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [HardwareAccelerationService],
+      providers: [
+        HardwareAccelerationService,
+        { provide: GpuHealthService, useValue: mockGpuHealth },
+      ],
     }).compile();
 
     service = module.get<HardwareAccelerationService>(HardwareAccelerationService);
@@ -89,6 +99,9 @@ describe('HardwareAccelerationService', () => {
       expect(result.type).toBe('INTEL_QSV');
       expect(result.videoCodec).toBe('hevc_qsv');
       expect(result.flags).toContain('qsv');
+      // Input-side decoder pinning was removed: it forced h264 decode on
+      // every source and contradicted the hevc_qsv output codec.
+      expect(result.flags).not.toContain('-c:v');
     });
 
     it('should return AMD config when nvidia-smi fails, no renderD128, but renderD129 exists', async () => {
@@ -99,7 +112,11 @@ describe('HardwareAccelerationService', () => {
 
       expect(result.type).toBe('AMD');
       expect(result.videoCodec).toBe('hevc_vaapi');
-      expect(result.flags).toContain('vaapi');
+      // -vaapi_device must point at the detected render node (renderD129),
+      // and the hwupload chain lives in videoFilter (output side), not flags.
+      expect(result.flags).toEqual(['-hwaccel', 'vaapi', '-vaapi_device', '/dev/dri/renderD129']);
+      expect(result.flags).not.toContain('-vf');
+      expect(result.videoFilter).toBe('format=nv12,hwupload');
     });
 
     it('should return APPLE_M config on darwin when no GPU devices are found', async () => {
@@ -136,6 +153,17 @@ describe('HardwareAccelerationService', () => {
       // Error on spawn → skip NVIDIA → no /dev/dri → CPU
       expect(result.type).toBe('CPU');
       expect(result.videoCodec).toBe('libx265');
+    });
+
+    it('should return CPU config when GPU is unhealthy, even if nvidia-smi would succeed', async () => {
+      mockGpuHealth.isGpuHealthy.mockResolvedValue(false);
+      mockSpawn.mockReturnValue(makeSpawnMock(0));
+      mockExistsSync.mockReturnValue(true);
+
+      const result = await service.detectHardwareAcceleration();
+
+      expect(result).toEqual({ type: 'CPU', flags: [], videoCodec: 'libx265' });
+      expect(mockSpawn).not.toHaveBeenCalled();
     });
   });
 

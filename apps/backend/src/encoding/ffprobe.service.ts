@@ -23,14 +23,48 @@ export class FfprobeService {
   private readonly CODEC_CACHE_CLEANUP_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
   private lastCacheCleanup = 0;
 
+  private readonly FALLBACK_DURATION_SECS = 3600;
+  private readonly DURATION_PROBE_RETRY_DELAY_MS = 2000;
+
   /**
    * Get video duration using stream duration (more accurate for VFR videos).
-   * Falls back to format/container duration, then 3600s if both fail.
+   * Falls back to format/container duration. If both fail, the whole probe is
+   * retried once (2s delay) before resorting to the hardcoded 3600s fallback,
+   * which poisons progress % and ETA and is loudly logged.
    *
    * @param filePath - Path to video file
    * @returns Duration in seconds, or 3600 if unable to determine
    */
   async getVideoDuration(filePath: string): Promise<number> {
+    const firstAttempt = await this.probeDuration(filePath);
+    if (firstAttempt !== null) {
+      return firstAttempt;
+    }
+
+    this.logger.warn(
+      `[${filePath}] Duration probe failed, retrying once in ${this.DURATION_PROBE_RETRY_DELAY_MS}ms`
+    );
+    await this.sleep(this.DURATION_PROBE_RETRY_DELAY_MS);
+
+    const secondAttempt = await this.probeDuration(filePath);
+    if (secondAttempt !== null) {
+      return secondAttempt;
+    }
+
+    this.logger.warn(
+      `[${filePath}] Duration probe failed after retry - using hardcoded ${this.FALLBACK_DURATION_SECS}s fallback (progress % and ETA will be inaccurate)`
+    );
+    return this.FALLBACK_DURATION_SECS;
+  }
+
+  /**
+   * Single probe attempt: stream duration first, then format/container duration.
+   * Returns null when the duration could not be determined.
+   *
+   * @param filePath - Path to video file
+   * @returns Duration in seconds, or null if unable to determine
+   */
+  private async probeDuration(filePath: string): Promise<number | null> {
     return new Promise((resolve) => {
       const ffprobe = spawn('ffprobe', [
         '-v',
@@ -52,8 +86,8 @@ export class FfprobeService {
 
       const timeoutId = setTimeout(() => {
         ffprobe.kill();
-        this.logger.warn(`[${filePath}] FFprobe timeout, using fallback 3600s`);
-        resolve(3600);
+        this.logger.warn(`[${filePath}] FFprobe stream duration timeout`);
+        resolve(null);
       }, 10000);
 
       ffprobe.on('close', (code) => {
@@ -86,8 +120,8 @@ export class FfprobeService {
         clearTimeout(timeoutId);
         ffprobe.stdout?.destroy();
         ffprobe.stderr?.destroy();
-        this.logger.warn(`[${filePath}] FFprobe error: ${err.message}, using fallback 3600s`);
-        resolve(3600);
+        this.logger.warn(`[${filePath}] FFprobe error: ${err.message}`);
+        resolve(null);
       });
     });
   }
@@ -97,9 +131,9 @@ export class FfprobeService {
    * Some containers (MKV, certain MP4) only store duration at the container level.
    *
    * @param filePath - Path to video file
-   * @returns Duration in seconds, or 3600 if unable to determine
+   * @returns Duration in seconds, or null if unable to determine
    */
-  private async getFormatDuration(filePath: string): Promise<number> {
+  private async getFormatDuration(filePath: string): Promise<number | null> {
     return new Promise((resolve) => {
       const ffprobe = spawn('ffprobe', [
         '-v',
@@ -119,8 +153,8 @@ export class FfprobeService {
 
       const timeoutId = setTimeout(() => {
         ffprobe.kill();
-        this.logger.warn(`[${filePath}] FFprobe format duration timeout, using fallback 3600s`);
-        resolve(3600);
+        this.logger.warn(`[${filePath}] FFprobe format duration timeout`);
+        resolve(null);
       }, 10000);
 
       ffprobe.on('close', (code) => {
@@ -144,21 +178,26 @@ export class FfprobeService {
         }
 
         this.logger.warn(
-          `[${filePath}] Failed to get format duration from ffprobe (code: ${code}), using fallback 3600s`
+          `[${filePath}] Failed to get format duration from ffprobe (code: ${code})`
         );
-        resolve(3600);
+        resolve(null);
       });
 
       ffprobe.on('error', (err) => {
         clearTimeout(timeoutId);
         ffprobe.stdout?.destroy();
         ffprobe.stderr?.destroy();
-        this.logger.warn(
-          `[${filePath}] FFprobe format duration error: ${err.message}, using fallback 3600s`
-        );
-        resolve(3600);
+        this.logger.warn(`[${filePath}] FFprobe format duration error: ${err.message}`);
+        resolve(null);
       });
     });
+  }
+
+  /**
+   * Sleep helper (separate method so tests can stub the retry delay).
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**

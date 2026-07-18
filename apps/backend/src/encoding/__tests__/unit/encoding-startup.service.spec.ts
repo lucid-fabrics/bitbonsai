@@ -4,9 +4,7 @@ import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../../common/repositories/job.repository';
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { QueueService } from '../../../queue/queue.service';
-import { EncodingFileService } from '../../encoding-file.service';
 import { EncodingStartupService } from '../../encoding-startup.service';
-import { FfmpegService } from '../../ffmpeg.service';
 
 jest.mock('node:fs');
 
@@ -29,8 +27,6 @@ describe('EncodingStartupService', () => {
   let jobRepository: jest.Mocked<JobRepository>;
   let queueService: jest.Mocked<QueueService>;
   let librariesService: jest.Mocked<LibrariesService>;
-  let ffmpegService: jest.Mocked<FfmpegService>;
-  let encodingFileService: jest.Mocked<EncodingFileService>;
 
   beforeEach(async () => {
     jobRepository = {
@@ -47,23 +43,12 @@ describe('EncodingStartupService', () => {
       getAllLibraryPaths: jest.fn(),
     } as unknown as jest.Mocked<LibrariesService>;
 
-    ffmpegService = {
-      getVideoDuration: jest.fn(),
-      formatSecondsToTimestamp: jest.fn(),
-    } as unknown as jest.Mocked<FfmpegService>;
-
-    encodingFileService = {
-      checkTempFileWithRetry: jest.fn(),
-    } as unknown as jest.Mocked<EncodingFileService>;
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EncodingStartupService,
         { provide: JobRepository, useValue: jobRepository },
         { provide: QueueService, useValue: queueService },
         { provide: LibrariesService, useValue: librariesService },
-        { provide: FfmpegService, useValue: ffmpegService },
-        { provide: EncodingFileService, useValue: encodingFileService },
       ],
     }).compile();
 
@@ -108,40 +93,46 @@ describe('EncodingStartupService', () => {
       await expect(service.autoHealOrphanedJobs(nodeId)).resolves.toBeUndefined();
     });
 
-    it('resets orphaned ENCODING job to QUEUED when temp file exists', async () => {
+    it('resets orphaned ENCODING job to QUEUED restarting from 0%', async () => {
       const job = makeOrphanedJob();
       jobRepository.findManyWithInclude
         .mockResolvedValueOnce([job]) // orphaned jobs
         .mockResolvedValueOnce([]); // manually paused
       jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
-      encodingFileService.checkTempFileWithRetry.mockResolvedValue(true);
-      jobRepository.findUniqueSelect.mockResolvedValue({
-        filePath: '/media/movie.mkv',
-      });
-      ffmpegService.getVideoDuration.mockResolvedValue(3600);
-      ffmpegService.formatSecondsToTimestamp.mockReturnValue('00:30:00.000');
       queueService.update.mockResolvedValue(undefined as never);
 
       await service.autoHealOrphanedJobs(nodeId);
 
       expect(queueService.update).toHaveBeenCalledWith(
         job.id,
-        expect.objectContaining({ stage: JobStage.QUEUED })
+        expect.objectContaining({
+          stage: JobStage.QUEUED,
+          progress: 0,
+          tempFilePath: null,
+          resumeTimestamp: null,
+          startedAt: null,
+          retryCount: 1,
+          error: expect.stringContaining('restarting from 0%'),
+        })
       );
     });
 
-    it('resets progress to 0 when temp file does not exist', async () => {
-      const job = makeOrphanedJob();
+    it('increments retryCount and clears resume state on every heal', async () => {
+      const job = makeOrphanedJob({ retryCount: 2, progress: 87.5 });
       jobRepository.findManyWithInclude.mockResolvedValueOnce([job]).mockResolvedValueOnce([]);
       jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
-      encodingFileService.checkTempFileWithRetry.mockResolvedValue(false);
       queueService.update.mockResolvedValue(undefined as never);
 
       await service.autoHealOrphanedJobs(nodeId);
 
       expect(queueService.update).toHaveBeenCalledWith(
         job.id,
-        expect.objectContaining({ stage: JobStage.QUEUED, progress: 0 })
+        expect.objectContaining({
+          progress: 0,
+          retryCount: 3,
+          tempFilePath: null,
+          resumeTimestamp: null,
+        })
       );
     });
 
@@ -162,7 +153,6 @@ describe('EncodingStartupService', () => {
       });
       jobRepository.findManyWithInclude.mockResolvedValueOnce([job]).mockResolvedValueOnce([]);
       jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
-      encodingFileService.checkTempFileWithRetry.mockResolvedValue(false);
       queueService.update.mockResolvedValue(undefined as never);
 
       await service.autoHealOrphanedJobs(nodeId);
@@ -177,7 +167,7 @@ describe('EncodingStartupService', () => {
       const job = makeOrphanedJob();
       jobRepository.findManyWithInclude.mockResolvedValueOnce([job]).mockResolvedValueOnce([]);
       jobRepository.atomicUpdateMany.mockResolvedValue({ count: 1 });
-      encodingFileService.checkTempFileWithRetry.mockRejectedValue(new Error('fs error'));
+      queueService.update.mockRejectedValue(new Error('db error'));
 
       await expect(service.autoHealOrphanedJobs(nodeId)).resolves.toBeUndefined();
     });

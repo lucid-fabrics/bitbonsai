@@ -10,7 +10,10 @@ import { QueueService } from '../queue/queue.service';
 import { EncodingFileReplacementService } from './encoding-file-replacement.service';
 import { EncodingOutputVerificationService } from './encoding-output-verification.service';
 import { FfmpegService } from './ffmpeg.service';
-import { QualityMetricsService } from './quality-metrics.service';
+import { type QualityMetrics, QualityMetricsService } from './quality-metrics.service';
+import { ContainerValidationService } from './services/container-validation.service';
+import { QualityGateService } from './services/quality-gate.service';
+import { SegmentedEncodeService } from './services/segmented-encode.service';
 import { SystemResourceService } from './system-resource.service';
 
 export interface JobWithPolicy extends Job {
@@ -49,7 +52,10 @@ export class EncodingFileService {
     private readonly queueService: QueueService,
     private readonly qualityMetricsService: QualityMetricsService,
     readonly fileReplacement: EncodingFileReplacementService,
-    readonly outputVerification: EncodingOutputVerificationService
+    readonly outputVerification: EncodingOutputVerificationService,
+    private readonly segmentedEncode: SegmentedEncodeService,
+    private readonly containerValidation: ContainerValidationService,
+    private readonly qualityGate: QualityGateService
   ) {}
 
   /**
@@ -108,112 +114,46 @@ export class EncodingFileService {
       ? path.join(tempBase, `.${outputName}.tmp-${job.id}`)
       : path.join(path.dirname(job.filePath), `.${outputName}.tmp-${job.id}`);
 
+    let usedSegmentedEncode = false;
+
     try {
       const policy = job.policy;
       if (!policy) {
         throw new Error('Job policy not loaded');
       }
 
-      // TRUE RESUME: Save temp file path to database BEFORE encoding starts
-      // This allows auto-heal to find the temp file after restart
+      // Persist temp path so orphan cleanup and the temp-file guard can find it.
       // MULTI-NODE: Use QueueService proxy to support LINKED nodes
       await this.queueService.update(job.id, { tempFilePath: tmpPath });
 
-      // BULLETPROOF FIX: Validate temp file state BEFORE attempting resume
-      // If tempFilePath is set but file doesn't exist, clear resume state and start fresh
-      if (job.tempFilePath && !fs.existsSync(job.tempFilePath)) {
-        this.logger.warn(
-          `⚠️  TEMP FILE LOST: Job ${job.id} has tempFilePath="${job.tempFilePath}" but file doesn't exist. Clearing resume state and starting fresh.`
-        );
-
-        // Reset job to fresh QUEUED state
-        // MULTI-NODE: Use QueueService proxy to support LINKED nodes
-        await this.queueService.update(job.id, {
-          tempFilePath: tmpPath, // Set new temp path
-          resumeTimestamp: null,
-          progress: 0,
-          autoHealedAt: null,
-          autoHealedProgress: null,
-        });
-
-        // Reload job with cleared state
-        job.tempFilePath = tmpPath;
-        job.resumeTimestamp = null;
-        job.progress = 0;
-      }
-
-      // TRUE RESUME: Check if job has resume state from auto-heal
-      let startedFromSeconds: number | undefined;
-
-      if (job.progress > 0 && fs.existsSync(tmpPath) && job.resumeTimestamp) {
-        this.logger.log(
-          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress and resumeTimestamp=${job.resumeTimestamp}`
-        );
-
-        try {
-          // Parse the HH:MM:SS format resumeTimestamp to seconds
-          const parts = job.resumeTimestamp.split(':');
-          if (parts.length === 3) {
-            const hours = Number.parseInt(parts[0], 10);
-            const minutes = Number.parseInt(parts[1], 10);
-            const seconds = Number.parseFloat(parts[2]);
-            startedFromSeconds = Math.floor(hours * 3600 + minutes * 60 + seconds);
-
-            this.logger.log(
-              `  ✅ TRUE RESUME: Using resumeTimestamp from auto-heal: ${job.resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}%)`
-            );
-          } else {
-            this.logger.warn(
-              `  ⚠️  TRUE RESUME: Invalid resumeTimestamp format: ${job.resumeTimestamp}`
-            );
-          }
-        } catch (error: unknown) {
-          this.logger.warn(`  ⚠️  TRUE RESUME: Error parsing resumeTimestamp:`, error);
-          // Continue without resume - will restart from 0%
-        }
-      } else if (job.progress > 0 && fs.existsSync(tmpPath) && !job.resumeTimestamp) {
-        // Fallback: Calculate resume position if temp file exists but no resumeTimestamp
-        this.logger.log(
-          `  🔄 TRUE RESUME: Job has ${job.progress.toFixed(1)}% progress but no resumeTimestamp, calculating...`
-        );
-
-        try {
-          // Get video duration to calculate exact resume position
-          const durationSeconds = await this.ffmpegService.getVideoDuration(job.filePath);
-
-          if (durationSeconds > 0) {
-            startedFromSeconds = Math.floor((job.progress / 100) * durationSeconds);
-
-            // Convert seconds to HH:MM:SS format for resumeTimestamp field
-            const hours = Math.floor(startedFromSeconds / 3600);
-            const minutes = Math.floor((startedFromSeconds % 3600) / 60);
-            const seconds = startedFromSeconds % 60;
-            const resumeTimestamp = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-            // Update database with resume position (using existing resumeTimestamp field)
-            // MULTI-NODE: Use QueueService proxy to support LINKED nodes
-            await this.queueService.update(job.id, { resumeTimestamp });
-
-            this.logger.log(
-              `  ✅ TRUE RESUME: Calculated resumeTimestamp: ${resumeTimestamp} (${startedFromSeconds}s = ${job.progress.toFixed(1)}% of ${durationSeconds}s total)`
-            );
-          } else {
-            this.logger.warn(
-              `  ⚠️  TRUE RESUME: Could not determine video duration, starting from beginning`
-            );
-          }
-        } catch (error: unknown) {
-          this.logger.warn(`  ⚠️  TRUE RESUME: Error calculating resume position:`, error);
-          // Continue without resume - will restart from 0%
-        }
+      // A leftover temp from a previous interrupted run is always stale:
+      // input-seek resume produced truncated outputs, so recovery restarts
+      // clean. Segmented jobs keep their real resume state in JobSegment
+      // rows, not in this file.
+      if (fs.existsSync(tmpPath)) {
+        this.logger.log(`Deleting stale temp file from previous run: ${tmpPath}`);
+        fs.unlinkSync(tmpPath);
       }
 
       // CRITICAL: Get original duration BEFORE encoding for validation
       const originalDuration = await this.ffmpegService.getVideoDuration(job.filePath);
       this.logger.log(`Original file duration: ${originalDuration.toFixed(2)}s`);
 
-      // Perform encoding
-      await this.performEncoding(job, tmpPath, policy, startedFromSeconds);
+      // SEGMENTED ENCODE: long files are encoded in verified 5-minute
+      // segments and concatenated, so an interruption loses at most one
+      // segment of work instead of the whole encode.
+      const settings = await this.settingsRepository.findFirst();
+      usedSegmentedEncode = this.segmentedEncode.shouldUseSegmentedEncode(
+        originalDuration,
+        settings?.segmentedEncodeEnabled ?? false,
+        settings?.segmentedEncodeThresholdMinutes ?? 30
+      );
+
+      if (usedSegmentedEncode) {
+        await this.performSegmentedEncoding(job, policy, tmpPath, originalDuration);
+      } else {
+        await this.performEncoding(job, tmpPath, policy);
+      }
 
       // Verify output if enabled
       if (policy.verifyOutput) {
@@ -223,6 +163,16 @@ export class EncodingFileService {
       // CRITICAL FIX: Validate output duration matches original to prevent truncated files
       // This prevents catastrophic data loss from incomplete/interrupted encodings
       await this.outputVerification.validateOutputDuration(tmpPath, originalDuration, job.filePath);
+
+      // Container-level integrity check (moov/EBML structure, stream presence)
+      // catches structurally broken outputs the duration probe can miss.
+      const containerCheck = await this.containerValidation.validateContainer(
+        tmpPath,
+        originalDuration
+      );
+      if (!containerCheck.valid) {
+        throw new Error(`Output container invalid: ${containerCheck.reason}`);
+      }
 
       // Calculate file size changes
       const afterSizeBytes = BigInt(fs.statSync(tmpPath).size);
@@ -261,10 +211,30 @@ export class EncodingFileService {
       }
 
       // Calculate quality metrics if enabled (before replacement, while both files exist)
-      await this.calculateQualityMetricsIfEnabled(job, job.filePath, tmpPath);
+      const qualityMetrics = await this.calculateQualityMetricsIfEnabled(
+        job,
+        job.filePath,
+        tmpPath
+      );
+
+      // VMAF quality gate: reject encodes below the configured threshold.
+      // Throwing here routes through the retry strategy; the gate force-passes
+      // after its retry cap, so this cannot loop forever.
+      const gateResult = await this.qualityGate.checkQuality(job, tmpPath, qualityMetrics);
+      if (!gateResult.passed) {
+        throw new Error(
+          `Quality gate failed: VMAF ${gateResult.score} below threshold ${gateResult.threshold}`
+        );
+      }
 
       // Replace original file with encoded version (with Keep Original support)
       await this.fileReplacement.replaceFile(job, tmpPath, policy.atomicReplace);
+
+      // Segments served their purpose once the concat output replaced the
+      // original; reclaim the disk space.
+      if (usedSegmentedEncode) {
+        await this.segmentedEncode.cleanupSegments(job.id, `${tmpPath}.segments`);
+      }
 
       return {
         beforeSizeBytes,
@@ -272,45 +242,18 @@ export class EncodingFileService {
         savedBytes,
         savedPercent,
       };
-    } catch (error: unknown) {
-      // TRUE RESUME: Only delete temp file on validation/corruption errors
-      // Keep temp file for resumable errors (interrupts, crashes, EXDEV, etc.)
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      // AUDIT FIX: Added validation error patterns to ensure temp files are cleaned up
-      const isCorruptionError =
-        errorMessage.includes('verification failed') ||
-        errorMessage.includes('corrupted') ||
-        errorMessage.includes('not playable') ||
-        errorMessage.includes('invalid') ||
-        errorMessage.includes('duration mismatch') ||
-        errorMessage.includes('appears truncated') ||
-        errorMessage.includes('suspiciously small') ||
-        errorMessage.includes('Cannot determine output file duration');
-
-      if (isCorruptionError) {
-        this.logger.warn(`Temp file corrupted or invalid, deleting for fresh restart: ${tmpPath}`);
-        if (fs.existsSync(tmpPath)) {
-          fs.unlinkSync(tmpPath);
-        }
-      } else {
-        this.logger.log(`Keeping temp file for auto-heal resume capability: ${tmpPath}`);
-      }
-      throw error;
     } finally {
-      // MEMORY LEAK FIX: Always clean up temp files that aren't needed for resume
-      // Only skip cleanup if this is a resumable error AND temp file should be preserved
-      // This prevents disk space leaks from failed encodings
+      // Single-pass temps have no resume value (input-seek resume produced
+      // truncated outputs and was removed), and a successful replaceFile has
+      // already renamed the temp away. Anything still here is garbage.
+      // Segmented resume state lives in the segments dir, which is kept on
+      // failure so the next attempt skips verified segments.
       if (tmpPath && fs.existsSync(tmpPath)) {
-        // Check if temp file should be preserved for resume (only for encoding failures)
-        const shouldPreserve = job.tempFilePath === tmpPath && job.progress > 0;
-
-        if (!shouldPreserve) {
-          try {
-            fs.unlinkSync(tmpPath);
-            this.logger.debug(`Cleaned up temp file: ${tmpPath}`);
-          } catch (cleanupError: unknown) {
-            this.logger.warn(`Failed to clean temp file ${tmpPath}:`, cleanupError);
-          }
+        try {
+          fs.unlinkSync(tmpPath);
+          this.logger.debug(`Cleaned up temp file: ${tmpPath}`);
+        } catch (cleanupError: unknown) {
+          this.logger.warn(`Failed to clean temp file ${tmpPath}:`, cleanupError);
         }
       }
     }
@@ -318,32 +261,132 @@ export class EncodingFileService {
 
   /**
    * Perform FFmpeg encoding on a file
+   *
+   * Passes the REAL job and policy through to the encoder. The previous
+   * options-object path rebuilt a synthetic Job that silently dropped
+   * codecOverride, healthMessage, type (REMUX), targetContainer, decision
+   * config, and thread throttling.
    */
   async performEncoding(
     job: JobWithPolicy,
     tmpPath: string,
-    policy: JobWithPolicy['policy'],
-    startedFromSeconds?: number
+    policy: JobWithPolicy['policy']
   ): Promise<void> {
     if (!policy) {
       throw new Error('Policy is required for encoding');
     }
 
-    const advancedSettings = policy.advancedSettings as Record<string, unknown> | null;
-    const hwaccel =
-      advancedSettings && typeof advancedSettings === 'object' && 'hwaccel' in advancedSettings
-        ? String(advancedSettings.hwaccel)
-        : 'auto';
+    await this.ffmpegService.encodeFile(job, policy, tmpPath);
+  }
 
-    await this.ffmpegService.encode(job.id, {
-      inputPath: job.filePath,
-      outputPath: tmpPath,
-      targetCodec: policy.targetCodec,
-      targetQuality: policy.targetQuality,
-      hwAccel: hwaccel,
-      advancedSettings: advancedSettings ?? undefined,
-      startedFromSeconds, // TRUE RESUME: Pass resume position to FFmpeg
-    });
+  /**
+   * Segmented encoding orchestration: plan (or reload) segments, resume from
+   * the last verified one, encode + verify each, then concat into tmpPath.
+   */
+  private async performSegmentedEncoding(
+    job: JobWithPolicy,
+    policy: Policy,
+    tmpPath: string,
+    originalDuration: number
+  ): Promise<void> {
+    const segmentsDir = `${tmpPath}.segments`;
+    await fs.promises.mkdir(segmentsDir, { recursive: true });
+
+    // Existing JobSegment rows mean a previous attempt was interrupted:
+    // reuse the plan so verified segments are skipped (true resume).
+    let segments = await this.segmentedEncode.getSegments(job.id);
+    let concatListPath = job.concatListPath;
+
+    if (segments.length === 0) {
+      const segmentDurationSecs = job.segmentDurationSecs || 300;
+      const plan = this.segmentedEncode.planSegments(
+        job.id,
+        originalDuration,
+        segmentsDir,
+        segmentDurationSecs
+      );
+      await this.segmentedEncode.persistSegmentPlan(job.id, plan);
+      await this.queueService.update(job.id, {
+        segmentedEncode: true,
+        segmentCount: plan.totalSegments,
+        segmentsDir,
+        concatListPath: plan.concatListPath,
+      });
+      segments = plan.segments;
+      concatListPath = plan.concatListPath;
+      this.logger.log(
+        `Segmented encode: ${plan.totalSegments} segments of ${segmentDurationSecs}s for ${job.fileLabel}`
+      );
+    } else {
+      this.logger.log(
+        `Segmented encode: resuming with ${segments.length} existing segments for ${job.fileLabel}`
+      );
+    }
+
+    const { lastVerifiedIndex, partialSegmentIndex } = await this.segmentedEncode.findResumePoint(
+      job.id
+    );
+    if (partialSegmentIndex !== null) {
+      const partial = segments.find((s) => s.index === partialSegmentIndex);
+      if (partial) {
+        await this.segmentedEncode.resetPartialSegment(
+          job.id,
+          partialSegmentIndex,
+          partial.tempPath
+        );
+      }
+    }
+    if (lastVerifiedIndex >= 0) {
+      this.logger.log(
+        `Segmented encode: segments 0-${lastVerifiedIndex} already verified, resuming at ${lastVerifiedIndex + 1}`
+      );
+    }
+
+    const totalSegments = segments.length;
+    let lastReportedProgress = -1;
+
+    for (const segment of segments) {
+      if (segment.index <= lastVerifiedIndex) continue;
+
+      await this.queueService.update(job.id, { currentSegmentIndex: segment.index });
+
+      await this.ffmpegService.encodeSegment(
+        job,
+        policy,
+        segment.tempPath,
+        segment.startSeconds,
+        segment.durationSeconds,
+        (segmentPercent) => {
+          const overall = ((segment.index + segmentPercent / 100) / totalSegments) * 100;
+          const rounded = Math.floor(overall);
+          if (rounded > lastReportedProgress) {
+            lastReportedProgress = rounded;
+            this.queueService
+              .update(job.id, { progress: overall })
+              .catch((err: unknown) => this.logger.warn(`Segment progress update failed: ${err}`));
+          }
+        }
+      );
+
+      await this.segmentedEncode.markSegmentCompleted(job.id, segment.index);
+      const actualDuration = await this.segmentedEncode.verifySegment(
+        segment.tempPath,
+        segment.durationSeconds
+      );
+      await this.segmentedEncode.markSegmentVerified(
+        job.id,
+        segment.index,
+        actualDuration,
+        segment.tempPath
+      );
+    }
+
+    await this.segmentedEncode.concatSegments(
+      concatListPath || path.join(segmentsDir, 'concat.txt'),
+      segments.map((s) => s.tempPath),
+      tmpPath,
+      job.filePath
+    );
   }
 
   /**
@@ -505,10 +548,10 @@ export class EncodingFileService {
     job: JobWithPolicy,
     originalPath: string,
     encodedPath: string
-  ): Promise<void> {
+  ): Promise<QualityMetrics | null> {
     try {
       const settings = await this.settingsRepository.findFirst();
-      if (!settings?.qualityMetricsEnabled) return;
+      if (!settings?.qualityMetricsEnabled) return null;
 
       this.logger.log(`Calculating quality metrics for job ${job.id}...`);
       const metrics = await this.qualityMetricsService.calculateAllQualityMetrics(
@@ -524,10 +567,13 @@ export class EncodingFileService {
         },
         qualityMetricsAt: metrics.calculatedAt,
       });
+
+      return metrics;
     } catch (error: unknown) {
       this.logger.warn(
         `Quality metrics calculation failed for job ${job.id}, continuing: ${error instanceof Error ? error.message : String(error)}`
       );
+      return null;
     }
   }
 

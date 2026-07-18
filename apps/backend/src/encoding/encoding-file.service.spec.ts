@@ -9,7 +9,36 @@ import { EncodingFileReplacementService } from './encoding-file-replacement.serv
 import { EncodingOutputVerificationService } from './encoding-output-verification.service';
 import { FfmpegService } from './ffmpeg.service';
 import { QualityMetricsService } from './quality-metrics.service';
+import { ContainerValidationService } from './services/container-validation.service';
+import { QualityGateService } from './services/quality-gate.service';
+import { SegmentedEncodeService } from './services/segmented-encode.service';
 import { SystemResourceService } from './system-resource.service';
+
+const makeSegmentedEncodeMock = () => ({
+  shouldUseSegmentedEncode: jest.fn().mockReturnValue(false),
+  getSegments: jest.fn().mockResolvedValue([]),
+  planSegments: jest.fn(),
+  persistSegmentPlan: jest.fn(),
+  findResumePoint: jest
+    .fn()
+    .mockResolvedValue({ lastVerifiedIndex: -1, partialSegmentIndex: null }),
+  resetPartialSegment: jest.fn(),
+  markSegmentCompleted: jest.fn(),
+  verifySegment: jest.fn(),
+  markSegmentVerified: jest.fn(),
+  concatSegments: jest.fn(),
+  cleanupSegments: jest.fn(),
+});
+
+const makeContainerValidationMock = () => ({
+  validateContainer: jest.fn().mockResolvedValue({ valid: true }),
+});
+
+const makeQualityGateMock = () => ({
+  checkQuality: jest
+    .fn()
+    .mockResolvedValue({ passed: true, score: null, threshold: 85, forcedPass: false }),
+});
 
 describe('EncodingFileService', () => {
   let service: EncodingFileService;
@@ -22,7 +51,7 @@ describe('EncodingFileService', () => {
     mockFfmpegService = {
       getVideoDuration: jest.fn(),
       verifyFile: jest.fn(),
-      encode: jest.fn(),
+      encodeFile: jest.fn(),
     } as any;
 
     mockSystemResourceService = {
@@ -60,6 +89,9 @@ describe('EncodingFileService', () => {
         { provide: SystemResourceService, useValue: mockSystemResourceService },
         { provide: QueueService, useValue: mockQueueService },
         { provide: QualityMetricsService, useValue: {} },
+        { provide: SegmentedEncodeService, useValue: makeSegmentedEncodeMock() },
+        { provide: ContainerValidationService, useValue: makeContainerValidationMock() },
+        { provide: QualityGateService, useValue: makeQualityGateMock() },
         EncodingFileReplacementService,
         EncodingOutputVerificationService,
       ],
@@ -187,7 +219,7 @@ import * as fs from 'node:fs';
 
 jest.mock('node:fs');
 
-describe('EncodingFileService — extended coverage', () => {
+describe('EncodingFileService - extended coverage', () => {
   let service: EncodingFileService;
   let mockFfmpegService: jest.Mocked<FfmpegService>;
   let mockQueueService: jest.Mocked<QueueService>;
@@ -202,7 +234,7 @@ describe('EncodingFileService — extended coverage', () => {
     mockFfmpegService = {
       getVideoDuration: jest.fn(),
       verifyFile: jest.fn(),
-      encode: jest.fn(),
+      encodeFile: jest.fn(),
     } as unknown as jest.Mocked<FfmpegService>;
 
     mockQueueService = {
@@ -235,6 +267,9 @@ describe('EncodingFileService — extended coverage', () => {
         },
         { provide: QueueService, useValue: mockQueueService },
         { provide: QualityMetricsService, useValue: mockQualityMetricsService },
+        { provide: SegmentedEncodeService, useValue: makeSegmentedEncodeMock() },
+        { provide: ContainerValidationService, useValue: makeContainerValidationMock() },
+        { provide: QualityGateService, useValue: makeQualityGateMock() },
         EncodingFileReplacementService,
         EncodingOutputVerificationService,
       ],
@@ -283,7 +318,7 @@ describe('EncodingFileService — extended coverage', () => {
 
   // ── getAdaptiveDurationTolerance ──────────────────────────────────────────
 
-  describe('getAdaptiveDurationTolerance — boundary values', () => {
+  describe('getAdaptiveDurationTolerance - boundary values', () => {
     it('returns 2.0% for exactly 30 min (1800s)', () => {
       expect(service.getAdaptiveDurationTolerance(1800)).toBe(2.0);
     });
@@ -333,7 +368,7 @@ describe('EncodingFileService — extended coverage', () => {
     });
 
     it('passes for long video within percentage tolerance', async () => {
-      // 7200s video, output 7195s — 0.07% diff, within 1.5%
+      // 7200s video, output 7195s - 0.07% diff, within 1.5%
       mockFfmpegService.getVideoDuration.mockResolvedValue(7195);
       await expect(
         service.validateOutputDuration('/output.mkv', 7200, '/input.mkv')
@@ -343,15 +378,15 @@ describe('EncodingFileService — extended coverage', () => {
 
   // ── validateOutputSize ────────────────────────────────────────────────────
 
-  describe('validateOutputSize — additional branches', () => {
+  describe('validateOutputSize - additional branches', () => {
     it('warns but does not throw for >90% compression when output exceeds min bitrate floor', () => {
       // original < 1GB so the extreme-compression block is skipped
       // output must exceed min bitrate floor: 60s * 200kbps * 1000 / 8 = 1_500_000 bytes
-      // Use 10MB output from a 60s video (still 95% reduction, original <1GB) — passes size floor
+      // Use 10MB output from a 60s video (still 95% reduction, original <1GB) - passes size floor
       expect(() =>
         service.validateOutputSize(
           BigInt(200_000_000), // 200MB original
-          BigInt(10_000_000), // 10MB output — above 1.5MB min floor for 60s video
+          BigInt(10_000_000), // 10MB output - above 1.5MB min floor for 60s video
           60,
           '/media/short.mkv'
         )
@@ -402,7 +437,7 @@ describe('EncodingFileService — extended coverage', () => {
 
   // ── calculateSavings ──────────────────────────────────────────────────────
 
-  describe('calculateSavings — edge cases', () => {
+  describe('calculateSavings - edge cases', () => {
     it('returns zero savedBytes when sizes are equal', () => {
       const result = service.calculateSavings(BigInt(500_000), BigInt(500_000));
       expect(result.savedBytes).toBe(BigInt(0));
@@ -450,7 +485,7 @@ describe('EncodingFileService — extended coverage', () => {
       });
       (fs.statSync as jest.Mock)
         .mockReturnValueOnce({ size: 1000 }) // source stat
-        .mockReturnValueOnce({ size: 500 }); // dest stat — mismatch
+        .mockReturnValueOnce({ size: 500 }); // dest stat - mismatch
       (fs.copyFileSync as jest.Mock).mockImplementation(() => undefined);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.unlinkSync as jest.Mock).mockImplementation(() => undefined);
@@ -507,7 +542,7 @@ describe('EncodingFileService — extended coverage', () => {
     });
 
     it('resolves when sufficient disk space is available', async () => {
-      // 100_000_000 blocks × 4096 bytes = ~400GB available — well above needed
+      // 100_000_000 blocks × 4096 bytes = ~400GB available - well above needed
       mockStatfs.mockResolvedValue({ bavail: 100_000_000, bsize: 4096 });
 
       await expect(
@@ -522,7 +557,7 @@ describe('EncodingFileService — extended coverage', () => {
 
     it('re-throws "Insufficient disk space" error from statfs path', async () => {
       // Simulate the internal error being raised (e.g. by the availability check inside the method)
-      // then verify it propagates — achieved by spying on the method itself for this one path.
+      // then verify it propagates - achieved by spying on the method itself for this one path.
       const diskError = new Error(
         'Insufficient disk space for atomic file replacement on /media\n\nAvailable: 0.00 GB'
       );
@@ -552,7 +587,7 @@ describe('EncodingFileService — extended coverage', () => {
     });
 
     it('throws "Insufficient disk space" when available blocks are too few', async () => {
-      // Spy on the method itself to force the throw path — statfs mock inconsistency workaround
+      // Spy on the method itself to force the throw path - statfs mock inconsistency workaround
       const spy = jest
         .spyOn(service, 'verifyDiskSpaceForReplacement')
         .mockRejectedValueOnce(
@@ -625,9 +660,9 @@ describe('EncodingFileService — extended coverage', () => {
     });
   });
 
-  // ── replaceFile — keepOriginalRequested ───────────────────────────────────
+  // ── replaceFile - keepOriginalRequested ───────────────────────────────────
 
-  describe('replaceFile — keepOriginalRequested', () => {
+  describe('replaceFile - keepOriginalRequested', () => {
     const makeJob = (keepOriginalRequested: boolean, atomicReplace = true) =>
       ({
         id: 'job-1',
@@ -716,8 +751,8 @@ describe('EncodingFileService — extended coverage', () => {
       );
     });
 
-    it('calls ffmpegService.encode with correct parameters', async () => {
-      mockFfmpegService.encode.mockResolvedValue(undefined);
+    it('passes the real job, policy, and temp path to ffmpegService.encodeFile', async () => {
+      mockFfmpegService.encodeFile.mockResolvedValue(undefined);
       const policy = {
         targetCodec: 'HEVC',
         targetQuality: 28,
@@ -730,44 +765,15 @@ describe('EncodingFileService — extended coverage', () => {
         policy,
       } as unknown as Parameters<typeof service.performEncoding>[0];
 
-      await service.performEncoding(job, '/tmp/out.mkv', policy, 120);
-
-      expect(mockFfmpegService.encode).toHaveBeenCalledWith(
-        'job-1',
-        expect.objectContaining({
-          inputPath: '/media/video.mkv',
-          outputPath: '/tmp/out.mkv',
-          startedFromSeconds: 120,
-        })
-      );
-    });
-
-    it('uses "auto" hwaccel when advancedSettings is null', async () => {
-      mockFfmpegService.encode.mockResolvedValue(undefined);
-      const policy = {
-        targetCodec: 'HEVC',
-        targetQuality: 28,
-        advancedSettings: null,
-      } as unknown as Parameters<typeof service.performEncoding>[2];
-
-      const job = {
-        id: 'job-1',
-        filePath: '/media/video.mkv',
-        policy,
-      } as unknown as Parameters<typeof service.performEncoding>[0];
-
       await service.performEncoding(job, '/tmp/out.mkv', policy);
 
-      expect(mockFfmpegService.encode).toHaveBeenCalledWith(
-        'job-1',
-        expect.objectContaining({ hwAccel: 'auto' })
-      );
+      expect(mockFfmpegService.encodeFile).toHaveBeenCalledWith(job, policy, '/tmp/out.mkv');
     });
   });
 
-  // ── crossFsSafeRenameSync — dest missing after copy ───────────────────────
+  // ── crossFsSafeRenameSync - dest missing after copy ───────────────────────
 
-  describe('crossFsSafeRenameSync — dest not found after copy', () => {
+  describe('crossFsSafeRenameSync - dest not found after copy', () => {
     it('throws "Cross-filesystem move failed" when destination does not exist after copy', () => {
       const exdevError = Object.assign(new Error('EXDEV'), { code: 'EXDEV' });
       (fs.renameSync as jest.Mock).mockImplementationOnce(() => {
@@ -783,9 +789,9 @@ describe('EncodingFileService — extended coverage', () => {
     });
   });
 
-  // ── validateOutputDuration — edge cases ──────────────────────────────────
+  // ── validateOutputDuration - edge cases ──────────────────────────────────
 
-  describe('validateOutputDuration — additional edge cases', () => {
+  describe('validateOutputDuration - additional edge cases', () => {
     it('passes for video within percentage tolerance (5 min → <300s bucket)', async () => {
       // 200s original, output 193s: diff = 7s, pct = 3.5% > 5% tolerance? No: 3.5 < 5 ✓
       mockFfmpegService.getVideoDuration.mockResolvedValue(193);
@@ -810,11 +816,11 @@ describe('EncodingFileService — extended coverage', () => {
     });
   });
 
-  // ── validateOutputSize — warn-only edge case ──────────────────────────────
+  // ── validateOutputSize - warn-only edge case ──────────────────────────────
 
-  describe('validateOutputSize — high-compression warn path', () => {
+  describe('validateOutputSize - high-compression warn path', () => {
     it('does not throw when compression is >90% but file is small (original <1GB)', () => {
-      // original 200MB, output 5MB = 97.5% reduction from <1GB source — only warning path
+      // original 200MB, output 5MB = 97.5% reduction from <1GB source - only warning path
       // 5MB > 200kbps*60s/8 = 1.5MB minimum floor
       expect(() =>
         service.validateOutputSize(BigInt(200_000_000), BigInt(5_000_000), 60, '/media/short.mkv')
@@ -822,9 +828,9 @@ describe('EncodingFileService — extended coverage', () => {
     });
   });
 
-  // ── updateLibraryStats — update called with correct value ─────────────────
+  // ── updateLibraryStats - update called with correct value ─────────────────
 
-  describe('updateLibraryStats — totalSizeBytes calculation', () => {
+  describe('updateLibraryStats - totalSizeBytes calculation', () => {
     it('subtracts savedBytes correctly for very large libraries', async () => {
       mockLibrariesService.findOne.mockResolvedValue({
         id: 'lib-big',

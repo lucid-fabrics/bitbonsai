@@ -29,14 +29,19 @@ export class ContainerCompatibilityService {
    *
    * @param filePath - Path to source file
    * @param targetContainer - Target container format (e.g., 'mp4', 'mkv')
-   * @returns Array of detected issues requiring user decision
+   * @param preFetchedStreams - Optional stream list to avoid a second ffprobe
+   * @returns Array of detected issues
    */
-  async checkCompatibility(filePath: string, targetContainer = 'mp4'): Promise<HealthCheckIssue[]> {
+  async checkCompatibility(
+    filePath: string,
+    targetContainer = 'mp4',
+    preFetchedStreams?: MediaStream[]
+  ): Promise<HealthCheckIssue[]> {
     this.logger.debug(`Checking compatibility: ${filePath} → .${targetContainer}`);
 
     try {
       // Get detailed stream information
-      const streams = await this.getStreamInfo(filePath);
+      const streams = preFetchedStreams ?? (await this.getStreamInfo(filePath));
 
       const issues: HealthCheckIssue[] = [];
 
@@ -52,6 +57,21 @@ export class ContainerCompatibilityService {
       this.logger.error(`Compatibility check failed: ${errorMessage}`);
       return [];
     }
+  }
+
+  /**
+   * Map full ffprobe stream data to the compact per-stream inventory persisted
+   * on Job.streamInfo, consumed by the ffmpeg flag builder for container-safe
+   * mapping, subtitle, audio-transcode, and bit-depth decisions.
+   */
+  toJobStreamInfo(streams: MediaStream[]): JobStreamInfoEntry[] {
+    return streams.map((s) => ({
+      index: s.index,
+      type: s.codec_type ?? 'unknown',
+      codec: s.codec_name ?? 'unknown',
+      ...(typeof s.pix_fmt === 'string' ? { pixFmt: s.pix_fmt } : {}),
+      ...(typeof s.color_transfer === 'string' ? { colorTransfer: s.color_transfer } : {}),
+    }));
   }
 
   /**
@@ -133,15 +153,13 @@ export class ContainerCompatibilityService {
 
       const message =
         incompatibleStreams.length === 1
-          ? `This file has ${incompatibleStreams[0].codec} audio, which is incompatible with MP4 containers`
-          : `This file has ${incompatibleStreams.length} audio tracks with incompatible codecs: ${codecList}`;
+          ? `This file has ${incompatibleStreams[0].codec} audio (incompatible with MP4) - it will be automatically converted to AAC`
+          : `This file has ${incompatibleStreams.length} MP4-incompatible audio tracks (${codecList}) - they will be automatically converted to AAC`;
 
       const technicalDetails = `
 MP4 containers cannot store ${incompatibleStreams.map((s) => s.codec).join(', ')} audio streams due to format limitations.
 
-FFmpeg will fail with: "Could not write header for output file (incorrect codec parameters?)"
-
-The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sound codecs like AC3 and DTS are not supported in MP4 without transcoding.
+The incompatible tracks are transcoded to AAC automatically during encoding; compatible tracks are copied as-is. Choose an action below only to override that default.
 `.trim();
 
       // Determine if file is already MP4
@@ -199,7 +217,10 @@ The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sou
       // Create issue
       issues.push({
         category: HealthCheckIssueCategory.CONTAINER,
-        severity: HealthCheckIssueSeverity.BLOCKER, // Must resolve before encoding
+        // WARNING, not BLOCKER: the flag builder auto-transcodes incompatible
+        // audio to AAC for MP4 targets, so no user decision is required
+        // (zero-friction default; the suggested actions remain as overrides).
+        severity: HealthCheckIssueSeverity.WARNING,
         code: 'AC3_DTS_MP4_INCOMPATIBLE',
         message,
         technicalDetails,
@@ -222,7 +243,7 @@ The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sou
    * @param filePath - Path to file
    * @returns Array of stream metadata
    */
-  private async getStreamInfo(filePath: string): Promise<MediaStream[]> {
+  async getStreamInfo(filePath: string): Promise<MediaStream[]> {
     return new Promise((resolve, reject) => {
       const ffprobe = spawn('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', filePath]);
 
@@ -277,7 +298,7 @@ The MP4 container requires audio to be in AAC, MP3, or FLAC format. Surround sou
 /**
  * Media stream metadata from ffprobe
  */
-interface MediaStream {
+export interface MediaStream {
   index: number;
   codec_name?: string;
   codec_type?: string;
@@ -288,4 +309,15 @@ interface MediaStream {
     [key: string]: unknown;
   };
   [key: string]: unknown;
+}
+
+/**
+ * Compact per-stream entry persisted on Job.streamInfo
+ */
+export interface JobStreamInfoEntry {
+  index: number;
+  type: string;
+  codec: string;
+  pixFmt?: string;
+  colorTransfer?: string;
 }

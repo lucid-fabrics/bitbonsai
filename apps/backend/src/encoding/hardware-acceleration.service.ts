@@ -2,14 +2,20 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { Injectable, Logger } from '@nestjs/common';
 import type { AccelerationType } from '@prisma/client';
+import { GpuHealthService } from './services/gpu-health.service';
 
 /**
  * Hardware acceleration configuration for different platforms
+ *
+ * `flags` are INPUT-side options (before -i). `videoFilter` is an OUTPUT-side
+ * -vf fragment some encoders require (e.g. VAAPI's format=nv12,hwupload);
+ * the flag builder merges it into the single output -vf.
  */
 export interface HardwareAccelConfig {
   type: AccelerationType;
   flags: string[];
   videoCodec: string;
+  videoFilter?: string;
 }
 
 /**
@@ -29,6 +35,8 @@ export interface HardwareAccelConfig {
 export class HardwareAccelerationService {
   private readonly logger = new Logger(HardwareAccelerationService.name);
 
+  constructor(private readonly gpuHealth: GpuHealthService) {}
+
   /**
    * Detect available hardware acceleration.
    *
@@ -36,6 +44,13 @@ export class HardwareAccelerationService {
    */
   async detectHardwareAcceleration(): Promise<HardwareAccelConfig> {
     this.logger.log('Detecting hardware acceleration capabilities...');
+
+    // GPU COOLDOWN: after a recorded GPU failure, skip all GPU branches for
+    // 60s instead of hammering a crashed GPU with back-to-back jobs.
+    if (!(await this.gpuHealth.isGpuHealthy())) {
+      this.logger.warn('GPU unhealthy or in cooldown - falling back to CPU encoding');
+      return { type: 'CPU', flags: [], videoCodec: 'libx265' };
+    }
 
     // Check NVIDIA GPU
     try {
@@ -76,19 +91,28 @@ export class HardwareAccelerationService {
     if (existsSync('/dev/dri/renderD128')) {
       this.logger.log('Intel QSV detected - using Quick Sync Video acceleration');
       return {
+        // NOTE: no input-side "-c:v h264_qsv" here - that forced every source
+        // to decode as h264 regardless of its actual codec, and contradicted
+        // the hevc_qsv output codec below.
         type: 'INTEL_QSV',
-        flags: ['-hwaccel', 'qsv', '-c:v', 'h264_qsv'],
+        flags: ['-hwaccel', 'qsv'],
         videoCodec: 'hevc_qsv',
       };
     }
 
     // Check AMD VAAPI
-    if (existsSync('/dev/dri/renderD129')) {
+    const vaapiDevice = '/dev/dri/renderD129';
+    if (existsSync(vaapiDevice)) {
       this.logger.log('AMD GPU detected - using VAAPI acceleration');
       return {
         type: 'AMD',
-        flags: ['-hwaccel', 'vaapi', '-vaapi_device', '/dev/dri/renderD128'],
+        // NOTE: -vaapi_device must match the render node we just detected
+        // (was hardcoded to renderD128, the Intel QSV node checked above).
+        flags: ['-hwaccel', 'vaapi', '-vaapi_device', vaapiDevice],
         videoCodec: 'hevc_vaapi',
+        // Required by hevc_vaapi/av1_vaapi. This is an OUTPUT option (-vf), so
+        // it cannot live in `flags`, which land before -i where ffmpeg rejects it.
+        videoFilter: 'format=nv12,hwupload',
       };
     }
 

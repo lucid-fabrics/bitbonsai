@@ -157,6 +157,10 @@ describe('StuckJobRecoveryWorker', () => {
         expect.objectContaining({
           stage: JobStage.QUEUED,
           stuckRecoveryCount: { increment: 1 },
+          progress: 0,
+          tempFilePath: null,
+          resumeTimestamp: null,
+          error: expect.stringContaining('Job will restart from 0%.'),
         })
       );
     });

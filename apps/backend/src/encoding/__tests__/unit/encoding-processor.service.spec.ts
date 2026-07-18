@@ -30,6 +30,7 @@ import { ProcessorLoopService } from '../../processor-loop.service';
 import { QualityMetricsService } from '../../quality-metrics.service';
 import { CodecFallbackService } from '../../services/codec-fallback.service';
 import { ContainerValidationService } from '../../services/container-validation.service';
+import { GpuHealthService } from '../../services/gpu-health.service';
 import { QualityGateService } from '../../services/quality-gate.service';
 import { SegmentedEncodeService } from '../../services/segmented-encode.service';
 import { SystemResourceService } from '../../system-resource.service';
@@ -143,7 +144,6 @@ describe('EncodingProcessorService', () => {
         {
           provide: FfmpegService,
           useValue: {
-            encode: jest.fn(),
             encodeFile: jest.fn(),
             verifyFile: jest.fn(),
             detectHardwareAcceleration: jest.fn(),
@@ -281,9 +281,16 @@ describe('EncodingProcessorService', () => {
         {
           provide: CodecFallbackService,
           useValue: {
-            shouldFallback: jest.fn().mockResolvedValue(false),
-            getFallbackCodec: jest.fn().mockReturnValue(null),
-            recordFailure: jest.fn().mockResolvedValue(undefined),
+            shouldFallback: jest.fn().mockReturnValue(false),
+            applyFallback: jest.fn().mockResolvedValue(undefined),
+            clearFallback: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: GpuHealthService,
+          useValue: {
+            isGpuHealthy: jest.fn().mockResolvedValue(true),
+            recordGpuFailure: jest.fn(),
           },
         },
         {
@@ -387,7 +394,7 @@ describe('EncodingProcessorService', () => {
       (fs.unlinkSync as jest.Mock).mockImplementation(() => undefined);
 
       queueService.getNextJob.mockResolvedValue(mockJob as any);
-      ffmpegService.encode.mockResolvedValue();
+      ffmpegService.encodeFile.mockResolvedValue(undefined);
       ffmpegService.verifyFile.mockResolvedValue({ isValid: true });
       librariesService.findOne.mockResolvedValue({
         id: 'library-1',
@@ -460,8 +467,22 @@ describe('EncodingProcessorService', () => {
   });
 
   describe('handleJobFailure', () => {
-    it('should mark job as failed for non-transient errors', async () => {
+    it('should retry a generic non-matching error rather than failing immediately', async () => {
       const error = new Error('Invalid codec');
+
+      queueService.update.mockResolvedValue(mockJob as any);
+
+      await service.handleJobFailure(mockJob as any, error);
+
+      expect(queueService.failJob).not.toHaveBeenCalled();
+      expect(queueService.update).toHaveBeenCalledWith(
+        'job-123',
+        expect.objectContaining({ stage: 'QUEUED', retryCount: 1 })
+      );
+    });
+
+    it('should mark job as failed for corrupted-source errors', async () => {
+      const error = new Error('moov atom not found');
 
       queueService.failJob.mockResolvedValue(mockJob as any);
 
@@ -469,7 +490,7 @@ describe('EncodingProcessorService', () => {
 
       expect(queueService.failJob).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Invalid codec')
+        expect.stringContaining('moov atom not found')
       );
     });
 
@@ -508,7 +529,7 @@ describe('EncodingProcessorService', () => {
 
   // ── isNonRetriableError (via handleJobFailure) ────────────────────────────
 
-  describe('handleJobFailure — non-retriable errors', () => {
+  describe('handleJobFailure - non-retriable errors', () => {
     it('permanently fails job on "moov atom not found" without retrying', async () => {
       const error = new Error('moov atom not found');
       queueService.failJob.mockResolvedValue(mockJob as any);
@@ -549,7 +570,7 @@ describe('EncodingProcessorService', () => {
 
   // ── isTransientError (via handleJobFailure) ───────────────────────────────
 
-  describe('handleJobFailure — transient error retry backoff', () => {
+  describe('handleJobFailure - transient error retry backoff', () => {
     it('re-queues with retryCount=2 and backoff on second failure (ECONNRESET)', async () => {
       const error = new Error('ECONNRESET: socket hang up');
       const jobWithRetry = createMockJob({ id: 'job-123', retryCount: 1 });
@@ -576,23 +597,24 @@ describe('EncodingProcessorService', () => {
       );
     });
 
-    it('permanently fails non-transient, non-retriable error on first attempt', async () => {
+    it('retries a generic, non-matching error instead of failing immediately', async () => {
       const error = new Error('Unknown codec XYZ');
       const freshJob = createMockJob({ id: 'job-123', retryCount: 0 });
-      queueService.failJob.mockResolvedValue(freshJob as any);
+      queueService.update.mockResolvedValue(freshJob as any);
 
       await service.handleJobFailure({ ...freshJob, policy: mockPolicy } as any, error);
 
-      expect(queueService.failJob).toHaveBeenCalledWith(
+      expect(queueService.failJob).not.toHaveBeenCalled();
+      expect(queueService.update).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Non-retriable error after 1 attempt(s)')
+        expect.objectContaining({ stage: 'QUEUED', retryCount: 1 })
       );
     });
   });
 
   // ── handleJobCompletion ───────────────────────────────────────────────────
 
-  describe('handleJobCompletion — additional branches', () => {
+  describe('handleJobCompletion - additional branches', () => {
     it('calls updateLibraryStats with savedBytes', async () => {
       const encodingFileService = module.get(EncodingFileService);
       const result = {
@@ -630,9 +652,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── processNextJob — pause request ───────────────────────────────────────
+  // ── processNextJob - pause request ───────────────────────────────────────
 
-  describe('processNextJob — pause request intercepted before encoding', () => {
+  describe('processNextJob - pause request intercepted before encoding', () => {
     beforeEach(() => {
       workerPoolService.getWorker.mockReturnValue({
         workerId: 'node-1',
@@ -677,9 +699,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── startWorkerPool — default maxWorkers ──────────────────────────────────
+  // ── startWorkerPool - default maxWorkers ──────────────────────────────────
 
-  describe('startWorkerPool — default maxWorkers', () => {
+  describe('startWorkerPool - default maxWorkers', () => {
     it('uses default workers when none specified', async () => {
       workerPoolService.startWorkerPool.mockResolvedValue(4 as any);
       await service.startWorkerPool('node-1');
@@ -701,18 +723,18 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── stopWorker — with workerId ────────────────────────────────────────────
+  // ── stopWorker - with workerId ────────────────────────────────────────────
 
-  describe('stopWorker — with specific workerId', () => {
+  describe('stopWorker - with specific workerId', () => {
     it('passes workerId to WorkerPoolService', async () => {
       await service.stopWorker('node-1', 'worker-abc');
       expect(workerPoolService.stopWorker).toHaveBeenCalledWith('node-1', 'worker-abc');
     });
   });
 
-  // ── handleJobFailure — isNonRetriableError patterns ──────────────────────
+  // ── handleJobFailure - isNonRetriableError patterns ──────────────────────
 
-  describe('handleJobFailure — all non-retriable error patterns', () => {
+  describe('handleJobFailure - all non-retriable error patterns', () => {
     const nonRetriableCases = [
       'could not find ref with poc 0',
       'error submitting packet to decoder',
@@ -736,9 +758,9 @@ describe('EncodingProcessorService', () => {
     }
   });
 
-  // ── handleJobFailure — transient error all patterns ──────────────────────
+  // ── handleJobFailure - transient error all patterns ──────────────────────
 
-  describe('handleJobFailure — transient error patterns', () => {
+  describe('handleJobFailure - transient error patterns', () => {
     const transientCases = ['ENOTFOUND host', 'temporarily unavailable', 'network error'];
 
     for (const msg of transientCases) {
@@ -757,9 +779,9 @@ describe('EncodingProcessorService', () => {
     }
   });
 
-  // ── handleJobCompletion — error propagation ───────────────────────────────
+  // ── handleJobCompletion - error propagation ───────────────────────────────
 
-  describe('handleJobCompletion — re-throws completeJob errors', () => {
+  describe('handleJobCompletion - re-throws completeJob errors', () => {
     it('re-throws error from queueService.completeJob', async () => {
       const result = {
         beforeSizeBytes: BigInt(1_000_000_000),
@@ -775,9 +797,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── processNextJob — source file relocation ───────────────────────────────
+  // ── processNextJob - source file relocation ───────────────────────────────
 
-  describe('processNextJob — source file missing, directory missing', () => {
+  describe('processNextJob - source file missing, directory missing', () => {
     beforeEach(() => {
       registerWorker();
     });
@@ -812,9 +834,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── processNextJob — encoding success path ────────────────────────────────
+  // ── processNextJob - encoding success path ────────────────────────────────
 
-  describe('processNextJob — full successful encoding path', () => {
+  describe('processNextJob - full successful encoding path', () => {
     beforeEach(() => {
       registerWorker();
     });
@@ -858,9 +880,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── handleJobFailure — retry exactly at boundary ──────────────────────────
+  // ── handleJobFailure - retry exactly at boundary ──────────────────────────
 
-  describe('handleJobFailure — retry count boundary', () => {
+  describe('handleJobFailure - retry count boundary', () => {
     it('retries on attempt 2 of 3 (retryCount=1)', async () => {
       const error = new Error('ETIMEDOUT');
       const job = { ...mockJob, retryCount: 1 };
@@ -901,9 +923,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── onModuleDestroy — watchdog interval cleanup ───────────────────────────
+  // ── onModuleDestroy - watchdog interval cleanup ───────────────────────────
 
-  describe('onModuleDestroy — watchdog interval cleanup', () => {
+  describe('onModuleDestroy - watchdog interval cleanup', () => {
     it('clears watchdog interval when set before destroy', () => {
       const lifecycleService = module.get(ProcessorLifecycleService);
       const fakeInterval = setInterval(() => {
@@ -917,9 +939,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── processNextJob — file auto-relocation success ─────────────────────────
+  // ── processNextJob - file auto-relocation success ─────────────────────────
 
-  describe('processNextJob — file auto-relocation success', () => {
+  describe('processNextJob - file auto-relocation success', () => {
     let fileRelocatorService: { relocateFile: jest.Mock };
 
     beforeEach(() => {
@@ -1008,14 +1030,14 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── processNextJob — preflight check failure ──────────────────────────────
+  // ── processNextJob - preflight check failure ──────────────────────────────
 
-  describe('processNextJob — preflight check failure', () => {
+  describe('processNextJob - preflight check failure', () => {
     beforeEach(() => {
       registerWorker();
     });
 
-    it('calls handleJobFailure when performResourcePreflightChecks throws', async () => {
+    it('retries (does not immediately fail) when performResourcePreflightChecks throws a disk-space error', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
 
       const policyRepository = module.get(PolicyRepository);
@@ -1033,21 +1055,22 @@ describe('EncodingProcessorService', () => {
       );
 
       queueService.getNextJob.mockResolvedValue(mockJob as any);
-      queueService.failJob.mockResolvedValue(mockJob as any);
+      queueService.update.mockResolvedValue(mockJob as any);
 
       const result = await service.processNextJob('node-1');
 
       expect(result).toBeNull();
-      expect(queueService.failJob).toHaveBeenCalledWith(
+      expect(queueService.failJob).not.toHaveBeenCalled();
+      expect(queueService.update).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Insufficient disk space')
+        expect.objectContaining({ stage: 'QUEUED' })
       );
     });
   });
 
-  // ── processNextJob — outer catch (validateAndHealJobPolicy throws) ─────────
+  // ── processNextJob - outer catch (validateAndHealJobPolicy throws) ─────────
 
-  describe('processNextJob — outer catch path', () => {
+  describe('processNextJob - outer catch path', () => {
     beforeEach(() => {
       registerWorker();
     });
@@ -1084,9 +1107,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── validateAndHealJobPolicy — policy missing, library default policy ──────
+  // ── validateAndHealJobPolicy - policy missing, library default policy ──────
 
-  describe('processNextJob — validateAndHealJobPolicy policy healing priorities', () => {
+  describe('processNextJob - validateAndHealJobPolicy policy healing priorities', () => {
     beforeEach(() => {
       registerWorker();
     });
@@ -1242,9 +1265,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── handleJobCompletion — updateLibraryStats failure ─────────────────────
+  // ── handleJobCompletion - updateLibraryStats failure ─────────────────────
 
-  describe('handleJobCompletion — updateLibraryStats failure', () => {
+  describe('handleJobCompletion - updateLibraryStats failure', () => {
     it('re-throws error from updateLibraryStats after completeJob succeeds', async () => {
       const result = {
         beforeSizeBytes: BigInt(1_000_000_000),
@@ -1266,9 +1289,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── handleJobFailure — inner update error swallowed ───────────────────────
+  // ── handleJobFailure - inner update error swallowed ───────────────────────
 
-  describe('handleJobFailure — inner queueService error is swallowed', () => {
+  describe('handleJobFailure - inner queueService error is swallowed', () => {
     it('does not throw when queueService.update throws in retry path', async () => {
       const error = new Error('ETIMEDOUT');
       const job = { ...mockJob, retryCount: 0 };
@@ -1287,9 +1310,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── handleJobFailure — transient retry exhausted message ─────────────────
+  // ── handleJobFailure - transient retry exhausted message ─────────────────
 
-  describe('handleJobFailure — exhausted transient retry message content', () => {
+  describe('handleJobFailure - exhausted transient retry message content', () => {
     it('includes "retry attempts exhausted" in failure message for transient error at limit', async () => {
       const error = new Error('ECONNRESET');
       const job = { ...mockJob, retryCount: 3 };
@@ -1319,9 +1342,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── processNextJob — validateAndHealJobPolicy branches ───────────────────
+  // ── processNextJob - validateAndHealJobPolicy branches ───────────────────
 
-  describe('processNextJob — validateAndHealJobPolicy', () => {
+  describe('processNextJob - validateAndHealJobPolicy', () => {
     beforeEach(() => {
       registerWorker();
     });
@@ -1391,15 +1414,15 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── onModuleInit — getCurrentNode returns null ────────────────────────────
+  // ── onModuleInit - getCurrentNode returns null ────────────────────────────
   // onModuleInit awaits real setTimeout delays internally (2s + 3s) making direct
   // invocation impractical in unit tests. We verify the underlying collaborators
   // instead: when getCurrentNode returns null, startWorkerPool must NOT be called.
 
-  describe('onModuleInit — getCurrentNode returns null (via collaborator check)', () => {
+  describe('onModuleInit - getCurrentNode returns null (via collaborator check)', () => {
     it('does not start worker pool when getCurrentNode returns null', () => {
       const nodesService = module.get(NodesService);
-      // Verify the mock is configured to return null — if onModuleInit is invoked
+      // Verify the mock is configured to return null - if onModuleInit is invoked
       // (e.g. by the test runner scaffolding) it must not start workers.
       (nodesService.getCurrentNode as jest.Mock).mockResolvedValue(null);
 
@@ -1409,11 +1432,11 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── onModuleInit — temp path logging branch ───────────────────────────────
+  // ── onModuleInit - temp path logging branch ───────────────────────────────
   // Similarly verify the SystemResourceService mock is wired correctly for the
-  // getEncodingTempPath branch — actual invocation avoided due to timer delays.
+  // getEncodingTempPath branch - actual invocation avoided due to timer delays.
 
-  describe('onModuleInit — encoding temp path set (SystemResourceService check)', () => {
+  describe('onModuleInit - encoding temp path set (SystemResourceService check)', () => {
     it('getEncodingTempPath returns a path value without throwing', () => {
       const systemResourceService = module.get(SystemResourceService);
       (systemResourceService.getEncodingTempPath as jest.Mock).mockReturnValue('/tmp/encoding');
@@ -1423,9 +1446,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── onModuleDestroy — stale intervals from previous session ───────────────
+  // ── onModuleDestroy - stale intervals from previous session ───────────────
 
-  describe('onModuleDestroy — clears stale intervals from previous session', () => {
+  describe('onModuleDestroy - clears stale intervals from previous session', () => {
     it('clears all activeIntervals even when watchdogIntervalId is undefined', () => {
       const lifecycleService = module.get(ProcessorLifecycleService);
       const fakeInterval1 = setInterval(() => {
@@ -1445,18 +1468,22 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── handleJobFailure — non-Error object thrown ────────────────────────────
+  // ── handleJobFailure - non-Error object thrown ────────────────────────────
 
-  describe('handleJobFailure — non-Error thrown value', () => {
+  describe('handleJobFailure - non-Error thrown value', () => {
     it('handles string thrown as error without throwing', async () => {
       const stringError = 'Something went wrong';
-      queueService.failJob.mockResolvedValue(mockJob as any);
+      queueService.update.mockResolvedValue(mockJob as any);
 
       await expect(service.handleJobFailure(mockJob as any, stringError)).resolves.not.toThrow();
 
-      expect(queueService.failJob).toHaveBeenCalledWith(
+      // Generic, non-matching errors now retry by default rather than fail immediately.
+      expect(queueService.update).toHaveBeenCalledWith(
         'job-123',
-        expect.stringContaining('Something went wrong')
+        expect.objectContaining({
+          stage: 'QUEUED',
+          error: expect.stringContaining('Something went wrong'),
+        })
       );
     });
 
@@ -1468,9 +1495,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── processNextJob — encoding failure triggers transient retry ────────────
+  // ── processNextJob - encoding failure triggers transient retry ────────────
 
-  describe('processNextJob — encodeFile throws transient error', () => {
+  describe('processNextJob - encodeFile throws transient error', () => {
     beforeEach(() => {
       registerWorker();
     });
@@ -1506,9 +1533,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── processNextJob — worker cleared after job regardless of outcome ───────
+  // ── processNextJob - worker cleared after job regardless of outcome ───────
 
-  describe('processNextJob — worker currentJobId cleared in finally', () => {
+  describe('processNextJob - worker currentJobId cleared in finally', () => {
     beforeEach(() => {
       registerWorker();
     });
@@ -1539,9 +1566,9 @@ describe('EncodingProcessorService', () => {
     });
   });
 
-  // ── handleJobFailure — non-retriable "corrupt decoded frame" ─────────────
+  // ── handleJobFailure - non-retriable "corrupt decoded frame" ─────────────
 
-  describe('handleJobFailure — non-retriable pattern with retryCount > 0', () => {
+  describe('handleJobFailure - non-retriable pattern with retryCount > 0', () => {
     it('still permanently fails even when retryCount > 0 for non-retriable errors', async () => {
       const error = new Error('corrupt decoded frame in stream');
       const jobWithRetries = { ...mockJob, retryCount: 2 };

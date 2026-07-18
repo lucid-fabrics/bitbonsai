@@ -202,7 +202,7 @@ describe('FileHealthService', () => {
       expect(result.issues.some((i) => i.includes('FFProbe failed'))).toBe(true);
     });
 
-    it('should handle ffprobe spawn error', async () => {
+    it('should fail open (HEALTHY) on ffprobe spawn error instead of marking CORRUPTED', async () => {
       (existsSync as jest.Mock).mockReturnValue(true);
 
       const proc = new EventEmitter() as any;
@@ -220,8 +220,11 @@ describe('FileHealthService', () => {
 
       const result = await service.analyzeFile('/test/file.mkv');
 
-      expect(result.status).toBe(FileHealthStatus.CORRUPTED);
-      expect(result.score).toBe(0);
+      // Spawn failure is a tooling problem, not file corruption: fail open
+      expect(result.status).toBe(FileHealthStatus.HEALTHY);
+      expect(result.score).toBe(100);
+      expect(result.canEncode).toBe(true);
+      expect(result.warnings.some((w) => w.includes('could not run'))).toBe(true);
     });
 
     it('should handle invalid JSON from ffprobe', async () => {
@@ -246,7 +249,7 @@ describe('FileHealthService', () => {
       };
 
       // First spawn call: ffprobe with warnings to produce WARNING status
-      // Second spawn call: ffmpeg test decode — succeeds
+      // Second spawn call: ffmpeg test decode - succeeds
       let callCount = 0;
       (spawn as jest.Mock).mockImplementation(() => {
         callCount++;
@@ -346,7 +349,7 @@ describe('FileHealthService', () => {
       expect(result.issues.some((i) => i.includes('Test decode failed'))).toBe(true);
     });
 
-    it('should handle test decode spawn error gracefully', async () => {
+    it('should fail open when the test decode cannot be spawned', async () => {
       (existsSync as jest.Mock).mockReturnValue(true);
 
       const probeOutput = {
@@ -387,8 +390,10 @@ describe('FileHealthService', () => {
 
       const result = await service.analyzeFile('/test/decode-spawn-error.mkv');
 
-      expect(result.status).toBe(FileHealthStatus.CORRUPTED);
-      expect(result.canEncode).toBe(false);
+      // ffmpeg spawn failure is a tooling hiccup, not deep corruption:
+      // the WARNING status from the probe is kept and the file stays encodable
+      expect(result.status).toBe(FileHealthStatus.WARNING);
+      expect(result.canEncode).toBe(true);
     });
 
     it('should return AT_RISK for score between 40 and 69', async () => {
@@ -518,6 +523,86 @@ describe('FileHealthService', () => {
         videoCodec: 'h264',
         audioCodec: 'flac',
       });
+    });
+
+    it('should not penalize benign stderr merely containing "invalid" or "corrupt"', () => {
+      const result = (service as any).evaluateHealth({
+        exitCode: 0,
+        stdout: '{}',
+        stderr: 'Invalid UTF-8 in metadata tag\nanti-corruption checksum present',
+        duration: 3600,
+        bitrate: 5000000,
+        hasVideo: true,
+        hasAudio: true,
+        videoCodec: 'hevc',
+        audioCodec: 'aac',
+      });
+
+      expect(result.issues).not.toContain('File contains invalid or corrupted data');
+      expect(result.status).toBe(FileHealthStatus.HEALTHY);
+    });
+
+    it('should penalize specific corruption phrases in stderr', () => {
+      for (const phrase of [
+        'Invalid data found when processing input',
+        'corrupt decoded frame in stream 0',
+        'Error while decoding stream #0:0',
+        'Error submitting packet to decoder',
+      ]) {
+        const result = (service as any).evaluateHealth({
+          exitCode: 0,
+          stdout: '{}',
+          stderr: phrase,
+          duration: 3600,
+          bitrate: 5000000,
+          hasVideo: true,
+          hasAudio: true,
+        });
+
+        expect(result.issues).toContain('File contains invalid or corrupted data');
+      }
+    });
+  });
+
+  describe('quickHealthCheck / thoroughHealthCheck spawn errors', () => {
+    const makeErroringProc = () => {
+      const proc = new EventEmitter() as any;
+      proc.stdout = new EventEmitter();
+      proc.stderr = new EventEmitter();
+      proc.stdout.destroy = jest.fn();
+      proc.stderr.destroy = jest.fn();
+      proc.kill = jest.fn();
+
+      (spawn as jest.Mock).mockReturnValue(proc);
+
+      setTimeout(() => {
+        proc.emit('error', new Error('spawn ffprobe ENOENT'));
+      }, 10);
+
+      return proc;
+    };
+
+    it('quickHealthCheck should fail open when ffprobe cannot be spawned', async () => {
+      makeErroringProc();
+
+      const result = await service.quickHealthCheck('/test/file.mkv');
+
+      expect(result.passed).toBe(true);
+      expect((service as any).logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('failing open')
+      );
+    });
+
+    it('thoroughHealthCheck should fail open when ffmpeg cannot be spawned', async () => {
+      makeErroringProc();
+
+      const result = await service.thoroughHealthCheck('/test/file.mkv', 120);
+
+      expect(result.passed).toBe(true);
+      expect(result.errors).toEqual([]);
+      expect((service as any).logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('failing open')
+      );
     });
   });
 });

@@ -112,7 +112,7 @@ export class QueueProcessingService {
     while (attempt < maxAttempts) {
       attempt++;
 
-      // PrismaService retained for atomic $transaction — not replaceable with repository
+      // PrismaService retained for atomic $transaction - not replaceable with repository
       // Uses pg_advisory_xact_lock + optimistic claim (updateMany) to prevent double-claim
       const result = await this.prisma.$transaction(
         async (tx) => {
@@ -193,6 +193,9 @@ export class QueueProcessingService {
               stage: JobStage.QUEUED,
               pauseRequestedAt: null,
               cancelRequestedAt: null,
+              // Honor retry backoff: never claim a job whose nextRetryAt is
+              // still in the future (mirrors the candidate query above)
+              OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: new Date() } }],
             },
             data: {
               stage: JobStage.ENCODING,

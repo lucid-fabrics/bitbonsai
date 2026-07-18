@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { FileHealthStatus, JobStage } from '@prisma/client';
+import { FileHealthStatus, JobStage, type Prisma } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
 import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { ContainerCompatibilityService } from '../encoding/container-compatibility.service';
@@ -52,7 +52,7 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
   private readonly MAX_POOL_UTILIZATION = 0.8;
 
   constructor(
-    // PrismaService retained for $executeRaw (atomic job claim via raw SQL — not expressible via repository)
+    // PrismaService retained for $executeRaw (atomic job claim via raw SQL - not expressible via repository)
     private readonly prisma: PrismaService,
     private readonly jobRepository: JobRepository,
     private readonly fileHealthService: FileHealthService,
@@ -613,16 +613,16 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
       this.logger.debug(`Health checking: ${job.fileLabel}`);
 
       // Tiered health check: quick header scan → thorough frame decode on failure
-      // Step 1: Quick check — fast ffprobe header scan (5s timeout)
+      // Step 1: Quick check - fast ffprobe header scan (5s timeout)
       const quickResult = await this.fileHealthService.quickHealthCheck(job.filePath);
 
       if (!quickResult.passed) {
         // If durationSecs is undefined the file is completely unreadable (bad header / zero-byte).
         // Running thoroughHealthCheck with a 60s fallback would waste 90s on a file that cannot
-        // be decoded at all — skip straight to CORRUPTED.
+        // be decoded at all - skip straight to CORRUPTED.
         if (!quickResult.durationSecs) {
           this.logger.warn(
-            `Quick check failed for ${job.fileLabel} (${quickResult.reason}) and file is unreadable — skipping thorough check, marking CORRUPTED`
+            `Quick check failed for ${job.fileLabel} (${quickResult.reason}) and file is unreadable - skipping thorough check, marking CORRUPTED`
           );
           await this.prisma.job.update({
             where: { id: jobId },
@@ -642,7 +642,7 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
           `Quick check failed for ${job.fileLabel} (${quickResult.reason}), running thorough check...`
         );
 
-        // Step 2: Thorough check — ffmpeg decode of first 60s (90s timeout)
+        // Step 2: Thorough check - ffmpeg decode of first 60s (90s timeout)
         const thoroughResult = await this.fileHealthService.thoroughHealthCheck(
           job.filePath,
           quickResult.durationSecs
@@ -651,7 +651,7 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
         if (thoroughResult.passed) {
           // Quick failed but thorough passed → transient read issue, treat as healthy
           this.logger.log(
-            `Thorough check passed — transient issue for ${job.fileLabel}, marking HEALTHY`
+            `Thorough check passed - transient issue for ${job.fileLabel}, marking HEALTHY`
           );
           await this.prisma.job.update({
             where: { id: jobId },
@@ -686,13 +686,30 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      // Quick check passed — run full analysis for codec/stream metadata and compatibility
+      // Quick check passed - run full analysis for codec/stream metadata and compatibility
       const healthResult = await this.fileHealthService.analyzeFile(job.filePath);
+
+      // Capture the per-stream inventory once; it is persisted on the job so
+      // the ffmpeg flag builder can make container-safe subtitle/audio and
+      // bit-depth decisions at encode time.
+      let streamInfo: ReturnType<typeof this.containerCompatibilityService.toJobStreamInfo> | null =
+        null;
+      let fullStreams: Awaited<
+        ReturnType<typeof this.containerCompatibilityService.getStreamInfo>
+      > | null = null;
+      try {
+        fullStreams = await this.containerCompatibilityService.getStreamInfo(job.filePath);
+        streamInfo = this.containerCompatibilityService.toJobStreamInfo(fullStreams);
+      } catch (probeError: unknown) {
+        // Fail open: the builder falls back to conservative defaults without it
+        this.logger.warn(`Stream inventory probe failed for ${job.fileLabel}: ${probeError}`);
+      }
 
       // Check for container compatibility issues (AC3/DTS with MP4, etc.)
       const compatibilityIssues = await this.containerCompatibilityService.checkCompatibility(
         job.filePath,
-        job.targetContainer || 'mp4' // Use job's target container, fallback to mp4
+        job.targetContainer || 'mp4', // Use job's target container, fallback to mp4
+        fullStreams ?? undefined
       );
 
       // Check for codec match (file already in target codec)
@@ -784,6 +801,7 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
         healthMessage,
         healthCheckedAt: new Date(),
         error: errorMessage,
+        ...(streamInfo ? { streamInfo: streamInfo as unknown as Prisma.InputJsonValue } : {}),
         ...decisionData,
       });
     } catch (error: unknown) {

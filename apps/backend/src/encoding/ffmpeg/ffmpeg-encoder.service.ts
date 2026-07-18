@@ -1,8 +1,6 @@
 import { existsSync, promises as fs } from 'node:fs';
 import { Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Job, Policy } from '@prisma/client';
-import { EncodingProgressUpdateEvent } from '../../common/events';
 import { FfmpegFlagBuilderService } from '../ffmpeg-flag-builder.service';
 import { FfprobeService } from '../ffprobe.service';
 import {
@@ -20,7 +18,7 @@ import { FfmpegProgressTracker } from './ffmpeg-progress-tracker.service';
 /**
  * FfmpegEncoderService
  *
- * Owns video encoding logic: encodeFile, encodeSegment, encode,
+ * Owns video encoding logic: encodeFile, encodeSegment,
  * plus encoding-related helpers (flag building, ffprobe delegation,
  * progress delegation, file validation, hw-accel detection).
  */
@@ -37,8 +35,7 @@ export class FfmpegEncoderService {
     private readonly tempFileGuard: TempFileGuardService,
     private readonly progressTracker: FfmpegProgressTracker,
     private readonly healthMonitor: FfmpegHealthMonitor,
-    private readonly hardwareAcceleration: HardwareAccelerationService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly hardwareAcceleration: HardwareAccelerationService
   ) {}
 
   // ─── Codec / command helpers ───────────────────────────────────────────────
@@ -47,16 +44,9 @@ export class FfmpegEncoderService {
     job: Job,
     policy: Policy,
     hwaccel: HardwareAccelConfig,
-    outputPath: string,
-    resumeFromTimestamp?: string
+    outputPath: string
   ): string[] {
-    return this.flagBuilder.buildFfmpegCommand(
-      job,
-      policy,
-      hwaccel,
-      outputPath,
-      resumeFromTimestamp
-    );
+    return this.flagBuilder.buildFfmpegCommand(job, policy, hwaccel, outputPath);
   }
 
   // ─── FFprobe helpers ───────────────────────────────────────────────────────
@@ -157,59 +147,16 @@ export class FfmpegEncoderService {
       `[${job.id}] Using duration: ${estimatedDurationSeconds.toFixed(2)}s for progress calculation`
     );
 
-    const jobWithResume = job as Job & {
-      resumeTimestamp?: string | null;
-      tempFilePath?: string | null;
-    };
-
-    let resumeFromSeconds = 0;
-    let resumeFromPercent = 0;
-
-    if (jobWithResume.resumeTimestamp && job.progress > 0) {
-      resumeFromSeconds = this.progressTracker.parseTimestampToSeconds(
-        jobWithResume.resumeTimestamp
-      );
-      resumeFromPercent = (resumeFromSeconds / estimatedDurationSeconds) * 100;
-      this.logger.log(
-        `🔄 TRUE RESUME: Job ${job.id} will resume from ${jobWithResume.resumeTimestamp} (${resumeFromPercent.toFixed(1)}%) - auto-healed from ${job.progress.toFixed(1)}%`
-      );
-    } else if (jobWithResume.tempFilePath && existsSync(jobWithResume.tempFilePath)) {
-      const isValid = await this.healthMonitor.verifyPartialEncode(jobWithResume.tempFilePath);
-      if (isValid) {
-        this.logger.log(
-          `🔄 TRUE RESUME: Found existing temp file for job ${job.id}, but no resumeTimestamp - restarting from 0%`
-        );
-      } else {
-        this.logger.warn(
-          `Temp file corrupted for job ${job.id}, restarting from 0%: ${jobWithResume.tempFilePath}`
-        );
-        try {
-          await fs.unlink(jobWithResume.tempFilePath);
-        } catch {
-          // Ignore
-        }
-        this.eventEmitter.emit(
-          EncodingProgressUpdateEvent.event,
-          new EncodingProgressUpdateEvent(job.id, { progress: 0, etaSeconds: 0, fps: 0 })
-        );
-      }
-    }
+    const jobWithTemp = job as Job & { tempFilePath?: string | null };
 
     const hwaccel = await this._detectHardwareAcceleration();
 
-    const tempOutput = customOutputPath || jobWithResume.tempFilePath || `${job.filePath}.tmp.mp4`;
+    const tempOutput = customOutputPath || jobWithTemp.tempFilePath || `${job.filePath}.tmp.mp4`;
     this.logger.debug(`[${job.id}] Output path: ${tempOutput}`);
 
     await this.tempFileGuard.registerTempFile(job.id, tempOutput, job.nodeId);
 
-    const resumeTimestampValue = jobWithResume.resumeTimestamp ?? undefined;
-    const args = this.buildFfmpegCommand(
-      job,
-      policy,
-      hwaccel,
-      tempOutput,
-      resumeFromSeconds > 0 ? resumeTimestampValue : undefined
-    );
+    const args = this.buildFfmpegCommand(job, policy, hwaccel, tempOutput);
 
     const niceValue = this.processManager.getNiceValue(job.priority);
     const ffmpegProcess = this.processManager.spawnFfmpegProcess(args, niceValue);
@@ -296,7 +243,7 @@ export class FfmpegEncoderService {
                     activeEncoding,
                     estimatedDurationSeconds,
                     tempOutput,
-                    resumeFromPercent,
+                    0,
                     this.processManager.lastPreviewGeneration,
                     this.processManager.PREVIEW_THROTTLE_MS,
                     (jobId) => this.processManager.killProcess(jobId)
@@ -382,7 +329,7 @@ export class FfmpegEncoderService {
             stderr.includes('No space left on device') || stderr.includes('ENOSPC');
           if (isDiskFull && tempOutput) {
             this.logger.warn(
-              `[${job.id}] Disk-full detected — cleaning up partial temp file: ${tempOutput}`
+              `[${job.id}] Disk-full detected - cleaning up partial temp file: ${tempOutput}`
             );
             try {
               await fs.unlink(tempOutput);
@@ -464,7 +411,11 @@ export class FfmpegEncoderService {
     );
 
     const hwaccel = await this._detectHardwareAcceleration();
-    const args = this.buildFfmpegCommand(job, policy, hwaccel, outputPath, undefined);
+    // Segments are always muxed as MKV regardless of the job's target
+    // container (SegmentedEncodeService plans .mkv paths); the final
+    // container is applied at concat time.
+    const segmentJob = { ...job, targetContainer: 'mkv' } as Job;
+    const args = this.buildFfmpegCommand(segmentJob, policy, hwaccel, outputPath);
 
     args.unshift('-ss', startSeconds.toString());
 
@@ -606,167 +557,6 @@ export class FfmpegEncoderService {
         reject(new Error(`Segment FFmpeg process error: ${error.message}`));
       });
     });
-  }
-
-  /**
-   * Encode a file with custom options (simplified interface used by segmented-encode orchestrator).
-   */
-  async encode(
-    jobId: string,
-    options: {
-      inputPath: string;
-      outputPath: string;
-      targetCodec: string;
-      targetQuality: number;
-      hwAccel?: string;
-      advancedSettings?: Record<string, unknown>;
-      startedFromSeconds?: number;
-    }
-  ): Promise<void> {
-    let progress = 0;
-    let resumeTimestamp: string | undefined;
-    let tempFilePath: string | undefined;
-
-    if (options.startedFromSeconds && options.startedFromSeconds > 0) {
-      const durationSeconds = await this.ffprobe.getVideoDuration(options.inputPath);
-      progress = (options.startedFromSeconds / durationSeconds) * 100;
-      resumeTimestamp = this.progressTracker.formatSecondsToTimestamp(options.startedFromSeconds);
-      tempFilePath = options.outputPath;
-
-      this.logger.log(
-        `TRUE RESUME: encode() called with startedFromSeconds=${options.startedFromSeconds}, progress=${progress.toFixed(1)}%, resumeTimestamp=${resumeTimestamp}`
-      );
-    }
-
-    const job = {
-      id: jobId,
-      type: 'ENCODE',
-      filePath: options.inputPath,
-      fileLabel: '',
-      sourceCodec: '',
-      sourceContainer: null,
-      targetCodec: options.targetCodec,
-      targetContainer: null,
-      stage: 'ENCODING' as const,
-      progress,
-      etaSeconds: null,
-      fps: null,
-      beforeSizeBytes: BigInt(0),
-      afterSizeBytes: null,
-      savedBytes: null,
-      savedPercent: null,
-      startedAt: new Date(),
-      completedAt: null,
-      failedAt: null,
-      error: null,
-      isBlacklisted: false,
-      retryCount: 0,
-      nextRetryAt: null,
-      autoHealedAt: null,
-      autoHealedProgress: null,
-      healthStatus: 'UNKNOWN',
-      healthScore: 0,
-      healthMessage: null,
-      healthCheckedAt: null,
-      healthCheckStartedAt: null,
-      healthCheckRetries: 0,
-      decisionRequired: false,
-      decisionIssues: null,
-      decisionMadeAt: null,
-      decisionData: null,
-      priority: 0,
-      prioritySetAt: null,
-      pauseRequestedAt: null,
-      pauseProcessedAt: null,
-      cancelRequestedAt: null,
-      cancelProcessedAt: null,
-      tempFilePath: resumeTimestamp && tempFilePath ? tempFilePath : null,
-      resumeTimestamp: resumeTimestamp || null,
-      lastProgressUpdate: null,
-      lastHeartbeat: null,
-      heartbeatNodeId: null,
-      lastStageChangeAt: null,
-      previewImagePaths: null,
-      keepOriginalRequested: false,
-      originalBackupPath: null,
-      originalSizeBytes: null,
-      replacementAction: null,
-      warning: null,
-      resourceThrottled: false,
-      resourceThrottleReason: null,
-      ffmpegThreads: null,
-      startedFromSeconds: null,
-      healingPointSeconds: null,
-      nodeId: '',
-      libraryId: '',
-      policyId: '',
-      originalNodeId: null,
-      manualAssignment: false,
-      transferRequired: false,
-      originalFilePath: null,
-      transferProgress: 0,
-      transferSpeedMBps: null,
-      transferStartedAt: null,
-      transferCompletedAt: null,
-      transferLastProgressAt: null,
-      transferError: null,
-      remoteTempPath: null,
-      transferRetryCount: 0,
-      assignedAt: null,
-      stickyUntil: null,
-      migrationCount: 0,
-      estimatedDuration: null,
-      estimatedStartAt: null,
-      estimatedCompleteAt: null,
-      lastScoreBreakdown: null,
-      assignmentReason: null,
-      autoHealClaimedAt: null,
-      autoHealClaimedBy: null,
-      corruptedRequeueCount: 0,
-      stuckRecoveryCount: 0,
-      contentFingerprint: null,
-      qualityMetrics: null,
-      qualityMetricsAt: null,
-      fencingToken: null,
-      gpuAttempts: 0,
-      codecOverride: null,
-      ownershipLeaseExpiry: null,
-      ownershipEpoch: 0,
-      pendingCompletionData: null,
-      pendingCompletionAt: null,
-      totalAttempts: 0,
-      circuitBroken: false,
-      circuitBrokenAt: null,
-      circuitBrokenReason: null,
-      dlqEnteredAt: null,
-      jobFingerprint: null,
-      segmentedEncode: false,
-      segmentCount: null,
-      currentSegmentIndex: null,
-      segmentDurationSecs: 300,
-      segmentsDir: null,
-      concatListPath: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as unknown as Job;
-
-    const policy = {
-      id: '',
-      name: '',
-      preset: 'CUSTOM' as const,
-      targetCodec: options.targetCodec,
-      targetQuality: options.targetQuality,
-      deviceProfiles: {},
-      advancedSettings: options.advancedSettings || {},
-      atomicReplace: false,
-      verifyOutput: false,
-      skipSeeding: false,
-      libraryId: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as Policy;
-
-    await this.encodeFile(job, policy, options.outputPath);
   }
 
   private async _detectHardwareAcceleration(): Promise<HardwareAccelConfig> {

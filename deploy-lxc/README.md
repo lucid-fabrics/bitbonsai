@@ -27,7 +27,7 @@ chmod +x *.sh scripts/*.sh
 
 - **OS:** Ubuntu 24.04 LTS (amd64)
 - **Runtime:** Node.js 20.x
-- **Encoder:** FFmpeg 7.x
+- **Encoder:** FFmpeg 8.x
 - **Web Server:** Nginx
 - **Database:** SQLite (Prisma)
 

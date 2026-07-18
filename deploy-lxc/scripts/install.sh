@@ -42,10 +42,10 @@ echo "[5/8] Installing Node.js 20.x..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt-get install -y nodejs
 
-# Install FFmpeg 7.x
-echo "[6/8] Installing FFmpeg 7.x..."
+# Install FFmpeg 8.x
+echo "[6/8] Installing FFmpeg 8.x..."
 apt-get install -y software-properties-common
-add-apt-repository -y ppa:ubuntuhandbook1/ffmpeg7
+add-apt-repository -y ppa:ubuntuhandbook1/ffmpeg8
 apt-get update
 apt-get install -y ffmpeg
 

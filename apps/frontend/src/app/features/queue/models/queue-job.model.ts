@@ -3,6 +3,12 @@ import { JobStatus } from './job-status.enum';
 
 export type JobType = 'ENCODE' | 'REMUX';
 
+/**
+ * Automatic retry ceiling. The 5-minute scheduler stops at 3, but the hourly
+ * auto-heal keeps retrying up to maxAutoHealRetries (backend default: 15).
+ */
+export const MAX_AUTO_RETRIES = 15;
+
 export interface QueueJob {
   id: string;
   fileName: string;
@@ -32,7 +38,7 @@ export interface QueueJob {
   healthStatus?: FileHealthStatus;
   healthScore?: number; // 0-100
   healthMessage?: string;
-  retryCount?: number; // Number of retry attempts (max 3)
+  retryCount?: number; // Number of retry attempts (max MAX_AUTO_RETRIES)
   nextRetryAt?: string; // When to retry next (for exponential backoff)
   priority?: number; // 0=normal, 1=high, 2=top (max 3 top priority at once)
   prioritySetAt?: string; // When priority was last changed
