@@ -93,7 +93,7 @@
 
   &:focus {
     outline: none;
-    border-color: var(--primary-color, #007bff);
+    border-color: var(--primary-color, #38bdf8);
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
   }
 
@@ -120,7 +120,7 @@
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: var(--primary-color, #007bff);
+      background: var(--primary-color, #38bdf8);
       cursor: pointer;
       transition: all 0.2s;
 
@@ -133,7 +133,7 @@
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: var(--primary-color, #007bff);
+      background: var(--primary-color, #38bdf8);
       cursor: pointer;
       border: none;
       transition: all 0.2s;
@@ -165,7 +165,7 @@
 }
 
 .form-help__icon {
-  color: var(--info-color, #17a2b8);
+  color: var(--info-color, #38bdf8);
 }
 
 .error-message {
@@ -174,11 +174,11 @@
   gap: 0.5rem;
   margin-top: 0.5rem;
   font-size: 0.85rem;
-  color: var(--danger-color, #dc3545);
+  color: var(--danger-color, #ff6b6b);
 }
 
 .error-message__icon {
-  color: var(--danger-color, #dc3545);
+  color: var(--danger-color, #ff6b6b);
 }
 
 .warning-message {
@@ -191,12 +191,12 @@
   border: 1px solid rgba(255, 193, 7, 0.3);
   border-radius: 8px;
   font-size: 0.85rem;
-  color: var(--warning-color, #ffc107);
+  color: var(--warning-color, #fbbf24);
 }
 
 .warning-message__icon {
   font-size: 1rem;
-  color: var(--warning-color, #ffc107);
+  color: var(--warning-color, #fbbf24);
 }
 
 .modal-footer {
@@ -238,7 +238,7 @@
   }
 
   &.btn-primary {
-    background: var(--primary-color, #007bff);
+    background: var(--primary-color, #38bdf8);
     color: #fff;
 
     &:hover:not(:disabled) {
@@ -248,7 +248,7 @@
 
   &.btn-test-capabilities {
     background: rgba(138, 180, 248, 0.15);
-    color: #8ab4f8;
+    color: #38bdf8;
     border: 1px solid rgba(138, 180, 248, 0.3);
 
     &:hover:not(:disabled) {
@@ -351,7 +351,7 @@
   margin-top: 0.5rem;
   padding: 0.75rem;
   background: #fff3cd;
-  border: 1px solid #ffc107;
+  border: 1px solid #fbbf24;
   border-radius: 8px;
   color: #856404;
   font-size: 0.9rem;
@@ -359,7 +359,7 @@
 
 .worker-warning__icon {
   margin-right: 0.5rem;
-  color: #ffc107;
+  color: #fbbf24;
 }
 
 // Schedule Toggle Styles

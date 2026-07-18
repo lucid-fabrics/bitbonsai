@@ -606,7 +606,7 @@ import { DebugFacadeService } from '../services/debug-facade.service';
         gap: 0.5rem;
         padding: 0.5rem 0.75rem;
         background: var(--info-bg, #1a3d4d);
-        color: var(--info, #60a5fa);
+        color: var(--info, #38bdf8);
         border-radius: 4px;
         font-size: 0.875rem;
         margin-bottom: 1rem;

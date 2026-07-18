@@ -340,9 +340,13 @@
   <!-- Job Table -->
   <div class="table-container">
     @if (isLoading$ | async) {
-    <div class="loading-state">
-      <i class="fas fa-spinner fa-spin"></i>
-      <p>{{ 'queue.loadingQueue' | transloco }}</p>
+    <div class="skeleton-layout">
+      <div class="skeleton skeleton-title"></div>
+      <div class="skeleton skeleton-line"></div>
+      <div class="skeleton skeleton-line" style="width: 85%"></div>
+      <div class="skeleton skeleton-line" style="width: 75%"></div>
+      <div class="skeleton skeleton-line" style="width: 80%"></div>
+      <div class="skeleton skeleton-line" style="width: 65%"></div>
     </div>
     } @if ((isLoading$ | async) === false && (queueData$ | async); as queueData)
     { @if (queueData.jobs.length > 0) {

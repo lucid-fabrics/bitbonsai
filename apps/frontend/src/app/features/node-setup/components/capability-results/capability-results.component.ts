@@ -386,7 +386,6 @@ import { NetworkLocation } from '../../../../core/models/capability-test.model';
       .reasoning-section {
         padding: 1.5rem;
         background-color: #2a2a2a;
-        border-left: 4px solid #f9be03;
         border-radius: 8px;
         margin-bottom: 2rem;
       }

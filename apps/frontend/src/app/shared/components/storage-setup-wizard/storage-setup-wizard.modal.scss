@@ -206,13 +206,12 @@
     display: flex;
     padding: 1.5rem;
     background: rgba(23, 162, 184, 0.1);
-    border-left: 4px solid #17a2b8;
     border-radius: 8px;
     margin-bottom: 1.5rem;
 
     .recommendation-icon {
       font-size: 1.75rem;
-      color: #17a2b8;
+      color: #38bdf8;
       margin-right: 1.25rem;
       flex-shrink: 0;
     }
@@ -236,13 +235,12 @@
     display: flex;
     padding: 1.5rem;
     background: rgba(255, 193, 7, 0.1);
-    border-left: 4px solid #ffc107;
     border-radius: 8px;
     margin-bottom: 1.5rem;
 
     .warning-icon {
       font-size: 1.75rem;
-      color: #ffc107;
+      color: #fbbf24;
       margin-right: 1.25rem;
       flex-shrink: 0;
     }
@@ -266,13 +264,12 @@
     display: flex;
     padding: 1.5rem;
     background: rgba(23, 162, 184, 0.1);
-    border-left: 4px solid #17a2b8;
     border-radius: 8px;
     margin-bottom: 1.5rem;
 
     .action-icon {
       font-size: 1.75rem;
-      color: #17a2b8;
+      color: #38bdf8;
       margin-right: 1.25rem;
       flex-shrink: 0;
     }
@@ -388,13 +385,12 @@
       align-items: center;
       padding: 1rem;
       background: rgba(255, 193, 7, 0.15);
-      border-left: 3px solid #ffc107;
       border-radius: 4px;
       margin-top: 1rem;
 
       &.alert-warning {
         fa-icon {
-          color: #ffc107;
+          color: #fbbf24;
           margin-right: 0.75rem;
           font-size: 1.25rem;
         }
@@ -418,11 +414,11 @@
 
     &.success {
       background: rgba(40, 167, 69, 0.1);
-      border: 2px solid #28a745;
+      border: 2px solid #4ade80;
       color: var(--ion-text-color);
 
       fa-icon {
-        color: #28a745;
+        color: #4ade80;
         font-size: 1.5rem;
       }
     }
@@ -482,13 +478,13 @@
     display: flex;
     padding: 1.5rem;
     background: rgba(40, 167, 69, 0.1);
-    border: 2px solid #28a745;
+    border: 2px solid #4ade80;
     border-radius: 8px;
     margin-top: 1.5rem;
 
     .success-icon {
       font-size: 2rem;
-      color: #28a745;
+      color: #4ade80;
       margin-right: 1.25rem;
       flex-shrink: 0;
     }

@@ -31,7 +31,7 @@ export class QueueDisplayService {
   private readonly stuckJob = inject(QueueStuckJobService);
 
   // ============================================================================
-  // STATUS HELPERS — delegated to QueueStatusDisplayService
+  // STATUS HELPERS - delegated to QueueStatusDisplayService
   // ============================================================================
 
   getStatusClass(status: JobStatus): string {
@@ -51,7 +51,7 @@ export class QueueDisplayService {
   }
 
   // ============================================================================
-  // HEALTH STATUS HELPERS — delegated to QueueStatusDisplayService
+  // HEALTH STATUS HELPERS - delegated to QueueStatusDisplayService
   // ============================================================================
 
   getHealthStatusIcon(status: FileHealthStatus): string {
@@ -63,7 +63,7 @@ export class QueueDisplayService {
   }
 
   // ============================================================================
-  // FORMAT HELPERS — delegated to QueueFormattingService
+  // FORMAT HELPERS - delegated to QueueFormattingService
   // ============================================================================
 
   formatBytes(bytes: number): string {
@@ -107,7 +107,7 @@ export class QueueDisplayService {
   }
 
   // ============================================================================
-  // CODEC HELPERS — delegated to QueueStatusDisplayService
+  // CODEC HELPERS - delegated to QueueStatusDisplayService
   // ============================================================================
 
   getCodecBadgeClass(codec: string | undefined): string {
@@ -119,7 +119,7 @@ export class QueueDisplayService {
   }
 
   // ============================================================================
-  // COMPRESSION / SIZE ESTIMATES — delegated to QueueCompressionService
+  // COMPRESSION / SIZE ESTIMATES - delegated to QueueCompressionService
   // ============================================================================
 
   getEstimatedCompression(job: { sourceCodec?: string; targetCodec?: string }): number {
@@ -151,7 +151,7 @@ export class QueueDisplayService {
   }
 
   // ============================================================================
-  // STUCK / RECOVERY JOB HELPERS — delegated to QueueStuckJobService
+  // STUCK / RECOVERY JOB HELPERS - delegated to QueueStuckJobService
   // ============================================================================
 
   isJobStuck(job: QueueJob): boolean {
@@ -183,7 +183,7 @@ export class QueueDisplayService {
   }
 
   // ============================================================================
-  // ERROR CATEGORIZATION — delegated to QueueStuckJobService
+  // ERROR CATEGORIZATION - delegated to QueueStuckJobService
   // ============================================================================
 
   getUniqueFailureReasons(

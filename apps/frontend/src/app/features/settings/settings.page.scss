@@ -100,7 +100,6 @@
   &.active {
     background: $bg-tertiary;
     color: $accent-primary;
-    border-left: 3px solid $accent-primary;
     padding-left: 13px;
 
     i {
@@ -1188,7 +1187,7 @@ input:focus + .slider {
 
   &.version-icon {
     background: rgba(138, 180, 248, 0.1);
-    color: #8ab4f8;
+    color: #38bdf8;
   }
 
   &.database-icon {
@@ -1203,7 +1202,7 @@ input:focus + .slider {
 
   &.path-icon {
     background: rgba(138, 180, 248, 0.1);
-    color: #8ab4f8;
+    color: #38bdf8;
   }
 }
 
@@ -1287,7 +1286,7 @@ input:focus + .slider {
   border-radius: 8px;
 
   &.storage-warning {
-    background: linear-gradient(90deg, #ffa726, #ff9800);
+    background: linear-gradient(90deg, #fcd34d, #fbbf24);
   }
 
   &.storage-critical {
@@ -1467,7 +1466,7 @@ input:focus + .slider {
 
   &.cache-icon {
     background: rgba(138, 180, 248, 0.1);
-    color: #8ab4f8;
+    color: #38bdf8;
   }
 
   &.heal-icon {
@@ -1502,7 +1501,7 @@ input:focus + .slider {
   line-height: 1.4;
 
   i {
-    color: #8ab4f8;
+    color: #38bdf8;
     font-size: 14px;
     flex-shrink: 0;
     margin-top: 1px;

@@ -90,7 +90,7 @@
 }
 
 .error-message__icon {
-  color: #ef4444;
+  color: #ff6b6b;
   font-size: 1.125rem;
   flex-shrink: 0;
 }
@@ -403,15 +403,12 @@
   }
 
   &--mounted {
-    border-left: 4px solid #10b981;
   }
 
   &--error {
-    border-left: 4px solid #ef4444;
   }
 
   &--testing {
-    border-left: 4px solid #f59e0b;
   }
 
   &--available {
@@ -500,15 +497,15 @@
   background: $bg-primary;
 
   &--mounted {
-    color: #10b981;
+    color: #4ade80;
   }
 
   &--error {
-    color: #ef4444;
+    color: #ff6b6b;
   }
 
   &--testing {
-    color: #f59e0b;
+    color: #fbbf24;
   }
 }
 
@@ -524,7 +521,7 @@
 
   &--error {
     .share-card__detail-value {
-      color: #ef4444;
+      color: #ff6b6b;
     }
   }
 }
@@ -564,7 +561,7 @@
   }
 
   &--success {
-    background: #10b981;
+    background: #4ade80;
     color: white;
 
     &:hover:not(:disabled) {
@@ -573,7 +570,7 @@
   }
 
   &--warning {
-    background: #f59e0b;
+    background: #fbbf24;
     color: white;
 
     &:hover:not(:disabled) {
@@ -582,7 +579,7 @@
   }
 
   &--danger {
-    background: #ef4444;
+    background: #ff6b6b;
     color: white;
 
     &:hover:not(:disabled) {

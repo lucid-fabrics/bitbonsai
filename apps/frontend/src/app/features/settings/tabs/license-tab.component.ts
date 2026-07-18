@@ -84,11 +84,11 @@ import { CloudAccountService } from '../services/cloud-account.service';
           <div class="usage-stats">
             <div class="stat-item">
               <span class="stat-label">Max Nodes</span>
-              <span class="stat-value">{{ status()?.maxNodes ?? '—' }}</span>
+              <span class="stat-value">{{ status()?.maxNodes ?? '·' }}</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">Max Concurrent Jobs</span>
-              <span class="stat-value">{{ status()?.maxConcurrentJobs ?? '—' }}</span>
+              <span class="stat-value">{{ status()?.maxConcurrentJobs ?? '·' }}</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">Last Validated</span>
@@ -233,7 +233,6 @@ import { CloudAccountService } from '../services/cloud-account.service';
       }
 
       .account-card.linked {
-        border-left: 4px solid var(--primary-color);
       }
 
       .account-header {
@@ -338,9 +337,9 @@ import { CloudAccountService } from '../services/cloud-account.service';
         gap: 10px;
         padding: 10px 14px;
         background: rgba(245, 158, 11, 0.1);
-        border: 1px solid #f59e0b;
+        border: 1px solid #fbbf24;
         border-radius: 8px;
-        color: #f59e0b;
+        color: #fbbf24;
         font-size: 13px;
         margin-bottom: 16px;
       }

@@ -76,7 +76,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      background: linear-gradient(135deg, #ff6b6b 0%, #dc2626 100%);
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 
@@ -169,7 +169,7 @@
     i {
       flex-shrink: 0;
       font-size: 18px;
-      color: #ef4444;
+      color: #ff6b6b;
       margin-top: 2px;
     }
 
@@ -291,7 +291,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    color: #ff6b6b;
   }
 
   .error-output {
@@ -335,7 +335,7 @@
 
     i {
       font-size: 16px;
-      color: #3b82f6;
+      color: #38bdf8;
     }
 
     span {
@@ -366,7 +366,7 @@
     gap: 8px;
     margin-bottom: 12px;
     font-weight: 600;
-    color: #3b82f6;
+    color: #38bdf8;
     font-size: 13px;
   }
 
@@ -384,7 +384,7 @@
     color: rgba(255, 255, 255, 0.85);
 
     i {
-      color: #3b82f6;
+      color: #38bdf8;
       font-size: 12px;
       width: 16px;
       text-align: center;
@@ -425,8 +425,8 @@
 
     &:hover {
       background: var(--surface-hover);
-      border-color: #3b82f6;
-      color: #3b82f6;
+      border-color: #38bdf8;
+      color: #38bdf8;
     }
 
     &:active {

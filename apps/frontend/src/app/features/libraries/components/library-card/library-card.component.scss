@@ -26,7 +26,7 @@
       top: 16px;
       right: 16px;
       padding: 4px 8px;
-      background: #ef4444;
+      background: #ff6b6b;
       color: white;
       font-size: 10px;
       font-weight: 700;
@@ -84,7 +84,7 @@
 
   &[data-type='TV_SHOW'] {
     background: rgba(59, 130, 246, 0.15);
-    color: #93c5fd;
+    color: #38bdf8;
   }
 
   &[data-type='MIXED'] {
@@ -111,11 +111,11 @@
 
   &.default-policy {
     background: rgba(34, 197, 94, 0.15);
-    color: #86efac;
+    color: #4ade80;
     border: 1px solid rgba(34, 197, 94, 0.3);
 
     i {
-      color: #86efac;
+      color: #4ade80;
     }
   }
 
@@ -147,7 +147,7 @@
 
   &.online {
     background: rgba(34, 197, 94, 0.15);
-    color: #86efac;
+    color: #4ade80;
   }
 }
 
@@ -251,7 +251,7 @@
     color: $accent-color;
 
     &.fa-check-circle {
-      color: #86efac;
+      color: #4ade80;
     }
   }
 
@@ -293,7 +293,7 @@
 .btn-danger {
   &:hover {
     background: rgba(239, 68, 68, 0.15);
-    border-color: #ef4444;
+    border-color: #ff6b6b;
     color: #fca5a5;
   }
 }
@@ -302,7 +302,7 @@
   &.active {
     background: rgba(34, 197, 94, 0.15);
     border-color: #22c55e;
-    color: #86efac;
+    color: #4ade80;
 
     &:hover {
       background: rgba(34, 197, 94, 0.25);

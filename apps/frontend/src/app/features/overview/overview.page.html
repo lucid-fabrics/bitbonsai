@@ -6,13 +6,13 @@
 
   <!-- Loading State -->
   @if (isLoading$ | async) {
-  <div class="loading-state">
-    <fa-icon
-      [icon]="icons.queueStatus"
-      [animation]="'spin'"
-      size="2x"
-    ></fa-icon>
-    <p>{{ 'common.loading' | transloco }}</p>
+  <div class="skeleton-layout">
+    <div class="skeleton skeleton-title"></div>
+    <div class="skeleton skeleton-card"></div>
+    <div class="skeleton skeleton-card"></div>
+    <div class="skeleton skeleton-line"></div>
+    <div class="skeleton skeleton-line" style="width: 70%"></div>
+    <div class="skeleton skeleton-line" style="width: 55%"></div>
   </div>
   }
 

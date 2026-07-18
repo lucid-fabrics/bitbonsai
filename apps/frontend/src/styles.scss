@@ -527,6 +527,10 @@ main.main-content > *:not(router-outlet) {
    Skeleton loading utilities
    ============================================ */
 
+.skeleton-layout {
+  padding: 2rem;
+}
+
 .skeleton {
   background: linear-gradient(90deg, #252525 25%, #2a2a2a 50%, #252525 75%);
   background-size: 200% 100%;

@@ -30,7 +30,7 @@ export class QueueJobActionsService {
   private readonly dialog = inject(Dialog);
 
   // ============================================================================
-  // Single-job mutations — return Observable, caller subscribes
+  // Single-job mutations - return Observable, caller subscribes
   // ============================================================================
 
   cancelJob(jobId: string, blacklist: boolean): Observable<void> {
@@ -60,7 +60,7 @@ export class QueueJobActionsService {
   unblockJob(jobId: string): Observable<void> {
     return this.queueService.unblacklistJob(jobId).pipe(
       tap(() => {
-        this.toastService.success('File unblocked — it can now be retried');
+        this.toastService.success('File unblocked. It can now be retried');
       }),
       catchError(() => {
         this.toastService.error('Failed to unblock job');
@@ -195,7 +195,7 @@ export class QueueJobActionsService {
   }
 
   // ============================================================================
-  // Dialog-based mutations — open confirmation dialog then act
+  // Dialog-based mutations - open confirmation dialog then act
   // ============================================================================
 
   deleteJob(job: QueueJobBo): Observable<void> {

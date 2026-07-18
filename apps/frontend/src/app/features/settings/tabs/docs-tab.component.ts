@@ -253,7 +253,6 @@ import { DocsService } from '../services/docs.service';
       }
 
       .markdown-content blockquote {
-        border-left: 4px solid var(--primary-color);
         background: rgba(33, 150, 243, 0.05);
         padding: 1.5rem 2rem;
         margin: 2.5rem 0;

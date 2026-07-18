@@ -201,13 +201,13 @@ import { CapabilityTestService } from '../../../../core/services/capability-test
 
       .progress-bar-fill {
         height: 100%;
-        background: linear-gradient(90deg, #3b82f6, #2563eb);
+        background: linear-gradient(90deg, #38bdf8, #2563eb);
         border-radius: 9999px;
         transition: width 0.3s ease-in-out;
       }
 
       .progress-bar-fill.complete {
-        background: linear-gradient(90deg, #10b981, #059669);
+        background: linear-gradient(90deg, #4ade80, #059669);
       }
 
       .progress-text {
@@ -238,12 +238,12 @@ import { CapabilityTestService } from '../../../../core/services/capability-test
 
       .test-phase.active {
         background-color: #eff6ff;
-        border-color: #3b82f6;
+        border-color: #38bdf8;
       }
 
       .test-phase.complete {
         background-color: #f0fdf4;
-        border-color: #10b981;
+        border-color: #4ade80;
       }
 
       .phase-icon {
@@ -256,11 +256,11 @@ import { CapabilityTestService } from '../../../../core/services/capability-test
       }
 
       .test-phase.active .phase-icon {
-        color: #3b82f6;
+        color: #38bdf8;
       }
 
       .test-phase.complete .phase-icon {
-        color: #10b981;
+        color: #4ade80;
       }
 
       .phase-content {
@@ -315,7 +315,7 @@ import { CapabilityTestService } from '../../../../core/services/capability-test
       }
 
       .text-success {
-        color: #10b981;
+        color: #4ade80;
       }
 
       @keyframes pulse {

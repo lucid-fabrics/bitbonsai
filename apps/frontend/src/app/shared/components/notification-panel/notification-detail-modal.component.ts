@@ -138,7 +138,7 @@ export class NotificationDetailModalComponent {
   getAccentColor(): string {
     switch (this.notification.priority) {
       case 'URGENT':
-        return '#dc3545';
+        return '#ff6b6b';
       case 'HIGH':
         return '#fd7e14';
       case 'MEDIUM':

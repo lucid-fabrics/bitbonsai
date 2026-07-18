@@ -8,12 +8,12 @@
 
   &.banner-warning {
     background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-    border-color: #ffc107;
+    border-color: #fbbf24;
   }
 
   &.banner-critical {
     background: linear-gradient(135deg, #f8d7da 0%, #ffcdd2 100%);
-    border-color: #dc3545;
+    border-color: #ff6b6b;
   }
 }
 
@@ -156,12 +156,12 @@
 
   &.banner-warning {
     background: #fff9e6;
-    border-color: #ffc107;
+    border-color: #fbbf24;
   }
 
   &.banner-critical {
     background: #ffebee;
-    border-color: #dc3545;
+    border-color: #ff6b6b;
   }
 
   &__header {
@@ -269,7 +269,7 @@
     color: #333;
 
     &--error {
-      color: #dc3545;
+      color: #ff6b6b;
     }
   }
 }

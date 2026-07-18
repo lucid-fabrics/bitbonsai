@@ -143,7 +143,7 @@
   &--info .health-card__icon {
     background: rgba(96, 165, 250, 0.15);
     fa-icon {
-      color: #60a5fa;
+      color: #38bdf8;
     } // Blue accent
   }
 
@@ -195,7 +195,6 @@
   }
 
   &--encoding {
-    border-left: 3px solid $accent-primary;
   }
 }
 
@@ -567,7 +566,7 @@
   &__cpu {
     font-size: 10px;
     font-weight: 600;
-    color: #60a5fa;
+    color: #38bdf8;
   }
 
   &__offline {
