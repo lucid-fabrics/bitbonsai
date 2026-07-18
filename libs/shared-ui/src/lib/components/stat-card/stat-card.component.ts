@@ -1,4 +1,4 @@
-import { NgClass, NgIf } from '@angular/common';
+import { NgIf } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { CardComponent } from '../card/card.component';
 
@@ -10,7 +10,7 @@ export interface TrendData {
 @Component({
   selector: 'lib-stat-card',
   standalone: true,
-  imports: [NgIf, NgClass, CardComponent],
+  imports: [NgIf, CardComponent],
   template: `
     <lib-card>
       <div class="stat-card">
