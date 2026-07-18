@@ -77,6 +77,9 @@ export class CodecFallbackService {
       data: {
         gpuAttempts: { increment: 1 },
         codecOverride: cpuCodec,
+        // The codec changed, so any prior trial-encode validation was for a
+        // different codec - clear it so the new codec gets its own trial.
+        trialEncodeValidatedAt: null,
       },
       select: { gpuAttempts: true },
     });

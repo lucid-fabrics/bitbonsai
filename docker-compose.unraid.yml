@@ -26,6 +26,8 @@ services:
       context: .
       dockerfile: Dockerfile.dev
       target: backend
+      args:
+        - FONTAWESOME_NPM_AUTH_TOKEN=${FONTAWESOME_NPM_AUTH_TOKEN}
     container_name: bitbonsai-backend
     network_mode: host  # Required for mDNS auto-discovery
     environment:
@@ -87,6 +89,8 @@ services:
       context: .
       dockerfile: Dockerfile.dev
       target: frontend
+      args:
+        - FONTAWESOME_NPM_AUTH_TOKEN=${FONTAWESOME_NPM_AUTH_TOKEN}
     container_name: bitbonsai-frontend
     ports:
       - "4210:4200"     # Frontend (accessible from network) - using 4210 to avoid pikatask conflict

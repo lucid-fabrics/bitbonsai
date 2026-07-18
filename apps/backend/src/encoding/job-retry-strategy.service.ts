@@ -3,6 +3,7 @@ import { QueueService } from '../queue/queue.service';
 import type { JobWithPolicy } from './encoding-file.service';
 import { CodecFallbackService } from './services/codec-fallback.service';
 import { GpuHealthService } from './services/gpu-health.service';
+import { categorizeError } from './utils/ffmpeg-error-analyzer.util';
 
 /**
  * JobRetryStrategyService
@@ -99,6 +100,21 @@ export class JobRetryStrategyService {
 
         this.logger.error(`Job ${job.id} permanently failed: ${failureReason}`);
         await this.queueService.failJob(job.id, failureReason);
+
+        // OBSERVABILITY: classify the failure for the success-rate breakdown.
+        // Uses the raw errorMessage, not failureReason - the non-retriable
+        // wrapper text itself contains the literal substring "corrupted
+        // source file" as boilerplate, which would swamp every category
+        // into SOURCE_CORRUPTED if classified after wrapping.
+        // Non-critical: never let a classification hiccup affect the job's
+        // actual failure outcome, which is already persisted above.
+        try {
+          await this.queueService.update(job.id, {
+            errorCategory: categorizeError(errorMessage),
+          });
+        } catch (categorizeErr: unknown) {
+          this.logger.warn(`Failed to record error category for ${job.id}:`, categorizeErr);
+        }
       }
     } catch (updateError: unknown) {
       this.logger.error(`Error updating failed job ${job.id}:`, updateError);

@@ -321,6 +321,20 @@ export class JobRepository extends BaseRepository {
     }));
   }
 
+  async groupByErrorCategoryCount(
+    where: Prisma.JobWhereInput
+  ): Promise<Array<{ errorCategory: string | null; _count: number }>> {
+    const result = await this.prisma.job.groupBy({
+      by: ['errorCategory'],
+      where,
+      _count: { id: true },
+    });
+    return result.map((r) => ({
+      errorCategory: r.errorCategory,
+      _count: (r._count as { id: number }).id ?? 0,
+    }));
+  }
+
   async groupByNodeIdSum(
     where: Prisma.JobWhereInput,
     _sum: Record<string, boolean>

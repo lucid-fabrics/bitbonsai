@@ -324,6 +324,76 @@ describe('StuckJobRecoveryWorker', () => {
     });
   });
 
+  describe('recoverStuckJobs - VERIFYING adaptive budget', () => {
+    it('does not reset a job whose estimatedDuration scales its budget past the elapsed time', async () => {
+      // 35 min elapsed (past the flat 30min floor). A 20h estimate x 0.05
+      // fraction gives a 1h budget, which 35min has not exceeded.
+      const stuckJob = {
+        id: 'job-7',
+        fileLabel: 'verify.mkv',
+        updatedAt: new Date(Date.now() - 35 * 60 * 1000),
+        estimatedDuration: 20 * 3600,
+      };
+
+      mockJobRepository.findManySelect
+        .mockResolvedValueOnce([]) // HEALTH_CHECK
+        .mockResolvedValueOnce([]) // ENCODING
+        .mockResolvedValueOnce([stuckJob]) // VERIFYING
+        .mockResolvedValueOnce([]); // TRANSFERRING
+
+      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+
+      expect(mockJobRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it('resets a job once elapsed time exceeds its scaled budget', async () => {
+      // 20h estimate x 0.05 = 1h budget; 90 minutes elapsed exceeds it.
+      const stuckJob = {
+        id: 'job-7',
+        fileLabel: 'verify.mkv',
+        updatedAt: new Date(Date.now() - 90 * 60 * 1000),
+        estimatedDuration: 20 * 3600,
+      };
+
+      mockJobRepository.findManySelect
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([stuckJob])
+        .mockResolvedValueOnce([]);
+      mockJobRepository.updateById.mockResolvedValue({});
+
+      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+
+      expect(mockJobRepository.updateById).toHaveBeenCalledWith(
+        'job-7',
+        expect.objectContaining({ stage: JobStage.QUEUED })
+      );
+    });
+
+    it('falls back to the flat floor when estimatedDuration is null', async () => {
+      const stuckJob = {
+        id: 'job-7',
+        fileLabel: 'verify.mkv',
+        updatedAt: new Date(Date.now() - 35 * 60 * 1000),
+        estimatedDuration: null,
+      };
+
+      mockJobRepository.findManySelect
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([stuckJob])
+        .mockResolvedValueOnce([]);
+      mockJobRepository.updateById.mockResolvedValue({});
+
+      await (worker as unknown as { recoverStuckJobs: () => Promise<void> }).recoverStuckJobs();
+
+      expect(mockJobRepository.updateById).toHaveBeenCalledWith(
+        'job-7',
+        expect.objectContaining({ stage: JobStage.QUEUED })
+      );
+    });
+  });
+
   describe('recoverStuckJobs - TRANSFERRING scenario', () => {
     it('should reset stuck TRANSFERRING job to DETECTED for retry', async () => {
       const stuckJob = {

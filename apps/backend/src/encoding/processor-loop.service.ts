@@ -5,11 +5,20 @@ import { JobStage } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
 import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { QueueService } from '../queue/queue.service';
+import { CircuitBreakerService } from '../queue/services/circuit-breaker.service';
 import { OwnershipLeaseService } from '../queue/services/ownership-lease.service';
 import { EncodingFileService, type JobResult, type JobWithPolicy } from './encoding-file.service';
 import { EncodingValidatorService } from './encoding-validator.service';
-import { SystemResourceService } from './system-resource.service';
+import { InsufficientDiskSpaceError, SystemResourceService } from './system-resource.service';
 import { WorkerPoolService } from './worker-pool.service';
+
+// ADMISSION CONTROL: how long to defer a job that couldn't claim enough disk
+// space before rechecking. Short enough that a job doesn't sit idle long
+// after another job frees space; long enough to avoid hammering statfs.
+const DISK_SPACE_RETRY_DELAY_MS = parseInt(
+  process.env.DISK_SPACE_RETRY_DELAY_MS || `${5 * 60 * 1000}`,
+  10
+);
 
 /**
  * ProcessorLoopService
@@ -31,7 +40,8 @@ export class ProcessorLoopService {
     private readonly encodingFileService: EncodingFileService,
     private readonly fileRelocatorService: FileRelocatorService,
     private readonly encodingValidator: EncodingValidatorService,
-    private readonly ownershipLease: OwnershipLeaseService
+    private readonly ownershipLease: OwnershipLeaseService,
+    private readonly circuitBreaker: CircuitBreakerService
   ) {}
 
   /**
@@ -231,7 +241,12 @@ export class ProcessorLoopService {
         }
 
         // Perform resource preflight checks
-        await this.systemResourceService.performResourcePreflightChecks(job.filePath, job.id);
+        await this.systemResourceService.performResourcePreflightChecks(
+          job.filePath,
+          job.id,
+          job.targetCodec,
+          job.beforeSizeBytes
+        );
 
         // Perform encoding
         const result = await this.encodingFileService.encodeFile(job);
@@ -241,11 +256,18 @@ export class ProcessorLoopService {
 
         return job;
       } catch (error: unknown) {
+        if (error instanceof InsufficientDiskSpaceError) {
+          // ADMISSION CONTROL: defer, don't fail - low disk space is usually
+          // a transient, queue-wide condition. Leave the job QUEUED with a
+          // future nextRetryAt instead of burning a retry attempt.
+          await this.deferJobForDiskSpace(job, error);
+          return null;
+        }
         // Handle failure with retry logic
         await this.encodingValidator.handleJobFailure(job, error);
         return null;
       } finally {
-        // LEASE: Stop renewal and clear lease — job is done (success, failure, or pause).
+        // LEASE: Stop renewal and clear lease - job is done (success, failure, or pause).
         this.ownershipLease.stopRenewing(job.id);
         // Clear current job
         this.workerPoolService.setWorkerJob(workerId, null);
@@ -270,14 +292,57 @@ export class ProcessorLoopService {
   }
 
   /**
-   * Handle job completion — delegates to EncodingValidatorService.
+   * ADMISSION CONTROL: leave a disk-space-blocked job in QUEUED with a future
+   * nextRetryAt instead of failing it. The claim query already skips jobs
+   * whose nextRetryAt is in the future, so this simply reschedules the job -
+   * no retryCount increment, no failure tracking, since the file itself did
+   * nothing wrong.
+   *
+   * Still routed through the global circuit breaker: a disk that is
+   * permanently too full (not just transiently busy) would otherwise defer
+   * this job every 5 minutes forever with no cap and no visible failure -
+   * every other requeue loop in this codebase (corrupted-requeue, stuck-
+   * recovery) shares that same cap, so this one does too.
+   */
+  private async deferJobForDiskSpace(
+    job: JobWithPolicy,
+    error: InsufficientDiskSpaceError
+  ): Promise<void> {
+    const broken = await this.circuitBreaker.checkAndBreak(
+      job.id,
+      `insufficient disk space (${error.availableGB.toFixed(2)}GB available, ${error.requiredGB.toFixed(2)}GB needed)`
+    );
+    if (broken) {
+      this.logger.warn(
+        `[${job.id}] Circuit broken after repeated disk-space deferrals: ${job.fileLabel} -> FAILED permanently`
+      );
+      return;
+    }
+
+    const nextRetryAt = new Date(Date.now() + DISK_SPACE_RETRY_DELAY_MS);
+    this.logger.warn(
+      `[${job.id}] Deferring job (${job.fileLabel}) - insufficient disk space ` +
+        `(${error.availableGB.toFixed(2)}GB available, ${error.requiredGB.toFixed(2)}GB needed). ` +
+        `Will retry at ${nextRetryAt.toISOString()}`
+    );
+
+    await this.jobRepository.updateById(job.id, {
+      stage: JobStage.QUEUED,
+      startedAt: null,
+      nextRetryAt,
+      error: `Waiting for disk space: ${error.availableGB.toFixed(1)}GB available, ${error.requiredGB.toFixed(1)}GB needed. Retrying automatically.`,
+    });
+  }
+
+  /**
+   * Handle job completion - delegates to EncodingValidatorService.
    */
   async handleJobCompletion(job: JobWithPolicy, result: JobResult): Promise<void> {
     return this.encodingValidator.handleJobCompletion(job, result);
   }
 
   /**
-   * Handle job failure — delegates to EncodingValidatorService.
+   * Handle job failure - delegates to EncodingValidatorService.
    */
   async handleJobFailure(job: JobWithPolicy, error: unknown): Promise<void> {
     return this.encodingValidator.handleJobFailure(job, error);

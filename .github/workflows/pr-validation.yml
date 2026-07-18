@@ -1,5 +1,8 @@
 name: PR Validation
 
+env:
+  FONTAWESOME_NPM_AUTH_TOKEN: ${{ secrets.FONTAWESOME_NPM_AUTH_TOKEN }}
+
 on:
   pull_request:
     branches: [main]
@@ -62,6 +65,9 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npx prisma generate
       - run: npx nx build backend --configuration=production
+      # Catches DI wiring mistakes that lint/build/unit tests all miss (see
+      # script header for the 2026-07-17 incident this was added for).
+      - run: bash scripts/verify-backend-boot.sh
 
   build-frontend:
     name: Build Frontend

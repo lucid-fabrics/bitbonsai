@@ -20,6 +20,8 @@ steps:
         from_secret: CLOUDFLARE_API_TOKEN
       CLOUDFLARE_ACCOUNT_ID:
         from_secret: CLOUDFLARE_ACCOUNT_ID
+      FONTAWESOME_NPM_AUTH_TOKEN:
+        from_secret: FONTAWESOME_NPM_AUTH_TOKEN
     commands:
       - |
         CHANGED=$(git diff --name-only ${CI_COMMIT_BEFORE_SHA:-HEAD~1} ${CI_COMMIT_SHA:-HEAD} 2>/dev/null || echo "all")
@@ -61,7 +63,7 @@ steps:
         COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
         COMMIT_AUTHOR=$(echo "$CI_COMMIT_AUTHOR" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
         COMMIT_MSG=$(echo "$CI_COMMIT_MESSAGE" | head -1 | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-        MSG=$(printf '🌐 <b>BitBonsai Website</b> — %s %s\n\n🌿 <code>%s</code>\n🔖 <code>%s</code> · %s\n📝 %s\n\n🔗 %s' \
+        MSG=$(printf '🌐 <b>BitBonsai Website</b> - %s %s\n\n🌿 <code>%s</code>\n🔖 <code>%s</code> · %s\n📝 %s\n\n🔗 %s' \
           "$TG_EMOJI" "$ENV_LABEL" "$COMMIT_BRANCH" "$COMMIT_SHORT" "$COMMIT_AUTHOR" "$COMMIT_MSG" "$CI_PIPELINE_URL")
         curl -s --max-time 30 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
           -d "chat_id=${TELEGRAM_CHAT_ID}&parse_mode=HTML&disable_web_page_preview=true" \

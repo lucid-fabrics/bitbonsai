@@ -10,6 +10,8 @@ describe('AnalyticsController', () => {
     getCostSavings: jest.Mock;
     getNodePerformance: jest.Mock;
     getCodecPerformance: jest.Mock;
+    getSuccessRateTrend: jest.Mock;
+    getFailureCategoryBreakdown: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -19,6 +21,12 @@ describe('AnalyticsController', () => {
       getCostSavings: jest.fn().mockResolvedValue({ saved: '$50' }),
       getNodePerformance: jest.fn().mockResolvedValue({ nodes: [] }),
       getCodecPerformance: jest.fn().mockResolvedValue({ codecs: [] }),
+      getSuccessRateTrend: jest.fn().mockResolvedValue({
+        currentWeek: { completed: 8, failed: 2, successRate: 80 },
+        previousWeek: { completed: 6, failed: 4, successRate: 60 },
+        changePercentagePoints: 20,
+      }),
+      getFailureCategoryBreakdown: jest.fn().mockResolvedValue([]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -83,6 +91,27 @@ describe('AnalyticsController', () => {
     it('should return codec performance with default period', async () => {
       await controller.getCodecPerformance();
       expect(analyticsService.getCodecPerformance).toHaveBeenCalledWith('30d');
+    });
+  });
+
+  describe('getSuccessRateTrend', () => {
+    it('should return the week-over-week success rate trend', async () => {
+      const result = await controller.getSuccessRateTrend();
+
+      expect(analyticsService.getSuccessRateTrend).toHaveBeenCalled();
+      expect(result.changePercentagePoints).toBe(20);
+    });
+  });
+
+  describe('getFailureCategories', () => {
+    it('should return failure categories with default period', async () => {
+      await controller.getFailureCategories();
+      expect(analyticsService.getFailureCategoryBreakdown).toHaveBeenCalledWith('30d');
+    });
+
+    it('should use provided period', async () => {
+      await controller.getFailureCategories('7d');
+      expect(analyticsService.getFailureCategoryBreakdown).toHaveBeenCalledWith('7d');
     });
   });
 

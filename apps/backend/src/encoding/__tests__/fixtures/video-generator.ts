@@ -25,6 +25,18 @@ export interface VideoOptions {
   targetSizeMB?: number; // target file size in MB
   audio?: 'aac' | 'ac3' | 'dts' | 'multiple';
   subtitles?: boolean;
+  // 10-bit source (only meaningful for hevc/av1 - h264/vp9/mpeg2 encoders in
+  // this build are 8-bit only). hdr:true implies 10-bit and additionally
+  // tags BT.2020/PQ colorimetry so the pipeline's HDR-detection path sees a
+  // real HDR10-flavored source, not just a bit-depth bump.
+  pixFmt?: 'yuv420p' | 'yuv420p10le';
+  hdr?: boolean;
+  // Bitmap (image-based) subtitles, as opposed to the text-based mov_text
+  // `subtitles` option above. Real PGS streams aren't synthesizable from
+  // scratch (no lavfi source, and ffmpeg's PGS encoder is decode-only in
+  // most builds) - dvd_subtitle is used as a stand-in bitmap format since
+  // it exercises the same "MP4 can't hold bitmap subs" pipeline path.
+  bitmapSubtitles?: boolean;
 }
 
 export interface CorruptedVideoOptions {
@@ -132,8 +144,11 @@ function getAudioArgs(audio?: string): string[] {
 /**
  * Generate a test video file
  */
-export async function generateVideo(options: VideoOptions): Promise<string> {
-  const fixturesDir = getFixturesDir();
+export async function generateVideo(
+  options: VideoOptions,
+  outputDir?: string
+): Promise<string> {
+  const fixturesDir = outputDir || getFixturesDir();
   const outputPath = path.join(fixturesDir, options.filename);
 
   // Skip if file already exists
@@ -148,6 +163,23 @@ export async function generateVideo(options: VideoOptions): Promise<string> {
 
   const codecArgs = getCodecArgs(options.codec, bitrate);
   const audioArgs = getAudioArgs(options.audio || 'aac');
+  const pixFmt = options.hdr ? 'yuv420p10le' : options.pixFmt || 'yuv420p';
+
+  // A subtitle stream needs a real input to encode from - lavfi has no
+  // subtitle source, so write a throwaway one-line SRT and mux it in as a
+  // third input, explicitly mapped alongside video/audio. Without this,
+  // `-c:s <codec>` has no matching stream and silently does nothing.
+  const wantsSubtitles = options.subtitles || options.bitmapSubtitles;
+  const srtInputPath = wantsSubtitles
+    ? path.join(fixturesDir, `.subs-${Date.now()}-${Math.random().toString(36).slice(2)}.srt`)
+    : null;
+  if (srtInputPath) {
+    fs.writeFileSync(
+      srtInputPath,
+      '1\n00:00:00,000 --> 00:00:05,000\nTest subtitle\n',
+      'utf8'
+    );
+  }
 
   // Build FFmpeg command
   const args = [
@@ -159,15 +191,32 @@ export async function generateVideo(options: VideoOptions): Promise<string> {
     'lavfi',
     '-i',
     `sine=frequency=1000:duration=${options.duration}`,
-    ...codecArgs,
-    ...audioArgs,
-    '-pix_fmt',
-    'yuv420p',
   ];
+  if (srtInputPath) {
+    args.push('-i', srtInputPath);
+  }
+  args.push(...codecArgs, ...audioArgs, '-pix_fmt', pixFmt);
 
-  // Add subtitles if requested
-  if (options.subtitles) {
-    args.push('-c:s', 'mov_text');
+  // HDR10-flavored colorimetry: tags the stream so the pipeline's HDR
+  // detection sees real BT.2020/PQ metadata, not just a 10-bit pixel format.
+  if (options.hdr) {
+    args.push(
+      '-color_primaries',
+      'bt2020',
+      '-color_trc',
+      'smpte2084',
+      '-colorspace',
+      'bt2020nc'
+    );
+  }
+
+  if (srtInputPath) {
+    // Explicit mapping: lavfi inputs have no subtitle stream to auto-select,
+    // so without this the third input would be silently dropped.
+    args.push('-map', '0:v', '-map', '1:a', '-map', '2:s');
+    // Bitmap subs (dvd_subtitle, a PGS stand-in - see VideoOptions doc) take
+    // priority when both flags are set; a file only needs one subtitle track.
+    args.push('-c:s', options.bitmapSubtitles ? 'dvd_subtitle' : 'mov_text');
   }
 
   args.push('-y', outputPath);
@@ -185,6 +234,13 @@ export async function generateVideo(options: VideoOptions): Promise<string> {
     });
 
     ffmpeg.on('close', (code) => {
+      if (srtInputPath && fs.existsSync(srtInputPath)) {
+        try {
+          fs.unlinkSync(srtInputPath);
+        } catch {
+          // best-effort cleanup of the throwaway subtitle input
+        }
+      }
       if (code === 0) {
         const stats = fs.statSync(outputPath);
         const actualSizeMB = stats.size / 1024 / 1024;
@@ -199,6 +255,13 @@ export async function generateVideo(options: VideoOptions): Promise<string> {
     });
 
     ffmpeg.on('error', (err) => {
+      if (srtInputPath && fs.existsSync(srtInputPath)) {
+        try {
+          fs.unlinkSync(srtInputPath);
+        } catch {
+          // best-effort cleanup of the throwaway subtitle input
+        }
+      }
       logger.error(`FFmpeg error: ${err.message}`);
       reject(err);
     });

@@ -5,6 +5,7 @@ import { LibraryRepository } from '../common/repositories/library.repository';
 import { PolicyRepository } from '../common/repositories/policy.repository';
 import { QueueService } from '../queue/queue.service';
 import { CompletionOutboxService } from '../queue/services/completion-outbox.service';
+import { FileFailureTrackingService } from '../queue/services/file-failure-tracking.service';
 import { EncodingFileService, type JobResult, type JobWithPolicy } from './encoding-file.service';
 import { JobRetryStrategyService } from './job-retry-strategy.service';
 import { CodecFallbackService } from './services/codec-fallback.service';
@@ -27,7 +28,8 @@ export class EncodingValidatorService {
     private readonly codecFallbackService: CodecFallbackService,
     private readonly completionOutbox: CompletionOutboxService,
     private readonly encodingFileService: EncodingFileService,
-    private readonly jobRetryStrategyService: JobRetryStrategyService
+    private readonly jobRetryStrategyService: JobRetryStrategyService,
+    private readonly fileFailureTracking: FileFailureTrackingService
   ) {}
 
   /**
@@ -45,6 +47,26 @@ export class EncodingValidatorService {
       // GPU→CPU FALLBACK: clear any codec override now that encoding succeeded
       if (job.codecOverride) {
         await this.codecFallbackService.clearFallback(job.id);
+      }
+
+      // PER-FILE SUCCESS MEMORY: remember the codec that worked so a re-scan
+      // of this same file routes straight to it instead of relearning a GPU
+      // failure the hard way. Only meaningful when a fallback actually fired:
+      // job.targetCodec is the abstract policy family (e.g. "HEVC"), not a
+      // concrete ffmpeg encoder id, so it must never be recorded here - only
+      // job.codecOverride is a real, capability-checked encoder name.
+      // Non-critical: never block completion on it.
+      if (job.codecOverride) {
+        try {
+          await this.fileFailureTracking.recordSuccess(
+            job.filePath,
+            job.libraryId,
+            job.codecOverride,
+            job.contentFingerprint ?? undefined
+          );
+        } catch (trackingError: unknown) {
+          this.logger.warn(`Failed to record success-path memory for ${job.id}:`, trackingError);
+        }
       }
 
       // OUTBOX: Persist completion data before the final DB update so a crash
@@ -78,7 +100,7 @@ export class EncodingValidatorService {
   }
 
   /**
-   * Handle job failure — delegates retry logic to JobRetryStrategyService.
+   * Handle job failure - delegates retry logic to JobRetryStrategyService.
    *
    * @param job - Failed job
    * @param error - Error that caused failure

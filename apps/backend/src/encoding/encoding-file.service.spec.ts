@@ -4,14 +4,18 @@ import { SettingsRepository } from '../common/repositories/settings.repository';
 import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { LibrariesService } from '../libraries/libraries.service';
 import { QueueService } from '../queue/queue.service';
+import { FileFailureTrackingService } from '../queue/services/file-failure-tracking.service';
 import { EncodingFileService } from './encoding-file.service';
 import { EncodingFileReplacementService } from './encoding-file-replacement.service';
 import { EncodingOutputVerificationService } from './encoding-output-verification.service';
 import { FfmpegService } from './ffmpeg.service';
 import { QualityMetricsService } from './quality-metrics.service';
+import { CodecFallbackService } from './services/codec-fallback.service';
 import { ContainerValidationService } from './services/container-validation.service';
+import { GpuHealthService } from './services/gpu-health.service';
 import { QualityGateService } from './services/quality-gate.service';
 import { SegmentedEncodeService } from './services/segmented-encode.service';
+import { TempFileGuardService } from './services/temp-file-guard.service';
 import { SystemResourceService } from './system-resource.service';
 
 const makeSegmentedEncodeMock = () => ({
@@ -92,6 +96,19 @@ describe('EncodingFileService', () => {
         { provide: SegmentedEncodeService, useValue: makeSegmentedEncodeMock() },
         { provide: ContainerValidationService, useValue: makeContainerValidationMock() },
         { provide: QualityGateService, useValue: makeQualityGateMock() },
+        {
+          provide: CodecFallbackService,
+          useValue: { shouldFallback: jest.fn().mockReturnValue(false), applyFallback: jest.fn() },
+        },
+        { provide: GpuHealthService, useValue: { recordGpuFailure: jest.fn() } },
+        { provide: TempFileGuardService, useValue: { registerTempFile: jest.fn(), markCleaned: jest.fn() } },
+        {
+          provide: FileFailureTrackingService,
+          useValue: {
+            getLastSuccessfulCodec: jest.fn().mockResolvedValue(null),
+            recordSuccess: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         EncodingFileReplacementService,
         EncodingOutputVerificationService,
       ],
@@ -270,6 +287,19 @@ describe('EncodingFileService - extended coverage', () => {
         { provide: SegmentedEncodeService, useValue: makeSegmentedEncodeMock() },
         { provide: ContainerValidationService, useValue: makeContainerValidationMock() },
         { provide: QualityGateService, useValue: makeQualityGateMock() },
+        {
+          provide: CodecFallbackService,
+          useValue: { shouldFallback: jest.fn().mockReturnValue(false), applyFallback: jest.fn() },
+        },
+        { provide: GpuHealthService, useValue: { recordGpuFailure: jest.fn() } },
+        { provide: TempFileGuardService, useValue: { registerTempFile: jest.fn(), markCleaned: jest.fn() } },
+        {
+          provide: FileFailureTrackingService,
+          useValue: {
+            getLastSuccessfulCodec: jest.fn().mockResolvedValue(null),
+            recordSuccess: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         EncodingFileReplacementService,
         EncodingOutputVerificationService,
       ],

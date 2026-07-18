@@ -118,6 +118,13 @@
     margin: 0;
   }
 
+  &__delta {
+    font-size: 13px;
+    font-weight: 500;
+    color: $text-secondary;
+    margin-left: 4px;
+  }
+
   // Color variants
   &--success .health-card__icon {
     background: rgba($success, 0.15);

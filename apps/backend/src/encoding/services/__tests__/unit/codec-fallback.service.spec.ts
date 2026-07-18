@@ -92,6 +92,7 @@ describe('CodecFallbackService', () => {
         data: {
           gpuAttempts: { increment: 1 },
           codecOverride: 'libx265',
+          trialEncodeValidatedAt: null,
         },
         select: { gpuAttempts: true },
       });

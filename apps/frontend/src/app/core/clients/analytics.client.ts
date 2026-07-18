@@ -52,6 +52,24 @@ export interface AnalyticsSummary {
   codecPerformance: CodecPerformance[];
 }
 
+export interface SuccessRateSnapshot {
+  completed: number;
+  failed: number;
+  successRate: number;
+}
+
+export interface SuccessRateTrend {
+  currentWeek: SuccessRateSnapshot;
+  previousWeek: SuccessRateSnapshot;
+  changePercentagePoints: number;
+}
+
+export interface FailureCategoryBreakdownEntry {
+  category: string;
+  count: number;
+  percentage: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -97,6 +115,18 @@ export class AnalyticsClient {
     const params: Record<string, string> = {};
     if (period) params.period = period;
     return this.http.get<AnalyticsSummary>(`${this.apiUrl}/summary`, {
+      params,
+    });
+  }
+
+  getSuccessRateTrend(): Observable<SuccessRateTrend> {
+    return this.http.get<SuccessRateTrend>(`${this.apiUrl}/success-rate-trend`);
+  }
+
+  getFailureCategories(period?: TimePeriod): Observable<FailureCategoryBreakdownEntry[]> {
+    const params: Record<string, string> = {};
+    if (period) params.period = period;
+    return this.http.get<FailureCategoryBreakdownEntry[]>(`${this.apiUrl}/failure-categories`, {
       params,
     });
   }

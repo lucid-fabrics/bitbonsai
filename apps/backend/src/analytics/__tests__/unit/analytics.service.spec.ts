@@ -13,6 +13,7 @@ describe('AnalyticsService', () => {
     aggregateCount: jest.fn(),
     groupByTargetCodecAvg: jest.fn(),
     groupByNodeIdCount: jest.fn(),
+    groupByErrorCategoryCount: jest.fn(),
     findManySelect: jest.fn(),
   };
 
@@ -421,7 +422,7 @@ describe('AnalyticsService', () => {
 
       await service.getSpaceSavingsOverTime('24h');
 
-      // $queryRaw is called — just verify it resolves without error
+      // $queryRaw is called - just verify it resolves without error
       expect(mockPrismaService.$queryRaw).toHaveBeenCalled();
     });
 
@@ -706,6 +707,96 @@ describe('AnalyticsService', () => {
       const result = await service.getSummary('all');
 
       expect(result.fastestNode).toBe('Fast Node');
+    });
+  });
+
+  describe('getSuccessRateTrend', () => {
+    it('computes current and previous week success rates and the delta', async () => {
+      // currentWeek: 8 completed, 2 failed -> 80%
+      // previousWeek: 6 completed, 4 failed -> 60%
+      mockJobRepository.countWhere
+        .mockResolvedValueOnce(8) // currentWeek completed
+        .mockResolvedValueOnce(2) // currentWeek failed
+        .mockResolvedValueOnce(6) // previousWeek completed
+        .mockResolvedValueOnce(4); // previousWeek failed
+
+      const result = await service.getSuccessRateTrend();
+
+      expect(result.currentWeek).toEqual({ completed: 8, failed: 2, successRate: 80 });
+      expect(result.previousWeek).toEqual({ completed: 6, failed: 4, successRate: 60 });
+      expect(result.changePercentagePoints).toBeCloseTo(20, 5);
+    });
+
+    it('treats a week with zero jobs as 100% success rate', async () => {
+      mockJobRepository.countWhere
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0);
+
+      const result = await service.getSuccessRateTrend();
+
+      expect(result.currentWeek.successRate).toBe(100);
+      expect(result.previousWeek.successRate).toBe(100);
+      expect(result.changePercentagePoints).toBe(0);
+    });
+
+    it('reports a negative change when the current week regresses', async () => {
+      mockJobRepository.countWhere
+        .mockResolvedValueOnce(5) // currentWeek completed
+        .mockResolvedValueOnce(5) // currentWeek failed -> 50%
+        .mockResolvedValueOnce(9) // previousWeek completed
+        .mockResolvedValueOnce(1); // previousWeek failed -> 90%
+
+      const result = await service.getSuccessRateTrend();
+
+      expect(result.changePercentagePoints).toBeCloseTo(-40, 5);
+    });
+  });
+
+  describe('getFailureCategoryBreakdown', () => {
+    it('returns categories sorted by count with percentages', async () => {
+      mockJobRepository.groupByErrorCategoryCount.mockResolvedValue([
+        { errorCategory: 'SOURCE_CORRUPTED', _count: 6 },
+        { errorCategory: 'INSUFFICIENT_RESOURCES', _count: 3 },
+        { errorCategory: 'CODEC_INCOMPATIBILITY', _count: 1 },
+      ]);
+
+      const result = await service.getFailureCategoryBreakdown('30d');
+
+      expect(result).toEqual([
+        { category: 'SOURCE_CORRUPTED', count: 6, percentage: 60 },
+        { category: 'INSUFFICIENT_RESOURCES', count: 3, percentage: 30 },
+        { category: 'CODEC_INCOMPATIBILITY', count: 1, percentage: 10 },
+      ]);
+    });
+
+    it('maps a null errorCategory to UNCATEGORIZED', async () => {
+      mockJobRepository.groupByErrorCategoryCount.mockResolvedValue([
+        { errorCategory: null, _count: 4 },
+      ]);
+
+      const result = await service.getFailureCategoryBreakdown('30d');
+
+      expect(result).toEqual([{ category: 'UNCATEGORIZED', count: 4, percentage: 100 }]);
+    });
+
+    it('returns an empty array when there are no failures in the period', async () => {
+      mockJobRepository.groupByErrorCategoryCount.mockResolvedValue([]);
+
+      const result = await service.getFailureCategoryBreakdown('7d');
+
+      expect(result).toEqual([]);
+    });
+
+    it('defaults to the 30d period when none is provided', async () => {
+      mockJobRepository.groupByErrorCategoryCount.mockResolvedValue([]);
+
+      await service.getFailureCategoryBreakdown();
+
+      expect(mockJobRepository.groupByErrorCategoryCount).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: 'FAILED' })
+      );
     });
   });
 });

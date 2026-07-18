@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { spawn } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, statSync, unlinkSync } from 'fs';
 
 export enum FileHealthStatus {
   HEALTHY = 'HEALTHY',
@@ -34,6 +34,11 @@ export interface QuickCheckResult {
 export interface ThoroughCheckResult {
   passed: boolean;
   errors: string[];
+}
+
+export interface RepairResult {
+  repaired: boolean;
+  reason?: string;
 }
 
 /**
@@ -217,6 +222,90 @@ export class FileHealthService {
         resolve({ passed: true, errors: [] });
       });
     });
+  }
+
+  /**
+   * Remux-repair a container-level corruption via stream copy.
+   *
+   * Many "corrupted" files are just a broken moov atom, damaged index, or
+   * truncated tail - the audio/video payload itself is fine. A stream-copy
+   * rewrite with error tolerance often recovers these without touching a
+   * single frame. Timeout: 120 seconds (stream copy has no encode work, so
+   * this only guards against a genuinely hung/unreadable source).
+   *
+   * @param filePath - Path to the damaged source
+   * @param outputPath - Where to write the repaired copy
+   */
+  async repairContainer(filePath: string, outputPath: string): Promise<RepairResult> {
+    return new Promise((resolve) => {
+      const ffmpeg = spawn('ffmpeg', [
+        '-v',
+        'error',
+        '-err_detect',
+        'ignore_err',
+        '-i',
+        filePath,
+        '-map',
+        '0',
+        '-c',
+        'copy',
+        '-y',
+        outputPath,
+      ]);
+
+      let stderr = '';
+
+      ffmpeg.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      const timeoutId = setTimeout(() => {
+        try {
+          ffmpeg.kill('SIGKILL');
+        } catch {
+          // already dead
+        }
+        resolve({ repaired: false, reason: 'Repair timed out after 120 seconds' });
+      }, 120000);
+
+      ffmpeg.on('close', (code) => {
+        clearTimeout(timeoutId);
+        ffmpeg.stdout?.destroy();
+        ffmpeg.stderr?.destroy();
+
+        if (code === 0 && existsSync(outputPath) && statSync(outputPath).size > 0) {
+          resolve({ repaired: true });
+          return;
+        }
+
+        this.cleanupPartialRepairOutput(outputPath);
+        const hint = stderr.trim() ? `: ${stderr.trim().split('\n').slice(-1)[0]}` : '';
+        resolve({ repaired: false, reason: `ffmpeg exited with code ${code}${hint}` });
+      });
+
+      ffmpeg.on('error', (err) => {
+        clearTimeout(timeoutId);
+        ffmpeg.stdout?.destroy();
+        ffmpeg.stderr?.destroy();
+        resolve({ repaired: false, reason: `Could not run ffmpeg: ${err.message}` });
+      });
+    });
+  }
+
+  /**
+   * A failed repair can still leave a partial output file on disk (ffmpeg
+   * wrote some data before exiting non-zero, or before being SIGKILLed on
+   * timeout). Nothing else ever cleans this path up, so it would otherwise
+   * leak permanently next to the source file.
+   */
+  private cleanupPartialRepairOutput(outputPath: string): void {
+    try {
+      if (existsSync(outputPath)) unlinkSync(outputPath);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Failed to clean up partial repair output ${outputPath}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   /**

@@ -41,6 +41,14 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
   // CAPA FIX: Reduced from 60min to 10min for faster stuck job detection
   private readonly ENCODING_TIMEOUT_MIN = parseInt(process.env.ENCODING_TIMEOUT_MIN || '10', 10);
   private readonly VERIFYING_TIMEOUT_MIN = parseInt(process.env.VERIFYING_TIMEOUT_MIN || '30', 10);
+  // ADAPTIVE VERIFYING BUDGET: output verification (duration probe, container
+  // check, segment concat) scales with source length. A flat 30min budget is
+  // fine for the vast majority of files but too tight for very long sources;
+  // scale it up as a fraction of the job's estimated encode duration, never
+  // below the flat floor.
+  private readonly VERIFYING_TIMEOUT_FRACTION = parseFloat(
+    process.env.VERIFYING_TIMEOUT_FRACTION || '0.05'
+  );
   // DEEP AUDIT P0: TRANSFERRING stage timeout (15 min with no progress = stalled)
   private readonly TRANSFERRING_TIMEOUT_MIN = parseInt(
     process.env.TRANSFERRING_TIMEOUT_MIN || '15',
@@ -95,6 +103,20 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       // Wait before next iteration
       await this.sleep(this.INTERVAL_MS);
     }
+  }
+
+  /**
+   * Compute the adaptive VERIFYING budget (ms) for a job: the flat floor, or
+   * VERIFYING_TIMEOUT_FRACTION of the job's estimated encode duration,
+   * whichever is larger. A missing/zero estimate falls back to the floor.
+   */
+  private getVerifyingBudgetMs(estimatedDurationSeconds: number | null): number {
+    const floorMs = this.VERIFYING_TIMEOUT_MIN * 60 * 1000;
+    if (!estimatedDurationSeconds || estimatedDurationSeconds <= 0) {
+      return floorMs;
+    }
+    const scaledMs = estimatedDurationSeconds * 1000 * this.VERIFYING_TIMEOUT_FRACTION;
+    return Math.max(floorMs, scaledMs);
   }
 
   /**
@@ -283,17 +305,25 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
     }
 
     // Scenario 3: Jobs stuck in VERIFYING for too long
-    const verifyingCutoff = new Date(now.getTime() - this.VERIFYING_TIMEOUT_MIN * 60 * 1000);
-    const stuckVerifying = await this.jobRepository.findManySelect<{
+    // DB-level pre-filter uses the flat floor; the adaptive budget (which can
+    // only be larger) is applied per-job below via getVerifyingBudgetMs().
+    const verifyingFloorCutoff = new Date(now.getTime() - this.VERIFYING_TIMEOUT_MIN * 60 * 1000);
+    const verifyingCandidates = await this.jobRepository.findManySelect<{
       id: string;
       fileLabel: string;
       updatedAt: Date;
+      estimatedDuration: number | null;
     }>(
       {
         stage: JobStage.VERIFYING,
-        updatedAt: { lt: verifyingCutoff },
+        updatedAt: { lt: verifyingFloorCutoff },
       },
-      { id: true, fileLabel: true, updatedAt: true }
+      { id: true, fileLabel: true, updatedAt: true, estimatedDuration: true }
+    );
+    const stuckVerifying = verifyingCandidates.filter(
+      (job) =>
+        now.getTime() - job.updatedAt.getTime() >=
+        this.getVerifyingBudgetMs(job.estimatedDuration)
     );
 
     if (stuckVerifying.length > 0) {
@@ -302,11 +332,12 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
       );
 
       for (const job of stuckVerifying) {
+        const budgetMin = Math.round(this.getVerifyingBudgetMs(job.estimatedDuration) / 60 / 1000);
         await this.jobRepository.updateById(job.id, {
           stage: JobStage.QUEUED,
           progress: 0,
           startedAt: null,
-          error: `Verification timed out (${this.VERIFYING_TIMEOUT_MIN}min). Job reset to queue.`,
+          error: `Verification timed out (${budgetMin}min). Job reset to queue.`,
         });
 
         this.logger.log(

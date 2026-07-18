@@ -176,7 +176,9 @@ describe('JobRetryStrategyService', () => {
 
         await service.handleJobFailure(job, error);
 
-        expect(mockQueueService.update).not.toHaveBeenCalled();
+        expect(mockQueueService.update).toHaveBeenCalledWith('job-1', {
+          errorCategory: 'UNKNOWN',
+        });
         expect(mockQueueService.failJob).toHaveBeenCalledWith(
           'job-1',
           expect.stringContaining('All 3 retry attempts exhausted')
@@ -191,7 +193,9 @@ describe('JobRetryStrategyService', () => {
 
         await service.handleJobFailure(job, error);
 
-        expect(mockQueueService.update).not.toHaveBeenCalled();
+        expect(mockQueueService.update).toHaveBeenCalledWith('job-1', {
+          errorCategory: 'SOURCE_CORRUPTED',
+        });
         expect(mockQueueService.failJob).toHaveBeenCalledWith(
           'job-1',
           expect.stringContaining('Non-retriable error (corrupted source file)')
@@ -205,7 +209,9 @@ describe('JobRetryStrategyService', () => {
         await service.handleJobFailure(job, error);
 
         expect(mockQueueService.failJob).toHaveBeenCalled();
-        expect(mockQueueService.update).not.toHaveBeenCalled();
+        expect(mockQueueService.update).toHaveBeenCalledWith('job-1', {
+          errorCategory: 'SOURCE_CORRUPTED',
+        });
       });
     });
 
@@ -229,7 +235,9 @@ describe('JobRetryStrategyService', () => {
 
         await service.handleJobFailure(job, error);
 
-        expect(mockQueueService.update).not.toHaveBeenCalled();
+        expect(mockQueueService.update).toHaveBeenCalledWith('job-1', {
+          errorCategory: 'CODEC_INCOMPATIBILITY',
+        });
         expect(mockQueueService.failJob).toHaveBeenCalledWith(
           'job-1',
           expect.stringContaining('Non-retriable error')
@@ -242,7 +250,9 @@ describe('JobRetryStrategyService', () => {
 
         await service.handleJobFailure(job, error);
 
-        expect(mockQueueService.update).not.toHaveBeenCalled();
+        expect(mockQueueService.update).toHaveBeenCalledWith('job-1', {
+          errorCategory: 'UNKNOWN',
+        });
         expect(mockQueueService.failJob).toHaveBeenCalledWith(
           'job-1',
           expect.stringContaining('All 3 retry attempts exhausted')
@@ -298,6 +308,19 @@ describe('JobRetryStrategyService', () => {
         mockQueueService.update.mockRejectedValueOnce(new Error('DB connection lost'));
 
         await expect(service.handleJobFailure(job, error)).resolves.toBeUndefined();
+      });
+
+      it('does not block a permanent failure when the error-category update throws', async () => {
+        const job = makeJob({ retryCount: 3 });
+        const error = new Error('moov atom not found');
+        mockQueueService.update.mockRejectedValueOnce(new Error('DB connection lost'));
+
+        await expect(service.handleJobFailure(job, error)).resolves.toBeUndefined();
+
+        expect(mockQueueService.failJob).toHaveBeenCalledWith(
+          'job-1',
+          expect.stringContaining('Non-retriable error')
+        );
       });
 
       it('does not throw if queueService.failJob throws', async () => {

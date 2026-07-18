@@ -3,6 +3,26 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { NodesService } from '../nodes/nodes.service';
+import { FileSizeEstimationService } from './file-size-estimation.service';
+
+/**
+ * Thrown by performResourcePreflightChecks when free disk space is below the
+ * predicted-output requirement. Distinct from a generic Error so callers can
+ * defer the job (leave it QUEUED, bump nextRetryAt) instead of routing it
+ * through the normal failure/retry-count pipeline - low disk space is
+ * usually a transient, queue-wide condition that resolves itself once other
+ * jobs finish, not something this specific file did wrong.
+ */
+export class InsufficientDiskSpaceError extends Error {
+  constructor(
+    message: string,
+    readonly availableGB: number,
+    readonly requiredGB: number
+  ) {
+    super(message);
+    this.name = 'InsufficientDiskSpaceError';
+  }
+}
 
 export interface SystemLoadCheck {
   isOverloaded: boolean;
@@ -44,7 +64,13 @@ export class SystemResourceService {
   // Resource preflight thresholds
   private readonly MIN_FREE_DISK_SPACE_GB = 5;
   private readonly MIN_FREE_MEMORY_PERCENT = 10;
-  private readonly DISK_SPACE_BUFFER_PERCENT = 20;
+  // The predicted-output estimate below is computed with quality preset and
+  // hardware-accel type unresolved at this point in the pipeline (both are
+  // decided later, per-job), so it always uses their neutral multipliers
+  // (1.0x). The real values can push output size up to ~1.3x (ultraFast
+  // preset) x ~1.1x (NVENC/VAAPI) = ~1.43x the neutral estimate - this buffer
+  // covers that worst-case band, not just estimator noise.
+  private readonly DISK_SPACE_BUFFER_PERCENT = 50;
 
   // Load-based throttling
   private readonly DEFAULT_LOAD_THRESHOLD_MULTIPLIER = Math.min(
@@ -63,7 +89,10 @@ export class SystemResourceService {
   // Calculated optimal workers
   readonly defaultWorkersPerNode: number;
 
-  constructor(private readonly nodesService: NodesService) {
+  constructor(
+    private readonly nodesService: NodesService,
+    private readonly fileSizeEstimation: FileSizeEstimationService
+  ) {
     this.defaultWorkersPerNode = this.calculateOptimalWorkers();
   }
 
@@ -167,12 +196,20 @@ export class SystemResourceService {
    *
    * Verifies:
    * - File is readable
-   * - Sufficient disk space (source file size + 20% buffer + 5GB minimum)
+   * - Sufficient disk space (predicted output size + 50% buffer + 5GB minimum)
    * - Sufficient free memory (at least 10% RAM available)
    *
-   * @throws Error if resources are insufficient
+   * @throws InsufficientDiskSpaceError if free space is below the predicted
+   *   requirement - callers should defer the job rather than fail it, since
+   *   this is usually a transient, queue-wide condition.
+   * @throws Error for other resource failures (unreadable file, etc.)
    */
-  async performResourcePreflightChecks(filePath: string, jobId: string): Promise<void> {
+  async performResourcePreflightChecks(
+    filePath: string,
+    jobId: string,
+    targetCodec: string,
+    beforeSizeBytes: bigint | number
+  ): Promise<void> {
     const checks: string[] = [];
 
     // Check 1: File accessibility
@@ -189,27 +226,34 @@ export class SystemResourceService {
       );
     }
 
-    // Check 2: Disk space
-    const fileStats = await fs.promises.stat(filePath);
-    const fileSizeBytes = fileStats.size;
+    // Check 2: Disk space - required space is the PREDICTED OUTPUT size, not
+    // the source size. During atomic replacement the temp output briefly
+    // exists alongside the still-present original, so free space must cover
+    // the new file, not a full copy of the old one.
     const outputDir = path.dirname(filePath);
+    const predictedOutputBytes = Number(
+      this.fileSizeEstimation.estimateOutputSize(Number(beforeSizeBytes), null, 0, targetCodec)
+        .estimatedSizeBytes
+    );
 
     try {
       const stats = await fs.promises.statfs(outputDir);
       const availableBytes = stats.bavail * stats.bsize;
       const availableGB = availableBytes / 1024 ** 3;
-      const requiredBytes = fileSizeBytes * (1 + this.DISK_SPACE_BUFFER_PERCENT / 100);
+      const requiredBytes = predictedOutputBytes * (1 + this.DISK_SPACE_BUFFER_PERCENT / 100);
       const requiredGB = requiredBytes / 1024 ** 3;
       const minimumRequiredBytes = Math.max(requiredBytes, this.MIN_FREE_DISK_SPACE_GB * 1024 ** 3);
       const minimumRequiredGB = minimumRequiredBytes / 1024 ** 3;
 
       if (availableBytes < minimumRequiredBytes) {
-        throw new Error(
+        throw new InsufficientDiskSpaceError(
           `Insufficient disk space on ${outputDir}\n\n` +
             `Available: ${availableGB.toFixed(2)} GB\n` +
-            `Required: ${minimumRequiredGB.toFixed(2)} GB (source file + ${this.DISK_SPACE_BUFFER_PERCENT}% buffer)\n` +
+            `Required: ${minimumRequiredGB.toFixed(2)} GB (predicted output + ${this.DISK_SPACE_BUFFER_PERCENT}% buffer)\n` +
             `Minimum: ${this.MIN_FREE_DISK_SPACE_GB} GB\n\n` +
-            `Please free up disk space before retrying this job.`
+            `Job will retry automatically once space frees up.`,
+          availableGB,
+          minimumRequiredGB
         );
       }
 
@@ -217,7 +261,7 @@ export class SystemResourceService {
         `Disk space sufficient (${availableGB.toFixed(1)}GB available, ${requiredGB.toFixed(1)}GB needed)`
       );
     } catch (error: unknown) {
-      if (error instanceof Error && error.message.includes('Insufficient disk space')) {
+      if (error instanceof InsufficientDiskSpaceError) {
         throw error;
       }
       this.logger.warn(`Could not check disk space for ${outputDir}: ${error}`);

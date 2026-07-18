@@ -1,6 +1,7 @@
 import type { FFmpegErrorAnalysis } from './ffmpeg-error-analyzer.util';
 import {
   analyzeFfmpegError,
+  categorizeError,
   ErrorCategory,
   formatErrorForDisplay,
 } from './ffmpeg-error-analyzer.util';
@@ -342,5 +343,51 @@ describe('formatErrorForDisplay', () => {
     expect(output).toContain('Step A');
     expect(output).toContain('Step B');
     expect(output).toContain('Step C');
+  });
+});
+
+describe('categorizeError', () => {
+  it.each([
+    ['Non-retriable error: source file appears corrupted', ErrorCategory.SOURCE_CORRUPTED],
+    ['corrupt decoded frame in stream 0', ErrorCategory.SOURCE_CORRUPTED],
+    ['Invalid data found when processing input', ErrorCategory.SOURCE_CORRUPTED],
+    ['moov atom not found in container', ErrorCategory.SOURCE_CORRUPTED],
+    ['Source file not found: /media/movie.mkv', ErrorCategory.SOURCE_MISSING],
+    ['No such file or directory', ErrorCategory.SOURCE_MISSING],
+    ['Waiting for disk space: 2.5GB available, 10.0GB needed', ErrorCategory.INSUFFICIENT_RESOURCES],
+    ['No space left on device', ErrorCategory.INSUFFICIENT_RESOURCES],
+    ['Cannot allocate memory', ErrorCategory.INSUFFICIENT_RESOURCES],
+    [
+      'Output size mismatch after copy - this usually indicates disk full or interrupted copy.',
+      ErrorCategory.INSUFFICIENT_RESOURCES,
+    ],
+    ['Unknown encoder hevc_nvenc', ErrorCategory.CODEC_INCOMPATIBILITY],
+    ["Encoder 'libx266' not found", ErrorCategory.CODEC_INCOMPATIBILITY],
+    ['Verification timed out (30min)', ErrorCategory.PROCESS_INTERRUPTED],
+    ['Encoding process was interrupted', ErrorCategory.PROCESS_INTERRUPTED],
+    ['Quality gate failed: VMAF 70.5 below threshold 85', ErrorCategory.UNKNOWN],
+    ['Some never-seen-before error text', ErrorCategory.UNKNOWN],
+  ])('classifies "%s" as %s', (message, expected) => {
+    expect(categorizeError(message)).toBe(expected);
+  });
+
+  it('is case-insensitive', () => {
+    expect(categorizeError('NO SPACE LEFT ON DEVICE')).toBe(ErrorCategory.INSUFFICIENT_RESOURCES);
+  });
+
+  it('does not misclassify an output-file verification failure as source corruption', () => {
+    // Regression: this message contains "corrupt" but describes the ffprobe
+    // check on the freshly-encoded OUTPUT temp file, not the source.
+    const message =
+      'Cannot determine output file duration - this usually means the output file is corrupt or incomplete.';
+    expect(categorizeError(message)).not.toBe(ErrorCategory.SOURCE_CORRUPTED);
+  });
+
+  it('does not misclassify an atomic-replace race guard as source corruption', () => {
+    // Regression: this message contains "corruption" but describes a
+    // mtime/size race between validation and replacement, not the source.
+    const message =
+      'Temp file was modified between validation and replacement - this could indicate file corruption or a race condition.';
+    expect(categorizeError(message)).not.toBe(ErrorCategory.SOURCE_CORRUPTED);
   });
 });

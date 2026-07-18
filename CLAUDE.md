@@ -75,9 +75,15 @@ BitBonsai consists of **three applications**:
 
 | App          | Type            | Purpose                   | Port                    |
 | ------------ | --------------- | ------------------------- | ----------------------- |
-| **backend**  | NestJS          | Video transcoding backend | 3100 (prod), 3000 (dev) |
-| **frontend** | Angular (Ionic) | Desktop app UI            | 4210 (prod), 4200 (dev) |
+| **backend**  | NestJS          | Video transcoding backend | 3000 (dev); 8108 in prod (see below) |
+| **frontend** | Angular (Ionic) | Desktop app UI            | 4200 (dev); 8108 in prod (see below) |
 | **website**  | Angular         | Marketing site            | 4201 (dev)              |
+
+Production is a single all-in-one Docker container (`bitbonsai`, built from
+`Dockerfile.prod`'s `production` target): embedded PostgreSQL, nginx serving
+the built frontend and proxying `/api` to the backend, all on port 8108.
+The split backend/frontend ports (3100/4210) described in older docs and
+`docker-compose.unraid.yml` are not what's actually deployed.
 
 ### API Integration: Website ↔ Licensing Service
 
@@ -147,11 +153,11 @@ interface PricingTier {
 ### Common Commands
 
 ```bash
-# Deploy to main node
-./deploy-unraid.sh
+# Deploy to main node (single all-in-one container, requires FONTAWESOME_NPM_AUTH_TOKEN)
+./scripts/deploy-unraid.sh
 
 # Deploy to child node
-./deploy-lxc-child.sh
+./scripts/deploy-child-lxc.sh
 
 # Build backend
 nx build backend
@@ -163,7 +169,7 @@ nx build website --configuration=production
 nx serve license-api
 
 # Check logs
-ssh root@unraid 'docker logs -f bitbonsai-backend'
+ssh root@unraid 'docker logs -f bitbonsai'
 ssh pve-labg5 'pct exec 300 -- journalctl -u bitbonsai-backend -f'
 ```
 

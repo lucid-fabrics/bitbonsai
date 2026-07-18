@@ -41,6 +41,33 @@ export interface CostSavingsEstimate {
 }
 
 /**
+ * One period's success-rate snapshot, used by getSuccessRateTrend
+ */
+export interface SuccessRateSnapshot {
+  completed: number;
+  failed: number;
+  successRate: number;
+}
+
+/**
+ * Week-over-week success-rate comparison
+ */
+export interface SuccessRateTrend {
+  currentWeek: SuccessRateSnapshot;
+  previousWeek: SuccessRateSnapshot;
+  changePercentagePoints: number;
+}
+
+/**
+ * One failure category's share of all FAILED jobs in the period
+ */
+export interface FailureCategoryBreakdownEntry {
+  category: string;
+  count: number;
+  percentage: number;
+}
+
+/**
  * Overall analytics summary
  */
 export interface AnalyticsSummary {
@@ -163,6 +190,79 @@ export class AnalyticsService {
       fastestNode,
       peakEncodingHour: peakHour,
     };
+  }
+
+  /**
+   * Week-over-week success rate: this week's COMPLETED-vs-FAILED ratio
+   * against the prior 7-day window, so a regression from a recent change is
+   * visible immediately rather than diluted into an all-time average.
+   */
+  async getSuccessRateTrend(): Promise<SuccessRateTrend> {
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const [currentWeek, previousWeek] = await Promise.all([
+      this.getSuccessRateSnapshot({ gte: oneWeekAgo, lte: now }),
+      this.getSuccessRateSnapshot({ gte: twoWeeksAgo, lte: oneWeekAgo }),
+    ]);
+
+    return {
+      currentWeek,
+      previousWeek,
+      changePercentagePoints: currentWeek.successRate - previousWeek.successRate,
+    };
+  }
+
+  private async getSuccessRateSnapshot(range: {
+    gte: Date;
+    lte: Date;
+  }): Promise<SuccessRateSnapshot> {
+    // Mirrors getSummary()'s successRate calc for a single explicit range:
+    // completed counted by completedAt, failed counted by updatedAt (a
+    // FAILED job's updatedAt is its failure timestamp).
+    const [completed, failed] = await Promise.all([
+      this.jobRepository.countWhere({ stage: JobStage.COMPLETED, completedAt: range }),
+      this.jobRepository.countWhere({ stage: JobStage.FAILED, updatedAt: range }),
+    ]);
+
+    return {
+      completed,
+      failed,
+      successRate: completed + failed > 0 ? (completed / (completed + failed)) * 100 : 100,
+    };
+  }
+
+  /**
+   * Failure-category breakdown: which class of failure (per
+   * ffmpeg-error-analyzer.util.ts's ErrorCategory) is most common right now,
+   * so the top remaining failure class is always visible instead of buried
+   * in a single successRate percentage.
+   */
+  async getFailureCategoryBreakdown(
+    period: TimePeriod = '30d'
+  ): Promise<FailureCategoryBreakdownEntry[]> {
+    const dateFilter = this.getDateFilter(period);
+
+    const grouped = await this.jobRepository.groupByErrorCategoryCount({
+      stage: JobStage.FAILED,
+      updatedAt: dateFilter,
+    });
+
+    const total = grouped.reduce((sum, g) => sum + g._count, 0);
+    if (total === 0) return [];
+
+    return grouped
+      .map((g) => ({
+        // Failures from before this field existed, or from a path that
+        // doesn't classify (e.g. the circuit breaker's own permanent-break
+        // write), are UNCATEGORIZED - distinct from the analyzer's own
+        // UNKNOWN category (tried to classify, couldn't).
+        category: g.errorCategory ?? 'UNCATEGORIZED',
+        count: g._count,
+        percentage: (g._count / total) * 100,
+      }))
+      .sort((a, b) => b.count - a.count);
   }
 
   /**

@@ -11,6 +11,7 @@ import { FileRelocatorService } from '../../../core/services/file-relocator.serv
 import { ContainerCompatibilityService } from '../../../encoding/container-compatibility.service';
 import { FfmpegService } from '../../../encoding/ffmpeg.service';
 import { FileHealthService } from '../../../encoding/file-health.service';
+import { TempFileGuardService } from '../../../encoding/services/temp-file-guard.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { HealthCheckWorker } from '../../health-check.worker';
 import { CircuitBreakerService } from '../../services/circuit-breaker.service';
@@ -27,6 +28,7 @@ describe('HealthCheckWorker', () => {
   let ffmpegService: Record<string, jest.Mock>;
   let fileRelocatorService: Record<string, jest.Mock>;
   let fileFailureTrackingService: Record<string, jest.Mock>;
+  let tempFileGuardService: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     prisma = {
@@ -43,6 +45,12 @@ describe('HealthCheckWorker', () => {
       analyzeFile: jest.fn(),
       quickHealthCheck: jest.fn().mockResolvedValue({ passed: true }),
       thoroughHealthCheck: jest.fn().mockResolvedValue({ passed: true, errors: [] }),
+      repairContainer: jest.fn().mockResolvedValue({ repaired: false }),
+    };
+
+    tempFileGuardService = {
+      registerTempFile: jest.fn().mockResolvedValue(undefined),
+      markCleaned: jest.fn().mockResolvedValue(undefined),
     };
 
     containerCompatibilityService = {
@@ -90,6 +98,7 @@ describe('HealthCheckWorker', () => {
           provide: FileFailureTrackingService,
           useValue: fileFailureTrackingService,
         },
+        { provide: TempFileGuardService, useValue: tempFileGuardService },
         HealthCheckCodecAnalyzerService,
         {
           provide: CircuitBreakerService,
@@ -120,6 +129,10 @@ describe('HealthCheckWorker', () => {
     // Restore fileHealthService defaults after clearAllMocks
     fileHealthService.quickHealthCheck.mockResolvedValue({ passed: true });
     fileHealthService.thoroughHealthCheck.mockResolvedValue({ passed: true, errors: [] });
+    fileHealthService.repairContainer.mockResolvedValue({ repaired: false });
+    // Restore tempFileGuardService defaults after clearAllMocks
+    tempFileGuardService.registerTempFile.mockResolvedValue(undefined);
+    tempFileGuardService.markCleaned.mockResolvedValue(undefined);
     // Restore containerCompatibilityService stream inventory defaults after clearAllMocks
     containerCompatibilityService.getStreamInfo.mockResolvedValue([]);
     containerCompatibilityService.toJobStreamInfo.mockReturnValue([]);
@@ -1171,6 +1184,139 @@ describe('HealthCheckWorker', () => {
       expect(jobRepository.updateById).toHaveBeenCalledWith(
         'job-healthy',
         expect.objectContaining({ stage: JobStage.NEEDS_DECISION })
+      );
+    });
+  });
+
+  // ─── checkJobHealth - remux-repair tier ────────────────────────────
+
+  describe('checkJobHealth - remux repair tier', () => {
+    const damagedJob = {
+      id: 'job-damaged',
+      filePath: '/media/damaged.mkv',
+      fileLabel: 'damaged.mkv',
+      stage: JobStage.DETECTED,
+      sourceCodec: 'h264',
+      targetCodec: 'hevc',
+      targetContainer: 'mkv',
+      beforeSizeBytes: BigInt(1073741824),
+      nodeId: 'node-1',
+      policy: null,
+    };
+
+    beforeEach(() => {
+      jobRepository.findUniqueWithInclude.mockResolvedValue(damagedJob);
+      prisma.$executeRaw.mockResolvedValue(1);
+    });
+
+    it('repairs an unreadable file and queues it from the repaired copy', async () => {
+      fileHealthService.quickHealthCheck
+        .mockResolvedValueOnce({ passed: false, reason: 'Duration is zero or missing' })
+        .mockResolvedValueOnce({ passed: true, durationSecs: 120 });
+      fileHealthService.repairContainer.mockResolvedValue({ repaired: true });
+
+      await (worker as any).checkJobHealth('job-damaged');
+
+      expect(fileHealthService.repairContainer).toHaveBeenCalledWith(
+        '/media/damaged.mkv',
+        '/media/damaged.mkv.repaired-job-damaged.mkv'
+      );
+      expect(tempFileGuardService.registerTempFile).toHaveBeenCalledWith(
+        'job-damaged',
+        '/media/damaged.mkv.repaired-job-damaged.mkv',
+        'node-1'
+      );
+      // Stream inventory is probed from the repaired copy so the flag builder
+      // still gets MP4 audio/subtitle-safety data for this job.
+      expect(containerCompatibilityService.getStreamInfo).toHaveBeenCalledWith(
+        '/media/damaged.mkv.repaired-job-damaged.mkv'
+      );
+      expect(prisma.job.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'job-damaged' },
+          data: expect.objectContaining({
+            stage: JobStage.QUEUED,
+            healthStatus: 'HEALTHY',
+            repairedSourcePath: '/media/damaged.mkv.repaired-job-damaged.mkv',
+          }),
+        })
+      );
+    });
+
+    it('still queues the job when the stream inventory probe fails on the repaired copy', async () => {
+      fileHealthService.quickHealthCheck
+        .mockResolvedValueOnce({ passed: false, reason: 'Duration is zero or missing' })
+        .mockResolvedValueOnce({ passed: true, durationSecs: 120 });
+      fileHealthService.repairContainer.mockResolvedValue({ repaired: true });
+      containerCompatibilityService.getStreamInfo.mockRejectedValueOnce(new Error('ffprobe failed'));
+
+      await (worker as any).checkJobHealth('job-damaged');
+
+      expect(prisma.job.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ stage: JobStage.QUEUED, healthStatus: 'HEALTHY' }),
+        })
+      );
+    });
+
+    it('falls through to CORRUPTED when the unreadable file cannot be repaired', async () => {
+      fileHealthService.quickHealthCheck.mockResolvedValue({
+        passed: false,
+        reason: 'Duration is zero or missing',
+      });
+      fileHealthService.repairContainer.mockResolvedValue({ repaired: false, reason: 'no moov' });
+
+      await (worker as any).checkJobHealth('job-damaged');
+
+      expect(prisma.job.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ stage: JobStage.FAILED, healthStatus: 'CORRUPTED' }),
+        })
+      );
+    });
+
+    it('repairs a file that fails both quick and thorough checks', async () => {
+      fileHealthService.quickHealthCheck
+        .mockResolvedValueOnce({ passed: false, reason: 'bad header', durationSecs: 60 })
+        .mockResolvedValueOnce({ passed: true, durationSecs: 60 });
+      fileHealthService.thoroughHealthCheck.mockResolvedValue({
+        passed: false,
+        errors: ['corrupt frame'],
+      });
+      fileHealthService.repairContainer.mockResolvedValue({ repaired: true });
+
+      await (worker as any).checkJobHealth('job-damaged');
+
+      expect(prisma.job.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            stage: JobStage.QUEUED,
+            healthStatus: 'HEALTHY',
+            repairedSourcePath: expect.stringContaining('.repaired-'),
+          }),
+        })
+      );
+    });
+
+    it('falls through to CORRUPTED when the repaired copy still fails the recheck', async () => {
+      fileHealthService.quickHealthCheck
+        .mockResolvedValueOnce({ passed: false, reason: 'bad header', durationSecs: 60 })
+        .mockResolvedValueOnce({ passed: false, reason: 'still broken' });
+      fileHealthService.thoroughHealthCheck.mockResolvedValue({
+        passed: false,
+        errors: ['corrupt frame'],
+      });
+      fileHealthService.repairContainer.mockResolvedValue({ repaired: true });
+
+      await (worker as any).checkJobHealth('job-damaged');
+
+      expect(tempFileGuardService.markCleaned).toHaveBeenCalledWith(
+        '/media/damaged.mkv.repaired-job-damaged.mkv'
+      );
+      expect(prisma.job.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ stage: JobStage.FAILED, healthStatus: 'CORRUPTED' }),
+        })
       );
     });
   });

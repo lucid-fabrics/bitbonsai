@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { Injectable, Logger } from '@nestjs/common';
 import type { AccelerationType } from '@prisma/client';
+import { FfmpegCapabilityService } from './services/ffmpeg-capability.service';
 import { GpuHealthService } from './services/gpu-health.service';
 
 /**
@@ -35,7 +36,10 @@ export interface HardwareAccelConfig {
 export class HardwareAccelerationService {
   private readonly logger = new Logger(HardwareAccelerationService.name);
 
-  constructor(private readonly gpuHealth: GpuHealthService) {}
+  constructor(
+    private readonly gpuHealth: GpuHealthService,
+    private readonly ffmpegCapability: FfmpegCapabilityService
+  ) {}
 
   /**
    * Detect available hardware acceleration.
@@ -177,8 +181,20 @@ export class HardwareAccelerationService {
     };
 
     // Get the codec for this combination, with fallbacks
-    const selectedCodec =
-      codecMap[targetCodec]?.[hwType] || codecMap[targetCodec]?.CPU || 'libx265';
+    const cpuCodec = codecMap[targetCodec]?.CPU || 'libx265';
+    let selectedCodec = codecMap[targetCodec]?.[hwType] || cpuCodec;
+
+    // CAPABILITY GATE: don't hand off a hardware encoder this ffmpeg build
+    // doesn't actually ship (e.g. av1_qsv on an older build) - that would
+    // fail immediately with "Unknown encoder". Fall back to the CPU codec,
+    // which the trial-encode preflight will still validate before committing
+    // to the full-length encode.
+    if (!this.ffmpegCapability.hasEncoder(selectedCodec) && selectedCodec !== cpuCodec) {
+      this.logger.warn(
+        `Encoder '${selectedCodec}' not found in this ffmpeg build - falling back to '${cpuCodec}'`
+      );
+      selectedCodec = cpuCodec;
+    }
 
     this.logger.log(
       `Codec selection: ${targetCodec} (policy) + ${hwType} (hardware) = ${selectedCodec}`

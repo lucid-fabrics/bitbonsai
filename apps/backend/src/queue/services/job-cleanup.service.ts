@@ -21,6 +21,15 @@ export class JobCleanupService implements OnModuleInit {
     10
   );
   private readonly TIMEOUT_HOURS = parseInt(process.env.JOB_ENCODING_TIMEOUT_HOURS || '2', 10);
+  // ADAPTIVE TIMEOUT: a flat 2h ceiling kills legitimately slow 4K/AV1 encodes
+  // that were always going to take longer than that. Scale the ceiling up for
+  // jobs with a known estimate, but never scale it DOWN below TIMEOUT_HOURS.
+  // A bad/missing estimate must never make the timeout tighter than the flat
+  // floor. estimatedDuration is a same-content-class historical average, not
+  // a guarantee, so the multiplier is a generous buffer, not a tight bound.
+  private readonly ADAPTIVE_TIMEOUT_MULTIPLIER = parseFloat(
+    process.env.JOB_ENCODING_TIMEOUT_MULTIPLIER || '2.0'
+  );
 
   constructor(private readonly jobRepository: JobRepository) {}
 
@@ -65,7 +74,7 @@ export class JobCleanupService implements OnModuleInit {
           stage: JobStage.ENCODING,
           updatedAt: { lt: thresholdDate },
           // Skip jobs already claimed by QueueProcessingService's fencing token.
-          // A non-null token means the other service is mid-reset — don't touch them.
+          // A non-null token means the other service is mid-reset - don't touch them.
           fencingToken: null,
         },
         {
@@ -121,11 +130,32 @@ export class JobCleanupService implements OnModuleInit {
   }
 
   /**
+   * Compute the adaptive timeout (ms) for a job: the flat floor, or
+   * ADAPTIVE_TIMEOUT_MULTIPLIER x the job's estimated encode duration,
+   * whichever is larger. A missing/zero estimate falls back to the floor.
+   */
+  private getAdaptiveTimeoutMs(estimatedDurationSeconds: number | null): number {
+    const floorMs = this.TIMEOUT_HOURS * 60 * 60 * 1000;
+    if (!estimatedDurationSeconds || estimatedDurationSeconds <= 0) {
+      return floorMs;
+    }
+    const scaledMs =
+      estimatedDurationSeconds * 1000 * this.ADAPTIVE_TIMEOUT_MULTIPLIER;
+    return Math.max(floorMs, scaledMs);
+  }
+
+  /**
    * Detect and mark jobs that have been encoding too long as FAILED
    *
    * Finds all jobs with:
    * - stage = ENCODING
-   * - updatedAt older than TIMEOUT_HOURS (default: 2 hours)
+   * - updatedAt older than the flat TIMEOUT_HOURS floor (default: 2 hours)
+   *
+   * Among those, a job with a known estimatedDuration only actually times
+   * out once it has run past max(TIMEOUT_HOURS, multiplier x estimate) -
+   * see getAdaptiveTimeoutMs(). This stops a legitimately slow 4K/AV1 encode
+   * from being killed at the same flat line as everything else, while a
+   * genuinely dead job with no estimate still times out at the flat floor.
    *
    * Marks them as:
    * - stage = FAILED
@@ -135,20 +165,23 @@ export class JobCleanupService implements OnModuleInit {
    * @returns Number of jobs marked as failed
    */
   async detectTimedOutJobs(): Promise<number> {
-    const timeoutDate = new Date();
-    timeoutDate.setHours(timeoutDate.getHours() - this.TIMEOUT_HOURS);
+    const floorDate = new Date();
+    floorDate.setHours(floorDate.getHours() - this.TIMEOUT_HOURS);
 
     try {
-      const timedOutJobs = await this.jobRepository.findManySelect<{
+      const candidates = await this.jobRepository.findManySelect<{
         id: string;
         fileLabel: string;
         nodeId: string;
         updatedAt: Date;
         startedAt: Date | null;
+        estimatedDuration: number | null;
       }>(
         {
           stage: JobStage.ENCODING,
-          updatedAt: { lt: timeoutDate },
+          // DB-level pre-filter uses the flat floor - the adaptive ceiling
+          // (which can only be larger) is applied per-job below.
+          updatedAt: { lt: floorDate },
         },
         {
           id: true,
@@ -156,7 +189,13 @@ export class JobCleanupService implements OnModuleInit {
           nodeId: true,
           updatedAt: true,
           startedAt: true,
+          estimatedDuration: true,
         }
+      );
+
+      const now = Date.now();
+      const timedOutJobs = candidates.filter(
+        (job) => now - job.updatedAt.getTime() >= this.getAdaptiveTimeoutMs(job.estimatedDuration)
       );
 
       if (timedOutJobs.length === 0) {
@@ -173,18 +212,22 @@ export class JobCleanupService implements OnModuleInit {
       // Process each job individually to log details
       for (const job of timedOutJobs) {
         const hoursEncoding = Math.floor((Date.now() - job.updatedAt.getTime()) / 1000 / 60 / 60);
+        const effectiveTimeoutHours = (
+          this.getAdaptiveTimeoutMs(job.estimatedDuration) /
+          (60 * 60 * 1000)
+        ).toFixed(1);
 
         try {
           await this.jobRepository.updateById(job.id, {
             stage: JobStage.FAILED,
             completedAt: new Date(),
-            error: `Encoding timeout - exceeded maximum duration of ${this.TIMEOUT_HOURS} hours (was encoding for ${hoursEncoding} hours)`,
+            error: `Encoding timeout - exceeded maximum duration of ${effectiveTimeoutHours} hours (was encoding for ${hoursEncoding} hours)`,
           });
 
           failedCount++;
 
           this.logger.warn(
-            `Marked job ${job.id} (${job.fileLabel}) as FAILED - encoding for ${hoursEncoding} hours on node ${job.nodeId}`
+            `Marked job ${job.id} (${job.fileLabel}) as FAILED - encoding for ${hoursEncoding} hours (limit ${effectiveTimeoutHours}h) on node ${job.nodeId}`
           );
         } catch (error: unknown) {
           this.logger.error(`Failed to mark job ${job.id} as timed out`, error);

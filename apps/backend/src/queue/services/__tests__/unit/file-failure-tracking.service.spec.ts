@@ -14,6 +14,7 @@ describe('FileFailureTrackingService', () => {
     getBlacklistedPaths: jest.Mock;
     clearBlacklist: jest.Mock;
     getFailureCount: jest.Mock;
+    getLastSuccessfulCodec: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -27,6 +28,7 @@ describe('FileFailureTrackingService', () => {
       getBlacklistedPaths: jest.fn().mockResolvedValue(new Set()),
       clearBlacklist: jest.fn().mockResolvedValue(undefined),
       getFailureCount: jest.fn().mockResolvedValue(0),
+      getLastSuccessfulCodec: jest.fn().mockResolvedValue(null),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -269,6 +271,58 @@ describe('FileFailureTrackingService', () => {
       const result = await service.getFailureCount(filePath, libraryId);
 
       expect(result).toBe(3);
+    });
+  });
+
+  describe('recordSuccess', () => {
+    const filePath = '/mnt/user/media/Movies/Test.mkv';
+    const libraryId = 'lib-1';
+
+    it('should upsert the successful codec via $executeRaw', async () => {
+      prisma.$executeRaw.mockResolvedValue(1);
+
+      await service.recordSuccess(filePath, libraryId, 'libx265');
+
+      expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+    });
+
+    it('should accept an optional contentFingerprint', async () => {
+      prisma.$executeRaw.mockResolvedValue(1);
+
+      await service.recordSuccess(filePath, libraryId, 'libx265', 'fingerprint-abc123');
+
+      expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getLastSuccessfulCodec', () => {
+    const filePath = '/mnt/user/media/Movies/Test.mkv';
+    const libraryId = 'lib-1';
+
+    it('should return null when no record exists', async () => {
+      fileFailureRecordRepository.getLastSuccessfulCodec.mockResolvedValue(null);
+
+      const result = await service.getLastSuccessfulCodec(filePath, libraryId);
+
+      expect(result).toBeNull();
+      expect(fileFailureRecordRepository.getLastSuccessfulCodec).toHaveBeenCalledWith(
+        filePath,
+        libraryId,
+        undefined
+      );
+    });
+
+    it('should return the last known-good codec', async () => {
+      fileFailureRecordRepository.getLastSuccessfulCodec.mockResolvedValue('libx265');
+
+      const result = await service.getLastSuccessfulCodec(filePath, libraryId, 'fingerprint-abc123');
+
+      expect(result).toBe('libx265');
+      expect(fileFailureRecordRepository.getLastSuccessfulCodec).toHaveBeenCalledWith(
+        filePath,
+        libraryId,
+        'fingerprint-abc123'
+      );
     });
   });
 });

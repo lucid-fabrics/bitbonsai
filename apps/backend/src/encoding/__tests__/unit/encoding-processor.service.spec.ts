@@ -9,7 +9,9 @@ import { FileRelocatorService } from '../../../core/services/file-relocator.serv
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { NodesService } from '../../../nodes/nodes.service';
 import { QueueService } from '../../../queue/queue.service';
+import { CircuitBreakerService } from '../../../queue/services/circuit-breaker.service';
 import { CompletionOutboxService } from '../../../queue/services/completion-outbox.service';
+import { FileFailureTrackingService } from '../../../queue/services/file-failure-tracking.service';
 import { OwnershipLeaseService } from '../../../queue/services/ownership-lease.service';
 import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
 import {
@@ -310,6 +312,20 @@ describe('EncodingProcessorService', () => {
           },
         },
         {
+          provide: CircuitBreakerService,
+          useValue: {
+            checkAndBreak: jest.fn().mockResolvedValue(false),
+            isCircuitBroken: jest.fn().mockResolvedValue(false),
+          },
+        },
+        {
+          provide: FileFailureTrackingService,
+          useValue: {
+            recordSuccess: jest.fn().mockResolvedValue(undefined),
+            getLastSuccessfulCodec: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
           provide: SettingsRepository,
           useValue: {
             findFirst: jest
@@ -540,7 +556,9 @@ describe('EncodingProcessorService', () => {
         'job-123',
         expect.stringContaining('Non-retriable error')
       );
-      expect(queueService.update).not.toHaveBeenCalled();
+      expect(queueService.update).toHaveBeenCalledWith('job-123', {
+        errorCategory: 'SOURCE_CORRUPTED',
+      });
     });
 
     it('permanently fails job on "source file appears corrupted"', async () => {
@@ -753,7 +771,9 @@ describe('EncodingProcessorService', () => {
           'job-123',
           expect.stringContaining('Non-retriable error')
         );
-        expect(queueService.update).not.toHaveBeenCalled();
+        expect(queueService.update).toHaveBeenCalledWith('job-123', {
+          errorCategory: 'SOURCE_CORRUPTED',
+        });
       });
     }
   });
@@ -1580,7 +1600,9 @@ describe('EncodingProcessorService', () => {
         'job-123',
         expect.stringContaining('Non-retriable error')
       );
-      expect(queueService.update).not.toHaveBeenCalled();
+      expect(queueService.update).toHaveBeenCalledWith('job-123', {
+        errorCategory: 'SOURCE_CORRUPTED',
+      });
     });
   });
 });

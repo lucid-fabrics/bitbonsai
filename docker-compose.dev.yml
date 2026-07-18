@@ -6,6 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile.dev
       target: backend
+      args:
+        - FONTAWESOME_NPM_AUTH_TOKEN=${FONTAWESOME_NPM_AUTH_TOKEN}
     container_name: bitbonsai-backend
     ports:
       - "3002:3000"
@@ -46,6 +48,8 @@ services:
       context: .
       dockerfile: Dockerfile.dev
       target: frontend
+      args:
+        - FONTAWESOME_NPM_AUTH_TOKEN=${FONTAWESOME_NPM_AUTH_TOKEN}
     container_name: bitbonsai-frontend
     ports:
       - "4201:4200"  # Local development - no port conflicts

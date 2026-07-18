@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { NodeConfigService } from '../../core/services/node-config.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -41,7 +42,15 @@ export class TempFileGuardService implements OnModuleInit {
         });
       }
     } catch (error) {
-      this.logger.warn(
+      // P2003 = foreign key constraint failed: jobId doesn't exist. Expected
+      // (not warning-worthy) for callers that intentionally encode without a
+      // persisted Job row, e.g. the nightly self-test corpus - crash-recovery
+      // just doesn't apply to that temp file, which is fine for a short-lived
+      // scratch encode. Anything else (DB connectivity, etc.) still warns.
+      const isMissingJob =
+        error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003';
+      const log = isMissingJob ? this.logger.debug.bind(this.logger) : this.logger.warn.bind(this.logger);
+      log(
         `[${jobId}] Failed to register temp file (${tempPath}): ${(error as Error).message ?? error}`
       );
     }
@@ -67,6 +76,12 @@ export class TempFileGuardService implements OnModuleInit {
   /**
    * Delete all uncleaned temp files for a job and mark them cleaned.
    * Called on encoding failure so leftover partial files are removed.
+   *
+   * Skips the job's repairedSourcePath (if set): a remux-repaired copy is a
+   * durable input the job still needs on its next retry, not a disposable
+   * per-attempt scratch file - a failure elsewhere in this same encode
+   * attempt (e.g. the main output temp) must not delete it out from under
+   * the job.
    */
   async cleanupJobTempFiles(jobId: string): Promise<void> {
     let rows: { id: string; tempPath: string }[] = [];
@@ -82,7 +97,12 @@ export class TempFileGuardService implements OnModuleInit {
       return;
     }
 
+    if (rows.length === 0) return;
+
+    const protectedPath = await this.getRepairedSourcePath(jobId);
+
     for (const row of rows) {
+      if (protectedPath && row.tempPath === protectedPath) continue;
       await this.unlinkAndMark(row.id, row.tempPath, jobId);
     }
   }
@@ -98,7 +118,7 @@ export class TempFileGuardService implements OnModuleInit {
     const nodeId = this.nodeConfig.getNodeId();
     if (!nodeId) {
       this.logger.warn(
-        'Node ID not available — skipping stale temp file cleanup to avoid cross-node interference'
+        'Node ID not available - skipping stale temp file cleanup to avoid cross-node interference'
       );
       return;
     }
@@ -121,15 +141,53 @@ export class TempFileGuardService implements OnModuleInit {
       return;
     }
 
+    // A job still waiting to be picked up after a restart (e.g. QUEUED with a
+    // remux-repaired source) has a temp file that looks "stale" by uncleaned-
+    // row age alone but is still needed - never sweep it.
+    const jobIds = [...new Set(rows.map((r) => r.jobId))];
+    const protectedPaths = await this.getRepairedSourcePaths(jobIds);
+
     this.logger.log(`Found ${rows.length} stale temp file(s), cleaning up...`);
     let removed = 0;
+    let preserved = 0;
 
     for (const row of rows) {
+      if (protectedPaths.has(row.tempPath)) {
+        preserved++;
+        continue;
+      }
       const deleted = await this.unlinkAndMark(row.id, row.tempPath, row.jobId);
       if (deleted) removed++;
     }
 
-    this.logger.log(`Cleaned up ${removed}/${rows.length} stale temp file(s)`);
+    this.logger.log(
+      `Cleaned up ${removed}/${rows.length} stale temp file(s)` +
+        (preserved ? ` (${preserved} repaired-source copies preserved)` : '')
+    );
+  }
+
+  private async getRepairedSourcePath(jobId: string): Promise<string | null> {
+    try {
+      const job = await this.prisma.job.findUnique({
+        where: { id: jobId },
+        select: { repairedSourcePath: true },
+      });
+      return job?.repairedSourcePath ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async getRepairedSourcePaths(jobIds: string[]): Promise<Set<string>> {
+    try {
+      const jobs = await this.prisma.job.findMany({
+        where: { id: { in: jobIds }, repairedSourcePath: { not: null } },
+        select: { repairedSourcePath: true },
+      });
+      return new Set(jobs.map((j) => j.repairedSourcePath as string));
+    } catch {
+      return new Set();
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -156,7 +214,7 @@ export class TempFileGuardService implements OnModuleInit {
           `[${jobId}] Failed to delete temp file ${tempPath}: ${(error as NodeJS.ErrnoException).message ?? error}`
         );
       }
-      // File already gone — still mark cleaned so we don't retry
+      // File already gone - still mark cleaned so we don't retry
     }
 
     try {

@@ -8,12 +8,23 @@ Quick commands for deploying to different environments.
 
 ## Main Node (Unraid Docker)
 
+Single all-in-one container (`bitbonsai`): embedded PostgreSQL, nginx +
+backend on one port. Built from `Dockerfile.prod`'s `production` target,
+not the split backend/frontend containers some older docs describe.
+
 ```bash
+export FONTAWESOME_NPM_AUTH_TOKEN='...'  # needed to build the image
 ./scripts/deploy-unraid.sh
 ```
 
 **Target:** 192.168.1.100
-**Access:** http://192.168.1.100:4210
+**Access:** http://192.168.1.100:8108
+**Rollback:** the script health-checks the new container and automatically
+rolls back to the previous one on failure; it also keeps the prior
+container stopped as `bitbonsai-old` for one extra manual-rollback generation.
+**Migrations:** applied automatically on container start by
+`docker-entrypoint.sh` (`prisma migrate deploy`, falling back to
+`db push --accept-data-loss`) - no separate migration step needed.
 
 ---
 
@@ -128,8 +139,8 @@ nx build website --configuration=production
 ### Check Service Status
 
 ```bash
-# Unraid
-ssh root@unraid 'docker logs -f bitbonsai-backend'
+# Unraid (single all-in-one container)
+ssh root@unraid 'docker logs -f bitbonsai'
 
 # LXC Child
 ssh pve-labg5 'pct exec 300 -- journalctl -u bitbonsai-backend -f'
@@ -142,10 +153,10 @@ ssh root@192.168.1.170 'systemctl status bitbonsai-backend'
 
 ```bash
 # Health check
-curl http://192.168.1.100:3100/api/v1/health
+curl http://192.168.1.100:8108/api/v1/health
 
 # Node info
-curl http://192.168.1.100:3100/api/v1/nodes/current
+curl http://192.168.1.100:8108/api/v1/nodes/current
 ```
 
 ---
@@ -163,5 +174,5 @@ curl http://192.168.1.100:3100/api/v1/nodes/current
 
 ---
 
-**Last Updated:** 2026-01-11
+**Last Updated:** 2026-07-18 (Main Node section verified against the live deployment; other sections not re-verified this pass)
 **Full Documentation:** `docs/deployment/README.md`

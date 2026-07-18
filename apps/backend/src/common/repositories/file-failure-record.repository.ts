@@ -61,4 +61,27 @@ export class FileFailureRecordRepository extends BaseRepository {
 
     return record?.totalFailures ?? 0;
   }
+
+  async getLastSuccessfulCodec(
+    filePath: string,
+    libraryId: string,
+    contentFingerprint?: string
+  ): Promise<string | null> {
+    const orConditions: Record<string, unknown>[] = [{ filePath, libraryId }];
+
+    if (contentFingerprint) {
+      orConditions.push({ contentFingerprint });
+    }
+
+    const match = await this.findFirst<Pick<FileFailureRecord, 'lastSuccessfulCodec'> | null>({
+      where: {
+        lastSuccessfulCodec: { not: null },
+        OR: orConditions,
+      },
+      orderBy: { lastSuccessfulAt: 'desc' },
+      select: { lastSuccessfulCodec: true },
+    });
+
+    return match?.lastSuccessfulCodec ?? null;
+  }
 }

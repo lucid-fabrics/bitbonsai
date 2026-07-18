@@ -42,6 +42,7 @@ import { QualityMetricsService } from './quality-metrics.service';
 import { CodecFallbackService } from './services/codec-fallback.service';
 import { ContainerValidationService } from './services/container-validation.service';
 import { DiskSpaceGuardService } from './services/disk-space-guard.service';
+import { FfmpegCapabilityService } from './services/ffmpeg-capability.service';
 import { GpuHealthService } from './services/gpu-health.service';
 import { NfsHealthService } from './services/nfs-health.service';
 import { PreflightService } from './services/preflight.service';
@@ -117,6 +118,7 @@ import { WorkerPoolService } from './worker-pool.service';
     QualityGateService,
     CodecFallbackService,
     GpuHealthService,
+    FfmpegCapabilityService,
     NfsHealthService,
     PreflightService,
     SegmentedEncodeService,

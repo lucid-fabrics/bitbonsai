@@ -1,6 +1,11 @@
 # Stage 1: Build Angular Frontend
 FROM node:20-alpine AS frontend-builder
 
+# Required at build time so `npm ci` can authenticate against the private
+# Font Awesome Pro registry referenced in .npmrc. Pass with:
+#   docker build --build-arg FONTAWESOME_NPM_AUTH_TOKEN="$FONTAWESOME_NPM_AUTH_TOKEN" ...
+ARG FONTAWESOME_NPM_AUTH_TOKEN
+
 WORKDIR /app
 
 # Copy package files and .npmrc for Font Awesome Pro
@@ -24,6 +29,11 @@ RUN npx nx build frontend --configuration=production
 
 # Stage 2: Build NestJS Backend
 FROM node:20-alpine AS backend-builder
+
+# Required at build time so `npm ci` can authenticate against the private
+# Font Awesome Pro registry referenced in .npmrc. Pass with:
+#   docker build --build-arg FONTAWESOME_NPM_AUTH_TOKEN="$FONTAWESOME_NPM_AUTH_TOKEN" ...
+ARG FONTAWESOME_NPM_AUTH_TOKEN
 
 WORKDIR /app
 

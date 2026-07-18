@@ -8,11 +8,13 @@ jest.mock('child_process', () => ({
 jest.mock('fs', () => ({
   ...jest.requireActual('fs'),
   existsSync: jest.fn(),
+  statSync: jest.fn(),
+  unlinkSync: jest.fn(),
 }));
 
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
-import { existsSync } from 'fs';
+import { existsSync, statSync, unlinkSync } from 'fs';
 
 describe('FileHealthService', () => {
   let service: FileHealthService;
@@ -603,6 +605,95 @@ describe('FileHealthService', () => {
       expect((service as any).logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('failing open')
       );
+    });
+  });
+
+  describe('repairContainer', () => {
+    it('should report repaired when ffmpeg exits 0 and produces a non-empty file', async () => {
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (statSync as jest.Mock).mockReturnValue({ size: 1024 });
+      createMockProcess(0, '');
+
+      const result = await service.repairContainer('/test/broken.mkv', '/test/broken.repaired.mkv');
+
+      expect(result.repaired).toBe(true);
+      expect(spawn).toHaveBeenCalledWith(
+        'ffmpeg',
+        expect.arrayContaining(['-err_detect', 'ignore_err', '-c', 'copy'])
+      );
+    });
+
+    it('should report not repaired when ffmpeg exits non-zero', async () => {
+      (existsSync as jest.Mock).mockReturnValue(false);
+      createMockProcess(1, '', '[error] Invalid data found');
+
+      const result = await service.repairContainer('/test/broken.mkv', '/test/broken.repaired.mkv');
+
+      expect(result.repaired).toBe(false);
+      expect(result.reason).toContain('ffmpeg exited with code 1');
+    });
+
+    it('should clean up a partial output file left behind by a non-zero exit', async () => {
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (statSync as jest.Mock).mockReturnValue({ size: 512 });
+      createMockProcess(1, '', '[error] Invalid data found');
+
+      const result = await service.repairContainer('/test/broken.mkv', '/test/broken.repaired.mkv');
+
+      expect(result.repaired).toBe(false);
+      expect(unlinkSync).toHaveBeenCalledWith('/test/broken.repaired.mkv');
+    });
+
+    it('should not throw when cleaning up a partial output file itself fails', async () => {
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (unlinkSync as jest.Mock).mockImplementation(() => {
+        throw new Error('EBUSY');
+      });
+      createMockProcess(1, '', '[error] Invalid data found');
+
+      const result = await service.repairContainer('/test/broken.mkv', '/test/broken.repaired.mkv');
+
+      expect(result.repaired).toBe(false);
+      expect((service as any).logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to clean up partial repair output')
+      );
+    });
+
+    it('should report not repaired when output file is missing despite exit 0', async () => {
+      (existsSync as jest.Mock).mockReturnValue(false);
+      createMockProcess(0, '');
+
+      const result = await service.repairContainer('/test/broken.mkv', '/test/broken.repaired.mkv');
+
+      expect(result.repaired).toBe(false);
+      expect(unlinkSync).not.toHaveBeenCalled();
+    });
+
+    it('should report not repaired and clean up when output file is empty', async () => {
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (statSync as jest.Mock).mockReturnValue({ size: 0 });
+      createMockProcess(0, '');
+
+      const result = await service.repairContainer('/test/broken.mkv', '/test/broken.repaired.mkv');
+
+      expect(result.repaired).toBe(false);
+      expect(unlinkSync).toHaveBeenCalledWith('/test/broken.repaired.mkv');
+    });
+
+    it('should not throw and report not repaired when ffmpeg cannot be spawned', async () => {
+      const proc = new EventEmitter() as any;
+      proc.stdout = new EventEmitter();
+      proc.stderr = new EventEmitter();
+      proc.stdout.destroy = jest.fn();
+      proc.stderr.destroy = jest.fn();
+      proc.kill = jest.fn();
+      (spawn as jest.Mock).mockReturnValue(proc);
+      setTimeout(() => proc.emit('error', new Error('spawn ffmpeg ENOENT')), 10);
+
+      const result = await service.repairContainer('/test/broken.mkv', '/test/broken.repaired.mkv');
+
+      expect(result.repaired).toBe(false);
+      expect(result.reason).toContain('Could not run ffmpeg');
     });
   });
 });

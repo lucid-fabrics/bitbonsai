@@ -23,8 +23,14 @@ echo -e "${YELLOW}Version: ${VERSION}${NC}"
 echo ""
 
 # Step 1: Docker login
+if [ -z "${DOCKER_HUB_PASSWORD:-}" ]; then
+  echo -e "${RED}❌ DOCKER_HUB_PASSWORD is not set.${NC}"
+  echo "   Set it before running this script, e.g.:"
+  echo "     DOCKER_HUB_PASSWORD='...' ./scripts/docker-publish.sh"
+  exit 1
+fi
 echo -e "${YELLOW}📦 Logging into Docker Hub...${NC}"
-echo "76656SiaPoa@!" | docker login -u "${DOCKER_USER}" --password-stdin
+echo "${DOCKER_HUB_PASSWORD}" | docker login -u "${DOCKER_USER}" --password-stdin
 
 # Step 2: Build the image
 echo -e "${YELLOW}🔨 Building Docker image...${NC}"

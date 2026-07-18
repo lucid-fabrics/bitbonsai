@@ -1,3 +1,4 @@
+import { existsSync, unlinkSync } from 'node:fs';
 import * as path from 'node:path';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -7,6 +8,7 @@ import { FileRelocatorService } from '../core/services/file-relocator.service';
 import { ContainerCompatibilityService } from '../encoding/container-compatibility.service';
 import { FfmpegService } from '../encoding/ffmpeg.service';
 import { FileHealthService } from '../encoding/file-health.service';
+import { TempFileGuardService } from '../encoding/services/temp-file-guard.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { HealthCheckIssueSeverity } from './models/health-check-issue.model';
 import { CircuitBreakerService } from './services/circuit-breaker.service';
@@ -61,7 +63,8 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
     private readonly fileRelocatorService: FileRelocatorService,
     private readonly fileFailureTracking: FileFailureTrackingService,
     private readonly codecAnalyzer: HealthCheckCodecAnalyzerService,
-    private readonly circuitBreaker: CircuitBreakerService
+    private readonly circuitBreaker: CircuitBreakerService,
+    private readonly tempFileGuard: TempFileGuardService
   ) {}
 
   /**
@@ -500,6 +503,83 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Remux-repair tier: many "corrupted" files are just container-level damage
+   * (bad moov, broken index, truncated tail) - a stream-copy rewrite with
+   * error tolerance often recovers them without touching a single frame.
+   *
+   * Repairs to a sibling temp path, re-runs the quick health check on the
+   * repaired copy, and if it passes, queues the job to encode FROM the
+   * repaired copy (encoding-file.service.ts consumes repairedSourcePath).
+   * The original file is never touched by this - it's only overwritten
+   * later, by the normal replace-on-success flow, with an encode that has
+   * already proven decodable.
+   *
+   * Returns true if the repair succeeded and the job was requeued as HEALTHY.
+   */
+  private async attemptRemuxRepair(
+    job: { id: string; filePath: string; fileLabel: string; nodeId: string },
+    originalReason: string
+  ): Promise<boolean> {
+    const repairedPath = `${job.filePath}.repaired-${job.id}.mkv`;
+
+    const repairResult = await this.fileHealthService.repairContainer(job.filePath, repairedPath);
+    if (!repairResult.repaired) {
+      this.logger.debug(`[${job.id}] Remux repair did not apply: ${repairResult.reason}`);
+      return false;
+    }
+
+    await this.tempFileGuard.registerTempFile(job.id, repairedPath, job.nodeId);
+
+    const recheck = await this.fileHealthService.quickHealthCheck(repairedPath);
+    if (!recheck.passed) {
+      this.logger.warn(
+        `[${job.id}] Remux-repaired copy still fails health check: ${recheck.reason}`
+      );
+      try {
+        if (existsSync(repairedPath)) unlinkSync(repairedPath);
+      } catch (cleanupError: unknown) {
+        this.logger.warn(`[${job.id}] Failed to clean up failed repair copy:`, cleanupError);
+      }
+      await this.tempFileGuard.markCleaned(repairedPath);
+      return false;
+    }
+
+    // Capture the per-stream inventory from the repaired copy (same as the
+    // normal quick-check-passed path below) so the ffmpeg flag builder still
+    // gets container-safe MP4 audio-transcode/subtitle-mapping decisions at
+    // encode time - without it, an MP4-target job with AC3/DTS/TrueHD audio
+    // would only discover the incompatibility as an avoidable encode failure.
+    let streamInfo: ReturnType<typeof this.containerCompatibilityService.toJobStreamInfo> | null =
+      null;
+    try {
+      const fullStreams = await this.containerCompatibilityService.getStreamInfo(repairedPath);
+      streamInfo = this.containerCompatibilityService.toJobStreamInfo(fullStreams);
+    } catch (probeError: unknown) {
+      // Fail open: the builder falls back to conservative defaults without it
+      this.logger.warn(`[${job.id}] Stream inventory probe failed on repaired copy: ${probeError}`);
+    }
+
+    await this.prisma.job.update({
+      where: { id: job.id },
+      data: {
+        stage: JobStage.QUEUED,
+        healthStatus: 'HEALTHY' as const,
+        healthScore: 60,
+        healthMessage: `✅ Score: 60/100 | Remux-repaired container corruption (was: ${originalReason})`,
+        healthCheckedAt: new Date(),
+        error: null,
+        repairedSourcePath: repairedPath,
+        ...(streamInfo ? { streamInfo: streamInfo as unknown as Prisma.InputJsonValue } : {}),
+      },
+    });
+
+    this.logger.log(
+      `[${job.id}] ✓ ${job.fileLabel} - remux repair succeeded, queued to encode from repaired copy`
+    );
+    return true;
+  }
+
+  /**
    * Perform health check on a single job
    *
    * @param jobId - Job ID to check
@@ -519,6 +599,7 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
         targetCodec: string;
         targetContainer: string | null;
         beforeSizeBytes: bigint;
+        nodeId: string;
         policy: { allowSameCodec: boolean; minSavingsPercent: number } | null;
       }>(jobId, {
         policy: { select: { allowSameCodec: true, minSavingsPercent: true } },
@@ -622,8 +703,11 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
         // be decoded at all - skip straight to CORRUPTED.
         if (!quickResult.durationSecs) {
           this.logger.warn(
-            `Quick check failed for ${job.fileLabel} (${quickResult.reason}) and file is unreadable - skipping thorough check, marking CORRUPTED`
+            `Quick check failed for ${job.fileLabel} (${quickResult.reason}) and file is unreadable - skipping thorough check, attempting remux repair`
           );
+          if (await this.attemptRemuxRepair(job, `Quick check failed (unreadable): ${quickResult.reason}`)) {
+            return;
+          }
           await this.prisma.job.update({
             where: { id: jobId },
             data: {
@@ -667,11 +751,14 @@ export class HealthCheckWorker implements OnModuleInit, OnModuleDestroy {
           return;
         }
 
-        // Both checks failed → mark CORRUPTED
+        // Both checks failed → attempt remux repair before giving up
         const errorSummary = thoroughResult.errors.join('; ');
         this.logger.warn(
-          `✗ ${job.fileLabel} - CORRUPTED (quick + thorough failed): ${errorSummary} → FAILED`
+          `✗ ${job.fileLabel} - quick + thorough failed: ${errorSummary} → attempting remux repair`
         );
+        if (await this.attemptRemuxRepair(job, `Quick+Thorough: ${errorSummary}`)) {
+          return;
+        }
         await this.prisma.job.update({
           where: { id: jobId },
           data: {

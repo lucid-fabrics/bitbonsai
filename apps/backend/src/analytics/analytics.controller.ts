@@ -82,6 +82,27 @@ export class AnalyticsController {
     return this.analyticsService.getCodecPerformance(period || '30d');
   }
 
+  @Get('success-rate-trend')
+  @ApiOperation({ summary: 'Get week-over-week encode success rate trend' })
+  @ApiOkResponse({ description: 'Current vs previous 7-day success rate' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to compute success rate trend' })
+  async getSuccessRateTrend() {
+    return this.analyticsService.getSuccessRateTrend();
+  }
+
+  @Get('failure-categories')
+  @ApiOperation({ summary: 'Get failure-category breakdown (which failure class is most common)' })
+  @ApiQuery({
+    name: 'period',
+    enum: ['24h', '7d', '30d', '90d', 'all'],
+    required: false,
+  })
+  @ApiOkResponse({ description: 'Failure counts and share by category' })
+  @ApiInternalServerErrorResponse({ description: 'Failed to compute failure breakdown' })
+  async getFailureCategories(@Query('period') period?: TimePeriod) {
+    return this.analyticsService.getFailureCategoryBreakdown(period || '30d');
+  }
+
   @Get('summary')
   @ApiOperation({ summary: 'Get analytics summary dashboard' })
   @ApiQuery({

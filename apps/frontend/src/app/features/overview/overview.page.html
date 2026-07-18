@@ -27,6 +27,54 @@
   <!-- Main Dashboard Content -->
   @if (overviewData$ | async; as overviewData) {
   <div class="dashboard-grid">
+    <!-- Encode Success Trend -->
+    <div class="system-health">
+      @if (successRateTrend$ | async; as trend) {
+      <div
+        class="health-card"
+        [class.health-card--success]="trend.changePercentagePoints >= 0"
+        [class.health-card--warning]="trend.changePercentagePoints < 0"
+      >
+        <div class="health-card__icon">
+          <fa-icon
+            [icon]="trend.changePercentagePoints >= 0 ? icons.trendUp : icons.trendDown"
+          ></fa-icon>
+        </div>
+        <div class="health-card__content">
+          <p class="health-card__title">
+            {{ 'overview.successRate7d' | transloco }}
+          </p>
+          <p class="health-card__value">
+            {{ trend.currentWeek.successRate.toFixed(0) }}%
+            <span class="health-card__delta">
+              ({{ trend.changePercentagePoints >= 0 ? '+' : ''
+              }}{{ trend.changePercentagePoints.toFixed(1) }}pts {{
+              'overview.vsLastWeek' | transloco }})
+            </span>
+          </p>
+        </div>
+      </div>
+      } @if (failureCategories$ | async; as categories) { @if
+      (categories.length > 0) {
+      <div class="health-card health-card--info">
+        <div class="health-card__icon">
+          <fa-icon [icon]="icons.topFailure"></fa-icon>
+        </div>
+        <div class="health-card__content">
+          <p class="health-card__title">
+            {{ 'overview.topFailureCategory' | transloco }}
+          </p>
+          <p class="health-card__value">
+            {{ formatCategoryLabel(categories[0].category) }}
+            <span class="health-card__delta"
+              >({{ categories[0].percentage.toFixed(0) }}%)</span
+            >
+          </p>
+        </div>
+      </div>
+      } }
+    </div>
+
     <!-- Node Status Section -->
     <section class="node-status-section">
       <h2 class="section-title">{{ 'overview.nodes' | transloco }}</h2>

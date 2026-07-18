@@ -1,6 +1,11 @@
 # Stage 1: Base image with common dependencies
 FROM node:20-alpine AS base
 
+# Required at build time so `npm ci`/`npm install` can authenticate against
+# the private Font Awesome Pro registry referenced in .npmrc. Pass with:
+#   docker build --build-arg FONTAWESOME_NPM_AUTH_TOKEN="$FONTAWESOME_NPM_AUTH_TOKEN" ...
+ARG FONTAWESOME_NPM_AUTH_TOKEN
+
 # Install system dependencies
 # NFS and SMB clients for shared storage support
 # Docker CLI for volume auto-detection

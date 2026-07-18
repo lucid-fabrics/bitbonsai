@@ -5,11 +5,12 @@ import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../../common/repositories/job.repository';
 import { FileRelocatorService } from '../../../core/services/file-relocator.service';
 import { QueueService } from '../../../queue/queue.service';
+import { CircuitBreakerService } from '../../../queue/services/circuit-breaker.service';
 import { OwnershipLeaseService } from '../../../queue/services/ownership-lease.service';
 import { EncodingFileService } from '../../encoding-file.service';
 import { EncodingValidatorService } from '../../encoding-validator.service';
 import { ProcessorLoopService } from '../../processor-loop.service';
-import { SystemResourceService } from '../../system-resource.service';
+import { InsufficientDiskSpaceError, SystemResourceService } from '../../system-resource.service';
 import { WorkerPoolService } from '../../worker-pool.service';
 
 jest.mock('node:fs');
@@ -30,6 +31,7 @@ const makeJob = (overrides: Record<string, unknown> = {}) => ({
   filePath: '/mnt/media/movie.mkv',
   fileLabel: 'movie.mkv',
   beforeSizeBytes: BigInt(1000000),
+  targetCodec: 'HEVC',
   stage: JobStage.ENCODING,
   policy: { id: 'policy-1', targetCodec: 'HEVC', targetQuality: 28 },
   ...overrides,
@@ -45,6 +47,7 @@ describe('ProcessorLoopService', () => {
   let fileRelocatorService: jest.Mocked<FileRelocatorService>;
   let encodingValidator: jest.Mocked<EncodingValidatorService>;
   let ownershipLease: jest.Mocked<OwnershipLeaseService>;
+  let circuitBreaker: jest.Mocked<CircuitBreakerService>;
 
   beforeEach(async () => {
     jobRepository = {
@@ -91,6 +94,11 @@ describe('ProcessorLoopService', () => {
       stopRenewing: jest.fn(),
     } as unknown as jest.Mocked<OwnershipLeaseService>;
 
+    circuitBreaker = {
+      checkAndBreak: jest.fn().mockResolvedValue(false),
+      isCircuitBroken: jest.fn().mockResolvedValue(false),
+    } as unknown as jest.Mocked<CircuitBreakerService>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProcessorLoopService,
@@ -102,6 +110,7 @@ describe('ProcessorLoopService', () => {
         { provide: FileRelocatorService, useValue: fileRelocatorService },
         { provide: EncodingValidatorService, useValue: encodingValidator },
         { provide: OwnershipLeaseService, useValue: ownershipLease },
+        { provide: CircuitBreakerService, useValue: circuitBreaker },
       ],
     }).compile();
 
@@ -180,6 +189,12 @@ describe('ProcessorLoopService', () => {
       expect(encodingFileService.encodeFile).toHaveBeenCalledWith(job);
       expect(encodingValidator.handleJobCompletion).toHaveBeenCalled();
       expect(result).toBe(job);
+      expect(systemResourceService.performResourcePreflightChecks).toHaveBeenCalledWith(
+        job.filePath,
+        job.id,
+        job.targetCodec,
+        job.beforeSizeBytes
+      );
     });
 
     it('validates and heals job policy before encoding', async () => {
@@ -280,6 +295,60 @@ describe('ProcessorLoopService', () => {
 
       expect(ownershipLease.stopRenewing).toHaveBeenCalledWith('job-1');
       expect(encodingValidator.handleJobFailure).toHaveBeenCalled();
+    });
+
+    it('defers (not fails) a job that hits InsufficientDiskSpaceError', async () => {
+      const job = makeJob();
+      workerPoolService.getWorker.mockReturnValue(makeWorker() as never);
+      queueService.getNextJob.mockResolvedValue(job as never);
+      mockFs.existsSync.mockReturnValue(true);
+      systemResourceService.performResourcePreflightChecks.mockRejectedValue(
+        new InsufficientDiskSpaceError('Insufficient disk space on /mnt/media', 2.5, 10)
+      );
+      circuitBreaker.checkAndBreak.mockResolvedValue(false);
+
+      const result = await service.processNextJob('worker-1');
+
+      expect(result).toBeNull();
+      expect(encodingValidator.handleJobFailure).not.toHaveBeenCalled();
+      expect(encodingFileService.encodeFile).not.toHaveBeenCalled();
+      expect(circuitBreaker.checkAndBreak).toHaveBeenCalledWith(
+        'job-1',
+        expect.stringContaining('insufficient disk space')
+      );
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({
+          stage: JobStage.QUEUED,
+          startedAt: null,
+          nextRetryAt: expect.any(Date),
+        })
+      );
+    });
+
+    it('does not re-queue a job once the circuit breaker trips on repeated disk-space deferrals', async () => {
+      const job = makeJob();
+      workerPoolService.getWorker.mockReturnValue(makeWorker() as never);
+      queueService.getNextJob.mockResolvedValue(job as never);
+      mockFs.existsSync.mockReturnValue(true);
+      systemResourceService.performResourcePreflightChecks.mockRejectedValue(
+        new InsufficientDiskSpaceError('Insufficient disk space on /mnt/media', 2.5, 10)
+      );
+      // checkAndBreak already marked the job FAILED internally once tripped
+      circuitBreaker.checkAndBreak.mockResolvedValue(true);
+
+      const result = await service.processNextJob('worker-1');
+
+      expect(result).toBeNull();
+      expect(circuitBreaker.checkAndBreak).toHaveBeenCalledWith(
+        'job-1',
+        expect.stringContaining('insufficient disk space')
+      );
+      // deferJobForDiskSpace must not re-queue on top of the circuit breaker's own FAILED write
+      expect(jobRepository.updateById).not.toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ stage: JobStage.QUEUED })
+      );
     });
 
     it('sets and clears worker currentJobId', async () => {

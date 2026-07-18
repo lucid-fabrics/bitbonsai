@@ -1,9 +1,10 @@
 import * as os from 'node:os';
 import { Test, TestingModule } from '@nestjs/testing';
 import { NodesService } from '../nodes/nodes.service';
+import { FileSizeEstimationService } from './file-size-estimation.service';
 import { SystemResourceService } from './system-resource.service';
 
-// os module properties are non-configurable in Node.js 20+ — mock at module level
+// os module properties are non-configurable in Node.js 20+ - mock at module level
 jest.mock('node:os', () => ({
   cpus: jest.fn().mockReturnValue([]),
   loadavg: jest.fn().mockReturnValue([0, 0, 0]),
@@ -21,7 +22,11 @@ describe('SystemResourceService', () => {
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SystemResourceService, { provide: NodesService, useValue: mockNodesService }],
+      providers: [
+        SystemResourceService,
+        { provide: NodesService, useValue: mockNodesService },
+        FileSizeEstimationService,
+      ],
     }).compile();
 
     service = module.get<SystemResourceService>(SystemResourceService);

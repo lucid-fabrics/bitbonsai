@@ -404,17 +404,20 @@ export class FfmpegEncoderService {
     outputPath: string,
     startSeconds: number,
     durationSeconds: number,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    // Segmented-encode callers omit this: segments are always muxed as MKV
+    // regardless of the job's target container (the final container is
+    // applied at concat time). The trial-encode preflight passes the job's
+    // real target container so the sample exercises the same MP4/MKV-specific
+    // audio-transcode and subtitle-mapping logic the full encode will use.
+    outputContainer = 'mkv'
   ): Promise<void> {
     this.logger.log(
       `[${job.id}] encodeSegment() start=${startSeconds}s duration=${durationSeconds}s → ${outputPath}`
     );
 
     const hwaccel = await this._detectHardwareAcceleration();
-    // Segments are always muxed as MKV regardless of the job's target
-    // container (SegmentedEncodeService plans .mkv paths); the final
-    // container is applied at concat time.
-    const segmentJob = { ...job, targetContainer: 'mkv' } as Job;
+    const segmentJob = { ...job, targetContainer: outputContainer } as Job;
     const args = this.buildFfmpegCommand(segmentJob, policy, hwaccel, outputPath);
 
     args.unshift('-ss', startSeconds.toString());

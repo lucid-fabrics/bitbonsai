@@ -1,5 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { HardwareAccelerationService } from '../../hardware-acceleration.service';
+import { FfmpegCapabilityService } from '../../services/ffmpeg-capability.service';
 import { GpuHealthService } from '../../services/gpu-health.service';
 
 // Mock node:child_process before imports resolve
@@ -52,14 +53,21 @@ describe('HardwareAccelerationService', () => {
     recordGpuFailure: jest.fn(),
   };
 
+  const mockFfmpegCapability = {
+    hasEncoder: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     mockGpuHealth.isGpuHealthy.mockResolvedValue(true);
+    // Fail-open default: matches the real service before its probe completes.
+    mockFfmpegCapability.hasEncoder.mockReturnValue(true);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         HardwareAccelerationService,
         { provide: GpuHealthService, useValue: mockGpuHealth },
+        { provide: FfmpegCapabilityService, useValue: mockFfmpegCapability },
       ],
     }).compile();
 
@@ -210,6 +218,27 @@ describe('HardwareAccelerationService', () => {
     it('should return CPU codec when hwType is unrecognised but codec is known', () => {
       // HEVC + unknown hwType → falls back to HEVC/CPU → libx265
       expect(service.selectCodecForPolicy('HEVC', 'UNKNOWN_HW')).toBe('libx265');
+    });
+
+    describe('capability gate', () => {
+      it('falls back to the CPU codec when the ffmpeg build lacks the HW encoder', () => {
+        mockFfmpegCapability.hasEncoder.mockImplementation((name: string) => name !== 'av1_qsv');
+
+        expect(service.selectCodecForPolicy('AV1', 'INTEL_QSV')).toBe('libaom-av1');
+      });
+
+      it('uses the HW encoder when the capability probe confirms it exists', () => {
+        mockFfmpegCapability.hasEncoder.mockReturnValue(true);
+
+        expect(service.selectCodecForPolicy('HEVC', 'NVIDIA')).toBe('hevc_nvenc');
+      });
+
+      it('fails open (uses the HW encoder) while the probe has not completed', () => {
+        // Real service default before onModuleInit's probe resolves.
+        mockFfmpegCapability.hasEncoder.mockReturnValue(true);
+
+        expect(service.selectCodecForPolicy('HEVC', 'NVIDIA')).toBe('hevc_nvenc');
+      });
     });
   });
 });

@@ -107,4 +107,49 @@ export class FileFailureTrackingService {
   async getFailureCount(filePath: string, libraryId: string): Promise<number> {
     return this.fileFailureRecordRepository.getFailureCount(filePath, libraryId);
   }
+
+  /**
+   * Record the codec that successfully encoded a file. Called on job
+   * completion. Files that repeatedly need a GPU->CPU fallback build up a
+   * failure record anyway (via recordFailure on each failed attempt); this
+   * remembers the codec that finally worked so the next job for the same
+   * file can route straight to it instead of re-learning it the hard way.
+   *
+   * Uses the same atomic upsert pattern as recordFailure - a fresh file with
+   * no prior failure has no row yet, so this inserts one with totalFailures=0.
+   */
+  async recordSuccess(
+    filePath: string,
+    libraryId: string,
+    codec: string,
+    contentFingerprint?: string
+  ): Promise<void> {
+    const id = randomUUID();
+
+    await this.prisma.$executeRaw`
+      INSERT INTO file_failure_records ("id", "filePath", "libraryId", "totalFailures", "contentFingerprint", "autoBlacklisted", "lastSuccessfulCodec", "lastSuccessfulAt", "createdAt", "updatedAt")
+      VALUES (${id}, ${filePath}, ${libraryId}, 0, ${contentFingerprint ?? null}, false, ${codec}, NOW(), NOW(), NOW())
+      ON CONFLICT ("filePath", "libraryId")
+      DO UPDATE SET
+        "lastSuccessfulCodec" = ${codec},
+        "lastSuccessfulAt" = NOW(),
+        "contentFingerprint" = COALESCE(${contentFingerprint ?? null}, file_failure_records."contentFingerprint"),
+        "updatedAt" = NOW()
+    `;
+  }
+
+  /**
+   * Get the last codec that successfully encoded this file, if known.
+   */
+  async getLastSuccessfulCodec(
+    filePath: string,
+    libraryId: string,
+    contentFingerprint?: string
+  ): Promise<string | null> {
+    return this.fileFailureRecordRepository.getLastSuccessfulCodec(
+      filePath,
+      libraryId,
+      contentFingerprint
+    );
+  }
 }

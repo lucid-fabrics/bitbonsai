@@ -8,6 +8,8 @@ import {
 } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
+  faArrowTrendDown,
+  faArrowTrendUp,
   faChartLine,
   faCheck,
   faCheckCircle,
@@ -17,10 +19,16 @@ import {
   faPlay,
   faSpinner,
   faTimes,
+  faTriangleExclamation,
 } from '@fortawesome/pro-solid-svg-icons';
 import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
-import { distinctUntilChanged } from 'rxjs';
+import { catchError, distinctUntilChanged, of } from 'rxjs';
+import {
+  AnalyticsClient,
+  type FailureCategoryBreakdownEntry,
+  type SuccessRateTrend,
+} from '../../core/clients/analytics.client';
 import { OverviewActions } from './+state/overview.actions';
 import type { OverviewModel } from './models/overview.model';
 
@@ -97,6 +105,7 @@ import {
 })
 export class OverviewComponent implements OnInit, OnDestroy {
   private readonly store = inject(Store);
+  private readonly analyticsClient = inject(AnalyticsClient);
 
   // Observables from NgRx store
   // DEEP AUDIT P2-2: Use custom equality function instead of JSON.stringify for better performance
@@ -114,6 +123,16 @@ export class OverviewComponent implements OnInit, OnDestroy {
   readonly mainNode$ = this.store.select(selectMainNode);
   readonly childNodes$ = this.store.select(selectChildNodes);
 
+  // Fetched once, not part of the polling NgRx slice - supplementary,
+  // non-critical widget data. Errors resolve to a safe empty value so a
+  // broken endpoint just hides the card instead of breaking the dashboard.
+  readonly successRateTrend$ = this.analyticsClient
+    .getSuccessRateTrend()
+    .pipe(catchError(() => of(null as SuccessRateTrend | null)));
+  readonly failureCategories$ = this.analyticsClient
+    .getFailureCategories('30d')
+    .pipe(catchError(() => of([] as FailureCategoryBreakdownEntry[])));
+
   // Font Awesome icons
   readonly icons = {
     activeNodes: faCheckCircle,
@@ -125,6 +144,9 @@ export class OverviewComponent implements OnInit, OnDestroy {
     encoding: faPlay,
     completed: faCheck,
     failed: faTimes,
+    trendUp: faArrowTrendUp,
+    trendDown: faArrowTrendDown,
+    topFailure: faTriangleExclamation,
   };
 
   ngOnInit(): void {
@@ -203,6 +225,14 @@ export class OverviewComponent implements OnInit, OnDestroy {
 
   getProgressPercentage(value: number, total: number): number {
     return total > 0 ? Math.round((value / total) * 100) : 0;
+  }
+
+  formatCategoryLabel(category: string): string {
+    return category
+      .toLowerCase()
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 
   // TrackBy functions to prevent unnecessary re-renders

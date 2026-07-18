@@ -4,7 +4,7 @@ import { PrismaService } from '../../../../prisma/prisma.service';
 import { TempFileGuardService } from '../../temp-file-guard.service';
 
 // ---------------------------------------------------------------------------
-// fs mock — must be declared before imports that resolve node:fs
+// fs mock - must be declared before imports that resolve node:fs
 // ---------------------------------------------------------------------------
 const mockUnlink = jest.fn();
 
@@ -31,6 +31,10 @@ function makePrisma() {
       findMany: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
+    },
+    job: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
     },
   };
 }
@@ -60,7 +64,7 @@ describe('TempFileGuardService', () => {
       ],
     }).compile();
 
-    // compile() triggers onModuleInit — stub it out so it doesn't run implicitly
+    // compile() triggers onModuleInit - stub it out so it doesn't run implicitly
     service = module.get<TempFileGuardService>(TempFileGuardService);
   }
 
@@ -189,7 +193,7 @@ describe('TempFileGuardService', () => {
     });
 
     // -------------------------------------------------------------------------
-    // unlinkAndMark — path validation (tested via cleanupJobTempFiles)
+    // unlinkAndMark - path validation (tested via cleanupJobTempFiles)
     // -------------------------------------------------------------------------
     describe('unlinkAndMark path validation', () => {
       it.each([
@@ -198,7 +202,7 @@ describe('TempFileGuardService', () => {
         '/root/secret',
         'relative/path/file.tmp',
         '',
-      ])('rejects suspicious path "%s" — no unlink, no DB update', async (badPath) => {
+      ])('rejects suspicious path "%s" - no unlink, no DB update', async (badPath) => {
         prisma.jobTempFile.findMany.mockResolvedValue([{ id: 'row-1', tempPath: badPath }]);
 
         await service.cleanupJobTempFiles(JOB_ID);
@@ -258,8 +262,58 @@ describe('TempFileGuardService', () => {
         mockUnlink.mockResolvedValue(undefined);
         prisma.jobTempFile.update.mockRejectedValue(new Error('DB error'));
 
-        // Should not throw — just logs warning
+        // Should not throw - just logs warning
         await expect(service.cleanupJobTempFiles(JOB_ID)).resolves.toBeUndefined();
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // repairedSourcePath protection: a remux-repaired copy is a durable input
+    // the job still needs on its next retry, not disposable per-attempt scratch
+    // -------------------------------------------------------------------------
+    describe('repairedSourcePath protection', () => {
+      it('skips the row matching the job repairedSourcePath, deletes the rest', async () => {
+        const rows = [
+          { id: 'row-1', tempPath: '/media/movie.mkv.tmp-job-2' },
+          { id: 'row-2', tempPath: '/media/movie.mkv.repaired-job-2.mkv' },
+        ];
+        prisma.jobTempFile.findMany.mockResolvedValue(rows);
+        prisma.job.findUnique.mockResolvedValue({
+          repairedSourcePath: '/media/movie.mkv.repaired-job-2.mkv',
+        });
+        mockUnlink.mockResolvedValue(undefined);
+        prisma.jobTempFile.update.mockResolvedValue({});
+
+        await service.cleanupJobTempFiles(JOB_ID);
+
+        expect(mockUnlink).toHaveBeenCalledTimes(1);
+        expect(mockUnlink).toHaveBeenCalledWith('/media/movie.mkv.tmp-job-2');
+        expect(mockUnlink).not.toHaveBeenCalledWith('/media/movie.mkv.repaired-job-2.mkv');
+        expect(prisma.jobTempFile.update).toHaveBeenCalledTimes(1);
+      });
+
+      it('deletes everything when the job has no repairedSourcePath', async () => {
+        const rows = [{ id: 'row-1', tempPath: '/tmp/a.mkv.tmp' }];
+        prisma.jobTempFile.findMany.mockResolvedValue(rows);
+        prisma.job.findUnique.mockResolvedValue({ repairedSourcePath: null });
+        mockUnlink.mockResolvedValue(undefined);
+        prisma.jobTempFile.update.mockResolvedValue({});
+
+        await service.cleanupJobTempFiles(JOB_ID);
+
+        expect(mockUnlink).toHaveBeenCalledWith('/tmp/a.mkv.tmp');
+      });
+
+      it('fails open (deletes everything) when the job lookup rejects', async () => {
+        const rows = [{ id: 'row-1', tempPath: '/tmp/a.mkv.tmp' }];
+        prisma.jobTempFile.findMany.mockResolvedValue(rows);
+        prisma.job.findUnique.mockRejectedValue(new Error('DB down'));
+        mockUnlink.mockResolvedValue(undefined);
+        prisma.jobTempFile.update.mockResolvedValue({});
+
+        await service.cleanupJobTempFiles(JOB_ID);
+
+        expect(mockUnlink).toHaveBeenCalledWith('/tmp/a.mkv.tmp');
       });
     });
   });
@@ -323,6 +377,37 @@ describe('TempFileGuardService', () => {
       await expect(service.cleanupStaleTempFiles()).resolves.toBeUndefined();
 
       expect(prisma.jobTempFile.update).toHaveBeenCalledTimes(2);
+    });
+
+    it('preserves a repaired-source copy belonging to a job still waiting to be picked up', async () => {
+      const rows = [
+        { id: 'stale-1', tempPath: '/tmp/stale.mkv.tmp', jobId: 'job-x' },
+        { id: 'stale-2', tempPath: '/media/movie.mkv.repaired-job-y.mkv', jobId: 'job-y' },
+      ];
+      prisma.jobTempFile.findMany.mockResolvedValue(rows);
+      prisma.job.findMany.mockResolvedValue([
+        { repairedSourcePath: '/media/movie.mkv.repaired-job-y.mkv' },
+      ]);
+      mockUnlink.mockResolvedValue(undefined);
+      prisma.jobTempFile.update.mockResolvedValue({});
+
+      await service.cleanupStaleTempFiles();
+
+      expect(mockUnlink).toHaveBeenCalledTimes(1);
+      expect(mockUnlink).toHaveBeenCalledWith('/tmp/stale.mkv.tmp');
+      expect(mockUnlink).not.toHaveBeenCalledWith('/media/movie.mkv.repaired-job-y.mkv');
+    });
+
+    it('fails open (sweeps everything) when the protected-paths lookup rejects', async () => {
+      const rows = [{ id: 'stale-1', tempPath: '/tmp/stale.mkv.tmp', jobId: 'job-x' }];
+      prisma.jobTempFile.findMany.mockResolvedValue(rows);
+      prisma.job.findMany.mockRejectedValue(new Error('DB down'));
+      mockUnlink.mockResolvedValue(undefined);
+      prisma.jobTempFile.update.mockResolvedValue({});
+
+      await service.cleanupStaleTempFiles();
+
+      expect(mockUnlink).toHaveBeenCalledWith('/tmp/stale.mkv.tmp');
     });
   });
 });

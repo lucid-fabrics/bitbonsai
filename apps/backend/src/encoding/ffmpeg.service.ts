@@ -93,7 +93,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     outputPath: string,
     startSeconds: number,
     durationSeconds: number,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    outputContainer?: string
   ): Promise<void> {
     return this.encoder.encodeSegment(
       job,
@@ -101,7 +102,8 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       outputPath,
       startSeconds,
       durationSeconds,
-      onProgress
+      onProgress,
+      outputContainer
     );
   }
   // ─── Process lifecycle delegations → FfmpegProcessManager ─────────────────

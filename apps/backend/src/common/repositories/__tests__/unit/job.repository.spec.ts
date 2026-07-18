@@ -781,6 +781,20 @@ describe('JobRepository', () => {
     });
   });
 
+  describe('groupByErrorCategoryCount', () => {
+    it('should return job counts grouped by errorCategory', async () => {
+      mockPrismaJob.groupBy.mockResolvedValue([
+        { errorCategory: 'SOURCE_CORRUPTED', _count: { id: 5 } },
+        { errorCategory: null, _count: { id: 2 } },
+      ]);
+      const result = await repository.groupByErrorCategoryCount({ stage: 'FAILED' });
+      expect(result).toEqual([
+        { errorCategory: 'SOURCE_CORRUPTED', _count: 5 },
+        { errorCategory: null, _count: 2 },
+      ]);
+    });
+  });
+
   describe('groupByNodeIdSum', () => {
     it('should return sum grouped by nodeId', async () => {
       mockPrismaJob.groupBy.mockResolvedValue([

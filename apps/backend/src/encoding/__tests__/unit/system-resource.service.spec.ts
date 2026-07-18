@@ -2,7 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { NodesService } from '../../../nodes/nodes.service';
-import { SystemResourceService } from '../../system-resource.service';
+import { FileSizeEstimationService } from '../../file-size-estimation.service';
+import { InsufficientDiskSpaceError, SystemResourceService } from '../../system-resource.service';
 
 jest.mock('node:fs', () => ({
   promises: {
@@ -38,7 +39,11 @@ describe('SystemResourceService', () => {
     (os.totalmem as jest.Mock).mockReturnValue(32 * 1024 ** 3);
 
     module = await Test.createTestingModule({
-      providers: [SystemResourceService, { provide: NodesService, useValue: mockNodesService }],
+      providers: [
+        SystemResourceService,
+        { provide: NodesService, useValue: mockNodesService },
+        FileSizeEstimationService,
+      ],
     }).compile();
 
     service = module.get(SystemResourceService);
@@ -191,7 +196,7 @@ describe('SystemResourceService', () => {
 
     it('completes without error when all resources are sufficient', async () => {
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1', 'HEVC', 1 * 1024 ** 3)
       ).resolves.toBeUndefined();
     });
 
@@ -199,11 +204,11 @@ describe('SystemResourceService', () => {
       (fs.promises.access as jest.Mock).mockRejectedValue(new Error('EACCES'));
 
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1', 'HEVC', 1 * 1024 ** 3)
       ).rejects.toThrow('Cannot read source file');
     });
 
-    it('throws when disk space is insufficient', async () => {
+    it('throws InsufficientDiskSpaceError when disk space is insufficient', async () => {
       // 1 GB file, but only tiny disk space available
       (fs.promises.statfs as jest.Mock).mockResolvedValue({
         bavail: 10,
@@ -211,15 +216,34 @@ describe('SystemResourceService', () => {
       });
 
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1', 'HEVC', 1 * 1024 ** 3)
+      ).rejects.toThrow(InsufficientDiskSpaceError);
+      await expect(
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1', 'HEVC', 1 * 1024 ** 3)
       ).rejects.toThrow('Insufficient disk space');
+    });
+
+    it('bases the requirement on predicted OUTPUT size, not the raw source size', async () => {
+      // 100 GB source, AV1 target (~40% of source = ~40GB predicted output).
+      // 100 GB AV1 source -> ~40GB predicted output * 1.5 buffer = 60GB required.
+      // Old behavior (required = source + 20% = 120GB) would have thrown with
+      // only 80GB free; new output-based math passes comfortably.
+      const oneHundredGB = 100 * 1024 ** 3;
+      (fs.promises.statfs as jest.Mock).mockResolvedValue({
+        bavail: Math.floor((80 * 1024 ** 3) / 4096), // 80 GB available
+        bsize: 4096,
+      });
+
+      await expect(
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1', 'AV1', oneHundredGB)
+      ).resolves.toBeUndefined();
     });
 
     it('skips disk check gracefully when statfs throws non-disk error', async () => {
       (fs.promises.statfs as jest.Mock).mockRejectedValue(new Error('ENOSYS'));
 
       await expect(
-        service.performResourcePreflightChecks('/media/video.mkv', 'job-1')
+        service.performResourcePreflightChecks('/media/video.mkv', 'job-1', 'HEVC', 1 * 1024 ** 3)
       ).resolves.toBeUndefined();
     });
 
@@ -227,9 +251,9 @@ describe('SystemResourceService', () => {
       const logWarnSpy = jest.spyOn((service as any).logger, 'warn');
 
       (os.totalmem as jest.Mock).mockReturnValue(32 * 1024 ** 3);
-      (os.freemem as jest.Mock).mockReturnValue(2 * 1024 ** 3); // ~6% — below 10%
+      (os.freemem as jest.Mock).mockReturnValue(2 * 1024 ** 3); // ~6% - below 10%
 
-      await service.performResourcePreflightChecks('/media/video.mkv', 'job-1');
+      await service.performResourcePreflightChecks('/media/video.mkv', 'job-1', 'HEVC', 1 * 1024 ** 3);
 
       expect(logWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Low memory warning'));
     });

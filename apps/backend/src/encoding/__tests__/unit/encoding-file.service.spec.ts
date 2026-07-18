@@ -7,15 +7,19 @@ import { FileRelocatorService } from '../../../core/services/file-relocator.serv
 import { LibrariesService } from '../../../libraries/libraries.service';
 import { NodesService } from '../../../nodes/nodes.service';
 import { QueueService } from '../../../queue/queue.service';
+import { FileFailureTrackingService } from '../../../queue/services/file-failure-tracking.service';
 import { createMockJob, createMockPolicy } from '../../../testing/mock-factories';
 import { EncodingFileService } from '../../encoding-file.service';
 import { EncodingFileReplacementService } from '../../encoding-file-replacement.service';
 import { EncodingOutputVerificationService } from '../../encoding-output-verification.service';
 import { FfmpegService } from '../../ffmpeg.service';
 import { QualityMetricsService } from '../../quality-metrics.service';
+import { CodecFallbackService } from '../../services/codec-fallback.service';
 import { ContainerValidationService } from '../../services/container-validation.service';
+import { GpuHealthService } from '../../services/gpu-health.service';
 import { QualityGateService } from '../../services/quality-gate.service';
 import { SegmentedEncodeService } from '../../services/segmented-encode.service';
+import { TempFileGuardService } from '../../services/temp-file-guard.service';
 import { SystemResourceService } from '../../system-resource.service';
 
 jest.mock('node:fs', () => ({
@@ -81,7 +85,10 @@ describe('EncodingFileService', () => {
         EncodingFileService,
         {
           provide: JobRepository,
-          useValue: { updateById: jest.fn().mockResolvedValue(undefined) },
+          useValue: {
+            updateById: jest.fn().mockResolvedValue(undefined),
+            findById: jest.fn().mockResolvedValue(null),
+          },
         },
         {
           provide: SettingsRepository,
@@ -93,6 +100,7 @@ describe('EncodingFileService', () => {
           provide: FfmpegService,
           useValue: {
             encodeFile: jest.fn().mockResolvedValue(undefined),
+            encodeSegment: jest.fn().mockResolvedValue(undefined),
             verifyFile: jest.fn().mockResolvedValue({ isValid: true, error: undefined }),
             getVideoDuration: jest.fn().mockResolvedValue(3600),
           },
@@ -163,6 +171,31 @@ describe('EncodingFileService', () => {
             checkQuality: jest
               .fn()
               .mockResolvedValue({ passed: true, score: null, threshold: 85, forcedPass: false }),
+          },
+        },
+        {
+          provide: CodecFallbackService,
+          useValue: {
+            shouldFallback: jest.fn().mockReturnValue(false),
+            applyFallback: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: GpuHealthService,
+          useValue: { recordGpuFailure: jest.fn() },
+        },
+        {
+          provide: TempFileGuardService,
+          useValue: {
+            registerTempFile: jest.fn().mockResolvedValue(undefined),
+            markCleaned: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: FileFailureTrackingService,
+          useValue: {
+            getLastSuccessfulCodec: jest.fn().mockResolvedValue(null),
+            recordSuccess: jest.fn().mockResolvedValue(undefined),
           },
         },
         EncodingFileReplacementService,
@@ -598,6 +631,9 @@ describe('EncodingFileService', () => {
         bavail: 100_000_000,
         bsize: 4096,
       });
+      // baseJob is shared across this file's tests; reset trial-encode state
+      // so each test's outcome doesn't depend on a previous test having run.
+      baseJob.trialEncodeValidatedAt = null;
     });
 
     it('passes quality metrics to the gate and replaces the file when the gate passes', async () => {
@@ -634,6 +670,336 @@ describe('EncodingFileService', () => {
         'Quality gate failed: VMAF 70.5 below threshold 85'
       );
       expect(replaceSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── encodeFile - trial-encode preflight ───────────────────────────────────
+
+  describe('encodeFile - trial-encode preflight', () => {
+    beforeEach(() => {
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
+      jest.spyOn(service.fileReplacement, 'sleep').mockResolvedValue(undefined);
+      (fs.promises.statfs as jest.Mock).mockResolvedValue({
+        bavail: 100_000_000,
+        bsize: 4096,
+      });
+      // baseJob is shared across this file's tests; reset the mutable
+      // trial-encode/fallback fields so tests don't depend on run order.
+      baseJob.trialEncodeValidatedAt = null;
+      baseJob.codecOverride = null;
+      ffmpegService.getVideoDuration.mockResolvedValue(3600);
+    });
+
+    it('runs a short sample via encodeSegment before the full encode and persists the pass', async () => {
+      const queueService = module.get(QueueService);
+      const tempFileGuard = module.get(TempFileGuardService);
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+
+      await service.encodeFile(baseJob);
+
+      expect(ffmpegService.encodeSegment).toHaveBeenCalledTimes(1);
+      expect(ffmpegService.encodeSegment).toHaveBeenCalledWith(
+        baseJob,
+        mockPolicy,
+        expect.stringContaining('.trial-job-1'),
+        expect.any(Number),
+        expect.any(Number),
+        undefined,
+        baseJob.targetContainer
+      );
+      expect(queueService.update).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ trialEncodeValidatedAt: expect.any(Date) })
+      );
+      expect(ffmpegService.encodeFile).toHaveBeenCalled();
+
+      // Trial temp file is tracked the same way the real temp is, so a crash
+      // mid-trial doesn't orphan it next to the source file forever.
+      expect(tempFileGuard.registerTempFile).toHaveBeenCalledWith(
+        'job-1',
+        expect.stringContaining('.trial-job-1'),
+        baseJob.nodeId
+      );
+      expect(tempFileGuard.markCleaned).toHaveBeenCalledWith(
+        expect.stringContaining('.trial-job-1')
+      );
+    });
+
+    it('samples using the real target container, not a hardcoded mkv', async () => {
+      const mp4Job = { ...baseJob, targetContainer: 'mp4' } as typeof baseJob;
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+
+      await service.encodeFile(mp4Job);
+
+      expect(ffmpegService.encodeSegment).toHaveBeenCalledWith(
+        mp4Job,
+        mockPolicy,
+        expect.stringMatching(/\.trial-job-1\.mp4$/),
+        expect.any(Number),
+        expect.any(Number),
+        undefined,
+        'mp4'
+      );
+    });
+
+    it('unlinks the trial temp file when it still exists after the sample', async () => {
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => p.includes('.trial-'));
+
+      await service.encodeFile(baseJob);
+
+      expect(fs.unlinkSync).toHaveBeenCalledWith(expect.stringContaining('.trial-job-1'));
+    });
+
+    it.each([
+      [60, 0, 10],
+      [61, 0, 10],
+      [70, 5, 10],
+    ])(
+      'keeps the sample window within the source for a %ss source',
+      async (duration, minStart, maxSampleEnd) => {
+        ffmpegService.getVideoDuration.mockResolvedValue(duration);
+        jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+
+        await service.encodeFile(baseJob);
+
+        const [, , , startSeconds, sampleSeconds] = ffmpegService.encodeSegment.mock.calls[0];
+        expect(startSeconds as number).toBeGreaterThanOrEqual(minStart);
+        expect((startSeconds as number) + (sampleSeconds as number)).toBeLessThanOrEqual(duration);
+        expect(sampleSeconds as number).toBeLessThanOrEqual(maxSampleEnd);
+      }
+    );
+
+    it('skips the trial when the source is under the minimum duration', async () => {
+      ffmpegService.getVideoDuration.mockResolvedValue(30);
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+
+      await service.encodeFile(baseJob);
+
+      expect(ffmpegService.encodeSegment).not.toHaveBeenCalled();
+      expect(ffmpegService.encodeFile).toHaveBeenCalled();
+    });
+
+    it('skips the trial when the job already has a validated codec', async () => {
+      baseJob.trialEncodeValidatedAt = new Date();
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+
+      await service.encodeFile(baseJob);
+
+      expect(ffmpegService.encodeSegment).not.toHaveBeenCalled();
+    });
+
+    it('skips the trial for REMUX jobs', async () => {
+      const remuxJob = { ...baseJob, type: 'REMUX' } as typeof baseJob;
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+
+      await service.encodeFile(remuxJob);
+
+      expect(ffmpegService.encodeSegment).not.toHaveBeenCalled();
+    });
+
+    it('applies the GPU codec fallback and retries once when the trial fails with a GPU-class error', async () => {
+      const codecFallback = module.get(CodecFallbackService);
+      const gpuHealth = module.get(GpuHealthService);
+      const jobRepository = module.get(JobRepository);
+      (codecFallback.shouldFallback as jest.Mock).mockReturnValue(true);
+      (jobRepository.findById as jest.Mock).mockResolvedValue({ codecOverride: 'libx265' });
+      ffmpegService.encodeSegment
+        .mockRejectedValueOnce(new Error('nvenc: device open failed'))
+        .mockResolvedValueOnce(undefined);
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+
+      await service.encodeFile(baseJob);
+
+      expect(gpuHealth.recordGpuFailure).toHaveBeenCalledWith('nvenc: device open failed');
+      expect(codecFallback.applyFallback).toHaveBeenCalledWith('job-1', baseJob.targetCodec);
+      expect(ffmpegService.encodeSegment).toHaveBeenCalledTimes(2);
+      expect(ffmpegService.encodeFile).toHaveBeenCalled();
+    });
+
+    it('throws without running the full encode when the trial fails and the fallback retry also fails', async () => {
+      const codecFallback = module.get(CodecFallbackService);
+      (codecFallback.shouldFallback as jest.Mock).mockReturnValue(true);
+      ffmpegService.encodeSegment
+        .mockRejectedValueOnce(new Error('nvenc: device open failed'))
+        .mockRejectedValueOnce(new Error('nvenc: device open failed (still)'));
+
+      await expect(service.encodeFile(baseJob)).rejects.toThrow(
+        'nvenc: device open failed (still)'
+      );
+      expect(ffmpegService.encodeFile).not.toHaveBeenCalled();
+    });
+
+    it('throws immediately without a fallback attempt when the trial fails with a non-GPU error', async () => {
+      const codecFallback = module.get(CodecFallbackService);
+      (codecFallback.shouldFallback as jest.Mock).mockReturnValue(false);
+      ffmpegService.encodeSegment.mockRejectedValueOnce(new Error('invalid data found'));
+
+      await expect(service.encodeFile(baseJob)).rejects.toThrow('invalid data found');
+      expect(codecFallback.applyFallback).not.toHaveBeenCalled();
+      expect(ffmpegService.encodeFile).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── encodeFile - per-file success memory ──────────────────────────────────
+
+  describe('encodeFile - per-file success memory', () => {
+    beforeEach(() => {
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
+      jest.spyOn(service.fileReplacement, 'sleep').mockResolvedValue(undefined);
+      (fs.promises.statfs as jest.Mock).mockResolvedValue({
+        bavail: 100_000_000,
+        bsize: 4096,
+      });
+      ffmpegService.getVideoDuration.mockResolvedValue(3600);
+      baseJob.trialEncodeValidatedAt = new Date();
+      baseJob.codecOverride = null;
+    });
+
+    it('routes straight to the known-good codec when it differs from targetCodec', async () => {
+      const fileFailureTracking = module.get(FileFailureTrackingService);
+      const queueService = module.get(QueueService);
+      (fileFailureTracking.getLastSuccessfulCodec as jest.Mock).mockResolvedValue('libx265');
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+
+      await service.encodeFile(baseJob);
+
+      expect(fileFailureTracking.getLastSuccessfulCodec).toHaveBeenCalledWith(
+        '/media/test.mkv',
+        baseJob.libraryId,
+        undefined
+      );
+      expect(baseJob.codecOverride).toBe('libx265');
+      expect(queueService.update).toHaveBeenCalledWith('job-1', { codecOverride: 'libx265' });
+    });
+
+    it('does not override when the known-good codec matches targetCodec', async () => {
+      const fileFailureTracking = module.get(FileFailureTrackingService);
+      const queueService = module.get(QueueService);
+      (fileFailureTracking.getLastSuccessfulCodec as jest.Mock).mockResolvedValue(
+        baseJob.targetCodec
+      );
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+
+      await service.encodeFile(baseJob);
+
+      expect(baseJob.codecOverride).toBeNull();
+      expect(queueService.update).not.toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ codecOverride: expect.anything() })
+      );
+    });
+
+    it('does not consult per-file memory for REMUX jobs', async () => {
+      const remuxJob = { ...baseJob, type: 'REMUX' } as typeof baseJob;
+      const fileFailureTracking = module.get(FileFailureTrackingService);
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+
+      await service.encodeFile(remuxJob);
+
+      expect(fileFailureTracking.getLastSuccessfulCodec).not.toHaveBeenCalled();
+    });
+
+    it('does not override an already-set codecOverride', async () => {
+      const overriddenJob = { ...baseJob, codecOverride: 'libx264' } as typeof baseJob;
+      const fileFailureTracking = module.get(FileFailureTrackingService);
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+
+      await service.encodeFile(overriddenJob);
+
+      expect(fileFailureTracking.getLastSuccessfulCodec).not.toHaveBeenCalled();
+      expect(overriddenJob.codecOverride).toBe('libx264');
+    });
+  });
+
+  // ─── encodeFile - remux-repair source consumption ──────────────────────────
+
+  describe('encodeFile - remux-repair source consumption', () => {
+    const repairedPath = '/media/test.mkv.repaired-job-1.mkv';
+
+    beforeEach(() => {
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
+      jest.spyOn(service.fileReplacement, 'sleep').mockResolvedValue(undefined);
+      (fs.promises.statfs as jest.Mock).mockResolvedValue({
+        bavail: 100_000_000,
+        bsize: 4096,
+      });
+      ffmpegService.getVideoDuration.mockResolvedValue(3600);
+    });
+
+    it('encodes from the repaired copy, restores job.filePath before replacement, and cleans up', async () => {
+      const repairedJob = {
+        ...baseJob,
+        repairedSourcePath: repairedPath,
+        trialEncodeValidatedAt: new Date(),
+        codecOverride: null,
+      } as typeof baseJob;
+
+      const tempFileGuard = module.get(TempFileGuardService);
+      const queueService = module.get(QueueService);
+      const replaceSpy = jest
+        .spyOn(service.fileReplacement, 'replaceFile')
+        .mockResolvedValue(undefined);
+
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === repairedPath);
+
+      let encodedJobFilePath: string | undefined;
+      (ffmpegService.encodeFile as jest.Mock).mockImplementation(async (job: typeof baseJob) => {
+        encodedJobFilePath = job.filePath;
+      });
+
+      await service.encodeFile(repairedJob);
+
+      // Duration probe and the full encode both read from the repaired copy.
+      expect(ffmpegService.getVideoDuration.mock.calls[0][0]).toBe(repairedPath);
+      expect(encodedJobFilePath).toBe(repairedPath);
+
+      // Replacement must target the real library file, not the repaired copy.
+      expect(replaceSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ filePath: '/media/test.mkv' }),
+        expect.any(String),
+        true
+      );
+
+      // job.filePath is restored to the original identity once encodeFile returns.
+      expect(repairedJob.filePath).toBe('/media/test.mkv');
+      expect(repairedJob.repairedSourcePath).toBeNull();
+
+      expect(fs.unlinkSync).toHaveBeenCalledWith(repairedPath);
+      expect(tempFileGuard.markCleaned).toHaveBeenCalledWith(repairedPath);
+      expect(queueService.update).toHaveBeenCalledWith('job-1', { repairedSourcePath: null });
+    });
+
+    it('falls back to the original path when the repaired copy no longer exists on disk', async () => {
+      const repairedJob = {
+        ...baseJob,
+        repairedSourcePath: repairedPath,
+        trialEncodeValidatedAt: new Date(),
+        codecOverride: null,
+      } as typeof baseJob;
+
+      jest.spyOn(service.fileReplacement, 'replaceFile').mockResolvedValue(undefined);
+      (fs.existsSync as jest.Mock).mockReturnValue(false);
+
+      await service.encodeFile(repairedJob);
+
+      expect(ffmpegService.getVideoDuration.mock.calls[0][0]).toBe('/media/test.mkv');
+    });
+
+    it('restores job.filePath even when the encode throws', async () => {
+      const repairedJob = {
+        ...baseJob,
+        repairedSourcePath: repairedPath,
+        trialEncodeValidatedAt: new Date(),
+        codecOverride: null,
+      } as typeof baseJob;
+
+      (fs.existsSync as jest.Mock).mockImplementation((p: string) => p === repairedPath);
+      (ffmpegService.encodeFile as jest.Mock).mockRejectedValue(new Error('disk full'));
+
+      await expect(service.encodeFile(repairedJob)).rejects.toThrow('disk full');
+
+      expect(repairedJob.filePath).toBe('/media/test.mkv');
     });
   });
 });

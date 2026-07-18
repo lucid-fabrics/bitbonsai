@@ -742,6 +742,11 @@ model Job {
   stuckRecoveryCount    Int @default(0) // Times recovered from stuck ENCODING (cap: 5)
   contentFingerprint    String? // xxHash fingerprint for rename detection (Phase 3)
 
+  // Observability: which ErrorCategory (see ffmpeg-error-analyzer.util.ts) this
+  // job's final failure falls into. Set only on permanent FAILED, not on a
+  // still-retrying QUEUED bounce. Powers the failure-category breakdown.
+  errorCategory String?
+
   // Quality Metrics Fields (VMAF/PSNR/SSIM - opt-in post-encoding analysis)
   qualityMetrics      Json?     // { vmaf?: number, psnr?: number, ssim?: number }
   qualityMetricsAt    DateTime? // When quality metrics were calculated
@@ -764,6 +769,18 @@ model Job {
   // Auto-Recovery Hardening: GPU→CPU fallback
   gpuAttempts       Int       @default(0) // Times GPU encoding was attempted (cap 1 → force CPU)
   codecOverride     String?   // Forced codec override for next retry (e.g., "libx265" after GPU fail)
+
+  // Trial-encode preflight: a short sample encode validates the built ffmpeg
+  // command before committing to the full-length encode. Set once a trial
+  // passes for the currently selected codec; cleared whenever codecOverride
+  // changes so the new codec gets its own trial.
+  trialEncodeValidatedAt DateTime? // When the current codec last passed a trial encode
+
+  // Remux-repair tier: a stream-copy repair of container-level corruption
+  // (bad moov, broken index, truncated tail). When set, encodeFile reads
+  // from this path instead of filePath; the original is only overwritten
+  // once the repaired-source encode succeeds.
+  repairedSourcePath String? // Path to a remux-repaired copy of a damaged source
 
   // Auto-Recovery Hardening: Ownership lease (MAIN↔LINKED split-brain prevention)
   ownershipLeaseExpiry  DateTime? // When current node's lease expires; MAIN reclaims if past
@@ -867,9 +884,14 @@ model FileFailureRecord {
   library         Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
   contentFingerprint String?
   totalFailures   Int      @default(0)
-  lastFailedAt    DateTime
+  lastFailedAt    DateTime? // Null when the record exists only for lastSuccessfulCodec (file never failed)
   lastError       String?
   autoBlacklisted Boolean  @default(false)
+  // Per-file success-path memory: the codec that last worked for this file,
+  // so a file that always needs a GPU->CPU fallback routes straight to the
+  // known-good codec instead of re-learning it via a failed GPU attempt.
+  lastSuccessfulCodec String?
+  lastSuccessfulAt    DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

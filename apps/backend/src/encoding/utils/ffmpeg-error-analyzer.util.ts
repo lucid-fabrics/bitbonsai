@@ -286,6 +286,77 @@ function extractLastErrors(stderr: string): string {
 }
 
 /**
+ * Classify a job's FINAL error message (not raw ffmpeg stderr) into an
+ * ErrorCategory for observability/reporting.
+ *
+ * By the time a job permanently fails, its error string may have come from
+ * anywhere in the pipeline (ffmpeg stderr already run through
+ * analyzeFfmpegError + formatErrorForDisplay above, a disk-space preflight
+ * check, a missing-file check, a quality-gate rejection, ...) - there is no
+ * raw stderr left to re-run analyzeFfmpegError against. This does lightweight
+ * keyword matching against the final message instead, reusing the same
+ * ErrorCategory values so a failure-category breakdown stays meaningful
+ * regardless of which layer produced the message.
+ */
+export function categorizeError(errorMessage: string): ErrorCategory {
+  const lower = errorMessage.toLowerCase();
+
+  if (
+    // Deliberately NOT a bare 'corrupt' match: "output file is corrupt or
+    // incomplete" (a post-encode ffprobe check on the OUTPUT temp file) and
+    // "could indicate file corruption or a race condition" (an atomic-
+    // replace race guard) both contain that substring but describe the
+    // pipeline's own output/timing, not the source - matching them here
+    // would misclassify an ffprobe flake or a race as source corruption.
+    lower.includes('source file appears corrupted') ||
+    lower.includes('corrupt decoded frame') ||
+    lower.includes('invalid data found') ||
+    lower.includes('invalid nal unit size') ||
+    lower.includes('could not find ref with poc') ||
+    lower.includes('error submitting packet to decoder') ||
+    lower.includes('error while decoding') ||
+    lower.includes('moov atom not found') ||
+    lower.includes('missing reference picture') ||
+    lower.includes('illegal short term buffer')
+  ) {
+    return ErrorCategory.SOURCE_CORRUPTED;
+  }
+
+  if (
+    lower.includes('no such file') ||
+    lower.includes('file not found') ||
+    lower.includes('source file not found') ||
+    lower.includes('was moved or deleted')
+  ) {
+    return ErrorCategory.SOURCE_MISSING;
+  }
+
+  if (
+    lower.includes('no space left') ||
+    lower.includes('disk full') ||
+    lower.includes('disk space') ||
+    lower.includes('cannot allocate memory') ||
+    lower.includes('out of memory')
+  ) {
+    return ErrorCategory.INSUFFICIENT_RESOURCES;
+  }
+
+  if (
+    lower.includes('unknown encoder') ||
+    lower.includes('codec not supported') ||
+    (lower.includes('encoder') && lower.includes('not found'))
+  ) {
+    return ErrorCategory.CODEC_INCOMPATIBILITY;
+  }
+
+  if (lower.includes('interrupted') || lower.includes('timed out') || lower.includes('timeout')) {
+    return ErrorCategory.PROCESS_INTERRUPTED;
+  }
+
+  return ErrorCategory.UNKNOWN;
+}
+
+/**
  * Format error analysis as human-readable string for database storage
  */
 export function formatErrorForDisplay(analysis: FFmpegErrorAnalysis): string {

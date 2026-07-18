@@ -265,6 +265,66 @@ describe('JobCleanupService', () => {
     });
   });
 
+  describe('detectTimedOutJobs - adaptive timeout', () => {
+    it('does not fail a job whose estimatedDuration scales its ceiling past the elapsed time', async () => {
+      // 3h elapsed (past the flat 2h floor), but a 10h estimate x 2.0
+      // multiplier gives a 20h ceiling - not timed out yet.
+      const job = {
+        ...createMockJob('job-1', JobStage.ENCODING, threeHoursAgo, { startedAt: threeHoursAgo }),
+        estimatedDuration: 10 * 3600,
+      };
+      jobRepository.findManySelect.mockResolvedValue([job]);
+
+      const result = await service.detectTimedOutJobs();
+
+      expect(result).toBe(0);
+      expect(jobRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it('fails a job whose scaled ceiling is smaller than the flat floor at the floor', async () => {
+      // 3h elapsed, 1h estimate x 2.0 = 2h scaled ceiling, but the floor
+      // (2h) wins since scaling must never go below it - still times out.
+      const job = {
+        ...createMockJob('job-1', JobStage.ENCODING, threeHoursAgo, { startedAt: threeHoursAgo }),
+        estimatedDuration: 1 * 3600,
+      };
+      jobRepository.findManySelect.mockResolvedValue([job]);
+
+      const result = await service.detectTimedOutJobs();
+
+      expect(result).toBe(1);
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ stage: JobStage.FAILED })
+      );
+    });
+
+    it('fails a job once elapsed time exceeds its scaled ceiling', async () => {
+      // 3h elapsed, 1h estimate x 2.0 = 2h ceiling - 3h has exceeded it.
+      const job = {
+        ...createMockJob('job-1', JobStage.ENCODING, threeHoursAgo, { startedAt: threeHoursAgo }),
+        estimatedDuration: 1.4 * 3600,
+      };
+      jobRepository.findManySelect.mockResolvedValue([job]);
+
+      const result = await service.detectTimedOutJobs();
+
+      expect(result).toBe(1);
+    });
+
+    it('falls back to the flat floor when estimatedDuration is null', async () => {
+      const job = {
+        ...createMockJob('job-1', JobStage.ENCODING, threeHoursAgo, { startedAt: threeHoursAgo }),
+        estimatedDuration: null,
+      };
+      jobRepository.findManySelect.mockResolvedValue([job]);
+
+      const result = await service.detectTimedOutJobs();
+
+      expect(result).toBe(1);
+    });
+  });
+
   describe('handleTimedOutJobsCron', () => {
     it('should call detectTimedOutJobs when cron runs', async () => {
       const detectSpy = jest.spyOn(service, 'detectTimedOutJobs').mockResolvedValue(0);

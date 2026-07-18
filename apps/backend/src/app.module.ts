@@ -29,6 +29,7 @@ import { OverviewModule } from './overview/overview.module';
 import { PoliciesModule } from './policies/policies.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
+import { SelfTestModule } from './self-test/self-test.module';
 import { SettingsModule } from './settings/settings.module';
 import { SetupModule } from './setup/setup.module';
 import { SyncModule } from './sync/sync.module';
@@ -83,6 +84,7 @@ import { SystemModule } from './system/system.module';
     IntegrationsModule,
     DistributionModule,
     DocsModule,
+    SelfTestModule,
   ],
   controllers: [],
   providers: [

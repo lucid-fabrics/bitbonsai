@@ -208,4 +208,42 @@ describe('OverviewComponent', () => {
       expect(component.getProgressPercentage(1, 3)).toBe(33);
     });
   });
+
+  describe('formatCategoryLabel', () => {
+    it('should convert SCREAMING_SNAKE_CASE to Title Case', () => {
+      expect(component.formatCategoryLabel('SOURCE_CORRUPTED')).toBe('Source Corrupted');
+      expect(component.formatCategoryLabel('INSUFFICIENT_RESOURCES')).toBe(
+        'Insufficient Resources'
+      );
+      expect(component.formatCategoryLabel('UNCATEGORIZED')).toBe('Uncategorized');
+    });
+
+    it('should handle a single word', () => {
+      expect(component.formatCategoryLabel('UNKNOWN')).toBe('Unknown');
+    });
+  });
+
+  describe('success rate trend and failure category observables', () => {
+    it('should fall back to null when the success rate trend request fails', (done) => {
+      component.successRateTrend$.subscribe((trend) => {
+        expect(trend).toBeNull();
+        done();
+      });
+
+      const req = httpMock.expectOne('/api/v1/analytics/success-rate-trend');
+      req.flush('error', { status: 500, statusText: 'Server Error' });
+    });
+
+    it('should fall back to an empty array when the failure categories request fails', (done) => {
+      component.failureCategories$.subscribe((categories) => {
+        expect(categories).toEqual([]);
+        done();
+      });
+
+      const req = httpMock.expectOne(
+        (r) => r.url === '/api/v1/analytics/failure-categories'
+      );
+      req.flush('error', { status: 500, statusText: 'Server Error' });
+    });
+  });
 });

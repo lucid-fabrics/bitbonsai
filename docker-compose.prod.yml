@@ -8,6 +8,7 @@ services:
       target: backend
       args:
         - NODE_ENV=production
+        - FONTAWESOME_NPM_AUTH_TOKEN=${FONTAWESOME_NPM_AUTH_TOKEN}
     container_name: bitbonsai-backend
     ports:
       - "3000:3000"
@@ -58,6 +59,7 @@ services:
       target: frontend
       args:
         - NODE_ENV=production
+        - FONTAWESOME_NPM_AUTH_TOKEN=${FONTAWESOME_NPM_AUTH_TOKEN}
     container_name: bitbonsai-frontend
     ports:
       - "4200:80"

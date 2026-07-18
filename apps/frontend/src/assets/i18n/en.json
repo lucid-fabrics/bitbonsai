@@ -83,7 +83,10 @@
     "success": "Success",
     "saved": "Saved",
     "queueEmpty": "Queue Empty",
-    "queue": "Queue:"
+    "queue": "Queue:",
+    "successRate7d": "Success Rate (7d)",
+    "vsLastWeek": "vs last week",
+    "topFailureCategory": "Top Failure Category"
   },
   "queue": {
     "title": "Queue",
