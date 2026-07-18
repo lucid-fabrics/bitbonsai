@@ -1,5 +1,6 @@
 import 'zone.js';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { inject } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
@@ -32,7 +33,7 @@ import { settingsReducer } from './app/features/settings/+state/settings.reducer
 import { environment } from './environments/environment';
 
 class TranslocoHttpLoader implements TranslocoLoader {
-  constructor(private http: HttpClient) {}
+  private readonly http = inject(HttpClient);
   getTranslation(lang: string): Observable<Record<string, unknown>> {
     return this.http.get<Record<string, unknown>>(`/assets/i18n/${lang}.json`);
   }

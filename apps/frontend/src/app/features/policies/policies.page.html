@@ -73,7 +73,7 @@
             <span class="preset-card__detail-label"
               >{{ 'policies.quality' | transloco }}:</span
             >
-            <span class="preset-card__detail-value">{{ getCRFLabel(preset.crf) }}</span>
+            <span class="preset-card__detail-value">{{ preset.crf === 0 ? 'Keeps original quality' : getCRFLabel(preset.crf) }}</span>
           </div>
         </div>
 
@@ -171,19 +171,21 @@
               >
               {{ policy.name }}
             </td>
-            <td class="policies-table__cell">{{ policy.preset }}</td>
+            <td class="policies-table__cell">{{ presetLabel(policy.preset) }}</td>
             <td class="policies-table__cell">
               <span class="policies-table__codec-badge"
                 >{{ policy.targetCodec }}</span
               >
             </td>
             <td class="policies-table__cell">
-              <span class="policies-table__crf-value"
-                >{{ policy.targetQuality }}</span
-              >
               <span class="policies-table__crf-label"
-                >({{ getCRFLabel(policy.targetQuality) }})</span
+                >{{ getCRFLabel(policy.targetQuality) }}</span
               >
+              @if (advancedMode()) {
+              <span class="policies-table__crf-value"
+                >CRF {{ policy.targetQuality }}</span
+              >
+              }
             </td>
             <td class="policies-table__cell">
               {{ policy.libraryId || ('policies.allLibraries' | transloco) }}

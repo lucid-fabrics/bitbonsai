@@ -77,12 +77,14 @@ import { StuckJobRecoveryWorker } from './stuck-job-recovery.worker';
   // order shifts with unrelated import changes (undefined imports[1] at boot).
   imports: [CoreModule, forwardRef(() => EncodingModule), MediaModule, NodesModule],
   controllers: [
-    JobController,
+    // Static routes (e.g. /queue/stats, /queue/next-job) must register before
+    // JobController's parameterized /queue/:id, or :id swallows them
     JobMetricsController,
     JobPreviewController,
     JobTransferController,
     QueueManagementController,
     BatchController,
+    JobController,
   ],
   providers: [
     QueueService,

@@ -133,16 +133,16 @@ describe('SettingsService', () => {
       expect(result).toEqual({ defaultQueueView: 'COMPLETED' });
     });
 
-    it('should create default settings with ENCODING view when none exist', async () => {
+    it('should create default settings with ALL view when none exist', async () => {
       mockSettingsRepository.findOrCreateWithDefaults.mockResolvedValue(
-        createSettingsRecord({ defaultQueueView: 'ENCODING' })
+        createSettingsRecord({ defaultQueueView: 'ALL' })
       );
 
       const result = await service.getDefaultQueueView();
 
-      expect(result).toEqual({ defaultQueueView: 'ENCODING' });
+      expect(result).toEqual({ defaultQueueView: 'ALL' });
       expect(mockSettingsRepository.findOrCreateWithDefaults).toHaveBeenCalledWith({
-        defaultQueueView: 'ENCODING',
+        defaultQueueView: 'ALL',
       });
     });
   });

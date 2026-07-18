@@ -188,6 +188,23 @@ export class PoliciesComponent implements OnInit {
     this.formData.targetQuality = crf;
   }
 
+  presetLabel(preset: string): string {
+    switch (preset) {
+      case 'BALANCED_HEVC':
+        return 'Balanced';
+      case 'FAST_HEVC':
+        return 'Fast';
+      case 'QUALITY_AV1':
+        return 'Highest compression';
+      case 'COPY_IF_COMPLIANT':
+        return 'Skip compatible files';
+      case 'CUSTOM':
+        return 'Custom';
+      default:
+        return preset;
+    }
+  }
+
   codecLabel(codec: string): string {
     switch ((codec || '').toUpperCase()) {
       case 'HEVC':
@@ -352,7 +369,7 @@ export class PoliciesComponent implements OnInit {
       allowSameCodec: false,
       minSavingsPercent: 10,
       libraryId: '',
-      deviceProfiles: new Set(),
+      deviceProfiles: new Set([DeviceProfile.WEB]),
       ffmpegFlags: '',
       audioHandling: AudioHandling.COPY,
     };

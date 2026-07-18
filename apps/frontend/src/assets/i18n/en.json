@@ -54,7 +54,8 @@
   },
   "overview": {
     "title": "Overview",
-    "nodes": "Nodes",
+    "subtitle": "Everything happening across your computers, at a glance",
+    "nodes": "Computers",
     "activeJobs": "Active Jobs",
     "queuedJobs": "Queued Jobs",
     "completedToday": "Completed Today",
@@ -72,7 +73,7 @@
     "saved": "Saved",
     "queueEmpty": "Queue Empty",
     "queue": "Queue:",
-    "successRate7d": "Success Rate (7d)",
+    "successRate7d": "Success rate, last 7 days",
     "vsLastWeek": "vs last week",
     "topFailureCategory": "Top Failure Category"
   },
@@ -125,7 +126,7 @@
     "clickAddButton": "Click the \"Add Your First Library\" button below",
     "chooseName": "Choose a name for your library (e.g., \"Movies\", \"TV Shows\")",
     "selectFolder": "Select the folder path containing your media files",
-    "pickNode": "Pick a node to handle the encoding work",
+    "pickNode": "BitBonsai spreads the work across your computers automatically",
     "enableWatching": "Enable file watching to automatically detect new files",
     "librariesDescription": "Libraries are collections of media files that BitBonsai monitors and optimizes.",
     "addYourFirstLibrary": "Add Your First Library",
@@ -202,12 +203,12 @@
     "deletePolicyAriaLabel": "Delete policy {{ name }}",
     "step1BrowseTemplates": "Browse the \"Quick Start Templates\" above to see preset options",
     "step2ClickTemplate": "Click on a recommended template (like \"Balanced HEVC\") to get started",
-    "step4AdjustQuality": "Adjust quality settings if needed (lower CRF = better quality)"
+    "step4AdjustQuality": "Pick a quality level (Balanced works great for most people)"
   },
   "nodes": {
-    "title": "Nodes",
-    "subtitle": "Manage and pair encoding nodes",
-    "addNode": "Add Node",
+    "title": "Computers",
+    "subtitle": "The computers that do your encoding work",
+    "addNode": "Add a computer",
     "nodeName": "Node Name",
     "nodeIp": "IP Address",
     "hostname": "Hostname",
@@ -228,13 +229,13 @@
     "viewStats": "View Stats",
     "storage": "Storage",
     "reject": "Reject",
-    "registerNewNode": "Register New Node",
-    "nodeSingular": "Node",
+    "registerNewNode": "Add a computer",
+    "nodeSingular": "Computer",
     "noNodesYet": "No Nodes Yet",
     "emptyDescription": "Nodes are the workers that handle all your video encoding. They can be your local machine, a dedicated server, or multiple computers working together.",
     "gettingStarted": "Getting Started:",
-    "registerFirstNode": "Register Your First Node",
-    "clickRegisterButton": "Click \"Register Your First Node\" below",
+    "registerFirstNode": "Add your first helper computer",
+    "clickRegisterButton": "Click \"Add your first helper computer\" below",
     "copyCommand": "A registration command will appear - copy it",
     "openTerminal": "Open a terminal on the machine you want to use as a node",
     "pasteCommand": "Paste and run the command to install the node software",
@@ -260,17 +261,19 @@
     "outsideScheduleWindow": "Outside schedule window",
     "load": "Load",
     "performance": "Performance",
-    "pendingRequests": "Pending Node Requests"
+    "pendingRequests": "Pending Node Requests",
+    "sendToNode": "Send to computer",
+    "sending": "Sending..."
   },
   "insights": {
     "title": "Insights",
     "subtitle": "Analytics and performance metrics",
-    "codecDistribution": "Codec Distribution",
-    "codecBreakdown": "Usage breakdown by codec type",
+    "codecDistribution": "Formats in your library",
+    "codecBreakdown": "Usage breakdown by video format",
     "noCodecData": "No codec data available",
     "processFiles": "Process files to see codec distribution",
-    "nodePerformance": "Node Performance",
-    "jobsByNode": "Jobs completed by node",
+    "nodePerformance": "Computer performance",
+    "jobsByNode": "Jobs completed by computer",
     "noNodeData": "No node data available",
     "addNodes": "Add worker nodes to see performance metrics",
     "totalJobs": "Total Jobs",
@@ -291,6 +294,7 @@
   },
   "settings": {
     "title": "Settings",
+    "subtitle": "A few knobs, sensible defaults everywhere else",
     "general": "General",
     "encoding": "Encoding",
     "notifications": "Notifications",
@@ -358,7 +362,10 @@
     "resize": "Resize:",
     "move": "Move:",
     "remove": "Remove:",
-    "alwaysOn": "Always on:"
+    "alwaysOn": "Always on:",
+    "critical": "Critical",
+    "hide": "Hide",
+    "show": "Show"
   },
   "errors": {
     "generic": "An error occurred. Please try again.",
@@ -490,7 +497,10 @@
     "estimatedNeeded": "Estimated Needed:",
     "totalQueuedJobs": "Total Queued Jobs:",
     "totalEstimatedSpace": "Total Estimated Space Needed:",
-    "canAccommodateQueue": "Can Accommodate Queue:"
+    "canAccommodateQueue": "Can Accommodate Queue:",
+    "insufficientDiskSpace": "Not enough disk space",
+    "lowDiskSpace": "Disk space is getting low",
+    "warning": "Warning"
   },
   "cpuCapacity": {
     "title": "CPU Capacity Management",
@@ -553,7 +563,8 @@
     "pleaseWait": "Please wait while we add your selected files to the queue...",
     "jobsCreated": "Jobs Created Successfully!",
     "jobsCreatedLabel": "Jobs Created",
-    "filesSkipped": "Files Skipped"
+    "filesSkipped": "Files Skipped",
+    "backToLibraries": "Back to libraries"
   },
   "libraryFiles": {
     "title": "Library Files",
@@ -602,7 +613,8 @@
   "notifications": {
     "loading": "Loading notifications...",
     "noNotifications": "No notifications",
-    "ariaLabel": "Notifications"
+    "ariaLabel": "Notifications",
+    "notifications": "Notifications"
   },
   "nodeSchedule": {
     "addTime": "Add time:",
@@ -872,12 +884,12 @@
     "clearAllFilters": "Clear All Filters",
     "noJobsDescription": "The queue shows all your encoding jobs - past, present, and future. Jobs are created automatically when BitBonsai finds media files that need optimization.",
     "gettingStarted": "Getting Started:",
-    "step1": "First, set up a Library to tell BitBonsai where your media files are",
-    "step2": "Create a Policy to define how files should be encoded",
-    "step3": "Register a Node to do the actual encoding work",
-    "step4": "Scan your library or add files - jobs will appear here automatically!",
-    "step5": "Watch as your nodes process jobs and optimize your media",
-    "tip": "Jobs start automatically once you have libraries, policies, and nodes configured!",
+    "step1": "Add a Library to tell BitBonsai where your videos are",
+    "step2": "Pick a Policy for how videos get converted (Balanced is a great default)",
+    "step3": "That is it. This computer does the converting; add more computers later for extra speed",
+    "step4": "New videos show up here automatically",
+    "step5": "Watch your files shrink",
+    "tip": "Converting starts on its own once you have a library and a policy.",
     "setUpFirstLibrary": "Set Up Your First Library",
     "totalJobs": "Total Jobs",
     "totalSavings": "Total Savings",

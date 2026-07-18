@@ -39,7 +39,7 @@ export class QueueDataService {
   private readonly store = inject(Store);
 
   // Filter state
-  selectedStatus: JobStatus | 'ALL' = JobStatus.ENCODING;
+  selectedStatus: JobStatus | 'ALL' = 'ALL';
   selectedNodeId = '';
   selectedLibraryId = '';
   searchQuery = '';

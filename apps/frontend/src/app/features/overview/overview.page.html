@@ -48,7 +48,7 @@
             {{ trend.currentWeek.successRate.toFixed(0) }}%
             <span class="health-card__delta">
               ({{ trend.changePercentagePoints >= 0 ? '+' : '' }}{{
-              trend.changePercentagePoints.toFixed(1) }}pts {{
+              trend.changePercentagePoints.toFixed(1) }}% {{
               'overview.vsLastWeek' | transloco }})
             </span>
           </p>
@@ -99,7 +99,7 @@
               }
             </div>
             @if (node.role === 'MAIN') {
-            <span class="node-square__badge">MAIN</span>
+            <span class="node-square__badge">Main</span>
             }
           </div>
 

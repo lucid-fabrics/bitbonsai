@@ -83,7 +83,7 @@ export class SettingsService {
    */
   async getDefaultQueueView(): Promise<DefaultQueueViewDto> {
     const settings = await this.settingsRepository.findOrCreateWithDefaults({
-      defaultQueueView: 'ENCODING',
+      defaultQueueView: 'ALL',
     });
 
     return {

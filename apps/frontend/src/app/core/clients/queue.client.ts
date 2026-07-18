@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { combineLatest, map, type Observable } from 'rxjs';
+import { catchError, combineLatest, map, of, type Observable } from 'rxjs';
 import type { JobHistoryEvent } from '../../features/queue/models/job-history-event.model';
 import type { QueueFilters } from '../../features/queue/models/queue-filters.model';
 import type { QueueJobApiModel } from '../../features/queue/models/queue-job-api.model';
@@ -43,9 +43,12 @@ export class QueueClient {
         limit: number;
         totalPages: number;
       }>(this.apiUrl, { params }),
-      this.http.get<QueueStats>(`${this.apiUrl}/stats`, {
-        params: statsParams,
-      }),
+      // Stats are supplementary; never let their failure blank the queue
+      this.http
+        .get<QueueStats>(`${this.apiUrl}/stats`, {
+          params: statsParams,
+        })
+        .pipe(catchError(() => of(null as unknown as QueueStats))),
     ]).pipe(
       map(([response, stats]) => ({
         jobs: response.jobs,

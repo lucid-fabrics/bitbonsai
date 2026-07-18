@@ -889,8 +889,8 @@
   flex-wrap: wrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
-  // Hide mobile status select on desktop
-  .mobile-status-select {
+  // Hide mobile status select on desktop (must out-rank .filter-group's flex)
+  .filter-group.mobile-status-select {
     display: none;
   }
 
