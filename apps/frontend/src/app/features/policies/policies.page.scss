@@ -113,9 +113,17 @@
 }
 
 .preset-card__icon {
-  font-size: 48px;
-  text-align: center;
-  margin-bottom: 16px;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: $bg-primary;
+  border: 1px solid $border-primary;
+  color: $accent-primary;
+  font-size: 26px;
 }
 
 .preset-card__title {
@@ -229,7 +237,16 @@
 }
 
 .policies-table__preset-icon {
-  font-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: $bg-primary;
+  border: 1px solid $border-primary;
+  color: $accent-primary;
+  font-size: 13px;
 }
 
 .policies-table__codec-badge {
