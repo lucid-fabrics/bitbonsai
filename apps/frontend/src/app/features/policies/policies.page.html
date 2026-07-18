@@ -59,7 +59,9 @@
         </div>
         }
 
-        <div class="preset-card__icon">{{ getPresetIcon(preset.preset) }}</div>
+        <div class="preset-card__icon">
+          <fa-icon [icon]="getPresetIcon(preset.preset)"></fa-icon>
+        </div>
         <h3 class="preset-card__title">{{ preset.name }}</h3>
 
         <div class="preset-card__details">
@@ -166,9 +168,9 @@
           @for (policy of (policies$ | async) || []; track policy.id) {
           <tr>
             <td class="policies-table__cell--policy-name">
-              <span class="policies-table__preset-icon"
-                >{{ getPresetIcon(policy.preset) }}</span
-              >
+              <span class="policies-table__preset-icon">
+                <fa-icon [icon]="getPresetIcon(policy.preset)"></fa-icon>
+              </span>
               {{ policy.name }}
             </td>
             <td class="policies-table__cell">{{ presetLabel(policy.preset) }}</td>

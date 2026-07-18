@@ -4,15 +4,21 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } f
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
+  faBalanceScale,
+  faBolt,
   faCheck,
   faEdit,
+  faGem,
   faInfoCircle,
+  faListCheck,
   faPlus,
   faStar,
   faTimes,
   faTrash,
   faTv,
+  faWrench,
 } from '@fortawesome/pro-solid-svg-icons';
 import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
@@ -76,6 +82,14 @@ export class PoliciesComponent implements OnInit {
     check: faCheck,
     tv: faTv,
     infoCircle: faInfoCircle,
+  };
+
+  private readonly presetIcons: Record<PolicyPreset, IconDefinition> = {
+    [PolicyPreset.BALANCED_HEVC]: faBalanceScale,
+    [PolicyPreset.FAST_HEVC]: faBolt,
+    [PolicyPreset.QUALITY_AV1]: faGem,
+    [PolicyPreset.COPY_IF_COMPLIANT]: faCheck,
+    [PolicyPreset.CUSTOM]: faWrench,
   };
 
   // Enums for template
@@ -341,21 +355,8 @@ export class PoliciesComponent implements OnInit {
     }
   }
 
-  getPresetIcon(preset: PolicyPreset): string {
-    switch (preset) {
-      case PolicyPreset.BALANCED_HEVC:
-        return '⚖️';
-      case PolicyPreset.FAST_HEVC:
-        return '⚡';
-      case PolicyPreset.QUALITY_AV1:
-        return '💎';
-      case PolicyPreset.COPY_IF_COMPLIANT:
-        return '✅';
-      case PolicyPreset.CUSTOM:
-        return '🔧';
-      default:
-        return '📋';
-    }
+  getPresetIcon(preset: PolicyPreset): IconDefinition {
+    return this.presetIcons[preset] ?? faListCheck;
   }
 
   private getEmptyFormData(): PolicyFormData {

@@ -4,6 +4,14 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
+import {
+  faBalanceScale,
+  faBolt,
+  faCheck,
+  faGem,
+  faListCheck,
+  faWrench,
+} from '@fortawesome/pro-solid-svg-icons';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
@@ -466,15 +474,15 @@ describe('PoliciesComponent', () => {
 
   describe('getPresetIcon', () => {
     it('should return correct icons', () => {
-      expect(component.getPresetIcon(PolicyPreset.BALANCED_HEVC)).toBe('⚖️');
-      expect(component.getPresetIcon(PolicyPreset.FAST_HEVC)).toBe('⚡');
-      expect(component.getPresetIcon(PolicyPreset.QUALITY_AV1)).toBe('💎');
-      expect(component.getPresetIcon(PolicyPreset.COPY_IF_COMPLIANT)).toBe('✅');
-      expect(component.getPresetIcon(PolicyPreset.CUSTOM)).toBe('🔧');
+      expect(component.getPresetIcon(PolicyPreset.BALANCED_HEVC)).toBe(faBalanceScale);
+      expect(component.getPresetIcon(PolicyPreset.FAST_HEVC)).toBe(faBolt);
+      expect(component.getPresetIcon(PolicyPreset.QUALITY_AV1)).toBe(faGem);
+      expect(component.getPresetIcon(PolicyPreset.COPY_IF_COMPLIANT)).toBe(faCheck);
+      expect(component.getPresetIcon(PolicyPreset.CUSTOM)).toBe(faWrench);
     });
 
     it('should return default icon for unknown preset', () => {
-      expect(component.getPresetIcon('UNKNOWN' as PolicyPreset)).toBe('📋');
+      expect(component.getPresetIcon('UNKNOWN' as PolicyPreset)).toBe(faListCheck);
     });
   });
 });
