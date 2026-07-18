@@ -47,15 +47,15 @@
           <p class="health-card__value">
             {{ trend.currentWeek.successRate.toFixed(0) }}%
             <span class="health-card__delta">
-              ({{ trend.changePercentagePoints >= 0 ? '+' : ''
-              }}{{ trend.changePercentagePoints.toFixed(1) }}pts {{
+              ({{ trend.changePercentagePoints >= 0 ? '+' : '' }}{{
+              trend.changePercentagePoints.toFixed(1) }}pts {{
               'overview.vsLastWeek' | transloco }})
             </span>
           </p>
         </div>
       </div>
-      } @if (failureCategories$ | async; as categories) { @if
-      (categories.length > 0) {
+      } @if (failureCategories$ | async; as categories) { @if (categories.length
+      > 0) {
       <div class="health-card health-card--info">
         <div class="health-card__icon">
           <fa-icon [icon]="icons.topFailure"></fa-icon>

@@ -73,11 +73,11 @@ The app's purpose is simple: **encode videos with zero friction**. Users should 
 
 BitBonsai consists of **three applications**:
 
-| App          | Type            | Purpose                   | Port                    |
-| ------------ | --------------- | ------------------------- | ----------------------- |
+| App          | Type            | Purpose                   | Port                                 |
+| ------------ | --------------- | ------------------------- | ------------------------------------ |
 | **backend**  | NestJS          | Video transcoding backend | 3000 (dev); 8108 in prod (see below) |
 | **frontend** | Angular (Ionic) | Desktop app UI            | 4200 (dev); 8108 in prod (see below) |
-| **website**  | Angular         | Marketing site            | 4201 (dev)              |
+| **website**  | Angular         | Marketing site            | 4201 (dev)                           |
 
 Production is a single all-in-one Docker container (`bitbonsai`, built from
 `Dockerfile.prod`'s `production` target): embedded PostgreSQL, nginx serving

@@ -13,7 +13,14 @@
       </div>
     } @else {
       @if (parentPath()) {
-        <div class="tree-item parent" (click)="goToParent()" (keydown.enter)="goToParent()" tabindex="0" role="button" [attr.aria-label]="'Go to parent directory'">
+        <div
+          class="tree-item parent"
+          (click)="goToParent()"
+          (keydown.enter)="goToParent()"
+          tabindex="0"
+          role="button"
+          [attr.aria-label]="'Go to parent directory'"
+        >
           <i class="fas fa-level-up-alt"></i>
           <span class="item-name">..</span>
         </div>

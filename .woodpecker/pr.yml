@@ -29,11 +29,11 @@ steps:
     image: node:22
     commands:
       - npx nx affected -t lint --base=origin/main
-      # Advisory only: ~800 pre-existing files don't match .prettierrc's
-      # implied defaults (predates this pipeline - every prior version of
-      # this check ran with `|| true` too). Not blocking until that's
-      # cleaned up separately.
-      - npx prettier --check "**/*.{ts,json,md,scss,html}" --ignore-path .prettierignore || true
+      # ts/js/json formatting is Biome's job (biome.json), not Prettier's -
+      # the two disagree (printWidth 100/es5 commas vs Prettier's 80/all),
+      # and Biome already owns+enforces those file types. Prettier's real
+      # (non-redundant) job is the file types Biome's files.includes skips.
+      - npx prettier --check "**/*.{md,scss,html}" --ignore-path .prettierignore
 
   - name: test
     image: node:22

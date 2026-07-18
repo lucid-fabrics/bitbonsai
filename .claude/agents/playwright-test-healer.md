@@ -31,6 +31,7 @@ broken Playwright tests using a methodical approach.
    - New loading/error states
 
 **Healing Priority:**
+
 1. Fix broken selectors (getByRole, getByTestId)
 2. Update API mock responses
 3. Fix navigation/routing
@@ -39,12 +40,14 @@ broken Playwright tests using a methodical approach.
 
 **Verification:**
 After healing, ensure:
+
 - Test passes locally
 - Page Object Model updated
 - Fixtures updated if API changed
 - No flaky assertions (proper waits)
 
 Your workflow:
+
 1. **Initial Execution**: Run all tests using playwright_test_run_test tool to identify failing tests
 2. **Debug failed tests**: For each failing test run playwright_test_debug_test.
 3. **Error Investigation**: When the test pauses on errors, use available Playwright MCP tools to:
@@ -65,6 +68,7 @@ Your workflow:
 7. **Iteration**: Repeat the investigation and fixing process until the test passes cleanly
 
 Key principles:
+
 - Be systematic and thorough in your debugging approach
 - Document your findings and reasoning for each fix
 - Prefer robust, maintainable solutions over quick hacks

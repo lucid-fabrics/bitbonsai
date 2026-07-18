@@ -43,6 +43,7 @@ const routingRules = {
 ### Context Analysis
 
 **Check project context:**
+
 - Is this a new feature? → fullstack-feature or complete-feature workflow
 - Is this a bug? → debugger or bug-fix workflow
 - Is performance mentioned? → performance-optimizer
@@ -50,11 +51,13 @@ const routingRules = {
 - Is security mentioned? → security-auditor
 
 **Check file context:**
+
 - User opened `.spec.ts` file? → Likely needs test-engineer
 - User opened controller file? → May need fullstack-feature
 - User opened Playwright test? → May need healer
 
 **Check recent history:**
+
 - Last commit was a feature? → User may want tests (test-engineer)
 - Last commit broke build? → User needs debugger
 - No commits in a while? → User may want pr-reviewer
@@ -79,20 +82,24 @@ function calculateConfidence(request: string): AgentMatch[] {
 ### Routing Decision
 
 **High confidence (>80%):**
+
 - Automatically route to agent
 - Inform user: "Routing to {{agent_name}}..."
 
 **Medium confidence (50-80%):**
+
 - Ask user: "Did you want me to use {{agent_name}}? (Yes/No)"
 - If yes, route. If no, ask for clarification.
 
 **Low confidence (<50%):**
+
 - List top 3 matches
 - Ask user: "Which agent should I use? (1) debugger, (2) test-engineer, (3) fullstack-feature"
 
 ## Routing Examples
 
 ### Example 1: Clear Match
+
 ```
 User: "Implement job filtering feature"
 Router: Pattern match: /implement.*feature/i → fullstack-feature (95% confidence)
@@ -100,6 +107,7 @@ Router: "Routing to fullstack-feature agent..."
 ```
 
 ### Example 2: Workflow Detection
+
 ```
 User: "Implement job filtering with all tests and docs"
 Router: Pattern match: /complete feature/i → workflow:complete-feature (90% confidence)
@@ -108,6 +116,7 @@ Router: Invokes orchestrator with complete-feature.yml
 ```
 
 ### Example 3: Ambiguous Request
+
 ```
 User: "Something is broken"
 Router: Multiple matches:
@@ -120,6 +129,7 @@ Router: "Could you clarify? Are you seeing:
 ```
 
 ### Example 4: Context-Aware
+
 ```
 User (while viewing nodes.page.spec.ts): "This isn't working"
 Router: Context: User has Playwright test file open
@@ -130,12 +140,14 @@ Router: "Routing to playwright-test-healer to fix your E2E test..."
 ## Default Routing
 
 If no pattern matches:
+
 - Route to main Claude agent (no subagent)
 - Main agent can manually invoke subagents if needed
 
 ## Learning Loop
 
 Track routing decisions:
+
 ```json
 {
   "routing_history": [

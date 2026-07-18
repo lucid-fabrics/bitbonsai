@@ -38,20 +38,23 @@ color: purple
 ## Workflow Execution
 
 ### Input Format
+
 ```yaml
 workflow: complete-feature.yml
 variables:
-  feature_name: "Job Filtering"
+  feature_name: 'Job Filtering'
 ```
 
 ### Execution Steps
 
 1. **Load Workflow**
+
    ```typescript
    const workflow = parseYAML('.claude/workflows/complete-feature.yml');
    ```
 
 2. **Execute Steps Sequentially**
+
    ```typescript
    for (const step of workflow.steps) {
      // Invoke agent via Task tool
@@ -66,6 +69,7 @@ variables:
    ```
 
 3. **Verify Success Criteria**
+
    ```typescript
    for (const [criterion, expected] of workflow.success_criteria) {
      if (!verifyCriterion(criterion, expected)) {
@@ -75,20 +79,25 @@ variables:
    ```
 
 4. **Generate Summary**
+
    ```markdown
    ## Workflow Complete: {{workflow_name}}
 
    ### Steps Executed: {{steps_count}}
+
    ### Duration: {{total_duration}}
+
    ### Files Modified: {{file_count}}
 
    #### Agent Performance:
+
    - fullstack-feature: ✅ Success (12 files modified)
    - test-engineer: ✅ Success (8 test files created)
    - playwright-test-planner: ✅ Success (15 scenarios generated)
-   ...
+     ...
 
    ### Quality Gates:
+
    ✅ All tests pass (125/125)
    ✅ Linter: 0 errors
    ✅ Coverage: 96%
@@ -106,6 +115,7 @@ variables:
 ## Error Handling
 
 **If agent fails:**
+
 1. Log failure details
 2. Ask user: "Agent {{agent_name}} failed. Retry or skip?"
 3. If retry: Re-invoke with same inputs
@@ -113,6 +123,7 @@ variables:
 5. Update metrics (failure_count++)
 
 **If quality gate fails:**
+
 1. Stop workflow immediately
 2. Report which gate failed
 3. Invoke `debugger` agent to fix
@@ -143,6 +154,7 @@ function updateMetrics(agentName: string, success: boolean, duration: number) {
 ## Usage Examples
 
 ### Example 1: Complete Feature
+
 ```
 User: "Implement job filtering feature"
 Orchestrator: "Executing complete-feature.yml workflow..."
@@ -158,6 +170,7 @@ Orchestrator: "Workflow complete! Summary: ..."
 ```
 
 ### Example 2: Bug Fix
+
 ```
 User: "Fix the 500 error on node registration"
 Orchestrator: "Executing bug-fix.yml workflow..."
@@ -171,6 +184,7 @@ Orchestrator: "Bug fixed! All tests passing."
 ## Quality Gates
 
 Enforce after each step:
+
 - ✅ `npm run check` (linter)
 - ✅ `npm test` (all tests)
 - ✅ `npm run build` (compilation)

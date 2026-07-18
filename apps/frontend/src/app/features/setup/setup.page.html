@@ -350,7 +350,9 @@
             <i class="fa-solid fa-cloud"></i>
           </div>
           <h2 class="step-title">Link your bitbonsai.app account</h2>
-          <p class="step-subtitle">Unlock your subscription tier and manage your plan</p>
+          <p class="step-subtitle">
+            Unlock your subscription tier and manage your plan
+          </p>
 
           @if (pollError()) {
           <div class="alert alert-error">
@@ -369,9 +371,7 @@
             <p class="cloud-link-instruction">
               Visit <strong>bitbonsai.app/device</strong> and enter this code:
             </p>
-            <div class="user-code-display">
-              {{ userCode() }}
-            </div>
+            <div class="user-code-display">{{ userCode() }}</div>
 
             <a
               [href]="verificationUri()"
@@ -387,14 +387,21 @@
             @if (isPolling()) {
             <div class="polling-status">
               <span class="spinner spinner-sm"></span>
-              <span class="polling-text">Waiting for authorization<span class="dot-animation">...</span></span>
+              <span class="polling-text"
+                >Waiting for authorization<span class="dot-animation"
+                  >...</span
+                ></span
+              >
             </div>
-            }
-            }
+            } }
           </div>
 
           <div class="step-actions step-actions-center">
-            <button type="button" class="btn-skip-link" (click)="skipCloudLink()">
+            <button
+              type="button"
+              class="btn-skip-link"
+              (click)="skipCloudLink()"
+            >
               Skip for now (Free tier)
             </button>
           </div>

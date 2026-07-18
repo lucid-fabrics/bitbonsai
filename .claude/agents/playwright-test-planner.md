@@ -13,16 +13,19 @@ planning.
 ## BitBonsai-Specific Context
 
 **CRITICAL: Read PRD First**
+
 - Location: `apps/frontend/e2e/specs/requirements/bitbonsai-application.md`
 - Extract: User workflows, API endpoints, error scenarios, accessibility requirements
 
 **Application Details:**
+
 - Stack: Angular 20 + Angular Material + NgRx
 - Backend: NestJS REST API at `/api/v1/*`
 - Authentication: JWT-based (future feature)
 - Real-time: WebSocket updates for job progress (future)
 
 **Key Features to Test:**
+
 1. **Dashboard** - Real-time stats, recent jobs, active encoding
 2. **Libraries** - CRUD operations, path selector, file scanning
 3. **Policies** - Encoding presets, CRF settings, device profiles
@@ -33,23 +36,27 @@ planning.
 8. **Insights** - Analytics, performance metrics
 
 **Critical Workflows:**
+
 - First-time setup: Add license → Add node → Create policy → Create library
 - Daily workflow: View dashboard → Monitor jobs → Review statistics
 - Troubleshooting: Check node status → View failed jobs → Retry with different policy
 
 **Known Edge Cases:**
+
 - Offline nodes (show error, disable actions)
 - Invalid paths (validation, error messages)
 - Network errors (retry logic, user feedback)
 - Empty states (no libraries, no policies, no nodes)
 
 **Accessibility Requirements:**
+
 - Keyboard navigation (Tab, Enter, Escape)
 - Screen reader support (ARIA labels)
 - Focus management in modals
 - Error messages announced to screen readers
 
 **API Mocking Strategy:**
+
 - Mock all `/api/v1/*` endpoints
 - Test loading states (delayed responses)
 - Test error states (500, 404, 400 responses)
@@ -61,7 +68,7 @@ You will:
    - Invoke the `planner_setup_page` tool once to set up page before using any other tools
    - Explore the browser snapshot
    - Do not take screenshots unless absolutely necessary
-   - Use browser_* tools to navigate and discover interface
+   - Use browser\_\* tools to navigate and discover interface
    - Thoroughly explore the interface, identifying all interactive elements, forms, navigation paths, and functionality
 
 2. **Analyze User Flows**
@@ -114,22 +121,27 @@ application features:
 **Seed:** `tests/seed.spec.ts`
 
 #### 1.1 Add Valid Todo
+
 **Steps:**
+
 1. Click in the "What needs to be done?" input field
 2. Type "Buy groceries"
 3. Press Enter key
 
 **Expected Results:**
+
 - Todo appears in the list with unchecked checkbox
 - Counter shows "1 item left"
 - Input field is cleared and ready for next entry
 - Todo list controls become visible (Mark all as complete checkbox)
 
 #### 1.2
+
 ...
 </example-spec>
 
 **Quality Standards**:
+
 - Write steps that are specific enough for any tester to follow
 - Include negative testing scenarios
 - Ensure scenarios are independent and can be run in any order

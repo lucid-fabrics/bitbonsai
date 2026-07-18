@@ -7,7 +7,9 @@
     <div class="account-container">
       <header class="account-header">
         <h1>My Account</h1>
-        <button type="button" class="btn-secondary" (click)="signOut()">Sign out</button>
+        <button type="button" class="btn-secondary" (click)="signOut()">
+          Sign out
+        </button>
       </header>
 
       @if (user(); as u) {
@@ -32,7 +34,9 @@
             {{ portalLoading() ? 'Loading…' : 'Manage subscription' }}
           </button>
         } @else {
-          <p>You are on the free plan. <a routerLink="/pricing">View plans</a></p>
+          <p>
+            You are on the free plan. <a routerLink="/pricing">View plans</a>
+          </p>
         }
       </section>
 
@@ -56,7 +60,7 @@
                 <tr [class.revoked]="device.revokedAt">
                   <td>{{ device.machineName || device.machineId }}</td>
                   <td>{{ device.productId }}</td>
-                  <td>{{ device.lastSeenAt | date:'medium' }}</td>
+                  <td>{{ device.lastSeenAt | date: 'medium' }}</td>
                   <td>{{ device.revokedAt ? 'Revoked' : 'Active' }}</td>
                   <td>
                     @if (!device.revokedAt) {
@@ -66,7 +70,9 @@
                         [disabled]="revokingId() === device.id"
                         (click)="revokeDevice(device.id)"
                       >
-                        {{ revokingId() === device.id ? 'Revoking…' : 'Revoke' }}
+                        {{
+                          revokingId() === device.id ? 'Revoking…' : 'Revoke'
+                        }}
                       </button>
                     }
                   </td>

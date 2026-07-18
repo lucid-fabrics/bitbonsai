@@ -3,13 +3,23 @@
     @if (authorized()) {
       <div class="success-state">
         <div class="success-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="9 12 11 14 15 10"/>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="9 12 11 14 15 10" />
           </svg>
         </div>
         <h1>Device Authorized!</h1>
-        <p>Your BitBonsai install has been authorized! You can close this tab.</p>
+        <p>
+          Your BitBonsai install has been authorized! You can close this tab.
+        </p>
       </div>
     } @else {
       <h1>Authorize Device</h1>
@@ -36,7 +46,11 @@
           <div class="error-message">{{ error() }}</div>
         }
 
-        <button type="submit" [disabled]="loading() || userCode().replace('-', '').length < 4" class="btn-primary">
+        <button
+          type="submit"
+          [disabled]="loading() || userCode().replace('-', '').length < 4"
+          class="btn-primary"
+        >
           @if (loading()) {
             <span>Authorizing...</span>
           } @else {
