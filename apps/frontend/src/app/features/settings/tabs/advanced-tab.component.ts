@@ -1,5 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
@@ -12,6 +12,7 @@ import {
 import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
 import { SettingsClient } from '../../../core/clients/settings.client';
+import { ToastService } from '../../../core/services/toast.service';
 import {
   ConfirmationDialogComponent,
   type ConfirmationDialogData,
@@ -30,7 +31,8 @@ import { SettingsService } from '../services/settings.service';
     <div class="tab-panel">
       <h2>Advanced Settings</h2>
       <p class="tab-description">
-        Configure security, caching, logging, and API integration settings
+        Everything works without these. Turn on advanced controls if you like
+        to tinker.
       </p>
 
       @if (systemSettings()) {
@@ -63,11 +65,12 @@ import { SettingsService } from '../services/settings.service';
                 Showing bulk actions, node filters, debug info, and technical
                 details
               } @else {
-                Minimal interface with essential controls only
+                Everything works without these controls
               }
             </div>
           </div>
 
+          @if (advancedModeEnabled()) {
           <!-- Quality Metrics Toggle Card -->
           <div class="info-card setting-card">
             <div class="setting-card-header">
@@ -209,8 +212,10 @@ import { SettingsService } from '../services/settings.service';
               No personal data, filenames, or media content collected
             </div>
           </div>
+          }
         </div>
 
+        @if (advancedModeEnabled()) {
         <!-- System Configuration Form (Full Width) -->
         <form [formGroup]="settingsForm" (ngSubmit)="updateSystemSettings()">
           <div class="info-card">
@@ -331,6 +336,7 @@ import { SettingsService } from '../services/settings.service';
             </button>
           </div>
         </div>
+        }
       }
     </div>
   `,
@@ -342,6 +348,21 @@ export class AdvancedTabComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(Dialog);
   private readonly store = inject(Store);
+  private readonly toast = inject(ToastService);
+
+  // Template shows no inline feedback; surface the signals as toasts.
+  private readonly successToast = effect(() => {
+    const msg = this.successMessage();
+    if (msg) {
+      this.toast.success(msg);
+    }
+  });
+  private readonly errorToast = effect(() => {
+    const msg = this.error();
+    if (msg) {
+      this.toast.error(msg);
+    }
+  });
 
   systemSettings = signal<SystemSettings | null>(null);
   loading = signal(false);

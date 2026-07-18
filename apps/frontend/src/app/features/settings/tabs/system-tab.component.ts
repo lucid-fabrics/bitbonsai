@@ -1,6 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { AsyncPipe } from '@angular/common';
-import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
@@ -8,7 +8,9 @@ import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { selectIsLinkedNode, selectMainNode } from '../../../core/+state/current-node.selectors';
 import { NodesClient } from '../../../core/clients/nodes.client';
+import { humanizeError } from '../../../core/services/error-humanizer';
 import { ErrorLoggerService } from '../../../core/services/error-logger.service';
+import { ToastService } from '../../../core/services/toast.service';
 import {
   ConfirmationDialogComponent,
   type ConfirmationDialogData,
@@ -141,7 +143,7 @@ import { SettingsService } from '../services/settings.service';
                   Unregister Node
                 </h3>
                 <p class="description">
-                  Connected as <strong>Child Node</strong>
+                  This computer is a <strong>helper</strong>, connected
                   @if (mainNode$ | async; as mainNode) {
                     to <strong>{{ mainNode.name }}</strong>
                   }
@@ -208,6 +210,22 @@ export class SystemTabComponent implements OnInit {
   loading = signal(false);
   error = signal<string | null>(null);
   successMessage = signal<string | null>(null);
+
+  private readonly toast = inject(ToastService);
+
+  // Template shows no inline feedback; surface the signals as toasts.
+  private readonly successToast = effect(() => {
+    const msg = this.successMessage();
+    if (msg) {
+      this.toast.success(msg);
+    }
+  });
+  private readonly errorToast = effect(() => {
+    const msg = this.error();
+    if (msg) {
+      this.toast.error(msg);
+    }
+  });
 
   ngOnInit(): void {
     this.loadSystemSettings();
@@ -345,7 +363,9 @@ export class SystemTabComponent implements OnInit {
             },
             error: (err) => {
               this.loading.set(false);
-              this.error.set(err.error?.message || 'Failed to unregister node');
+              this.error.set(
+                humanizeError(err, 'Could not disconnect this computer. Please try again.')
+              );
             },
           });
       }

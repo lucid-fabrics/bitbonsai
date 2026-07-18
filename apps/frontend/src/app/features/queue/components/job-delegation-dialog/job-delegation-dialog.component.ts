@@ -1,3 +1,4 @@
+import { A11yModule } from '@angular/cdk/a11y';
 import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
 import { Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -20,7 +21,7 @@ export interface JobDelegationDialogData {
 @Component({
   selector: 'app-job-delegation-dialog',
   standalone: true,
-  imports: [FontAwesomeModule, TranslocoModule],
+  imports: [A11yModule, FontAwesomeModule, TranslocoModule],
   templateUrl: './job-delegation-dialog.component.html',
   styleUrls: ['./job-delegation-dialog.component.scss'],
 })

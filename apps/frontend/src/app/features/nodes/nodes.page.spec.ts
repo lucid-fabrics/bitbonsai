@@ -4,6 +4,7 @@ import { ChangeDetectorRef, NO_ERRORS_SCHEMA } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
+import { provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
 import { NodesClient } from '../../core/clients/nodes.client';
 import { EnvironmentDetectionService } from '../../core/services/environment-detection.service';
@@ -59,6 +60,9 @@ describe('NodesComponent', () => {
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
         provideHttpClient(),
+        provideMockStore({
+          initialState: { settings: { advancedModeEnabled: false } },
+        }),
         provideRouter([]),
         { provide: NodesClient, useValue: nodesClientMock },
         { provide: ChangeDetectorRef, useValue: cdrMock },

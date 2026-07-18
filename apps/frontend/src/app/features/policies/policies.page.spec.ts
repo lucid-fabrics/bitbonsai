@@ -213,33 +213,33 @@ describe('PoliciesComponent', () => {
   });
 
   describe('getCRFLabel', () => {
-    it('should return Visually Lossless for crf <= 18', () => {
-      expect(component.getCRFLabel(18)).toBe('Visually Lossless (Huge Files)');
+    it('should return best quality for crf <= 18', () => {
+      expect(component.getCRFLabel(18)).toBe('Best quality (largest files)');
     });
 
-    it('should return Excellent Quality for crf 19-22', () => {
-      expect(component.getCRFLabel(20)).toBe('Excellent Quality (Large Files)');
-      expect(component.getCRFLabel(22)).toBe('Excellent Quality (Large Files)');
+    it('should return excellent quality for crf 19-22', () => {
+      expect(component.getCRFLabel(20)).toBe('Excellent quality (large files)');
+      expect(component.getCRFLabel(22)).toBe('Excellent quality (large files)');
     });
 
-    it('should return High Quality for crf 23-26', () => {
-      expect(component.getCRFLabel(23)).toBe('High Quality (Recommended)');
-      expect(component.getCRFLabel(26)).toBe('High Quality (Recommended)');
+    it('should return balanced for crf 23-26', () => {
+      expect(component.getCRFLabel(23)).toBe('Balanced (recommended)');
+      expect(component.getCRFLabel(26)).toBe('Balanced (recommended)');
     });
 
-    it('should return Good Quality for crf 27-30', () => {
-      expect(component.getCRFLabel(28)).toBe('Good Quality (Smaller Files)');
-      expect(component.getCRFLabel(30)).toBe('Good Quality (Smaller Files)');
+    it('should return save space for crf 27-30', () => {
+      expect(component.getCRFLabel(28)).toBe('Save space (smaller files)');
+      expect(component.getCRFLabel(30)).toBe('Save space (smaller files)');
     });
 
-    it('should return Medium Quality for crf 31-34', () => {
-      expect(component.getCRFLabel(32)).toBe('Medium Quality (Web Streaming)');
-      expect(component.getCRFLabel(34)).toBe('Medium Quality (Web Streaming)');
+    it('should return save the most space for crf 31-34', () => {
+      expect(component.getCRFLabel(32)).toBe('Save the most space');
+      expect(component.getCRFLabel(34)).toBe('Save the most space');
     });
 
-    it('should return Low Quality for crf > 34', () => {
-      expect(component.getCRFLabel(35)).toBe('Low Quality (Not Recommended)');
-      expect(component.getCRFLabel(40)).toBe('Low Quality (Not Recommended)');
+    it('should return lowest quality for crf > 34', () => {
+      expect(component.getCRFLabel(35)).toBe('Lowest quality (not recommended)');
+      expect(component.getCRFLabel(40)).toBe('Lowest quality (not recommended)');
     });
   });
 

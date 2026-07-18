@@ -143,7 +143,7 @@ import { DocsService } from '../services/docs.service';
         width: 5px;
         height: 2rem;
         background: var(--primary-color);
-        border-radius: 3px;
+        border-radius: 4px;
       }
 
       .markdown-content h3 {

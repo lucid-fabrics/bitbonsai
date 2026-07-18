@@ -41,6 +41,7 @@ export class StorageSetupWizardModal implements OnInit {
   targetEnvironment?: EnvironmentInfo;
 
   // Wizard state
+  showIntro = true;
   currentStep = 0;
   steps: WizardStep[] = [];
 
@@ -161,6 +162,10 @@ export class StorageSetupWizardModal implements OnInit {
 
   close(): void {
     this.dialogRef.close();
+  }
+
+  startAdvancedSetup(): void {
+    this.showIntro = false;
   }
 
   complete(): void {

@@ -2,11 +2,39 @@
   <!-- Header -->
   <div class="wizard-header">
     <h2>{{ 'storage.title' | transloco }}</h2>
-    <button class="close-btn" (click)="close()">
+    <button class="close-btn" (click)="close()" aria-label="Close">
       <fa-icon [icon]="['fas', 'xmark']"></fa-icon>
     </button>
   </div>
 
+  @if (showIntro) {
+  <!-- Simple path: nothing to configure -->
+  <div class="wizard-content wizard-intro">
+    <div class="step-content">
+      <h3>
+        <fa-icon [icon]="['fas', 'check-circle']" class="me-2"></fa-icon>
+        Nothing to set up
+      </h3>
+      <p>
+        BitBonsai moves files between your computers automatically. You can
+        close this window and start encoding.
+      </p>
+      <p class="intro-secondary">
+        Have a big library? Shared network storage is faster because files are
+        not copied between computers. Setting it up takes a few minutes and
+        some comfort with server tools.
+      </p>
+      <div class="intro-actions">
+        <button class="btn btn-primary" (click)="close()">
+          Use automatic transfer
+        </button>
+        <button class="btn btn-secondary" (click)="startAdvancedSetup()">
+          Set up shared network storage (advanced)
+        </button>
+      </div>
+    </div>
+  </div>
+  } @else {
   <!-- Progress Bar -->
   <div class="wizard-progress">
     <div class="progress-bar">
@@ -428,4 +456,5 @@
     </button>
     }
   </div>
+  }
 </div>

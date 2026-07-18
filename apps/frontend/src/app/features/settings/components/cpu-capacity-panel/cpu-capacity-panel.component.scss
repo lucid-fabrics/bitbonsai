@@ -174,7 +174,7 @@
 
   .calc-formula {
     background: $bg-tertiary;
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 12px;
     font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
     font-size: 13px;
@@ -206,7 +206,7 @@
     margin-top: 16px;
     padding: 12px;
     background: $bg-secondary;
-    border-radius: 6px;
+    border-radius: 8px;
 
     .recommendation-icon {
       font-size: 20px;
@@ -237,7 +237,7 @@
     padding: 12px 16px;
     background: $bg-tertiary;
     border: 1px solid $border-primary;
-    border-radius: 6px;
+    border-radius: 8px;
     color: $text-primary;
     font-size: 14px;
     font-weight: 500;
@@ -388,7 +388,7 @@
   .memory-bar {
     height: 6px;
     background: $bg-secondary;
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
 
     .memory-bar-fill {

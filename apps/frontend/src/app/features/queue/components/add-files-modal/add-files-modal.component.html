@@ -1,7 +1,14 @@
 <!-- Modal Overlay -->
 @if (isOpen) {
   <div class="modal-overlay" (click)="closeModal()">
-    <div class="modal-container" (click)="$event.stopPropagation()">
+    <div
+      class="modal-container"
+      role="dialog"
+      aria-modal="true"
+      cdkTrapFocus
+      cdkTrapFocusAutoCapture
+      (click)="$event.stopPropagation()"
+    >
       <!-- Modal Header -->
       <div class="modal-header">
         <div class="header-content">
@@ -53,6 +60,7 @@
           class="close-btn"
           (click)="closeModal()"
           [disabled]="isCreatingJobs$ | async"
+          aria-label="Close"
         >
           <i class="fas fa-times"></i>
         </button>

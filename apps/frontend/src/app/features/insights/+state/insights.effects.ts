@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { humanizeError } from '../../../core/services/error-humanizer';
 import { InsightsService } from '../services/insights.service';
 import { InsightsActions } from './insights.actions';
 
@@ -17,7 +18,11 @@ export class InsightsEffects {
         this.insightsService.getSavingsTrend(days).pipe(
           map((data) => InsightsActions.loadSavingsTrendSuccess({ data })),
           catchError((error) =>
-            of(InsightsActions.loadSavingsTrendFailure({ error: error.message }))
+            of(
+              InsightsActions.loadSavingsTrendFailure({
+                error: humanizeError(error, 'Could not load your savings history. Retrying automatically.'),
+              })
+            )
           )
         )
       )
@@ -33,7 +38,7 @@ export class InsightsEffects {
           catchError((error) =>
             of(
               InsightsActions.loadCodecDistributionFailure({
-                error: error.message,
+                error: humanizeError(error, 'Could not load statistics. Retrying automatically.'),
               })
             )
           )
@@ -51,7 +56,7 @@ export class InsightsEffects {
           catchError((error) =>
             of(
               InsightsActions.loadNodePerformanceFailure({
-                error: error.message,
+                error: humanizeError(error, 'Could not load computer performance. Retrying automatically.'),
               })
             )
           )
@@ -66,7 +71,11 @@ export class InsightsEffects {
       switchMap(() =>
         this.insightsService.getStats().pipe(
           map((data) => InsightsActions.loadStatsSuccess({ data })),
-          catchError((error) => of(InsightsActions.loadStatsFailure({ error: error.message })))
+          catchError((error) => of(
+            InsightsActions.loadStatsFailure({
+              error: humanizeError(error, 'Could not load statistics. Retrying automatically.'),
+            })
+          ))
         )
       )
     )

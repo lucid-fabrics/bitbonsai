@@ -40,7 +40,11 @@
       <div
         class="preset-card"
         [class.preset-card--recommended]="preset.recommended"
+        role="button"
+        tabindex="0"
         (click)="selectPreset(preset)"
+        (keydown.enter)="selectPreset(preset)"
+        (keydown.space)="$event.preventDefault(); selectPreset(preset)"
         bbTooltip
         [tooltipTitle]="preset.name"
         [tooltipContent]="preset.description"
@@ -63,13 +67,13 @@
             <span class="preset-card__detail-label"
               >{{ 'policies.codec' | transloco }}:</span
             >
-            <span class="preset-card__detail-value">{{ preset.codec }}</span>
+            <span class="preset-card__detail-value">{{ codecLabel(preset.codec) }}</span>
           </div>
           <div class="preset-card__detail-row">
             <span class="preset-card__detail-label"
               >{{ 'policies.quality' | transloco }}:</span
             >
-            <span class="preset-card__detail-value">CRF {{ preset.crf }}</span>
+            <span class="preset-card__detail-value">{{ getCRFLabel(preset.crf) }}</span>
           </div>
         </div>
 
@@ -276,12 +280,12 @@
               [disabled]="isEditMode"
             >
               <option [value]="PolicyPreset.BALANCED_HEVC">
-                Balanced HEVC
+                Balanced (recommended)
               </option>
-              <option [value]="PolicyPreset.FAST_HEVC">Fast HEVC</option>
-              <option [value]="PolicyPreset.QUALITY_AV1">Quality AV1</option>
+              <option [value]="PolicyPreset.FAST_HEVC">Fast</option>
+              <option [value]="PolicyPreset.QUALITY_AV1">Highest compression (slower)</option>
               <option [value]="PolicyPreset.COPY_IF_COMPLIANT">
-                Copy If Compliant
+                Skip files that are already efficient
               </option>
               <option [value]="PolicyPreset.CUSTOM">
                 {{ 'policies.custom' | transloco }}
@@ -300,10 +304,15 @@
               [(ngModel)]="formData.targetCodec"
               name="codec"
             >
-              <option [value]="TargetCodec.HEVC">HEVC (H.265)</option>
-              <option [value]="TargetCodec.AV1">AV1</option>
-              <option [value]="TargetCodec.VP9">VP9</option>
-              <option [value]="TargetCodec.H264">H.264</option>
+              @if (advancedMode()) {
+              <option [value]="TargetCodec.HEVC">Space saver (HEVC H.265)</option>
+              <option [value]="TargetCodec.AV1">Best compression, slower (AV1)</option>
+              <option [value]="TargetCodec.VP9">Web streaming (VP9)</option>
+              <option [value]="TargetCodec.H264">Plays on everything (H.264)</option>
+              } @else {
+              <option [value]="TargetCodec.HEVC">Space saver (recommended)</option>
+              <option [value]="TargetCodec.H264">Plays on everything</option>
+              }
             </select>
           </div>
 
@@ -322,6 +331,20 @@
                 {{ getCRFLabel(formData.targetQuality) }}
               </span>
             </label>
+            <div class="quality-preset-buttons">
+              @for (q of qualityPresets; track q.crf) {
+              <button
+                type="button"
+                class="device-profile-btn quality-preset-btn"
+                [class.active]="formData.targetQuality === q.crf"
+                (click)="setQuality(q.crf)"
+              >
+                <span class="quality-preset-btn__label">{{ q.label }}</span>
+                <span class="quality-preset-btn__hint">{{ q.hint }}</span>
+              </button>
+              }
+            </div>
+            @if (advancedMode()) {
             <div class="field-hint">
               <fa-icon icon="info-circle"></fa-icon>
               {{ 'policies.crfDesc' | transloco }}
@@ -349,6 +372,7 @@
             <div class="crf-value-display">
               Current: {{ formData.targetQuality }}
             </div>
+            }
             @if (formErrors['targetQuality']) {
             <span class="form-group__error-message"
               >{{ formErrors['targetQuality'] }}</span
@@ -423,7 +447,8 @@
             }
           </div>
 
-          <!-- Advanced Settings (Collapsible) -->
+          <!-- Advanced Settings (Collapsible, Advanced Mode only) -->
+          @if (advancedMode()) {
           <div class="form-group">
             <button
               type="button"
@@ -503,7 +528,7 @@
                     tooltipWhen="You want to save time and preserve quality when source codec matches target codec. Highly recommended for most use cases."
                     tooltipPlacement="right"
                   >
-                    Enable Smart Remux (Skip re-encoding when codec matches)
+                    Repackage instead of converting when possible (faster, keeps original quality)
                   </span>
                 </label>
                 <small class="form-group__help-text">
@@ -540,7 +565,7 @@
                 @if (formData.allowSameCodec) {
                 <div class="min-savings-threshold">
                   <label for="minSavingsPercent" class="form-group__label">
-                    Minimum Expected Savings
+                    Only convert if it saves at least
                     <fa-icon
                       [icon]="icons.infoCircle"
                       class="info-icon"
@@ -593,6 +618,7 @@
             </div>
             }
           </div>
+          }
         </form>
       </div>
 

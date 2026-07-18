@@ -48,7 +48,7 @@
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0.5rem;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: all 0.2s;
 
   &:hover {
@@ -85,7 +85,7 @@
   width: 100%;
   padding: 0.75rem;
   border: 1px solid var(--border-color, #333);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--input-bg, #2a2a2a);
   color: var(--text-primary, #fff);
   font-size: 1rem;
@@ -110,7 +110,7 @@
   .form-range {
     flex: 1;
     height: 6px;
-    border-radius: 3px;
+    border-radius: 4px;
     background: var(--border-color, #333);
     outline: none;
     cursor: pointer;
@@ -189,7 +189,7 @@
   padding: 0.75rem;
   background: rgba(255, 193, 7, 0.1);
   border: 1px solid rgba(255, 193, 7, 0.3);
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 0.85rem;
   color: var(--warning-color, #ffc107);
 }
@@ -214,7 +214,7 @@
 .btn {
   padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
@@ -328,7 +328,7 @@
   background: #f9be03;
   color: #1a1a1a;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -352,7 +352,7 @@
   padding: 0.75rem;
   background: #fff3cd;
   border: 1px solid #ffc107;
-  border-radius: 6px;
+  border-radius: 8px;
   color: #856404;
   font-size: 0.9rem;
 }

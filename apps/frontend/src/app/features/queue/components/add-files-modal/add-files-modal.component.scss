@@ -89,7 +89,7 @@
         margin-top: 8px;
         padding: 6px 12px;
         background: rgba(255, 255, 255, 0.05);
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 12px;
 
         .cache-age {
@@ -164,7 +164,7 @@
     border: none;
     color: $text-secondary;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: 8px;
     transition: $transition-fast;
 
     &:hover:not(:disabled) {
@@ -368,7 +368,7 @@
     padding: 8px 16px;
     background: $bg-tertiary;
     border: 1px solid $border-secondary;
-    border-radius: 6px;
+    border-radius: 8px;
     color: $text-primary;
     font-size: 14px;
     cursor: pointer;
@@ -406,7 +406,7 @@
       padding: 10px 14px;
       background: $bg-secondary;
       border: 1px solid $border-secondary;
-      border-radius: 6px;
+      border-radius: 8px;
       color: $text-primary;
       font-size: 14px;
       cursor: pointer;
@@ -471,7 +471,7 @@
       padding: 14px;
       background: $bg-tertiary;
       border: 1px solid $border-secondary;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
       transition: $transition-fast;
 
@@ -701,7 +701,7 @@
         align-items: center;
         padding: 8px 12px;
         background: $bg-secondary;
-        border-radius: 6px;
+        border-radius: 8px;
         gap: 12px;
 
         .skipped-path {
@@ -743,7 +743,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;

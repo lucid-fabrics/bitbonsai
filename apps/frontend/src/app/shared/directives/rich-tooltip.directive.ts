@@ -4,8 +4,10 @@ import {
   HostListener,
   Input,
   inject,
+  type OnChanges,
   type OnDestroy,
   Renderer2,
+  type SimpleChanges,
 } from '@angular/core';
 import { arrow, computePosition, flip, offset, type Placement, shift } from '@floating-ui/dom';
 
@@ -27,7 +29,7 @@ import { arrow, computePosition, flip, offset, type Placement, shift } from '@fl
   selector: '[bbTooltip]',
   standalone: true,
 })
-export class RichTooltipDirective implements OnDestroy {
+export class RichTooltipDirective implements OnChanges, OnDestroy {
   private readonly el = inject(ElementRef);
   private readonly renderer = inject(Renderer2);
 
@@ -42,6 +44,19 @@ export class RichTooltipDirective implements OnDestroy {
   private arrowElement: HTMLElement | null = null;
   private showTimeout: ReturnType<typeof setTimeout> | null = null;
   private hideTimeout: ReturnType<typeof setTimeout> | null = null;
+  private ariaLabelSetByDirective = false;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (!changes['tooltipTitle'] || !this.tooltipTitle) {
+      return;
+    }
+    const host = this.el.nativeElement as HTMLElement;
+    // Only set aria-label if the author did not provide one, or if we set it ourselves
+    if (!host.hasAttribute('aria-label') || this.ariaLabelSetByDirective) {
+      this.renderer.setAttribute(host, 'aria-label', this.tooltipTitle);
+      this.ariaLabelSetByDirective = true;
+    }
+  }
 
   @HostListener('mouseenter')
   onMouseEnter(): void {

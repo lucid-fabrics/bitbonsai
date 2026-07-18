@@ -94,7 +94,7 @@
     border: none;
     color: $text-secondary;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: 8px;
     transition: $transition-fast;
 
     &:hover:not(:disabled) {
@@ -137,7 +137,7 @@
       padding: 10px 40px 10px 36px;
       background: $bg-secondary;
       border: 1px solid $border-primary;
-      border-radius: 6px;
+      border-radius: 8px;
       color: $text-primary;
       font-size: 14px;
       transition: $transition-fast;
@@ -446,7 +446,7 @@
 // Buttons
 .btn {
   padding: 10px 20px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;

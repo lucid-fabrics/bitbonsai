@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { interval, of } from 'rxjs';
 import { catchError, map, mergeMap, startWith, switchMap, takeUntil } from 'rxjs/operators';
+import { humanizeError } from '../../../core/services/error-humanizer';
 import { OverviewService } from '../services/overview.service';
 import { OverviewActions } from './overview.actions';
 
@@ -29,7 +30,11 @@ export class OverviewEffects {
       switchMap(() =>
         this.overviewService.getOverview().pipe(
           map((data) => OverviewActions.loadOverviewSuccess({ data })),
-          catchError((error) => of(OverviewActions.loadOverviewFailure({ error: error.message })))
+          catchError((error) => of(
+            OverviewActions.loadOverviewFailure({
+              error: humanizeError(error, 'Could not load the overview. Retrying automatically.'),
+            })
+          ))
         )
       )
     )
@@ -42,7 +47,11 @@ export class OverviewEffects {
       switchMap(() =>
         this.overviewService.getNodes().pipe(
           map((nodes) => OverviewActions.loadNodesSuccess({ nodes })),
-          catchError((error) => of(OverviewActions.loadNodesFailure({ error: error.message })))
+          catchError((error) => of(
+            OverviewActions.loadNodesFailure({
+              error: humanizeError(error, 'Could not load your computers. Retrying automatically.'),
+            })
+          ))
         )
       )
     )
@@ -58,7 +67,7 @@ export class OverviewEffects {
           catchError((error) =>
             of(
               OverviewActions.loadEnvironmentInfoFailure({
-                error: error.message,
+                error: humanizeError(error, 'Could not load system information. Retrying automatically.'),
               })
             )
           )

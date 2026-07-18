@@ -1,3 +1,5 @@
+import { TestBed } from '@angular/core/testing';
+import { provideMockStore } from '@ngrx/store/testing';
 import { ErrorDetailsModalComponent } from './error-details-modal.component';
 
 describe('ErrorDetailsModalComponent', () => {
@@ -16,7 +18,14 @@ describe('ErrorDetailsModalComponent', () => {
   ].join('\n');
 
   beforeEach(() => {
-    component = new ErrorDetailsModalComponent();
+    TestBed.configureTestingModule({
+      providers: [
+        provideMockStore({
+          initialState: { settings: { advancedModeEnabled: false } },
+        }),
+      ],
+    });
+    component = TestBed.runInInjectionContext(() => new ErrorDetailsModalComponent());
   });
 
   describe('backend-formatted errors', () => {
@@ -73,7 +82,7 @@ describe('ErrorDetailsModalComponent', () => {
       component.error = 'FFmpeg failed with exit code 1';
 
       expect(component.getErrorSummary()).toBe(
-        'Encoding failed due to an FFmpeg error. The file may be corrupted or use unsupported codecs.'
+        'This video could not be converted. Your original file is untouched.'
       );
     });
 
@@ -83,7 +92,7 @@ describe('ErrorDetailsModalComponent', () => {
       expect(component.getActionableSteps()).toEqual([
         {
           icon: 'fa-redo',
-          text: 'Try retrying. If it keeps failing, the file may need inspection',
+          text: 'BitBonsai retries automatically. You can also retry anytime',
         },
       ]);
     });

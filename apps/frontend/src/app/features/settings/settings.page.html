@@ -17,6 +17,7 @@
         <i class="fa fa-key"></i>
         <span>{{ 'settings.license' | transloco }}</span>
       </a>
+      @if (advancedMode()) {
       <a
         class="tab-button"
         [routerLink]="['/settings', 'environment']"
@@ -27,6 +28,7 @@
         <i class="fa fa-server"></i>
         <span>{{ 'settings.environment' | transloco }}</span>
       </a>
+      }
       <a
         class="tab-button"
         [routerLink]="['/settings', 'system']"
@@ -37,6 +39,7 @@
         <i class="fa fa-cog"></i>
         <span>{{ 'settings.system' | transloco }}</span>
       </a>
+      @if (advancedMode()) {
       <a
         class="tab-button"
         [routerLink]="['/settings', 'resources']"
@@ -47,6 +50,7 @@
         <i class="fa fa-microchip"></i>
         <span>{{ 'settings.resources' | transloco }}</span>
       </a>
+      }
       <a
         class="tab-button"
         [routerLink]="['/settings', 'advanced']"

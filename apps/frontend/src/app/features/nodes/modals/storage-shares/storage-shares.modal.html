@@ -1,5 +1,12 @@
 <div class="modal-backdrop" (click)="onClose()">
-  <div class="modal-container" (click)="$event.stopPropagation()">
+  <div
+    class="modal-container"
+    role="dialog"
+    aria-modal="true"
+    cdkTrapFocus
+    cdkTrapFocusAutoCapture
+    (click)="$event.stopPropagation()"
+  >
     <div class="modal-header">
       <div class="modal-header__content">
         <h2 class="modal-header__title">
@@ -10,7 +17,12 @@
           {{ 'storageShares.title' | transloco }}
         </p>
       </div>
-      <button class="modal-header__close-btn" (click)="onClose()" type="button">
+      <button
+        class="modal-header__close-btn"
+        (click)="onClose()"
+        type="button"
+        aria-label="Close"
+      >
         <fa-icon [icon]="['fas', 'times']"></fa-icon>
       </button>
     </div>
@@ -28,6 +40,7 @@
           class="error-message__close-btn"
           (click)="error.set(null)"
           type="button"
+          aria-label="Dismiss error"
         >
           <fa-icon [icon]="['fas', 'times']"></fa-icon>
         </button>
@@ -48,6 +61,7 @@
           class="info-message__close-btn"
           (click)="autoDetectMessage.set(null)"
           type="button"
+          aria-label="Dismiss message"
         >
           <fa-icon [icon]="['fas', 'times']"></fa-icon>
         </button>

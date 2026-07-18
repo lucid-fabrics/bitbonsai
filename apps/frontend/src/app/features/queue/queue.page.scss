@@ -31,7 +31,7 @@
   color: $text-dark;
   border: none;
   padding: 10px 20px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -51,7 +51,7 @@
   color: $text-dark;
   border: none;
   padding: 10px 20px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -75,7 +75,7 @@
   color: $text-dark;
   border: none;
   padding: 10px 20px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -113,7 +113,7 @@
   gap: 12px;
   background: $bg-secondary;
   border: 1px solid $border-primary;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 10px 16px;
   flex: 1;
   min-width: 180px;
@@ -317,7 +317,7 @@
       min-width: unset;
       max-width: unset;
       padding: 8px 12px;
-      border-radius: 6px;
+      border-radius: 8px;
       gap: 6px;
       border-width: 1px;
 
@@ -365,7 +365,7 @@
     .pipeline-alert {
       flex: 0 0 auto;
       padding: 8px 12px;
-      border-radius: 6px;
+      border-radius: 8px;
       gap: 6px;
 
       i {
@@ -596,7 +596,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 8px;
   flex-shrink: 0;
   font-size: 24px;
 }
@@ -660,7 +660,7 @@
     flex: 1;
     height: 6px;
     background: rgba($accent-primary, 0.15);
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
     position: relative;
 
@@ -779,7 +779,7 @@
     align-items: center;
     justify-content: center;
     background: rgba(255, 107, 107, 0.2);
-    border-radius: 10px;
+    border-radius: 8px;
     flex-shrink: 0;
 
     fa-icon {
@@ -917,7 +917,7 @@
     padding: 8px 16px;
     background: $bg-tertiary;
     border: 1px solid $border-secondary;
-    border-radius: 6px;
+    border-radius: 8px;
     color: $text-primary;
     font-size: 13px;
     font-weight: 500;
@@ -940,7 +940,7 @@
     padding: 8px 12px;
     background: $bg-tertiary;
     border: 1px solid $border-secondary;
-    border-radius: 6px;
+    border-radius: 8px;
     color: $text-primary;
     font-size: 14px;
     cursor: pointer;
@@ -962,7 +962,7 @@
     padding: 8px 12px;
     background: $bg-tertiary;
     border: 1px solid $border-secondary;
-    border-radius: 6px;
+    border-radius: 8px;
     color: $text-primary;
     font-size: 14px;
 
@@ -1093,7 +1093,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -1135,7 +1135,7 @@
   align-items: center;
   justify-content: center;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   background: rgba($danger, 0.15);
@@ -1150,7 +1150,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -1403,7 +1403,7 @@
   justify-content: center;
   background: $bg-tertiary;
   border: 1px solid $border-secondary;
-  border-radius: 6px;
+  border-radius: 8px;
   color: $text-primary;
   cursor: pointer;
   transition: $transition-fast;
@@ -1595,7 +1595,7 @@
     padding: 8px 12px;
     background: transparent;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: 8px;
     color: $text-primary;
     font-size: 13px;
     text-align: left;
@@ -1664,7 +1664,7 @@
   padding: 6px 10px;
   background: $bg-tertiary;
   border: 1px solid $border-secondary;
-  border-radius: 6px;
+  border-radius: 8px;
   color: $text-primary;
   font-size: 12px;
   cursor: pointer;
@@ -1736,7 +1736,7 @@
     padding: 12px 16px;
     background: $danger-bg;
     border: 1px solid $danger-border;
-    border-radius: 6px;
+    border-radius: 8px;
     color: $danger;
     font-size: 13px;
 
@@ -2046,7 +2046,7 @@
     border: none;
     color: $text-secondary;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: 8px;
     transition: $transition-fast;
 
     &:hover {
@@ -2076,7 +2076,7 @@
 
   .btn {
     padding: 10px 20px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -2146,7 +2146,7 @@
       align-items: center;
       gap: 14px;
       padding: 16px 20px;
-      border-radius: 10px;
+      border-radius: 8px;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
@@ -2302,7 +2302,7 @@
     color: $text-white;
     border: none;
     padding: 10px 20px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -2322,7 +2322,7 @@
     color: $text-dark;
     border: none;
     padding: 10px 20px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -2348,7 +2348,7 @@
     color: $text-dark;
     border: none;
     padding: 10px 20px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -2537,7 +2537,7 @@
   gap: 8px;
   padding: 12px;
   background: rgba($success, 0.1);
-  border-radius: 6px;
+  border-radius: 8px;
   color: $text-secondary;
   font-size: 13px;
 
@@ -2978,7 +2978,7 @@
       .result-item {
         background: rgba(0, 0, 0, 0.2);
         padding: 12px;
-        border-radius: 6px;
+        border-radius: 8px;
         border: 1px solid rgba($border-secondary, 0.2);
 
         .result-label {
@@ -3010,7 +3010,7 @@
     .retry-info {
       background: rgba(255, 152, 0, 0.1);
       border: 1px solid rgba(255, 152, 0, 0.3);
-      border-radius: 6px;
+      border-radius: 8px;
       padding: 12px;
 
       .retry-count,
@@ -3122,7 +3122,7 @@
         gap: 10px;
         padding: 10px 12px;
         background: rgba(0, 0, 0, 0.15);
-        border-radius: 6px;
+        border-radius: 8px;
         margin-bottom: 8px;
 
         &:last-child {
@@ -3255,7 +3255,7 @@
 
     .original-details {
       background: rgba(0, 0, 0, 0.15);
-      border-radius: 6px;
+      border-radius: 8px;
       padding: 12px;
       margin-bottom: 12px;
 
@@ -3313,7 +3313,7 @@
         align-items: center;
         gap: 6px;
         padding: 8px 14px;
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 12px;
         font-weight: 500;
         cursor: pointer;
@@ -3385,7 +3385,7 @@
     gap: 12px;
     padding: 8px 12px;
     background: rgba($bg-primary, 0.3);
-    border-radius: 6px;
+    border-radius: 8px;
     border: 1px solid rgba($border-secondary, 0.2);
 
     .codec-badge {
@@ -3457,7 +3457,7 @@
   .detail-card {
     background: rgba($bg-primary, 0.3);
     border: 1px solid rgba($border-secondary, 0.2);
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 10px 12px;
     display: flex;
     gap: 10px;
@@ -3512,7 +3512,7 @@
   gap: 16px;
   padding: 8px 12px;
   background: rgba($bg-primary, 0.3);
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid rgba($border-secondary, 0.2);
 
   .timeline-item {
@@ -3655,7 +3655,7 @@
   gap: 4px;
   padding: 3px 8px;
   margin-left: 8px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
   background: rgba(16, 185, 129, 0.15);
@@ -3684,7 +3684,7 @@
   gap: 4px;
   padding: 3px 8px;
   margin-left: 8px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
   background: rgba(239, 68, 68, 0.15);
@@ -3713,7 +3713,7 @@
   gap: 4px;
   padding: 3px 8px;
   margin-left: 8px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
   background: rgba(239, 68, 68, 0.15);
@@ -3736,7 +3736,7 @@
     gap: 3px;
     margin-left: 6px;
     padding: 1px 6px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 9px;
     font-weight: 600;
     background: rgba(16, 185, 129, 0.2);
@@ -3758,7 +3758,7 @@
   gap: 4px;
   padding: 3px 8px;
   margin-left: 8px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
   background: rgba(245, 158, 11, 0.15);
@@ -3782,7 +3782,7 @@
   gap: 4px;
   padding: 3px 8px;
   margin-left: 8px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
   background: rgba(249, 115, 22, 0.15);
@@ -3806,7 +3806,7 @@
   gap: 4px;
   padding: 3px 8px;
   margin-left: 8px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
   background: rgba(245, 158, 11, 0.15);
@@ -3843,7 +3843,7 @@
   gap: 4px;
   padding: 3px 8px;
   margin-left: 8px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
   cursor: help;
@@ -3896,7 +3896,7 @@
   gap: 4px;
   padding: 3px 8px;
   margin-left: 8px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
   cursor: help;
@@ -3998,7 +3998,7 @@
     align-items: center;
     gap: 4px;
     padding: 3px 8px;
-    border-radius: 10px;
+    border-radius: 8px;
     font-size: 11px;
     font-weight: 600;
     width: fit-content;
@@ -4337,7 +4337,7 @@
     padding: 3px 8px;
     background: rgba($success, 0.15);
     border: 1px solid rgba($success, 0.3);
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 10px;
     font-weight: 600;
     color: $success;
@@ -4354,7 +4354,7 @@
     align-items: center;
     gap: 4px;
     padding: 3px 8px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 10px;
     font-weight: 600;
     align-self: flex-start;
@@ -4568,7 +4568,7 @@
     justify-content: center;
     background: rgba($bg-primary, 0.5);
     border: 1px solid $border-secondary;
-    border-radius: 10px;
+    border-radius: 8px;
     color: $text-secondary;
     font-size: 18px;
     cursor: pointer;
@@ -4658,7 +4658,7 @@
 .btn-capture {
   background: $bg-tertiary;
   border: 1px solid $border-secondary;
-  border-radius: 6px;
+  border-radius: 8px;
   color: $text-primary;
   padding: 8px 16px;
   font-size: 13px;
@@ -4732,7 +4732,7 @@
 .preview-item {
   position: relative;
   aspect-ratio: 16/9;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
   background: $bg-tertiary;
   border: 1px solid $border-secondary;
@@ -4825,7 +4825,7 @@
     padding: 8px 12px;
     background: $bg-tertiary;
     border: 1px solid $border-secondary;
-    border-radius: 6px;
+    border-radius: 8px;
     color: $text-primary;
     font-size: 14px;
     font-weight: 500;
@@ -4888,7 +4888,7 @@
   padding: 0 12px;
   background: $bg-tertiary;
   border: 1px solid $border-secondary;
-  border-radius: 6px;
+  border-radius: 8px;
   color: $text-primary;
   font-size: 14px;
   font-weight: 500;

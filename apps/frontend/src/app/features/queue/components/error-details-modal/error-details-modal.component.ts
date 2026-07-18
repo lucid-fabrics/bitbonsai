@@ -1,14 +1,23 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { A11yModule } from '@angular/cdk/a11y';
+import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoModule } from '@ngneat/transloco';
+import { Store } from '@ngrx/store';
+import { SettingsSelectors } from '../../../settings/+state/settings.selectors';
 
 @Component({
   selector: 'app-error-details-modal',
   standalone: true,
-  imports: [TranslocoModule],
+  imports: [A11yModule, TranslocoModule],
   templateUrl: './error-details-modal.component.html',
   styleUrls: ['./error-details-modal.component.scss'],
 })
 export class ErrorDetailsModalComponent {
+  private readonly store = inject(Store);
+  readonly advancedMode = toSignal(this.store.select(SettingsSelectors.selectAdvancedMode), {
+    initialValue: false,
+  });
+
   @Input() isOpen = false;
   @Input() fileName = '';
   @Input() error = '';
@@ -81,24 +90,24 @@ export class ErrorDetailsModalComponent {
     const errorLower = (this.error || '').toLowerCase();
 
     if (errorLower.includes('exit code 1')) {
-      return 'Encoding failed due to an FFmpeg error. The file may be corrupted or use unsupported codecs.';
+      return 'This video could not be converted. Your original file is untouched.';
     } else if (
       errorLower.includes('segmentation fault') ||
       errorLower.includes('exit code 134') ||
       errorLower.includes('exit code 139')
     ) {
-      return 'FFmpeg crashed while processing this file. The file may be corrupted.';
+      return 'The conversion stopped unexpectedly. Your original file is untouched.';
     } else if (errorLower.includes('file not found') || errorLower.includes('does not exist')) {
-      return 'The source file could not be found. It may have been moved or deleted.';
+      return 'The source video could not be found. It may have been moved or deleted.';
     } else if (errorLower.includes('permission')) {
-      return 'Permission denied. Check file and directory permissions.';
+      return 'BitBonsai could not access this video file. Your original file is untouched.';
     } else if (errorLower.includes('job stuck') || errorLower.includes('no progress')) {
-      return 'The encoding process stopped responding and was terminated.';
+      return 'The conversion stopped responding and was safely stopped.';
     } else if (errorLower.includes('verification failed') || errorLower.includes('not playable')) {
-      return 'The encoded file failed verification. The output file is not valid.';
+      return 'The converted file did not pass the quality check, so it was not kept. Your original file is untouched.';
     }
 
-    return 'An error occurred during encoding. Check technical details for more information.';
+    return 'This video could not be converted. Your original file is untouched.';
   }
 
   hasContextualHelp(): boolean {
@@ -126,24 +135,24 @@ export class ErrorDetailsModalComponent {
     const errorLower = (this.error || '').toLowerCase();
 
     if (errorLower.includes('file not found') || errorLower.includes('does not exist')) {
-      return 'Verify the file still exists in the library. Check if the storage is mounted correctly.';
+      return 'If the file is back in your library, BitBonsai will find it on the next scan.';
     } else if (errorLower.includes('permission')) {
-      return 'Ensure the BitBonsai service has read/write access to the library and output directories.';
+      return 'BitBonsai retries automatically. You can also retry anytime.';
     } else if (errorLower.includes('job stuck') || errorLower.includes('no progress')) {
-      return 'FFmpeg stopped producing output, likely due to a crash or corrupted file. Check the technical details for specific errors, or try re-queueing the job.';
+      return 'BitBonsai retries automatically. You can also retry anytime.';
     } else if (
       errorLower.includes('segmentation fault') ||
       errorLower.includes('exit code 134') ||
       errorLower.includes('exit code 139')
     ) {
-      return 'Try re-downloading the source file. If the issue persists, the file may need repair or re-encoding from the original source.';
+      return 'This can happen with damaged files. BitBonsai retries automatically. You can also retry anytime.';
     } else if (errorLower.includes('verification failed')) {
-      return 'The encoding completed but the output is invalid. Try encoding with different settings or check the source file integrity.';
+      return 'BitBonsai keeps your original whenever a conversion does not pass its checks.';
     } else if (errorLower.includes('exit code 1')) {
-      return 'Check the technical details for specific FFmpeg errors. The file may use codecs that require special handling.';
+      return 'BitBonsai retries automatically. You can also retry anytime.';
     }
 
-    return 'Review the technical details below to diagnose the issue. You can retry the job if this was a temporary problem.';
+    return 'BitBonsai retries automatically. You can also retry anytime.';
   }
 
   getActionableSteps(): { icon: string; text: string }[] {
@@ -160,7 +169,7 @@ export class ErrorDetailsModalComponent {
     if (errorLower.includes('not found') || errorLower.includes('enoent')) {
       steps.push({
         icon: 'fa-search',
-        text: 'Re-scan the library to detect file changes',
+        text: 'Re-scan the library to pick up file changes',
       });
     } else if (
       errorLower.includes('segmentation fault') ||
@@ -168,33 +177,33 @@ export class ErrorDetailsModalComponent {
       errorLower.includes('exit code 139')
     ) {
       steps.push({
-        icon: 'fa-share',
-        text: 'Try retrying on a different node',
+        icon: 'fa-redo',
+        text: 'BitBonsai retries automatically. You can also retry anytime',
       });
     } else if (errorLower.includes('stuck') || errorLower.includes('no progress')) {
       steps.push({
         icon: 'fa-cog',
-        text: 'File may be problematic - try a different encoding policy',
+        text: 'Try a different encoding policy for this video',
       });
     } else if (errorLower.includes('verification failed') || errorLower.includes('not playable')) {
       steps.push({
         icon: 'fa-sliders-h',
-        text: 'Try with different quality settings',
+        text: 'Try again with different quality settings',
       });
     } else if (errorLower.includes('permission') || errorLower.includes('eacces')) {
       steps.push({
-        icon: 'fa-lock',
-        text: 'Check file permissions on the storage volume',
+        icon: 'fa-redo',
+        text: 'BitBonsai retries automatically. You can also retry anytime',
       });
     } else if (errorLower.includes('corrupt')) {
       steps.push({
-        icon: 'fa-play-circle',
-        text: 'File may be damaged - try playing it in VLC to verify',
+        icon: 'fa-shield-alt',
+        text: 'This file may be damaged. Your original is untouched',
       });
     } else {
       steps.push({
         icon: 'fa-redo',
-        text: 'Try retrying. If it keeps failing, the file may need inspection',
+        text: 'BitBonsai retries automatically. You can also retry anytime',
       });
     }
 

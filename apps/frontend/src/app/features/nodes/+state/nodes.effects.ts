@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { humanizeError } from '../../../core/services/error-humanizer';
 import { NodesService } from '../services/nodes.service';
 import { NodesActions } from './nodes.actions';
 
@@ -16,7 +17,11 @@ export class NodesEffects {
       switchMap(() =>
         this.nodesService.getNodes().pipe(
           map((nodes) => NodesActions.loadNodesSuccess({ nodes })),
-          catchError((error) => of(NodesActions.loadNodesFailure({ error: error.message })))
+          catchError((error) => of(
+            NodesActions.loadNodesFailure({
+              error: humanizeError(error, 'Could not load your computers. Retrying automatically.'),
+            })
+          ))
         )
       )
     )
@@ -28,7 +33,11 @@ export class NodesEffects {
       switchMap(() =>
         this.nodesService.register().pipe(
           map((response) => NodesActions.registerNodeSuccess({ response })),
-          catchError((error) => of(NodesActions.registerNodeFailure({ error: error.message })))
+          catchError((error) => of(
+            NodesActions.registerNodeFailure({
+              error: humanizeError(error, 'Could not add this computer. Please try again.'),
+            })
+          ))
         )
       )
     )
@@ -40,7 +49,11 @@ export class NodesEffects {
       switchMap(({ request }) =>
         this.nodesService.pair(request).pipe(
           map((response) => NodesActions.pairNodeSuccess({ response })),
-          catchError((error) => of(NodesActions.pairNodeFailure({ error: error.message })))
+          catchError((error) => of(
+            NodesActions.pairNodeFailure({
+              error: humanizeError(error, 'Could not connect this computer. Check the pairing key and try again.'),
+            })
+          ))
         )
       )
     )
@@ -52,7 +65,11 @@ export class NodesEffects {
       switchMap(({ id }) =>
         this.nodesService.deleteNode(id).pipe(
           map(() => NodesActions.deleteNodeSuccess({ id })),
-          catchError((error) => of(NodesActions.deleteNodeFailure({ error: error.message })))
+          catchError((error) => of(
+            NodesActions.deleteNodeFailure({
+              error: humanizeError(error, 'Could not remove this computer. Please try again.'),
+            })
+          ))
         )
       )
     )

@@ -5,6 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
+import { ToastService } from '../../core/services/toast.service';
 import {
   ConfirmationDialogComponent,
   type ConfirmationDialogData,
@@ -41,6 +42,7 @@ export class LibrariesComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly dialog = inject(Dialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
 
   // NgRx State
   readonly libraries$ = this.store.select(selectAllLibraries);
@@ -139,6 +141,7 @@ export class LibrariesComponent implements OnInit {
   onScanLibrary(library: Library): void {
     this.scanningLibraryId = library.id;
     this.store.dispatch(LibrariesActions.scanLibrary({ id: library.id }));
+    this.toast.info(`Scanning ${library.name}. New videos show up in the queue automatically.`);
     // Reset scanning state after a delay (scan is async on backend)
     setTimeout(() => {
       this.scanningLibraryId = null;

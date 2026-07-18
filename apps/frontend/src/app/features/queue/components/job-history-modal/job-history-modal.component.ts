@@ -1,16 +1,25 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { A11yModule } from '@angular/cdk/a11y';
+import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoModule } from '@ngneat/transloco';
+import { Store } from '@ngrx/store';
+import { SettingsSelectors } from '../../../settings/+state/settings.selectors';
 import { JobEventType, type JobHistoryEvent } from '../../models/job-history-event.model';
 import { MAX_AUTO_RETRIES } from '../../models/queue-job.model';
 
 @Component({
   selector: 'app-job-history-modal',
   standalone: true,
-  imports: [TranslocoModule],
+  imports: [A11yModule, TranslocoModule],
   templateUrl: './job-history-modal.component.html',
   styleUrls: ['./job-history-modal.component.scss'],
 })
 export class JobHistoryModalComponent {
+  private readonly store = inject(Store);
+  readonly advancedMode = toSignal(this.store.select(SettingsSelectors.selectAdvancedMode), {
+    initialValue: false,
+  });
+
   @Input() isOpen = false;
   @Input() fileName = '';
   @Input() jobId = '';

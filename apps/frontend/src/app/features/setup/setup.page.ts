@@ -127,27 +127,19 @@ export class SetupComponent {
   );
 
   /**
-   * Get total number of steps (depends on node type)
+   * Total steps: Welcome + LocalNetworkAccess + AdminAccount + CloudAccountLink.
+   * The node-type question was removed; helpers use the link on the Welcome step.
    */
   get totalSteps(): number {
-    const nodeType = this.nodeTypeForm.get('nodeType')?.value;
-    // Child: Welcome + NodeType + LocalNetworkAccess + ChildNodePairing = 4
-    // Main:  Welcome + NodeType + LocalNetworkAccess + AdminAccount + CloudAccountLink = 5
-    return nodeType === NodeType.Child ? 4 : 5;
+    return 4;
   }
 
   /**
-   * Check if selected node type is child
-   */
-  get isChildNode(): boolean {
-    return this.nodeTypeForm.get('nodeType')?.value === NodeType.Child;
-  }
-
-  /**
-   * Get current step number (1-indexed for display)
+   * Get current step number (1-indexed for display, skipping the removed NodeType step)
    */
   get currentStepNumber(): number {
-    return this.currentStep() + 1;
+    const step = this.currentStep();
+    return step === SetupStep.Welcome ? 1 : step;
   }
 
   /**
@@ -163,17 +155,15 @@ export class SetupComponent {
   nextStep(): void {
     this.errorMessage.set(null);
 
-    // Handle final step based on node type
+    // NodeType step is skipped: Welcome goes straight to network access
+    if (this.currentStep() === SetupStep.Welcome) {
+      this.currentStep.set(SetupStep.LocalNetworkAccess);
+      return;
+    }
+
     if (this.currentStep() === SetupStep.LocalNetworkAccess) {
-      if (this.isChildNode) {
-        // Child node: redirect to auto-discovery wizard
-        this.router.navigate(['/node-setup']);
-        return;
-      } else {
-        // Main node: go to admin account creation
-        this.currentStep.set(SetupStep.AdminAccount);
-        return;
-      }
+      this.currentStep.set(SetupStep.AdminAccount);
+      return;
     }
 
     // Validate admin account before submission
@@ -182,21 +172,31 @@ export class SetupComponent {
         this.adminForm.markAllAsTouched();
         return;
       }
-      // This is the last step for main node, submit the form
+      // This is the last step, submit the form
       this.submitSetup();
       return;
     }
 
-    // Move to next step (Welcome -> NodeType -> LocalNetworkAccess)
     this.currentStep.update((step) => step + 1);
   }
 
   /**
-   * Navigate to previous step
+   * Set this computer up as a helper for an existing BitBonsai instead
+   */
+  setUpAsHelper(): void {
+    this.router.navigate(['/node-setup']);
+  }
+
+  /**
+   * Navigate to previous step (skipping the removed NodeType step)
    */
   previousStep(): void {
     this.errorMessage.set(null);
-    this.currentStep.update((step) => Math.max(step - 1, SetupStep.Welcome));
+    this.currentStep.update((step) =>
+      step === SetupStep.LocalNetworkAccess
+        ? SetupStep.Welcome
+        : Math.max(step - 1, SetupStep.Welcome)
+    );
   }
 
   /**

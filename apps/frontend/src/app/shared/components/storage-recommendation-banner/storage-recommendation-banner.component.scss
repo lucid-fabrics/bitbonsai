@@ -217,36 +217,35 @@
 }
 
 // Dark mode support
-@media (prefers-color-scheme: dark) {
-  .storage-banner {
-    &.banner-success {
-      background: rgba(40, 167, 69, 0.2);
+// App is permanently dark; former prefers-color-scheme block made unconditional
+.storage-banner {
+  &.banner-success {
+    background: rgba(40, 167, 69, 0.2);
+  }
+
+  &.banner-info {
+    background: rgba(23, 162, 184, 0.2);
+  }
+
+  &.banner-warning {
+    background: rgba(255, 193, 7, 0.2);
+  }
+
+  .banner-body {
+    .node-info {
+      background: rgba(255, 255, 255, 0.05);
+
+      .node-name {
+        background: rgba(255, 255, 255, 0.1);
+      }
     }
 
-    &.banner-info {
-      background: rgba(23, 162, 184, 0.2);
-    }
-
-    &.banner-warning {
+    .warning-section {
       background: rgba(255, 193, 7, 0.2);
     }
 
-    .banner-body {
-      .node-info {
-        background: rgba(255, 255, 255, 0.05);
-
-        .node-name {
-          background: rgba(255, 255, 255, 0.1);
-        }
-      }
-
-      .warning-section {
-        background: rgba(255, 193, 7, 0.2);
-      }
-
-      .action-section .action-box {
-        background: rgba(23, 162, 184, 0.2);
-      }
+    .action-section .action-box {
+      background: rgba(23, 162, 184, 0.2);
     }
   }
 }

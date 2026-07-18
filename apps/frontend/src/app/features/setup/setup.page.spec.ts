@@ -63,15 +63,15 @@ describe('SetupComponent', () => {
       expect(component.errorMessage()).toBeNull();
     });
 
-    it('should have totalSteps of 5 for main node by default', () => {
-      expect(component.totalSteps).toBe(5);
+    it('should have totalSteps of 4 (node-type step removed)', () => {
+      expect(component.totalSteps).toBe(4);
     });
   });
 
   describe('step navigation', () => {
-    it('nextStep() increments step from Welcome to NodeType', () => {
+    it('nextStep() jumps from Welcome straight to LocalNetworkAccess', () => {
       component.nextStep();
-      expect(component.currentStep()).toBe(1);
+      expect(component.currentStep()).toBe(2);
     });
 
     it('previousStep() does not go below step 0', () => {
@@ -79,18 +79,14 @@ describe('SetupComponent', () => {
       expect(component.currentStep()).toBe(0);
     });
 
-    it('previousStep() decrements step when past Welcome', () => {
-      component.nextStep(); // to NodeType
+    it('previousStep() returns from LocalNetworkAccess to Welcome', () => {
+      component.nextStep(); // to LocalNetworkAccess
       component.previousStep();
       expect(component.currentStep()).toBe(0);
     });
 
-    it('nextStep() navigates child node to /node-setup at LocalNetworkAccess step', () => {
-      component.nodeTypeForm.get('nodeType')?.setValue('child');
-      // advance to LocalNetworkAccess (step 2)
-      component.nextStep(); // Welcome -> NodeType
-      component.nextStep(); // NodeType -> LocalNetworkAccess
-      component.nextStep(); // triggers router.navigate for child
+    it('setUpAsHelper() navigates to /node-setup', () => {
+      component.setUpAsHelper();
       expect(router.navigate).toHaveBeenCalledWith(['/node-setup']);
     });
   });

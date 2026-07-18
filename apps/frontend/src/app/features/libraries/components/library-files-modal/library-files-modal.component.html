@@ -20,6 +20,7 @@
           class="close-btn"
           (click)="closeModal()"
           [disabled]="isLoading()"
+          aria-label="Close"
         >
           <i class="fas fa-times"></i>
         </button>
@@ -38,7 +39,11 @@
               class="search-input"
             />
             @if (searchTerm()) {
-              <button class="clear-search-btn" (click)="clearSearch()">
+              <button
+                class="clear-search-btn"
+                (click)="clearSearch()"
+                aria-label="Clear search"
+              >
                 <i class="fas fa-times"></i>
               </button>
             }

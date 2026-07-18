@@ -33,7 +33,12 @@
             </p>
           </div>
         </div>
-        <button class="banner-header__toggle" type="button">
+        <button
+          class="banner-header__toggle"
+          type="button"
+          aria-label="Toggle details"
+          [attr.aria-expanded]="showDetails"
+        >
           <i
             [class]="showDetails ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
           ></i>

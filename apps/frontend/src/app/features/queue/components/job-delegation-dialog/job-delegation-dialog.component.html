@@ -1,12 +1,19 @@
 <div class="dialog-overlay" (click)="onClose()">
-  <div class="dialog-content" (click)="$event.stopPropagation()">
+  <div
+    class="dialog-content"
+    role="dialog"
+    aria-modal="true"
+    cdkTrapFocus
+    cdkTrapFocusAutoCapture
+    (click)="$event.stopPropagation()"
+  >
     <!-- Dialog Header -->
     <div class="dialog-header">
       <h2 class="dialog-title">
         <fa-icon [icon]="['fas', 'paper-plane']"></fa-icon>
         {{ 'nodes.sendToNode' | transloco }}
       </h2>
-      <button class="close-button" (click)="onClose()">
+      <button class="close-button" (click)="onClose()" aria-label="Close">
         <fa-icon [icon]="['fas', 'times']"></fa-icon>
       </button>
     </div>

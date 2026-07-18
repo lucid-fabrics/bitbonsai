@@ -1,3 +1,4 @@
+import { A11yModule } from '@angular/cdk/a11y';
 import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
 import { NgClass } from '@angular/common';
 import { Component, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
@@ -14,28 +15,12 @@ import {
   StorageShareStatus,
   StorageSharesClient,
 } from '../../../../core/clients/storage-shares.client';
+import { humanizeError } from '../../../../core/services/error-humanizer';
 import {
   ConfirmationDialogComponent,
   type ConfirmationDialogData,
 } from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import type { Node } from '../../models/node.model';
-
-/**
- * DEEP AUDIT P2-1: Type-safe error message extraction helper
- * Replaces catch (error: any) pattern with proper unknown error handling
- */
-function extractErrorMessage(error: unknown, defaultMessage: string): string {
-  if (error && typeof error === 'object' && 'error' in error) {
-    const innerError = (error as { error?: { message?: string } }).error;
-    if (innerError && typeof innerError === 'object' && 'message' in innerError) {
-      return innerError.message || defaultMessage;
-    }
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return defaultMessage;
-}
 
 export interface StorageSharesModalData {
   node: Node;
@@ -45,6 +30,7 @@ export interface StorageSharesModalData {
   selector: 'bb-storage-shares-modal',
   standalone: true,
   imports: [
+    A11yModule,
     NgClass,
     ReactiveFormsModule,
     FontAwesomeModule,
@@ -197,7 +183,7 @@ export class StorageSharesModal implements OnInit, OnDestroy {
       const shares = await this.storageClient.getSharesByNode(this.node.id).toPromise();
       this.shares.set(shares || []);
     } catch (error: unknown) {
-      this.error.set(extractErrorMessage(error, 'Failed to load storage shares'));
+      this.error.set(humanizeError(error, 'Could not load storage shares.'));
     } finally {
       this.loading.set(false);
     }
@@ -235,7 +221,7 @@ export class StorageSharesModal implements OnInit, OnDestroy {
         await this.loadShares(); // Reload to show newly created shares
       }
     } catch (error: unknown) {
-      this.error.set(extractErrorMessage(error, 'Failed to auto-detect shares'));
+      this.error.set(humanizeError(error, 'Could not detect shares automatically.'));
       this.autoDetectMessage.set(
         `Auto-detection failed. You can still add shares manually. ` +
           `Make sure the main node is accessible and has NFS/SMB exports enabled.`
@@ -267,10 +253,7 @@ export class StorageSharesModal implements OnInit, OnDestroy {
       }
     } catch (error: unknown) {
       this.error.set(
-        extractErrorMessage(
-          error,
-          'Failed to auto-export Docker volumes. Make sure you are running on the main node in a Docker container.'
-        )
+        humanizeError(error, 'Could not set up sharing automatically. You can still add shares manually.')
       );
       this.autoDetectMessage.set(
         `Auto-export failed. This feature requires:\n` +
@@ -293,11 +276,11 @@ export class StorageSharesModal implements OnInit, OnDestroy {
       if (result?.success) {
         await this.loadShares(); // Reload to get updated status
       } else {
-        this.error.set(result?.error || result?.message || 'Mount failed');
+        this.error.set('Could not connect this share. Please try again.');
         share.status = StorageShareStatus.ERROR;
       }
     } catch (error: unknown) {
-      this.error.set(extractErrorMessage(error, 'Failed to mount share'));
+      this.error.set(humanizeError(error, 'Could not connect this share. Please try again.'));
       share.status = StorageShareStatus.ERROR;
     }
   }
@@ -311,10 +294,10 @@ export class StorageSharesModal implements OnInit, OnDestroy {
       if (result?.success) {
         await this.loadShares(); // Reload to get updated status
       } else {
-        this.error.set(result?.error || result?.message || 'Unmount failed');
+        this.error.set('Could not disconnect this share. Please try again.');
       }
     } catch (error: unknown) {
-      this.error.set(extractErrorMessage(error, 'Failed to unmount share'));
+      this.error.set(humanizeError(error, 'Could not disconnect this share. Please try again.'));
     }
   }
 
@@ -347,7 +330,7 @@ export class StorageSharesModal implements OnInit, OnDestroy {
       await this.storageClient.deleteShare(share.id).toPromise();
       await this.loadShares();
     } catch (error: unknown) {
-      this.error.set(extractErrorMessage(error, 'Failed to delete share'));
+      this.error.set(humanizeError(error, 'Could not delete this share. Please try again.'));
     }
   }
 
@@ -417,7 +400,7 @@ export class StorageSharesModal implements OnInit, OnDestroy {
 
       await this.loadShares();
     } catch (error: unknown) {
-      this.error.set(extractErrorMessage(error, 'Failed to create share'));
+      this.error.set(humanizeError(error, 'Could not create this share. Please try again.'));
     } finally {
       this.creating.set(false);
     }

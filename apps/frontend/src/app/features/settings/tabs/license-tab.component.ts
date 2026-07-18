@@ -283,7 +283,7 @@ import { CloudAccountService } from '../services/cloud-account.service';
         border: 1px solid var(--surface-border);
         color: var(--text-color);
         padding: 7px 14px;
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 13px;
         cursor: pointer;
         transition: all 0.2s;
@@ -304,7 +304,7 @@ import { CloudAccountService } from '../services/cloud-account.service';
         border: 1px solid var(--danger-color);
         color: var(--danger-color);
         padding: 7px 14px;
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 13px;
         cursor: pointer;
         transition: all 0.2s;
@@ -438,7 +438,7 @@ import { CloudAccountService } from '../services/cloud-account.service';
         gap: 16px;
         padding: 24px;
         background: var(--surface-ground);
-        border-radius: 10px;
+        border-radius: 8px;
         border: 1px solid rgba(var(--primary-color-rgb, 99 102 241), 0.2);
       }
 

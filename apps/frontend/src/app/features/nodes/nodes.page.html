@@ -49,7 +49,11 @@
       class="error-alert__icon"
     ></fa-icon>
     <span class="error-alert__message">{{ error }}</span>
-    <button class="error-alert__close-btn" (click)="error = null">
+    <button
+      class="error-alert__close-btn"
+      (click)="error = null"
+      aria-label="Dismiss error"
+    >
       <fa-icon [icon]="['fas', 'times']"></fa-icon>
     </button>
   </div>
@@ -311,7 +315,7 @@
             {{ node.name }}
           </h3>
           <span class="role-badge" [attr.data-role]="node.role">
-            {{ node.role }}
+            {{ node.role === 'MAIN' ? 'Main' : 'Helper' }}
           </span>
         </div>
         <div class="header-right">
@@ -430,8 +434,8 @@
           </div>
         </div>
 
-        <!-- Node Score Section -->
-        @if (getNodeScore(node.id); as score) {
+        <!-- Node Score Section (Advanced Mode only) -->
+        @if (advancedMode() && getNodeScore(node.id); as score) {
         <div class="node-score-section">
           <h4 class="score-section-title">
             <fa-icon [icon]="['fas', 'award']"></fa-icon>

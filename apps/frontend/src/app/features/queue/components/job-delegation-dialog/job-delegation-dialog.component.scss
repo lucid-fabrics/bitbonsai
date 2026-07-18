@@ -59,7 +59,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: all 0.2s ease;
 
   &:hover {
@@ -213,7 +213,7 @@
   margin-bottom: 12px;
   padding: 8px 12px;
   background: $bg-tertiary;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .score-label {
@@ -234,7 +234,7 @@
   gap: 8px;
   padding: 10px 12px;
   background: rgba(245, 158, 11, 0.15);
-  border-radius: 6px;
+  border-radius: 8px;
   margin-bottom: 12px;
 
   fa-icon {
@@ -299,7 +299,7 @@
 
 .btn {
   padding: 10px 20px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;

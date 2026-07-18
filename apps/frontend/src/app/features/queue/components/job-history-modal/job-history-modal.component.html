@@ -1,6 +1,13 @@
 @if (isOpen) {
   <div class="dialog-overlay" (click)="close()">
-    <div class="dialog-content" (click)="$event.stopPropagation()">
+    <div
+      class="dialog-content"
+      role="dialog"
+      aria-modal="true"
+      cdkTrapFocus
+      cdkTrapFocusAutoCapture
+      (click)="$event.stopPropagation()"
+    >
       <!-- Header -->
       <div class="dialog-header">
         <div class="header-content">
@@ -10,7 +17,7 @@
             <span class="file-name">{{ fileName }}</span>
           </div>
         </div>
-        <button class="dialog-close" (click)="close()">
+        <button class="dialog-close" (click)="close()" aria-label="Close dialog">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -110,8 +117,8 @@
                     }
                   </div>
 
-                  <!-- Technical Details (collapsible) -->
-                  @if (event.errorMessage || event.errorDetails) {
+                  <!-- Technical Details (collapsible, advanced mode only) -->
+                  @if (advancedMode() && (event.errorMessage || event.errorDetails)) {
                     <div class="event-error">
                       <button
                         class="toggle-details-btn"
@@ -137,14 +144,14 @@
                           @if (event.errorMessage) {
                             <div class="error-section">
                               <div class="error-section-title">
-                                Error Message
+                                What happened
                               </div>
                               <pre>{{ event.errorMessage }}</pre>
                             </div>
                           }
                           @if (event.errorDetails) {
                             <div class="error-section">
-                              <div class="error-section-title">Stack Trace</div>
+                              <div class="error-section-title">Technical log</div>
                               <pre>{{ event.errorDetails }}</pre>
                             </div>
                           }

@@ -6,6 +6,7 @@ import { TranslocoModule } from '@ngneat/transloco';
 import { of } from 'rxjs';
 import { delay, switchMap } from 'rxjs/operators';
 import { NodesClient } from '../../../core/clients/nodes.client';
+import { humanizeError } from '../../../core/services/error-humanizer';
 import { ErrorLoggerService } from '../../../core/services/error-logger.service';
 import type { NodeCapabilities } from '../../nodes/models/node.model';
 import type { RegistrationRequest } from '../../nodes/models/registration-request.model';
@@ -405,7 +406,7 @@ export class ApprovalDialogComponent {
         error: (err) => {
           this.errorLogger.error('Error during approval/capability detection', err);
           this.errorMessage.set(
-            err?.error?.message || 'Failed to approve node or detect capabilities'
+            humanizeError(err, 'Could not connect this computer. Please try again.')
           );
           this.isApproving.set(false);
         },

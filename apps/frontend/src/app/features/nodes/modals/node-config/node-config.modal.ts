@@ -14,6 +14,8 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { TranslocoModule } from '@ngneat/transloco';
 import type { OptimalConfig } from '../../../../core/clients/nodes.client';
 import { NodesClient } from '../../../../core/clients/nodes.client';
+import { humanizeError } from '../../../../core/services/error-humanizer';
+import { ToastService } from '../../../../core/services/toast.service';
 import { NodeScheduleEditorComponent } from '../../../../shared/components/node-schedule-editor/node-schedule-editor.component';
 import type { Node, NodeCapabilityTestResult } from '../../models/node.model';
 
@@ -43,6 +45,7 @@ export class NodeConfigModalComponent implements OnInit {
   private readonly dialogRef = inject(DialogRef<NodeConfigModalComponent>);
   private readonly fb = inject(FormBuilder);
   private readonly nodesClient = inject(NodesClient);
+  private readonly toast = inject(ToastService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
   readonly data: NodeConfigModalData = inject(DIALOG_DATA);
@@ -164,14 +167,15 @@ export class NodeConfigModalComponent implements OnInit {
           this.testingCapabilities.set(false);
           this.cdr.markForCheck();
 
-          // Show results in a dialog (we'll use the browser alert for now, can enhance later)
           const summary = this.formatCapabilityResults(results);
-          alert(summary);
+          this.toast.success(summary, 8000);
         },
         error: (err) => {
           this.testingCapabilities.set(false);
           this.cdr.markForCheck();
-          alert(`Failed to test capabilities: ${err?.error?.message || 'Unknown error'}`);
+          this.toast.error(
+            humanizeError(err, 'Could not test this computer right now. Please try again.')
+          );
         },
       });
   }

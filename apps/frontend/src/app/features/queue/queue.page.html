@@ -131,7 +131,11 @@
       @if (queueData.stats.detected > 0) {
       <div
         class="pipeline-stage detected clickable"
+        role="button"
+        tabindex="0"
         (click)="onStatusFilterChange(JobStatus.DETECTED)"
+        (keydown.enter)="onStatusFilterChange(JobStatus.DETECTED)"
+        (keydown.space)="$event.preventDefault(); onStatusFilterChange(JobStatus.DETECTED)"
       >
         <i class="fas fa-search"></i>
         <span class="count">{{ queueData.stats.detected }}</span>
@@ -144,7 +148,11 @@
       @if (queueData.stats.healthCheck > 0) {
       <div
         class="pipeline-stage health-check clickable"
+        role="button"
+        tabindex="0"
         (click)="onStatusFilterChange(JobStatus.HEALTH_CHECK)"
+        (keydown.enter)="onStatusFilterChange(JobStatus.HEALTH_CHECK)"
+        (keydown.space)="$event.preventDefault(); onStatusFilterChange(JobStatus.HEALTH_CHECK)"
       >
         <i class="fas fa-heartbeat fa-pulse"></i>
         <span class="count">{{ queueData.stats.healthCheck }}</span>
@@ -156,7 +164,11 @@
       <!-- Queued Stage -->
       <div
         class="pipeline-stage queued clickable"
+        role="button"
+        tabindex="0"
         (click)="onStatusFilterChange(JobStatus.QUEUED)"
+        (keydown.enter)="onStatusFilterChange(JobStatus.QUEUED)"
+        (keydown.space)="$event.preventDefault(); onStatusFilterChange(JobStatus.QUEUED)"
       >
         <i class="fas fa-clock"></i>
         <span class="count">{{ queueData.stats.queued }}</span>
@@ -168,7 +180,11 @@
       <div
         class="pipeline-stage encoding clickable"
         [class.active]="queueData.stats.encoding > 0"
+        role="button"
+        tabindex="0"
         (click)="onStatusFilterChange(JobStatus.ENCODING)"
+        (keydown.enter)="onStatusFilterChange(JobStatus.ENCODING)"
+        (keydown.space)="$event.preventDefault(); onStatusFilterChange(JobStatus.ENCODING)"
       >
         @if (queueData.stats.encoding > 0) {
         <i class="fas fa-spinner fa-spin"></i>
@@ -183,7 +199,11 @@
       <!-- Completed Stage -->
       <div
         class="pipeline-stage completed clickable"
+        role="button"
+        tabindex="0"
         (click)="onStatusFilterChange(JobStatus.COMPLETED)"
+        (keydown.enter)="onStatusFilterChange(JobStatus.COMPLETED)"
+        (keydown.space)="$event.preventDefault(); onStatusFilterChange(JobStatus.COMPLETED)"
       >
         <i class="fas fa-check-circle"></i>
         <span class="count">{{ queueData.stats.completed }}</span>
@@ -200,7 +220,11 @@
       @if (queueData.stats.needsDecision > 0) {
       <div
         class="pipeline-alert needs-decision clickable"
+        role="button"
+        tabindex="0"
         (click)="onStatusFilterChange(JobStatus.NEEDS_DECISION)"
+        (keydown.enter)="onStatusFilterChange(JobStatus.NEEDS_DECISION)"
+        (keydown.space)="$event.preventDefault(); onStatusFilterChange(JobStatus.NEEDS_DECISION)"
       >
         <i class="fas fa-hand-paper"></i>
         <span class="count">{{ queueData.stats.needsDecision }}</span>
@@ -209,7 +233,11 @@
       } @if (queueData.stats.failed > 0) {
       <div
         class="pipeline-alert failed clickable"
+        role="button"
+        tabindex="0"
         (click)="onStatusFilterChange(JobStatus.FAILED)"
+        (keydown.enter)="onStatusFilterChange(JobStatus.FAILED)"
+        (keydown.space)="$event.preventDefault(); onStatusFilterChange(JobStatus.FAILED)"
       >
         <i class="fas fa-exclamation-triangle"></i>
         <span class="count">{{ queueData.stats.failed }}</span>
@@ -379,8 +407,8 @@
               <span
                 class="job-type-badge remux"
                 bbTooltip
-                tooltipTitle="Fast Remuxing"
-                tooltipContent="This job is using stream copy (remux) to quickly change the container format without re-encoding. Much faster than encoding!"
+                tooltipTitle="Repackaging (fast)"
+                tooltipContent="The video is being repackaged into a new format without converting it. Much faster, and keeps the original quality."
                 tooltipPlacement="top"
               >
                 <i class="fas fa-bolt"></i> {{ 'queue2.remuxing' | transloco }}
@@ -389,8 +417,8 @@
               <span
                 class="job-type-badge encode"
                 bbTooltip
-                tooltipTitle="Full Encoding"
-                tooltipContent="This job is performing full video/audio transcoding to optimize quality and compression."
+                tooltipTitle="Converting"
+                tooltipContent="The video is being converted to save space."
                 tooltipPlacement="top"
               >
                 <i class="fas fa-cog"></i> {{ 'queue2.encoding' | transloco }}
@@ -443,17 +471,17 @@
               <span
                 class="auto-blocked-badge"
                 bbTooltip
-                tooltipTitle="Auto-Blocked"
-                tooltipContent="This file has failed repeatedly and won't be retried automatically. Click Unblock to try again."
+                tooltipTitle="Paused after repeated tries"
+                tooltipContent="This file failed several times, so BitBonsai stopped retrying it. Click Try again to give it another go."
                 tooltipPlacement="top"
               >
-                <i class="fas fa-ban"></i> Auto-Blocked
+                <i class="fas fa-ban"></i> Paused after repeated tries
                 <button
                   class="unblock-btn"
                   (click)="unblockJob(job.id, $event)"
-                  title="Unblock this file"
+                  title="Try this file again"
                 >
-                  <i class="fas fa-unlock"></i> Unblock
+                  <i class="fas fa-unlock"></i> Try again
                 </button>
               </span>
               } @if (advancedMode() && hasRecoveryHistory(job)) {
@@ -473,11 +501,11 @@
               <span
                 class="approaching-blacklist-badge"
                 bbTooltip
-                tooltipTitle="Repeated Failures"
-                tooltipContent="This file has failed multiple times across retries. If failures continue, it may be automatically blocked."
+                tooltipTitle="Having trouble"
+                tooltipContent="This file has failed a few times. If it keeps failing, BitBonsai will pause it."
                 tooltipPlacement="top"
               >
-                <i class="fas fa-exclamation-circle"></i> Repeated failures
+                <i class="fas fa-exclamation-circle"></i> Having trouble with this file
               </span>
               } @if (job.status === JobStatus.FAILED && (job.retryCount || 0) >
               0) { @if ((job.retryCount || 0) >= MAX_AUTO_RETRIES) {
@@ -485,10 +513,10 @@
                 class="retry-limit-badge maxed"
                 bbTooltip
                 tooltipTitle="Max Retries Reached"
-                tooltipContent="This job has exhausted all automatic retry attempts. You can manually retry or delegate to a different node."
+                tooltipContent="BitBonsai stopped retrying this on its own. You can retry it yourself anytime."
                 tooltipPlacement="top"
               >
-                <i class="fas fa-times-circle"></i> Max retries reached
+                <i class="fas fa-times-circle"></i> Out of automatic retries
               </span>
               } @else {
               <span
@@ -498,8 +526,8 @@
                 tooltipContent="This job has been retried automatically. More attempts remain before reaching the limit."
                 tooltipPlacement="top"
               >
-                <i class="fas fa-redo"></i> Attempt {{ (job.retryCount || 0) + 1
-                }}/{{ MAX_AUTO_RETRIES }}
+                <i class="fas fa-redo"></i> Retry {{ job.retryCount || 0 }} of {{
+                MAX_AUTO_RETRIES }}
               </span>
               } }
             </td>
@@ -833,9 +861,9 @@
                   (click)="forceStartJob(job.id, $event)"
                   class="action-btn force-start-btn"
                   bbTooltip
-                  tooltipTitle="Force Start Now"
-                  tooltipContent="Immediately starts encoding this job, bypassing the normal queue order. The job will be prioritized and start within seconds."
-                  tooltipWhen="You want to test or prioritize this specific file for immediate encoding."
+                  tooltipTitle="Start now"
+                  tooltipContent="Starts this video right away instead of waiting in line."
+                  tooltipWhen="You don't want to wait for the queue."
                   tooltipPlacement="top"
                 >
                   <i class="fas fa-bolt"></i>
@@ -1657,7 +1685,7 @@
             class="action-btn-mobile primary"
             (click)="forceStartJob(job.id, $event)"
             bbTooltip
-            tooltipTitle="Force Start"
+            tooltipTitle="Start now"
             tooltipPlacement="top"
           >
             <i class="fas fa-play-circle"></i>
@@ -2027,7 +2055,11 @@
         <i class="fas fa-times-circle"></i> {{ 'queue2.cancelEncodingJob' |
         transloco }}
       </h3>
-      <button (click)="closeCancelDialog()" class="dialog-close">
+      <button
+        (click)="closeCancelDialog()"
+        class="dialog-close"
+        aria-label="Close dialog"
+      >
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -2100,7 +2132,11 @@
         <i class="fas fa-forward"></i> {{ 'queue2.skipCodecMatchJobs' |
         transloco }}
       </h3>
-      <button (click)="closeSkipCodecMatchDialog()" class="dialog-close">
+      <button
+        (click)="closeSkipCodecMatchDialog()"
+        class="dialog-close"
+        aria-label="Close dialog"
+      >
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -2168,7 +2204,11 @@
         <i class="fas fa-compress-arrows-alt"></i> {{
         'queue2.reEncodeCodecMatchJobs' | transloco }}
       </h3>
-      <button (click)="closeForceEncodeCodecMatchDialog()" class="dialog-close">
+      <button
+        (click)="closeForceEncodeCodecMatchDialog()"
+        class="dialog-close"
+        aria-label="Close dialog"
+      >
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -2242,7 +2282,11 @@
         <i class="fas fa-redo"></i> {{ 'queue2.retryAllCancelledJobs' |
         transloco }}
       </h3>
-      <button (click)="closeRetryAllDialog()" class="dialog-close">
+      <button
+        (click)="closeRetryAllDialog()"
+        class="dialog-close"
+        aria-label="Close dialog"
+      >
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -2339,7 +2383,11 @@
         <i class="fas fa-redo"></i> {{ 'queue2.retryFailedJobsTitle' | transloco
         }}
       </h3>
-      <button (click)="closeRetryFailedDialog()" class="dialog-close">
+      <button
+        (click)="closeRetryFailedDialog()"
+        class="dialog-close"
+        aria-label="Close dialog"
+      >
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -2471,7 +2519,11 @@
   <div class="dialog-content" (click)="$event.stopPropagation()">
     <div class="dialog-header">
       <h3>{{ 'queue2.cancelAllQueuedJobs' | transloco }}</h3>
-      <button (click)="closeCancelAllDialog()" class="dialog-close">
+      <button
+        (click)="closeCancelAllDialog()"
+        class="dialog-close"
+        aria-label="Close dialog"
+      >
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -2504,7 +2556,11 @@
         <i class="fas fa-trash-alt"></i> {{ 'queue2.clearJobsTitle' | transloco
         }}
       </h3>
-      <button (click)="closeClearJobsDialog()" class="dialog-close">
+      <button
+        (click)="closeClearJobsDialog()"
+        class="dialog-close"
+        aria-label="Close dialog"
+      >
         <i class="fas fa-times"></i>
       </button>
     </div>

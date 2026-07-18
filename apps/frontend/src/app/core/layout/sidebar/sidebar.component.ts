@@ -65,29 +65,29 @@ export class SidebarComponent implements OnInit {
     );
 
   private readonly allMenuItems: MenuItem[] = [
-    { label: 'Overview', icon: faChartLine, route: '/overview' },
-    { label: 'Queue', icon: faListCheck, route: '/queue' },
+    { label: 'sidebar.overview', icon: faChartLine, route: '/overview' },
+    { label: 'sidebar.queue', icon: faListCheck, route: '/queue' },
     {
-      label: 'Libraries',
+      label: 'sidebar.libraries',
       icon: faFolderOpen,
       route: '/libraries',
       mainNodeOnly: true,
     },
     {
-      label: 'Policies',
+      label: 'sidebar.policies',
       icon: faSliders,
       route: '/policies',
       mainNodeOnly: true,
     },
-    { label: 'Nodes', icon: faServer, route: '/nodes', mainNodeOnly: true },
+    { label: 'sidebar.nodes', icon: faServer, route: '/nodes', mainNodeOnly: true },
     // Discovery removed - only accessible during setup or via direct URL for CHILD nodes
     {
-      label: 'Insights',
+      label: 'sidebar.insights',
       icon: faChartBar,
       route: '/insights',
       mainNodeOnly: true,
     },
-    { label: 'Settings', icon: faGear, route: '/settings' },
+    { label: 'sidebar.settings', icon: faGear, route: '/settings' },
   ];
 
   /**

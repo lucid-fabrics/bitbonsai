@@ -4,14 +4,16 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faChartLine, faCheckCircle, faGauge, faSave } from '@fortawesome/pro-solid-svg-icons';
 import { TranslocoModule } from '@ngneat/transloco';
 import { Chart, type ChartConfiguration, registerables } from 'chart.js';
+import { applyChartDefaults, CHART_COLORS, CHART_PALETTE } from './chart-theme';
 import { BaseChartDirective } from 'ng2-charts';
 import { lastValueFrom } from 'rxjs';
 import { InsightsStatsBO } from './bos/insights-stats.bo';
 import type { NodePerformanceBO } from './bos/node-performance.bo';
 import { InsightsService } from './services/insights.service';
 
-// Register Chart.js components
+// Register Chart.js components and apply the app-wide chart theme
 Chart.register(...registerables);
+applyChartDefaults();
 
 type TimeRange = 7 | 30 | 90;
 
@@ -55,14 +57,14 @@ export class InsightsComponent implements OnInit {
       {
         label: 'Storage Savings (GB)',
         data: [],
-        borderColor: '#f9be03',
+        borderColor: CHART_COLORS.gold,
         backgroundColor: 'rgba(249, 190, 3, 0.1)',
         fill: true,
         tension: 0.4,
         pointRadius: 4,
         pointHoverRadius: 6,
-        pointBackgroundColor: '#f9be03',
-        pointBorderColor: '#1a1a1a',
+        pointBackgroundColor: CHART_COLORS.gold,
+        pointBorderColor: CHART_COLORS.bg,
         pointBorderWidth: 2,
       },
     ],
@@ -76,10 +78,10 @@ export class InsightsComponent implements OnInit {
         display: false,
       },
       tooltip: {
-        backgroundColor: '#1a1a1a',
-        titleColor: '#f9be03',
-        bodyColor: '#e0e0e0',
-        borderColor: '#2d2d2d',
+        backgroundColor: CHART_COLORS.bg,
+        titleColor: CHART_COLORS.gold,
+        bodyColor: CHART_COLORS.text,
+        borderColor: CHART_COLORS.border,
         borderWidth: 1,
         padding: 12,
         displayColors: false,
@@ -94,10 +96,10 @@ export class InsightsComponent implements OnInit {
     scales: {
       x: {
         grid: {
-          color: '#333333',
+          color: CHART_COLORS.grid,
         },
         ticks: {
-          color: '#888',
+          color: CHART_COLORS.textMuted,
           font: {
             size: 11,
           },
@@ -105,10 +107,10 @@ export class InsightsComponent implements OnInit {
       },
       y: {
         grid: {
-          color: '#333333',
+          color: CHART_COLORS.grid,
         },
         ticks: {
-          color: '#888',
+          color: CHART_COLORS.textMuted,
           font: {
             size: 11,
           },
@@ -126,13 +128,13 @@ export class InsightsComponent implements OnInit {
       {
         data: [],
         backgroundColor: [
-          '#f9be03', // H.264
-          '#4ade80', // HEVC
-          '#60a5fa', // AV1
-          '#c084fc', // VP9
-          '#f87171', // Others
+          CHART_COLORS.gold, // H.264
+          CHART_COLORS.green, // HEVC
+          CHART_COLORS.blue, // AV1
+          CHART_COLORS.purple, // VP9
+          CHART_COLORS.red, // Others
         ],
-        borderColor: '#1a1a1a',
+        borderColor: CHART_COLORS.bg,
         borderWidth: 2,
         hoverOffset: 8,
       },
@@ -146,7 +148,7 @@ export class InsightsComponent implements OnInit {
       legend: {
         position: 'bottom',
         labels: {
-          color: '#e0e0e0',
+          color: CHART_COLORS.text,
           padding: 16,
           font: {
             size: 12,
@@ -155,10 +157,10 @@ export class InsightsComponent implements OnInit {
         },
       },
       tooltip: {
-        backgroundColor: '#1a1a1a',
-        titleColor: '#f9be03',
-        bodyColor: '#e0e0e0',
-        borderColor: '#2d2d2d',
+        backgroundColor: CHART_COLORS.bg,
+        titleColor: CHART_COLORS.gold,
+        bodyColor: CHART_COLORS.text,
+        borderColor: CHART_COLORS.border,
         borderWidth: 1,
         padding: 12,
         callbacks: {
@@ -183,7 +185,7 @@ export class InsightsComponent implements OnInit {
         label: 'Jobs Completed',
         data: [],
         backgroundColor: [],
-        borderColor: '#1a1a1a',
+        borderColor: CHART_COLORS.bg,
         borderWidth: 1,
         borderRadius: 4,
       },
@@ -198,10 +200,10 @@ export class InsightsComponent implements OnInit {
         display: false,
       },
       tooltip: {
-        backgroundColor: '#1a1a1a',
-        titleColor: '#f9be03',
-        bodyColor: '#e0e0e0',
-        borderColor: '#2d2d2d',
+        backgroundColor: CHART_COLORS.bg,
+        titleColor: CHART_COLORS.gold,
+        bodyColor: CHART_COLORS.text,
+        borderColor: CHART_COLORS.border,
         borderWidth: 1,
         padding: 12,
         displayColors: false,
@@ -221,7 +223,7 @@ export class InsightsComponent implements OnInit {
           display: false,
         },
         ticks: {
-          color: '#888',
+          color: CHART_COLORS.textMuted,
           font: {
             size: 11,
           },
@@ -229,10 +231,10 @@ export class InsightsComponent implements OnInit {
       },
       y: {
         grid: {
-          color: '#333333',
+          color: CHART_COLORS.grid,
         },
         ticks: {
-          color: '#888',
+          color: CHART_COLORS.textMuted,
           font: {
             size: 11,
           },

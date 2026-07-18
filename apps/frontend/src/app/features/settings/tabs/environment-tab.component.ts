@@ -1,7 +1,8 @@
-import { Component, DestroyRef, inject, type OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, type OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslocoModule } from '@ngneat/transloco';
 import { ErrorLoggerService } from '../../../core/services/error-logger.service';
+import { ToastService } from '../../../core/services/toast.service';
 import type { EnvironmentInfo } from '../models/environment-info.model';
 import { SettingsService } from '../services/settings.service';
 
@@ -263,6 +264,16 @@ export class EnvironmentTabComponent implements OnInit {
 
   environmentInfo = signal<EnvironmentInfo | null>(null);
   successMessage = signal<string | null>(null);
+
+  private readonly toast = inject(ToastService);
+
+  // Template shows no inline feedback; surface the signal as a toast.
+  private readonly successToast = effect(() => {
+    const msg = this.successMessage();
+    if (msg) {
+      this.toast.success(msg);
+    }
+  });
 
   ngOnInit(): void {
     this.loadEnvironmentInfo();

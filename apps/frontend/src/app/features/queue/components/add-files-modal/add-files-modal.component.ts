@@ -1,3 +1,4 @@
+import { A11yModule } from '@angular/cdk/a11y';
 import { AsyncPipe, DecimalPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -41,7 +42,7 @@ type ViewMode = 'library-selection' | 'file-selection' | 'creating-jobs' | 'resu
 @Component({
   selector: 'app-add-files-modal',
   standalone: true,
-  imports: [AsyncPipe, DecimalPipe, FormsModule, TranslocoModule],
+  imports: [A11yModule, AsyncPipe, DecimalPipe, FormsModule, TranslocoModule],
   templateUrl: './add-files-modal.component.html',
   styleUrls: ['./add-files-modal.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -85,7 +86,7 @@ export class AddFilesModalComponent implements OnDestroy {
 
   constructor() {
     // Fetch all ready-to-queue files across all libraries.
-    // refreshLibraries$ acts as a re-trigger — emitting causes a fresh API call without page reload.
+    // refreshLibraries$ acts as a re-trigger: emitting causes a fresh API call without page reload.
     this.libraryPreviews$ = merge(of(null), this.refreshLibraries$).pipe(
       switchMap(() => {
         this.isLoadingLibraries$.next(true);

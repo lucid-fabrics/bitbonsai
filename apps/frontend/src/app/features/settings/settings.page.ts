@@ -19,7 +19,7 @@ export class SettingsComponent implements OnInit {
   private readonly store = inject(Store);
 
   // Advanced mode from store (persisted setting)
-  private readonly advancedMode = toSignal(
+  readonly advancedMode = toSignal(
     this.store.select(SettingsSelectors.selectAdvancedMode),
     { initialValue: false }
   );

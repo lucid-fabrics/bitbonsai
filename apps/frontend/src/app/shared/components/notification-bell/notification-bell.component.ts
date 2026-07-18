@@ -43,7 +43,7 @@ import { NotificationPanelComponent } from '../notification-panel/notification-p
         font-size: 1.25rem;
         cursor: pointer;
         padding: 0.5rem;
-        border-radius: 6px;
+        border-radius: 8px;
         transition: all 0.2s;
         display: flex;
         align-items: center;
@@ -72,7 +72,7 @@ import { NotificationPanelComponent } from '../notification-panel/notification-p
           font-weight: 600;
           min-width: 18px;
           height: 18px;
-          border-radius: 9px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;

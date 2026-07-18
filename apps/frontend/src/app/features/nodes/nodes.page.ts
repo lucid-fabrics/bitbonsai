@@ -9,15 +9,18 @@ import {
   type OnInit,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { TranslocoModule } from '@ngneat/transloco';
+import { Store } from '@ngrx/store';
 import { interval } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { NodesClient } from '../../core/clients/nodes.client';
+import { SettingsSelectors } from '../settings/+state/settings.selectors';
 import { EnvironmentDetectionService } from '../../core/services/environment-detection.service';
+import { humanizeError } from '../../core/services/error-humanizer';
 import {
   ConfirmationDialogComponent,
   type ConfirmationDialogData,
@@ -72,6 +75,11 @@ export class NodesComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
+  private readonly store = inject(Store);
+
+  readonly advancedMode = toSignal(this.store.select(SettingsSelectors.selectAdvancedMode), {
+    initialValue: false,
+  });
 
   // Expose enums and BOs to template
   readonly NodeStatus = NodeStatus;
@@ -168,7 +176,7 @@ export class NodesComponent implements OnInit {
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.error = err.error?.message || 'Failed to load nodes';
+          this.error = humanizeError(err, 'Could not load your computers.');
           this.isLoading = false;
           this.cdr.markForCheck();
         },
@@ -336,7 +344,7 @@ export class NodesComponent implements OnInit {
           this.isLoading = false;
         },
         error: (err) => {
-          this.error = err.error?.message || 'Failed to find pairing token';
+          this.error = humanizeError(err, 'Could not check that pairing code. Please try again.');
           this.isLoading = false;
           this.cdr.markForCheck();
         },
@@ -393,7 +401,7 @@ export class NodesComponent implements OnInit {
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.error = err.error?.message || 'Failed to approve request';
+          this.error = humanizeError(err, 'Could not approve this computer. Please try again.');
           this.isLoading = false;
           this.cdr.markForCheck();
         },
@@ -465,7 +473,7 @@ export class NodesComponent implements OnInit {
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.error = err.error?.message || 'Failed to reject request';
+          this.error = humanizeError(err, 'Could not decline this request. Please try again.');
           this.isLoading = false;
           this.cdr.markForCheck();
         },
@@ -552,7 +560,7 @@ export class NodesComponent implements OnInit {
               this.cdr.markForCheck();
             },
             error: (err) => {
-              this.error = err.error?.message || 'Failed to update node configuration';
+              this.error = humanizeError(err, 'Could not save this configuration. Please try again.');
               this.isLoading = false;
               this.cdr.markForCheck();
             },
@@ -576,7 +584,7 @@ export class NodesComponent implements OnInit {
           });
         },
         error: (err) => {
-          this.error = err.error?.message || 'Failed to load node stats';
+          this.error = humanizeError(err, 'Could not load statistics for this computer.');
           this.cdr.markForCheck();
         },
       });
@@ -645,7 +653,7 @@ export class NodesComponent implements OnInit {
               this.cdr.markForCheck();
             },
             error: (err) => {
-              this.error = err.error?.message || 'Failed to delete node';
+              this.error = humanizeError(err, 'Could not remove this computer. Please try again.');
               this.deletingNodeId = null;
               this.cdr.markForCheck();
             },

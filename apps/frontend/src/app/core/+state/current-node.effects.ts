@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
+import { humanizeError } from '../services/error-humanizer';
 import { NodeService } from '../services/node.service';
 import { NodeConfigService } from '../services/node-config.service';
 import { CurrentNodeActions } from './current-node.actions';
@@ -29,7 +30,7 @@ export class CurrentNodeEffects {
           catchError((error) =>
             of(
               CurrentNodeActions.loadCurrentNodeFailure({
-                error: error.message,
+                error: humanizeError(error, 'Could not load this computer. Retrying automatically.'),
               })
             )
           )
@@ -46,7 +47,11 @@ export class CurrentNodeEffects {
         this.nodeService.getMainNode().pipe(
           map((mainNode) => CurrentNodeActions.loadMainNodeSuccess({ mainNode })),
           catchError((error) =>
-            of(CurrentNodeActions.loadMainNodeFailure({ error: error.message }))
+            of(
+              CurrentNodeActions.loadMainNodeFailure({
+                error: humanizeError(error, 'Could not reach the main computer. Retrying automatically.'),
+              })
+            )
           )
         )
       )

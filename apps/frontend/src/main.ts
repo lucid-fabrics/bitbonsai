@@ -15,8 +15,6 @@ import { currentNodeReducer } from './app/core/+state/current-node.reducer';
 import { authInterceptor } from './app/core/auth/auth.interceptor';
 import { apiBaseUrlInterceptor } from './app/core/interceptors/api-base-url.interceptor';
 import { apiErrorInterceptor } from './app/core/interceptors/api-error.interceptor';
-import { MediaStatsEffects } from './app/features/dashboard/+state/dashboard.effects';
-import { mediaStatsReducer } from './app/features/dashboard/+state/dashboard.reducer';
 import { InsightsEffects } from './app/features/insights/+state/insights.effects';
 import { insightsReducer } from './app/features/insights/+state/insights.reducer';
 import { LibrariesEffects } from './app/features/libraries/+state/libraries.effects';
@@ -60,7 +58,6 @@ bootstrapApplication(AppComponent, {
       // Core state
       currentNode: currentNodeReducer,
       // Feature states
-      mediaStats: mediaStatsReducer,
       policies: policiesReducer,
       libraries: librariesReducer,
       nodes: nodesReducer,
@@ -73,7 +70,6 @@ bootstrapApplication(AppComponent, {
       // Core effects
       CurrentNodeEffects,
       // Feature effects
-      MediaStatsEffects,
       PoliciesEffects,
       LibrariesEffects,
       NodesEffects,

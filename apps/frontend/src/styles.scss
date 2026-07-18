@@ -3,6 +3,94 @@
 @use './styles/reset';
 @use './app/shared/directives/rich-tooltip.styles';
 
+/* Design tokens as CSS custom properties.
+   Every var(--*) name used anywhere in the app MUST be defined here;
+   components reference these without fallbacks. */
+:root {
+  /* Accent */
+  --primary: #{$accent-primary};
+  --primary-color: #{$accent-primary};
+  --accent-color: #{$accent-primary};
+  --accent-primary: #{$accent-primary};
+  --ion-color-primary: #{$accent-primary};
+  --primary-hover: #{$accent-primary-hover};
+  --primary-color-dark: #d9a503;
+  --ion-color-primary-shade: #d9a503;
+  --primary-color-rgb: 249, 190, 3;
+  --primary-alpha: rgba(249, 190, 3, 0.15);
+
+  /* Surfaces */
+  --surface-ground: #{$bg-primary};
+  --input-bg: #{$bg-primary};
+  --surface-color: #{$bg-secondary};
+  --surface-card: #{$bg-secondary};
+  --surface-primary: #{$bg-secondary};
+  --card-bg: #{$bg-secondary};
+  --ion-background-color: #{$bg-secondary};
+  --surface-secondary: #{$bg-tertiary};
+  --surface-tertiary: #333333;
+  --surface-hover: #{$bg-tertiary};
+  --surface-active: #{$bg-tertiary};
+  --hover-bg: #{$bg-tertiary};
+  --hover-color: #{$bg-tertiary};
+  --card-bg-alt: #{$bg-tertiary};
+  --bg-tertiary: #{$bg-tertiary};
+  --bg-quaternary: #333333;
+  --ion-color-step-100: #{$bg-tertiary};
+  --ion-color-light: #{$bg-tertiary};
+  --secondary-bg: #{$border-secondary};
+  --secondary-hover: #4d4d4d;
+  --toggle-bg-off: #{$border-secondary};
+
+  /* Borders */
+  --border-color: #{$border-primary};
+  --border-primary: #{$border-primary};
+  --surface-border: #{$border-primary};
+  --ion-border-color: #{$border-primary};
+
+  /* Text */
+  --text-primary: #{$text-primary};
+  --text-color: #{$text-primary};
+  --ion-text-color: #{$text-primary};
+  --text-secondary: #{$text-secondary};
+  --ion-text-color-secondary: #{$text-secondary};
+  --ion-color-medium: #{$text-secondary};
+  --text-muted: #{$text-tertiary};
+  --text-tertiary: #{$text-tertiary};
+  --ion-color-medium-shade: #{$text-tertiary};
+  --text-dark: #{$text-dark};
+  --ion-color-dark: #{$text-dark};
+
+  /* Status */
+  --success: #{$success};
+  --success-color: #{$success};
+  --ion-color-success: #{$success};
+  --ion-color-success-shade: #22c55e;
+  --success-bg: #{$success-bg};
+  --danger: #{$danger};
+  --danger-color: #{$danger};
+  --error: #{$danger};
+  --danger-bg: #{$danger-bg};
+  --error-bg: #{$danger-bg};
+  --warning: #{$warning};
+  --warning-color: #{$warning};
+  --warning-bg: #{$warning-bg};
+  --info: #{$info};
+  --info-color: #{$info};
+  --info-bg: #{$info-bg};
+
+  /* Misc */
+  --font-mono: #{$font-mono};
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/InterVariable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -14,6 +102,12 @@ body {
   background: $bg-primary;
   min-height: 100vh;
   color: $text-primary;
+  font-feature-settings:
+    'cv05',
+    'cv11';
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1,
@@ -25,6 +119,38 @@ h6 {
   font-weight: $font-weight-bold;
   margin: 0;
   color: $text-white;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: $font-size-3xl;
+}
+
+h2 {
+  font-size: $font-size-2xl;
+}
+
+h3 {
+  font-size: $font-size-xl;
+}
+
+h4 {
+  font-size: $font-size-lg;
+}
+
+h5,
+h6 {
+  font-size: $font-size-md;
+}
+
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+.mono,
+.stat-value {
+  font-family: $font-mono;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Fix for header overlap issue - ensure page headers don't scroll behind sticky app header */
@@ -119,7 +245,6 @@ h6 {
       margin-top: 1.5rem;
       padding: 1rem;
       background: rgba($accent-primary, 0.1);
-      border-left: 3px solid $accent-primary;
       border-radius: 4px;
       font-size: 0.95rem;
       color: $text-primary;
@@ -249,7 +374,8 @@ h6 {
   color: white;
   padding: 12px 40px 12px 16px;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: $shadow-md;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 14px;
   min-width: 300px;
   max-width: 500px;
@@ -258,7 +384,6 @@ h6 {
   transition: all 0.3s ease;
   pointer-events: auto;
   position: relative;
-  border-left: 4px solid;
 }
 
 .toast-show {
@@ -267,19 +392,27 @@ h6 {
 }
 
 .toast-success {
-  border-left-color: #4ade80;
+  background:
+    linear-gradient(rgba($success, 0.08), rgba($success, 0.08)),
+    rgba(30, 30, 30, 0.95);
 }
 
 .toast-info {
-  border-left-color: #60a5fa;
+  background:
+    linear-gradient(rgba($info, 0.08), rgba($info, 0.08)),
+    rgba(30, 30, 30, 0.95);
 }
 
 .toast-warning {
-  border-left-color: #fb923c;
+  background:
+    linear-gradient(rgba($warning, 0.08), rgba($warning, 0.08)),
+    rgba(30, 30, 30, 0.95);
 }
 
 .toast-error {
-  border-left-color: #f87171;
+  background:
+    linear-gradient(rgba($danger, 0.08), rgba($danger, 0.08)),
+    rgba(30, 30, 30, 0.95);
 }
 
 .toast-close {
@@ -304,4 +437,124 @@ h6 {
 
 .toast-close:hover {
   color: white;
+}
+
+/* ============================================
+   Global Polish Layer
+   ============================================ */
+
+:focus-visible {
+  outline: 2px solid rgba($accent-primary, 0.7);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: rgba($accent-primary, 0.25);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3d3d3d $bg-tertiary;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: $bg-tertiary;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3d3d3d;
+  border-radius: 5px;
+
+  &:hover {
+    background: #4d4d4d;
+  }
+}
+
+button,
+.btn {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 2px 12px rgba($accent-primary, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   Layout: centered content + page transition
+   Tiers: <768 compact, 768-1480 default, >1480 capped
+   ============================================ */
+
+main.main-content > *:not(router-outlet) {
+  display: block;
+  width: 100%;
+  max-width: 1480px;
+  margin-inline: auto;
+  animation: pageEnter 0.22s ease both;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ============================================
+   Skeleton loading utilities
+   ============================================ */
+
+.skeleton {
+  background: linear-gradient(90deg, #252525 25%, #2a2a2a 50%, #252525 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+.skeleton-line {
+  height: 14px;
+  margin-bottom: 10px;
+}
+
+.skeleton-title {
+  height: 24px;
+  width: 40%;
+  margin-bottom: 16px;
+}
+
+.skeleton-card {
+  height: 120px;
+  margin-bottom: 16px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }

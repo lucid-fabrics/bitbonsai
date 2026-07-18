@@ -16,6 +16,7 @@ import {
 } from '@fortawesome/pro-solid-svg-icons';
 import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   ConfirmationDialogComponent,
   type ConfirmationDialogData,
@@ -24,6 +25,7 @@ import { RichTooltipDirective } from '../../shared/directives/rich-tooltip.direc
 import { LibrariesActions } from '../libraries/+state/libraries.actions';
 import { selectAllLibraries } from '../libraries/+state/libraries.selectors';
 import { PoliciesActions } from './+state/policies.actions';
+import { SettingsSelectors } from '../settings/+state/settings.selectors';
 import { PoliciesSelectors } from './+state/policies.selectors';
 import { ContainerBo } from './bos/container.bo';
 import type { PolicyBo } from './bos/policy.bo';
@@ -84,6 +86,9 @@ export class PoliciesComponent implements OnInit {
   readonly ContainerBo = ContainerBo;
 
   // NgRx State
+  readonly advancedMode = toSignal(this.store.select(SettingsSelectors.selectAdvancedMode), {
+    initialValue: false,
+  });
   readonly policies$ = this.store.select(PoliciesSelectors.selectPolicies);
   readonly presets$ = this.store.select(PoliciesSelectors.selectPresets);
   readonly isLoading$ = this.store.select(PoliciesSelectors.selectIsLoading);
@@ -164,12 +169,39 @@ export class PoliciesComponent implements OnInit {
   }
 
   getCRFLabel(crf: number): string {
-    if (crf <= 18) return 'Visually Lossless (Huge Files)';
-    if (crf <= 22) return 'Excellent Quality (Large Files)';
-    if (crf <= 26) return 'High Quality (Recommended)';
-    if (crf <= 30) return 'Good Quality (Smaller Files)';
-    if (crf <= 34) return 'Medium Quality (Web Streaming)';
-    return 'Low Quality (Not Recommended)';
+    if (crf <= 18) return 'Best quality (largest files)';
+    if (crf <= 22) return 'Excellent quality (large files)';
+    if (crf <= 26) return 'Balanced (recommended)';
+    if (crf <= 30) return 'Save space (smaller files)';
+    if (crf <= 34) return 'Save the most space';
+    return 'Lowest quality (not recommended)';
+  }
+
+  readonly qualityPresets = [
+    { crf: 18, label: 'Best quality', hint: 'Largest files' },
+    { crf: 23, label: 'Balanced', hint: 'Recommended' },
+    { crf: 28, label: 'Save space', hint: 'Smaller files' },
+    { crf: 32, label: 'Save the most space', hint: 'Smallest files' },
+  ];
+
+  setQuality(crf: number): void {
+    this.formData.targetQuality = crf;
+  }
+
+  codecLabel(codec: string): string {
+    switch ((codec || '').toUpperCase()) {
+      case 'HEVC':
+      case 'H265':
+        return 'Space saver (HEVC)';
+      case 'AV1':
+        return 'Best compression (AV1)';
+      case 'VP9':
+        return 'Web streaming (VP9)';
+      case 'H264':
+        return 'Plays on everything (H.264)';
+      default:
+        return codec;
+    }
   }
 
   validateForm(): boolean {

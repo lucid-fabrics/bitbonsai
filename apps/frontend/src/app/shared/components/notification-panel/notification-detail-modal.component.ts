@@ -52,6 +52,7 @@ interface ModalData {
           class="notification-detail-modal__close-btn"
           (click)="onClose()"
           type="button"
+          aria-label="Close"
         >
           <fa-icon [icon]="icons.close"></fa-icon>
         </button>

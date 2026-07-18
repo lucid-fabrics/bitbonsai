@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { humanizeError } from '../../../core/services/error-humanizer';
 import { QueueService } from '../services/queue.service';
 import { QueueActions } from './queue.actions';
 
@@ -16,7 +17,11 @@ export class QueueEffects {
       switchMap(({ filters }) =>
         this.queueService.getQueue(filters).pipe(
           map((data) => QueueActions.loadQueueSuccess({ data })),
-          catchError((error) => of(QueueActions.loadQueueFailure({ error: error.message })))
+          catchError((error) => of(
+            QueueActions.loadQueueFailure({
+              error: humanizeError(error, 'Could not load the queue. Retrying automatically.'),
+            })
+          ))
         )
       )
     )
@@ -28,7 +33,11 @@ export class QueueEffects {
       switchMap(({ jobId }) =>
         this.queueService.cancelJob(jobId).pipe(
           map(() => QueueActions.cancelJobSuccess({ jobId })),
-          catchError((error) => of(QueueActions.cancelJobFailure({ error: error.message })))
+          catchError((error) => of(
+            QueueActions.cancelJobFailure({
+              error: humanizeError(error, 'Could not cancel this job. Please try again.'),
+            })
+          ))
         )
       )
     )
@@ -40,7 +49,11 @@ export class QueueEffects {
       switchMap(({ jobId }) =>
         this.queueService.retryJob(jobId).pipe(
           map(() => QueueActions.retryJobSuccess({ jobId })),
-          catchError((error) => of(QueueActions.retryJobFailure({ error: error.message })))
+          catchError((error) => of(
+            QueueActions.retryJobFailure({
+              error: humanizeError(error, 'Could not retry this job. Please try again.'),
+            })
+          ))
         )
       )
     )

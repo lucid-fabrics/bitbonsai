@@ -37,7 +37,7 @@
     @for (item of menuItems$ | async; track item.route) {
       <a [routerLink]="item.route" routerLinkActive="active" class="nav-item">
         <fa-icon [icon]="item.icon" class="nav-icon"></fa-icon>
-        <span class="nav-label">{{ item.label }}</span>
+        <span class="nav-label">{{ item.label | transloco }}</span>
       </a>
     }
   </nav>

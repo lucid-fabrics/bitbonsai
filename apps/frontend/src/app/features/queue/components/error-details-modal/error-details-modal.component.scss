@@ -285,7 +285,7 @@
   .status-badge {
     display: inline-block;
     padding: 4px 10px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
@@ -449,30 +449,29 @@
 }
 
 // Dark mode adjustments
-@media (prefers-color-scheme: dark) {
-  .modal-overlay {
-    background-color: rgba(0, 0, 0, 0.7);
-  }
+// App is permanently dark; former prefers-color-scheme block made unconditional
+.modal-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
+}
 
-  .modal-container {
-    background: #1a1a1a;
-  }
+.modal-container {
+  background: #1a1a1a;
+}
 
-  .modal-header {
-    background: linear-gradient(
-      135deg,
-      rgba(239, 68, 68, 0.12) 0%,
-      rgba(239, 68, 68, 0.06) 100%
-    );
+.modal-header {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.12) 0%,
+    rgba(239, 68, 68, 0.06) 100%
+  );
 
-    .close-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
+  .close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
   }
+}
 
-  .details-section .error-output {
-    background: rgba(255, 255, 255, 0.03);
-  }
+.details-section .error-output {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 // Smooth scrollbar

@@ -1,6 +1,13 @@
 @if (isOpen) {
   <div class="modal-overlay" (click)="close()">
-    <div class="modal-container" (click)="$event.stopPropagation()">
+    <div
+      class="modal-container"
+      role="dialog"
+      aria-modal="true"
+      cdkTrapFocus
+      cdkTrapFocusAutoCapture
+      (click)="$event.stopPropagation()"
+    >
       <!-- Header -->
       <div class="modal-header">
         <div class="header-content">
@@ -71,16 +78,16 @@
                   <span class="status-badge">{{ status }}</span>
                 </span>
               </div>
-              <div class="detail-row full-width">
-                <span class="detail-label">{{
-                  'errorDetails.errorOutput' | transloco
-                }}</span>
-                <div class="error-output">
-                  <pre>{{
-                    error || ('errorDetails.noErrorDetails' | transloco)
-                  }}</pre>
+              @if (advancedMode()) {
+                <div class="detail-row full-width">
+                  <span class="detail-label">Technical log</span>
+                  <div class="error-output">
+                    <pre>{{
+                      error || ('errorDetails.noErrorDetails' | transloco)
+                    }}</pre>
+                  </div>
                 </div>
-              </div>
+              }
             </div>
           }
         </div>

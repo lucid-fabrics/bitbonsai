@@ -32,7 +32,7 @@
 
   .btn {
     padding: 10px 20px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -561,7 +561,7 @@
         background: $danger;
         color: $text-white;
         border: none;
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
@@ -748,7 +748,7 @@
 .header-right {
   .btn {
     padding: 10px 20px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -1036,7 +1036,7 @@
       color.adjust($accent-primary, $lightness: 10%) 100%
     );
     color: $text-dark;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;

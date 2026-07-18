@@ -528,7 +528,7 @@
       display: flex;
       align-items: center;
       padding: 0.75rem 1.5rem;
-      border-radius: 6px;
+      border-radius: 8px;
       font-weight: 600;
       font-size: 1rem;
       transition: all 0.2s ease;
@@ -606,43 +606,42 @@
 }
 
 // Dark Mode Support
-@media (prefers-color-scheme: dark) {
-  .storage-wizard {
-    .wizard-progress {
-      background: var(--ion-color-step-100);
-    }
+// App is permanently dark; former prefers-color-scheme block made unconditional
+.storage-wizard {
+  .wizard-progress {
+    background: var(--ion-color-step-100);
+  }
 
-    .info-grid .info-card {
-      background: var(--ion-color-step-100);
-    }
+  .info-grid .info-card {
+    background: var(--ion-color-step-100);
+  }
 
-    .recommendation-box {
-      background: rgba(23, 162, 184, 0.2);
-    }
+  .recommendation-box {
+    background: rgba(23, 162, 184, 0.2);
+  }
 
-    .warning-box {
-      background: rgba(255, 193, 7, 0.2);
-    }
+  .warning-box {
+    background: rgba(255, 193, 7, 0.2);
+  }
 
-    .action-box {
-      background: rgba(23, 162, 184, 0.2);
-    }
+  .action-box {
+    background: rgba(23, 162, 184, 0.2);
+  }
 
-    .info-banner.success {
-      background: rgba(40, 167, 69, 0.2);
-    }
+  .info-banner.success {
+    background: rgba(40, 167, 69, 0.2);
+  }
 
-    .test-grid .test-card {
-      background: var(--ion-color-step-100);
-    }
+  .test-grid .test-card {
+    background: var(--ion-color-step-100);
+  }
 
-    .success-banner {
-      background: rgba(40, 167, 69, 0.2);
-    }
+  .success-banner {
+    background: rgba(40, 167, 69, 0.2);
+  }
 
-    .instruction-section .alert.alert-warning {
-      background: rgba(255, 193, 7, 0.2);
-    }
+  .instruction-section .alert.alert-warning {
+    background: rgba(255, 193, 7, 0.2);
   }
 }
 
@@ -686,6 +685,52 @@
         flex: 1;
         min-width: 120px;
         justify-content: center;
+      }
+    }
+  }
+}
+
+.wizard-intro {
+  .intro-secondary {
+    color: #888;
+    margin-top: 0.75rem;
+  }
+
+  .intro-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+
+    .btn {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: none;
+
+      &.btn-primary {
+        background: var(--ion-color-primary);
+        color: var(--text-dark);
+
+        &:hover {
+          background: var(--ion-color-primary-shade);
+        }
+      }
+
+      &.btn-secondary {
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+
+        &:hover {
+          color: var(--text-primary);
+          border-color: var(--secondary-hover);
+        }
       }
     }
   }

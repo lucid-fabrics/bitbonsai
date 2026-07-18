@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { humanizeError } from '../../../core/services/error-humanizer';
 import { LicenseService } from '../services/license.service';
 import { SettingsService } from '../services/settings.service';
 import { SettingsActions } from './settings.actions';
@@ -18,7 +19,11 @@ export class SettingsEffects {
       switchMap(() =>
         this.licenseService.getCurrentLicense().pipe(
           map((license) => SettingsActions.loadLicenseSuccess({ license })),
-          catchError((error) => of(SettingsActions.loadLicenseFailure({ error: error.message })))
+          catchError((error) => of(
+            SettingsActions.loadLicenseFailure({
+              error: humanizeError(error, 'Could not load your license details.'),
+            })
+          ))
         )
       )
     )
@@ -31,7 +36,11 @@ export class SettingsEffects {
         this.licenseService.activateLicense(request).pipe(
           map((license) => SettingsActions.activateLicenseSuccess({ license })),
           catchError((error) =>
-            of(SettingsActions.activateLicenseFailure({ error: error.message }))
+            of(
+              SettingsActions.activateLicenseFailure({
+                error: humanizeError(error, 'Could not activate this license key. Check the key and try again.'),
+              })
+            )
           )
         )
       )
@@ -47,7 +56,7 @@ export class SettingsEffects {
           catchError((error) =>
             of(
               SettingsActions.loadEnvironmentInfoFailure({
-                error: error.message,
+                error: humanizeError(error, 'Could not load system information.'),
               })
             )
           )
@@ -65,7 +74,7 @@ export class SettingsEffects {
           catchError((error) =>
             of(
               SettingsActions.loadSystemSettingsFailure({
-                error: error.message,
+                error: humanizeError(error, 'Could not load settings.'),
               })
             )
           )
@@ -83,7 +92,7 @@ export class SettingsEffects {
           catchError((error) =>
             of(
               SettingsActions.updateSystemSettingsFailure({
-                error: error.message,
+                error: humanizeError(error, 'Could not save this setting. Please try again.'),
               })
             )
           )
@@ -98,7 +107,11 @@ export class SettingsEffects {
       switchMap(() =>
         this.settingsService.backupDatabase().pipe(
           map((result) => SettingsActions.backupDatabaseSuccess(result)),
-          catchError((error) => of(SettingsActions.backupDatabaseFailure({ error: error.message })))
+          catchError((error) => of(
+            SettingsActions.backupDatabaseFailure({
+              error: humanizeError(error, 'Could not create a backup. Please try again.'),
+            })
+          ))
         )
       )
     )
@@ -111,7 +124,11 @@ export class SettingsEffects {
         this.settingsService.resetToDefaults().pipe(
           map((result) => SettingsActions.resetToDefaultsSuccess(result)),
           catchError((error) =>
-            of(SettingsActions.resetToDefaultsFailure({ error: error.message }))
+            of(
+              SettingsActions.resetToDefaultsFailure({
+                error: humanizeError(error, 'Could not reset settings. Please try again.'),
+              })
+            )
           )
         )
       )
@@ -125,7 +142,11 @@ export class SettingsEffects {
         this.settingsService.regenerateApiKey().pipe(
           map((result) => SettingsActions.regenerateAPIKeySuccess(result)),
           catchError((error) =>
-            of(SettingsActions.regenerateAPIKeyFailure({ error: error.message }))
+            of(
+              SettingsActions.regenerateAPIKeyFailure({
+                error: humanizeError(error, 'Could not create a new pairing key. Please try again.'),
+              })
+            )
           )
         )
       )
@@ -143,7 +164,11 @@ export class SettingsEffects {
             })
           ),
           catchError((error) =>
-            of(SettingsActions.loadAdvancedModeFailure({ error: error.message }))
+            of(
+              SettingsActions.loadAdvancedModeFailure({
+                error: humanizeError(error, 'Could not load settings.'),
+              })
+            )
           )
         )
       )
@@ -163,7 +188,7 @@ export class SettingsEffects {
           catchError((error) =>
             of(
               SettingsActions.updateAdvancedModeFailure({
-                error: error.message,
+                error: humanizeError(error, 'Could not save this setting. Please try again.'),
               })
             )
           )
