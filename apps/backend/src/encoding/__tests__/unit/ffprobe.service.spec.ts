@@ -74,6 +74,9 @@ describe('FfprobeService', () => {
     jest.spyOn((service as any).logger, 'warn').mockImplementation();
     jest.spyOn((service as any).logger, 'debug').mockImplementation();
     jest.spyOn((service as any).logger, 'error').mockImplementation();
+
+    // Skip the real 2s retry delay in getVideoDuration
+    jest.spyOn(service as any, 'sleep').mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -117,37 +120,51 @@ describe('FfprobeService', () => {
       expect(result).toBeCloseTo(300.0);
     });
 
-    it('should return 3600 on ffprobe error event', async () => {
-      spawnMock.mockReturnValue(makeFakeProc({ errorEvent: new Error('spawn ENOENT') }));
+    it('should retry once then return 3600 on ffprobe error event', async () => {
+      spawnMock.mockImplementation(() => makeFakeProc({ errorEvent: new Error('spawn ENOENT') }));
 
       const result = await service.getVideoDuration('/video.mkv');
 
       expect(result).toBe(3600);
+      expect(spawnMock).toHaveBeenCalledTimes(2); // first attempt + one retry
+      expect((service as any).logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('fallback')
+      );
+    });
+
+    it('should succeed on the retry attempt after the first probe fails', async () => {
+      spawnMock
+        .mockReturnValueOnce(makeFakeProc({ errorEvent: new Error('spawn EAGAIN') }))
+        .mockReturnValueOnce(makeFakeProc({ stdoutData: '450.5\n', closeCode: 0 }));
+
+      const result = await service.getVideoDuration('/video.mkv');
+
+      expect(result).toBeCloseTo(450.5);
+      expect((service as any).logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('fallback')
+      );
     });
 
     it('should return 3600 when stream output is NaN', async () => {
       // Stream output is not a number → falls through to format fallback
-      // Format fallback also returns garbage → resolves 3600
-      spawnMock
-        .mockReturnValueOnce(makeFakeProc({ stdoutData: 'N/A\n', closeCode: 0 }))
-        .mockReturnValueOnce(makeFakeProc({ stdoutData: 'N/A\n', closeCode: 0 }));
+      // Format fallback also returns garbage → probe retried once → resolves 3600
+      spawnMock.mockImplementation(() => makeFakeProc({ stdoutData: 'N/A\n', closeCode: 0 }));
 
       const result = await service.getVideoDuration('/video.mkv');
 
       expect(result).toBe(3600);
+      expect(spawnMock).toHaveBeenCalledTimes(4); // (stream + format) x 2 attempts
     });
 
     it('should return 3600 when stream duration is 0', async () => {
-      spawnMock
-        .mockReturnValueOnce(makeFakeProc({ stdoutData: '0\n', closeCode: 0 }))
-        .mockReturnValueOnce(makeFakeProc({ stdoutData: '0\n', closeCode: 0 }));
+      spawnMock.mockImplementation(() => makeFakeProc({ stdoutData: '0\n', closeCode: 0 }));
 
       const result = await service.getVideoDuration('/video.mkv');
 
       expect(result).toBe(3600);
     });
 
-    it('should return 3600 on timeout', async () => {
+    it('should return 3600 on timeout after retry', async () => {
       jest.useFakeTimers();
 
       const proc = makeFakeProc({
@@ -158,7 +175,8 @@ describe('FfprobeService', () => {
       spawnMock.mockReturnValue(proc);
 
       const promise = service.getVideoDuration('/video.mkv');
-      jest.advanceTimersByTime(10001);
+      await jest.advanceTimersByTimeAsync(10001); // first attempt times out
+      await jest.advanceTimersByTimeAsync(10001); // retry attempt times out
 
       const result = await promise;
 
@@ -490,7 +508,7 @@ describe('FfprobeService', () => {
         (service as any).codecCache.set(`/video-${i}.mkv`, {
           codec: 'h264',
           container: 'mp4',
-          // All within last 10 minutes — well within 1-hour TTL
+          // All within last 10 minutes - well within 1-hour TTL
           timestamp: new Date(now - i * 100),
         });
       }

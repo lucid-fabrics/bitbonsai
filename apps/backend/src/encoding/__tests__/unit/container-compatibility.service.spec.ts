@@ -79,7 +79,22 @@ describe('ContainerCompatibilityService', () => {
 
       expect(issues).toHaveLength(1);
       expect(issues[0].code).toBe('AC3_DTS_MP4_INCOMPATIBLE');
-      expect(issues[0].severity).toBe('BLOCKER');
+      // WARNING (not BLOCKER): the flag builder auto-transcodes to AAC
+      expect(issues[0].severity).toBe('WARNING');
+      expect(issues[0].message).toContain('will be automatically converted to AAC');
+    });
+
+    it('should accept preFetchedStreams and skip its own ffprobe', async () => {
+      const streams = [
+        { index: 0, codec_name: 'h264', codec_type: 'video' },
+        { index: 1, codec_name: 'ac3', codec_type: 'audio' },
+      ];
+
+      const issues = await service.checkCompatibility('/test/file.mkv', 'mp4', streams);
+
+      expect(spawn).not.toHaveBeenCalled();
+      expect(issues).toHaveLength(1);
+      expect(issues[0].code).toBe('AC3_DTS_MP4_INCOMPATIBLE');
     });
 
     it('should detect EAC3 audio incompatibility', async () => {
@@ -262,6 +277,58 @@ describe('ContainerCompatibilityService', () => {
       const issues = await service.checkCompatibility('/test/file.mkv');
 
       expect(issues).toHaveLength(1);
+    });
+  });
+
+  describe('getStreamInfo', () => {
+    it('is public and returns parsed streams from ffprobe', async () => {
+      const streamData = {
+        streams: [{ index: 0, codec_name: 'hevc', codec_type: 'video' }],
+      };
+
+      createMockProcess(0, JSON.stringify(streamData));
+
+      const streams = await service.getStreamInfo('/test/file.mkv');
+
+      expect(streams).toEqual(streamData.streams);
+    });
+  });
+
+  describe('toJobStreamInfo', () => {
+    it('maps streams to compact entries with pixFmt/colorTransfer when present', () => {
+      const entries = service.toJobStreamInfo([
+        {
+          index: 0,
+          codec_name: 'hevc',
+          codec_type: 'video',
+          pix_fmt: 'yuv420p10le',
+          color_transfer: 'smpte2084',
+        },
+        { index: 1, codec_name: 'ac3', codec_type: 'audio' },
+        { index: 2, codec_name: 'subrip', codec_type: 'subtitle' },
+      ]);
+
+      expect(entries).toEqual([
+        {
+          index: 0,
+          type: 'video',
+          codec: 'hevc',
+          pixFmt: 'yuv420p10le',
+          colorTransfer: 'smpte2084',
+        },
+        { index: 1, type: 'audio', codec: 'ac3' },
+        { index: 2, type: 'subtitle', codec: 'subrip' },
+      ]);
+      expect('pixFmt' in entries[1]).toBe(false);
+      expect('colorTransfer' in entries[1]).toBe(false);
+    });
+
+    it('defaults missing codec fields to unknown and omits non-string pix_fmt', () => {
+      const entries = service.toJobStreamInfo([{ index: 3, pix_fmt: 42, color_transfer: null }]);
+
+      expect(entries).toEqual([{ index: 3, type: 'unknown', codec: 'unknown' }]);
+      expect('pixFmt' in entries[0]).toBe(false);
+      expect('colorTransfer' in entries[0]).toBe(false);
     });
   });
 });

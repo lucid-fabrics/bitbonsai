@@ -2,6 +2,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../common/repositories/job.repository';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
+import { FileFailureTrackingService } from './file-failure-tracking.service';
 import { JobBulkOperationsService } from './job-bulk-operations.service';
 
 describe('JobBulkOperationsService', () => {
@@ -9,6 +10,7 @@ describe('JobBulkOperationsService', () => {
 
   let jobRepository: any;
   let ffmpegService: jest.Mocked<FfmpegService>;
+  let fileFailureTracking: { clearBlacklist: jest.Mock };
 
   beforeEach(async () => {
     const jobRepositoryMock = {
@@ -22,17 +24,23 @@ describe('JobBulkOperationsService', () => {
       killProcess: jest.fn(),
     } as unknown as jest.Mocked<FfmpegService>;
 
+    const fileFailureTrackingMock = {
+      clearBlacklist: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobBulkOperationsService,
         { provide: JobRepository, useValue: jobRepositoryMock },
         { provide: FfmpegService, useValue: ffmpegMock },
+        { provide: FileFailureTrackingService, useValue: fileFailureTrackingMock },
       ],
     }).compile();
 
     service = module.get<JobBulkOperationsService>(JobBulkOperationsService);
     jobRepository = module.get(JobRepository);
     ffmpegService = module.get(FfmpegService);
+    fileFailureTracking = module.get(FileFailureTrackingService);
   });
 
   it('should be defined', () => {
@@ -113,11 +121,24 @@ describe('JobBulkOperationsService', () => {
   });
 
   describe('retryAllFailed', () => {
+    const failedJobs = [
+      {
+        id: 'job-1',
+        fileLabel: 'a.mkv',
+        error: 'FFmpeg exit code 1',
+        filePath: '/media/a.mkv',
+        libraryId: 'lib-1',
+      },
+      {
+        id: 'job-2',
+        fileLabel: 'b.mkv',
+        error: 'No such file or directory (ENOENT)',
+        filePath: '/media/b.mkv',
+        libraryId: 'lib-2',
+      },
+    ];
+
     it('should requeue all failed jobs when no filter is provided', async () => {
-      const failedJobs = [
-        { id: 'job-1', fileLabel: 'a.mkv', error: 'FFmpeg exit code 1' },
-        { id: 'job-2', fileLabel: 'b.mkv', error: 'File not found' },
-      ];
       jobRepository.findManySelect.mockResolvedValue(failedJobs as never);
       jobRepository.updateManyByIds.mockResolvedValue({ count: 2 } as never);
 
@@ -142,15 +163,31 @@ describe('JobBulkOperationsService', () => {
       });
     });
 
+    it('should clear the per-file blacklist for every retried job', async () => {
+      jobRepository.findManySelect.mockResolvedValue(failedJobs as never);
+      jobRepository.updateManyByIds.mockResolvedValue({ count: 2 } as never);
+
+      await service.retryAllFailed();
+
+      expect(fileFailureTracking.clearBlacklist).toHaveBeenCalledTimes(2);
+      expect(fileFailureTracking.clearBlacklist).toHaveBeenCalledWith('/media/a.mkv', 'lib-1');
+      expect(fileFailureTracking.clearBlacklist).toHaveBeenCalledWith('/media/b.mkv', 'lib-2');
+    });
+
+    it('should not fail the retry when clearing a blacklist rejects', async () => {
+      jobRepository.findManySelect.mockResolvedValue(failedJobs as never);
+      jobRepository.updateManyByIds.mockResolvedValue({ count: 2 } as never);
+      fileFailureTracking.clearBlacklist
+        .mockRejectedValueOnce(new Error('DB error'))
+        .mockResolvedValueOnce(undefined);
+
+      const result = await service.retryAllFailed();
+
+      expect(result.retriedCount).toBe(2);
+      expect(fileFailureTracking.clearBlacklist).toHaveBeenCalledTimes(2);
+    });
+
     it('should filter by error category when errorFilter is provided', async () => {
-      const failedJobs = [
-        { id: 'job-1', fileLabel: 'a.mkv', error: 'FFmpeg exit code 1' },
-        {
-          id: 'job-2',
-          fileLabel: 'b.mkv',
-          error: 'No such file or directory (ENOENT)',
-        },
-      ];
       jobRepository.findManySelect.mockResolvedValue(failedJobs as never);
       jobRepository.updateManyByIds.mockResolvedValue({ count: 1 } as never);
 
@@ -160,6 +197,9 @@ describe('JobBulkOperationsService', () => {
       const retryIds = jobRepository.updateManyByIds.mock.calls[0][0] as string[];
       expect(retryIds).toEqual(['job-2']);
       expect(result.jobs).toHaveLength(1);
+      // Blacklist cleared only for the filtered job
+      expect(fileFailureTracking.clearBlacklist).toHaveBeenCalledTimes(1);
+      expect(fileFailureTracking.clearBlacklist).toHaveBeenCalledWith('/media/b.mkv', 'lib-2');
     });
   });
 

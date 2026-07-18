@@ -188,4 +188,50 @@ describe('QueueProcessingService', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('getNextJob - retry backoff', () => {
+    it('should exclude jobs with a future nextRetryAt in both the candidate query and the claim guard', async () => {
+      mockNodeConfig.getMainApiUrl.mockReturnValue(null);
+      mockNodeRepository.findUnique.mockResolvedValue({
+        id: 'node-1',
+        hasSharedStorage: true,
+        license: { maxConcurrentJobs: 5 },
+        _count: { jobs: 0 },
+      });
+
+      const claimedJob = { id: 'job-1', fileLabel: 'movie.mkv' };
+      const tx = {
+        $executeRaw: jest.fn(),
+        job: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'job-1',
+            filePath: '/media/movie.mkv',
+            pauseRequestedAt: null,
+            cancelRequestedAt: null,
+            transferRequired: false,
+            transferProgress: 100,
+            library: { nodeId: 'node-1' },
+          }),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findUnique: jest.fn().mockResolvedValue(claimedJob),
+          update: jest.fn(),
+        },
+        node: { findUnique: jest.fn() },
+      };
+      mockPrisma.$transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn(tx));
+
+      const result = await service.getNextJob('node-1');
+      expect(result).toEqual(claimedJob);
+
+      const backoffCondition = [{ nextRetryAt: null }, { nextRetryAt: { lte: expect.any(Date) } }];
+
+      // Candidate-selection query honors backoff
+      const findFirstArgs = tx.job.findFirst.mock.calls[0][0];
+      expect(findFirstArgs.where.OR).toEqual(backoffCondition);
+
+      // Guarded optimistic-claim update honors backoff too
+      const updateManyArgs = tx.job.updateMany.mock.calls[0][0];
+      expect(updateManyArgs.where.OR).toEqual(backoffCondition);
+    });
+  });
 });

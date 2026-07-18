@@ -39,6 +39,7 @@ export function createMockJob(overrides: Partial<Job> = {}): Job {
     sourceContainer: 'mkv',
     targetCodec: 'HEVC',
     targetContainer: 'mkv',
+    streamInfo: null,
     stage: JobStage.QUEUED,
     lastStageChangeAt: now,
     progress: 0,

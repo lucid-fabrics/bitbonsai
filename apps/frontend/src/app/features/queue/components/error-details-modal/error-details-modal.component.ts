@@ -19,6 +19,9 @@ export class ErrorDetailsModalComponent {
 
   protected showTechnicalDetails = false;
 
+  private static readonly ACTIONS_MARKER = '**Recommended Actions:**';
+  private static readonly DETAILS_MARKER = '**Technical Details:**';
+
   close() {
     this.closeModal.emit();
   }
@@ -27,7 +30,54 @@ export class ErrorDetailsModalComponent {
     this.showTechnicalDetails = !this.showTechnicalDetails;
   }
 
+  /**
+   * True when the error text is a pre-formatted backend analysis
+   * (produced by ffmpeg-error-analyzer.util.ts on the backend).
+   */
+  private isBackendAnalysis(): boolean {
+    const error = this.error || '';
+    return (
+      error.includes(ErrorDetailsModalComponent.ACTIONS_MARKER) ||
+      error.startsWith('[FATAL]') ||
+      error.startsWith('[RETRIABLE]')
+    );
+  }
+
+  /**
+   * Parse the backend analysis format:
+   * optional '[FATAL] ' / '[RETRIABLE] ' prefix, title line with emoji,
+   * description paragraph, optional '**Technical Details:**' section,
+   * and a '**Recommended Actions:**' section with indented lines.
+   */
+  private parseBackendAnalysis(): {
+    title: string;
+    description: string;
+    steps: { icon: string; text: string }[];
+  } {
+    const text = (this.error || '').replace(/^\[(FATAL|RETRIABLE)\]\s*/, '');
+    const [head, actions = ''] = text.split(ErrorDetailsModalComponent.ACTIONS_MARKER);
+    const headLines = head
+      .split(ErrorDetailsModalComponent.DETAILS_MARKER)[0]
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    return {
+      title: headLines[0] || 'Encoding failed',
+      description: headLines.slice(1).join(' '),
+      steps: actions
+        .split('\n')
+        .map((line) => line.trim().replace(/\*\*/g, ''))
+        .filter((line) => line.length > 0)
+        .map((line) => ({ icon: 'fa-angle-right', text: line })),
+    };
+  }
+
   getErrorSummary(): string {
+    if (this.isBackendAnalysis()) {
+      return this.parseBackendAnalysis().title;
+    }
+
     const errorLower = (this.error || '').toLowerCase();
 
     if (errorLower.includes('exit code 1')) {
@@ -52,6 +102,10 @@ export class ErrorDetailsModalComponent {
   }
 
   hasContextualHelp(): boolean {
+    if (this.isBackendAnalysis()) {
+      return this.parseBackendAnalysis().description.length > 0;
+    }
+
     const errorLower = (this.error || '').toLowerCase();
     return (
       errorLower.includes('exit code') ||
@@ -65,6 +119,10 @@ export class ErrorDetailsModalComponent {
   }
 
   getContextualHelp(): string {
+    if (this.isBackendAnalysis()) {
+      return this.parseBackendAnalysis().description;
+    }
+
     const errorLower = (this.error || '').toLowerCase();
 
     if (errorLower.includes('file not found') || errorLower.includes('does not exist')) {
@@ -89,6 +147,13 @@ export class ErrorDetailsModalComponent {
   }
 
   getActionableSteps(): { icon: string; text: string }[] {
+    if (this.isBackendAnalysis()) {
+      const backendSteps = this.parseBackendAnalysis().steps;
+      if (backendSteps.length > 0) {
+        return backendSteps;
+      }
+    }
+
     const errorLower = (this.error || '').toLowerCase();
     const steps: { icon: string; text: string }[] = [];
 
@@ -109,7 +174,7 @@ export class ErrorDetailsModalComponent {
     } else if (errorLower.includes('stuck') || errorLower.includes('no progress')) {
       steps.push({
         icon: 'fa-cog',
-        text: 'File may be problematic — try a different encoding policy',
+        text: 'File may be problematic - try a different encoding policy',
       });
     } else if (errorLower.includes('verification failed') || errorLower.includes('not playable')) {
       steps.push({
@@ -124,7 +189,7 @@ export class ErrorDetailsModalComponent {
     } else if (errorLower.includes('corrupt')) {
       steps.push({
         icon: 'fa-play-circle',
-        text: 'File may be damaged — try playing it in VLC to verify',
+        text: 'File may be damaged - try playing it in VLC to verify',
       });
     } else {
       steps.push({

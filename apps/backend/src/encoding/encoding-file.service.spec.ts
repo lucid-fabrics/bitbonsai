@@ -10,6 +10,7 @@ import { EncodingOutputVerificationService } from './encoding-output-verificatio
 import { FfmpegService } from './ffmpeg.service';
 import { QualityMetricsService } from './quality-metrics.service';
 import { ContainerValidationService } from './services/container-validation.service';
+import { QualityGateService } from './services/quality-gate.service';
 import { SegmentedEncodeService } from './services/segmented-encode.service';
 import { SystemResourceService } from './system-resource.service';
 
@@ -31,6 +32,12 @@ const makeSegmentedEncodeMock = () => ({
 
 const makeContainerValidationMock = () => ({
   validateContainer: jest.fn().mockResolvedValue({ valid: true }),
+});
+
+const makeQualityGateMock = () => ({
+  checkQuality: jest
+    .fn()
+    .mockResolvedValue({ passed: true, score: null, threshold: 85, forcedPass: false }),
 });
 
 describe('EncodingFileService', () => {
@@ -84,6 +91,7 @@ describe('EncodingFileService', () => {
         { provide: QualityMetricsService, useValue: {} },
         { provide: SegmentedEncodeService, useValue: makeSegmentedEncodeMock() },
         { provide: ContainerValidationService, useValue: makeContainerValidationMock() },
+        { provide: QualityGateService, useValue: makeQualityGateMock() },
         EncodingFileReplacementService,
         EncodingOutputVerificationService,
       ],
@@ -261,6 +269,7 @@ describe('EncodingFileService - extended coverage', () => {
         { provide: QualityMetricsService, useValue: mockQualityMetricsService },
         { provide: SegmentedEncodeService, useValue: makeSegmentedEncodeMock() },
         { provide: ContainerValidationService, useValue: makeContainerValidationMock() },
+        { provide: QualityGateService, useValue: makeQualityGateMock() },
         EncodingFileReplacementService,
         EncodingOutputVerificationService,
       ],

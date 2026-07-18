@@ -1,9 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Job, Policy } from '@prisma/client';
+import type { JobStreamInfoEntry } from './container-compatibility.service';
 import {
   type HardwareAccelConfig,
   HardwareAccelerationService,
 } from './hardware-acceleration.service';
+
+/** Subtitle codecs MP4 can hold after conversion to mov_text */
+const TEXT_SUBTITLE_CODECS = new Set(['subrip', 'srt', 'ass', 'ssa', 'mov_text', 'text', 'webvtt']);
 
 /**
  * Extended Job type with remux-specific fields
@@ -166,6 +170,61 @@ export class FfmpegFlagBuilderService {
   }
 
   /**
+   * Parse the compact per-stream inventory persisted on Job.streamInfo.
+   * Returns null when absent or malformed (jobs predating the probe).
+   */
+  private parseStreamInfo(job: Job): JobStreamInfoEntry[] | null {
+    const raw = (job as { streamInfo?: unknown }).streamInfo;
+    if (!Array.isArray(raw)) return null;
+    const entries: JobStreamInfoEntry[] = [];
+    for (const item of raw as unknown[]) {
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as Record<string, unknown>).type === 'string' &&
+        typeof (item as Record<string, unknown>).codec === 'string'
+      ) {
+        entries.push(item as unknown as JobStreamInfoEntry);
+      }
+    }
+    return entries.length > 0 ? entries : null;
+  }
+
+  /**
+   * True when the primary video stream uses a >8-bit pixel format
+   * (yuv420p10le, p010le, yuv422p12le, ...). Cover-art streams (mjpeg/png)
+   * are ignored.
+   */
+  private hasTenBitVideo(streamInfo: JobStreamInfoEntry[] | null): boolean {
+    if (!streamInfo) return false;
+    const video = streamInfo.find(
+      (s) => s.type === 'video' && !['mjpeg', 'png', 'bmp', 'gif'].includes(s.codec.toLowerCase())
+    );
+    return !!video?.pixFmt && /(10|12|16)(le|be)?$/.test(video.pixFmt);
+  }
+
+  /** MP4 cannot hold these audio codecs; they must be transcoded to AAC. */
+  private isMp4IncompatibleAudio(codec: string): boolean {
+    const c = codec.toLowerCase();
+    return (
+      c === 'ac3' || c === 'eac3' || c === 'truehd' || c.startsWith('dts') || c.startsWith('pcm_')
+    );
+  }
+
+  /** Remove a `<flag> <value>` pair from a flag array (returns a copy). */
+  private stripFlagPair(flags: string[], flag: string): string[] {
+    const result: string[] = [];
+    for (let i = 0; i < flags.length; i++) {
+      if (flags[i] === flag && i + 1 < flags.length) {
+        i++;
+      } else {
+        result.push(flags[i]);
+      }
+    }
+    return result;
+  }
+
+  /**
    * Pull `-vf <value>` pairs out of a validated flag array into `vfChain`,
    * returning the remaining flags. Lets the builder emit a single merged -vf.
    */
@@ -259,6 +318,13 @@ export class FfmpegFlagBuilderService {
       // ENCODE MODE: Full transcode with quality settings
       this.logger.log(`ENCODE MODE: Full transcode (${job.sourceCodec} → ${job.targetCodec})`);
 
+      // Per-stream inventory persisted by the health check (may be absent for
+      // jobs created before the probe existed - all uses below fall back to
+      // conservative defaults).
+      const streamInfo = this.parseStreamInfo(job);
+      const sourceIsTenBit = this.hasTenBitVideo(streamInfo);
+      const targetIsH264 = policy.targetCodec.toUpperCase() === 'H264';
+
       // TIMESTAMP RESILIENCE: health check flagged non-monotonic DTS on this
       // source (see FileHealthService/health-check-codec-analyzer); genpts
       // regenerates presentation timestamps to avoid A/V desync mid-encode.
@@ -272,7 +338,15 @@ export class FfmpegFlagBuilderService {
       // decode flags like -hwaccel_output_format cuda pin frames on the GPU,
       // which breaks a CPU encoder downstream.
       if (!job.codecOverride) {
-        args.push(...hwaccel.flags);
+        let hwFlags = hwaccel.flags;
+        // 10-BIT: keeping decoded frames in CUDA memory prevents ffmpeg from
+        // inserting the pixel-format conversions 10-bit sources need (and
+        // 8-bit-only encoders require). Decode on GPU but download frames to
+        // system memory so conversions happen automatically.
+        if (sourceIsTenBit) {
+          hwFlags = this.stripFlagPair(hwFlags, '-hwaccel_output_format');
+        }
+        args.push(...hwFlags);
       }
 
       // Input file
@@ -289,6 +363,13 @@ export class FfmpegFlagBuilderService {
       // aom concept, hardware encoders use their own quality knob.
       const qualityFlag = this.getQualityFlag(job.codecOverride ? 'CPU' : hwaccel.type);
       args.push(qualityFlag, policy.targetQuality.toString());
+
+      // 10-BIT → H264: hardware H264 encoders (and default x264 builds) only
+      // accept 8-bit input; without an explicit downconvert the encode hard
+      // fails on 10-bit HDR sources.
+      if (sourceIsTenBit && targetIsH264) {
+        args.push('-pix_fmt', 'yuv420p');
+      }
 
       // Audio codec (from decision config or policy advanced settings)
       // DECISION FIX: Check if decisionData has audio config overrides
@@ -324,21 +405,47 @@ export class FfmpegFlagBuilderService {
         args.push('-b:a', audioBitrate);
       }
 
+      // MP4 AUDIO AUTO-TRANSCODE: MP4 can't hold AC3-family/DTS/TrueHD/PCM
+      // audio; ffmpeg fails at header write. When the default is copy and the
+      // stream inventory knows which tracks are incompatible, transcode just
+      // those to AAC and copy the rest - no user decision needed.
+      if (isMp4Container && audioCodec === 'copy' && streamInfo) {
+        const audioEntries = streamInfo.filter((s) => s.type === 'audio');
+        audioEntries.forEach((entry, relIndex) => {
+          if (this.isMp4IncompatibleAudio(entry.codec)) {
+            args.push(`-c:a:${relIndex}`, 'aac', `-b:a:${relIndex}`, '384k');
+          }
+        });
+      }
+
       // Map real video (0:V excludes attached_pic cover art) and all audio
       // (0:a? tolerates video-only sources) instead of ffmpeg's default of
       // picking one stream of each - without this, multi-audio and commentary
       // tracks were silently dropped.
       args.push('-map', '0:V', '-map', '0:a?');
       if (!isMp4Container) {
-        // MKV can copy any subtitle codec as-is, so keep them all. MP4 gets
-        // NO subtitle map: force-mapping bitmap subs (PGS/DVD) into MP4 is a
-        // hard failure ("only text to text"), and there's no stream metadata
-        // at build time to map only the text ones. Dropping subs for MP4
-        // keeps the encode succeeding, matching ffmpeg's own type-matched
-        // auto-selection behavior for incompatible subs.
+        // MKV can copy any subtitle codec as-is, so keep them all.
         args.push('-map', '0:s?');
         args.push('-c:s', 'copy');
+      } else if (streamInfo) {
+        // MP4 can only hold text subtitles (as mov_text). With the stream
+        // inventory we map exactly the text-based tracks and convert them;
+        // bitmap subs (PGS/DVD) are left out since force-mapping them into
+        // MP4 is a hard failure ("only text to text").
+        const subtitleEntries = streamInfo.filter((s) => s.type === 'subtitle');
+        const textSubRelIndexes = subtitleEntries
+          .map((entry, relIndex) => ({ entry, relIndex }))
+          .filter(({ entry }) => TEXT_SUBTITLE_CODECS.has(entry.codec.toLowerCase()))
+          .map(({ relIndex }) => relIndex);
+        if (textSubRelIndexes.length > 0) {
+          for (const relIndex of textSubRelIndexes) {
+            args.push('-map', `0:s:${relIndex}?`);
+          }
+          args.push('-c:s', 'mov_text');
+        }
       }
+      // MP4 without stream inventory: no subtitle map at all (conservative -
+      // an unknown bitmap sub would hard-fail the whole encode).
 
       // AV1 THROTTLING: Apply thread limit if specified on job
       const jobWithThreads = job as JobWithThreadsFields;
@@ -392,7 +499,13 @@ export class FfmpegFlagBuilderService {
         !job.codecOverride &&
         !vfChain.some((v) => v.includes('hwupload'))
       ) {
-        vfChain.push(hwaccel.videoFilter);
+        // 10-BIT VAAPI: upload as p010 for 10-bit-capable targets so HDR
+        // sources keep their bit depth; H264 stays on the 8-bit nv12 path.
+        const hwFilter =
+          sourceIsTenBit && !targetIsH264
+            ? hwaccel.videoFilter.replace('format=nv12', 'format=p010')
+            : hwaccel.videoFilter;
+        vfChain.push(hwFilter);
       }
 
       if (vfChain.length > 0) {
@@ -409,10 +522,13 @@ export class FfmpegFlagBuilderService {
     // Output to specified path (temp file that will be renamed atomically)
     // Determine output format based on job type and target container
     if (isMp4Container) {
-      // MP4 format with fragmentation for streaming compatibility
-      // Use fragmented MP4 for instant readability (moov atom at start)
-      // This allows preview captures to work at any encoding progress
-      args.push('-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4');
+      // Standard MP4 with the moov atom relocated to the front on completion.
+      // The previous fragmented-MP4 default (frag_keyframe+empty_moov) made
+      // mid-encode previews possible but produced non-standard files that
+      // some players reject; final-file compatibility wins.
+      // ponytail: mid-encode previews unavailable for MP4 outputs; restore
+      // via a separate preview remux if previews for short MP4s matter.
+      args.push('-movflags', '+faststart', '-f', 'mp4');
     } else if (targetContainer === 'mkv' || targetContainer.includes('matroska')) {
       // MKV format (no special flags needed)
       args.push('-f', 'matroska');

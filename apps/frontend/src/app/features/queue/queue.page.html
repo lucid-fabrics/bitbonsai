@@ -401,7 +401,7 @@
                     <span class="auto-heal-badge warning"
                           bbTooltip
                           tooltipTitle="Auto-Healed (Fresh Start)"
-                          [tooltipContent]="'Temp file was missing. Job restarted from scratch (was at ' + (job.autoHealedProgress || 0).toFixed(1) + '%)' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times — it may be on unreliable storage.' : '')"
+                          [tooltipContent]="'Temp file was missing. Job restarted from scratch (was at ' + (job.autoHealedProgress || 0).toFixed(1) + '%)' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times - it may be on unreliable storage.' : '')"
                           tooltipPlacement="top">
                       <i class="fas fa-exclamation-triangle"></i> {{ 'queue2.restarted' | transloco }}
                     </span>
@@ -409,7 +409,7 @@
                     <span class="auto-heal-badge"
                           bbTooltip
                           tooltipTitle="Auto-Healed (Resumed)"
-                          [tooltipContent]="'System auto-recovered this job and resumed from ' + (job.autoHealedProgress || 0).toFixed(1) + '%' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times — it may be on unreliable storage.' : '')"
+                          [tooltipContent]="'System auto-recovered this job and resumed from ' + (job.autoHealedProgress || 0).toFixed(1) + '%' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times - it may be on unreliable storage.' : '')"
                           tooltipPlacement="top">
                       <i class="fas fa-shield-alt"></i> {{ 'queue2.resumed' | transloco }}
                     </span>
@@ -417,7 +417,7 @@
                     <span class="auto-heal-badge"
                           bbTooltip
                           tooltipTitle="Auto-Healed"
-                          [tooltipContent]="'System auto-recovered this job on restart' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times — it may be on unreliable storage.' : '')"
+                          [tooltipContent]="'System auto-recovered this job on restart' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times - it may be on unreliable storage.' : '')"
                           tooltipPlacement="top">
                       <i class="fas fa-shield-alt"></i> {{ 'queue2.autoHealed' | transloco }}
                     </span>
@@ -462,7 +462,7 @@
                     </span>
                   }
                   @if (job.status === JobStatus.FAILED && (job.retryCount || 0) > 0) {
-                    @if ((job.retryCount || 0) >= 3) {
+                    @if ((job.retryCount || 0) >= MAX_AUTO_RETRIES) {
                       <span class="retry-limit-badge maxed"
                             bbTooltip
                             tooltipTitle="Max Retries Reached"
@@ -476,7 +476,7 @@
                             tooltipTitle="Retry Attempt"
                             tooltipContent="This job has been retried automatically. More attempts remain before reaching the limit."
                             tooltipPlacement="top">
-                        <i class="fas fa-redo"></i> Attempt {{ (job.retryCount || 0) + 1 }}/3
+                        <i class="fas fa-redo"></i> Attempt {{ (job.retryCount || 0) + 1 }}/{{ MAX_AUTO_RETRIES }}
                       </span>
                     }
                   }

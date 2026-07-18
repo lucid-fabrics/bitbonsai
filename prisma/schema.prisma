@@ -633,6 +633,7 @@ model Job {
   sourceContainer String? // Original container (mkv, mp4, avi, etc)
   targetCodec     String // Target codec
   targetContainer String? // Target container (mkv, mp4, or null to keep original)
+  streamInfo      Json? // Per-stream inventory from health check: [{index, type, codec, pixFmt?, colorTransfer?}]
   stage           JobStage
   lastStageChangeAt DateTime? // CRITICAL FIX #4: Track when stage last changed (prevents watchdog false positives)
   progress        Float     @default(0) // 0.0 to 100.0

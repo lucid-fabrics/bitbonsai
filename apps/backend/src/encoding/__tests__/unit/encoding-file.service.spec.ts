@@ -14,6 +14,7 @@ import { EncodingOutputVerificationService } from '../../encoding-output-verific
 import { FfmpegService } from '../../ffmpeg.service';
 import { QualityMetricsService } from '../../quality-metrics.service';
 import { ContainerValidationService } from '../../services/container-validation.service';
+import { QualityGateService } from '../../services/quality-gate.service';
 import { SegmentedEncodeService } from '../../services/segmented-encode.service';
 import { SystemResourceService } from '../../system-resource.service';
 
@@ -154,6 +155,14 @@ describe('EncodingFileService', () => {
           provide: ContainerValidationService,
           useValue: {
             validateContainer: jest.fn().mockResolvedValue({ valid: true }),
+          },
+        },
+        {
+          provide: QualityGateService,
+          useValue: {
+            checkQuality: jest
+              .fn()
+              .mockResolvedValue({ passed: true, score: null, threshold: 85, forcedPass: false }),
           },
         },
         EncodingFileReplacementService,
@@ -575,6 +584,56 @@ describe('EncodingFileService', () => {
       await expect(service.verifyEncodedFile('/tmp/out.mkv')).rejects.toThrow(
         'Verification failed after 10 attempts'
       );
+    });
+  });
+
+  // ─── encodeFile - quality gate ────────────────────────────────────────────
+
+  describe('encodeFile - quality gate', () => {
+    beforeEach(() => {
+      jest.spyOn(service.outputVerification, 'sleep').mockResolvedValue(undefined);
+      jest.spyOn(service.fileReplacement, 'sleep').mockResolvedValue(undefined);
+      // Plenty of disk space so the flow reaches the quality gate
+      (fs.promises.statfs as jest.Mock).mockResolvedValue({
+        bavail: 100_000_000,
+        bsize: 4096,
+      });
+    });
+
+    it('passes quality metrics to the gate and replaces the file when the gate passes', async () => {
+      const qualityGate = module.get(QualityGateService);
+      const replaceSpy = jest
+        .spyOn(service.fileReplacement, 'replaceFile')
+        .mockResolvedValue(undefined);
+
+      await expect(service.encodeFile(baseJob)).resolves.toEqual(
+        expect.objectContaining({ beforeSizeBytes: expect.any(BigInt) })
+      );
+
+      expect(qualityGate.checkQuality).toHaveBeenCalledWith(
+        baseJob,
+        expect.stringContaining('.tmp-job-1'),
+        null // quality metrics disabled in settings mock
+      );
+      expect(replaceSpy).toHaveBeenCalled();
+    });
+
+    it('throws and does not replace the file when the quality gate fails', async () => {
+      const qualityGate = module.get(QualityGateService);
+      (qualityGate.checkQuality as jest.Mock).mockResolvedValue({
+        passed: false,
+        score: 70.5,
+        threshold: 85,
+        forcedPass: false,
+      });
+      const replaceSpy = jest
+        .spyOn(service.fileReplacement, 'replaceFile')
+        .mockResolvedValue(undefined);
+
+      await expect(service.encodeFile(baseJob)).rejects.toThrow(
+        'Quality gate failed: VMAF 70.5 below threshold 85'
+      );
+      expect(replaceSpy).not.toHaveBeenCalled();
     });
   });
 });

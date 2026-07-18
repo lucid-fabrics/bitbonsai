@@ -16,6 +16,7 @@ const makeJob = (overrides: Partial<Job> = {}): Job =>
     decisionData: null,
     codecOverride: null,
     healthMessage: null,
+    streamInfo: null,
     ...overrides,
   }) as unknown as Job;
 
@@ -175,7 +176,8 @@ describe('FfmpegFlagBuilderService', () => {
       } as Partial<Job>);
       const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/movie.mp4');
       expect(args).toContain('mp4');
-      expect(args).toContain('+frag_keyframe+empty_moov+default_base_moof');
+      expect(args[args.indexOf('-movflags') + 1]).toBe('+faststart');
+      expect(args).not.toContain('+frag_keyframe+empty_moov+default_base_moof');
     });
   });
 
@@ -359,7 +361,7 @@ describe('FfmpegFlagBuilderService', () => {
       expect(args[args.indexOf('-c:s') + 1]).toBe('copy');
     });
 
-    it('drops subtitles entirely for mp4 target', () => {
+    it('drops subtitles entirely for mp4 target without streamInfo', () => {
       const job = makeJob({ targetContainer: 'mp4' } as Partial<Job>);
       const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mp4');
       expect(args).not.toContain('0:s?');
@@ -437,6 +439,208 @@ describe('FfmpegFlagBuilderService', () => {
       const job = makeJob({ codecOverride: 'libx265' } as Partial<Job>);
       const args = service.buildFfmpegCommand(job, makePolicy(), vaapiHwaccel(), '/out/out.mkv');
       expect(args).not.toContain('-vf');
+    });
+  });
+
+  // ── buildFfmpegCommand – streamInfo parsing defaults ────────────────────
+
+  describe('buildFfmpegCommand – streamInfo defensive parsing', () => {
+    it('treats non-array streamInfo as absent (mp4 gets no subtitle map)', () => {
+      const job = makeJob({ targetContainer: 'mp4', streamInfo: { bogus: true } } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mp4');
+      expect(args).not.toContain('-c:s');
+      expect(args.some((a) => a.startsWith('0:s'))).toBe(false);
+    });
+
+    it('treats array of malformed entries as absent', () => {
+      const job = makeJob({
+        targetContainer: 'mp4',
+        streamInfo: [{ index: 0 }, 'garbage', null, 42],
+      } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mp4');
+      expect(args).not.toContain('-c:s');
+      expect(args.some((a) => a.startsWith('0:s'))).toBe(false);
+    });
+  });
+
+  // ── buildFfmpegCommand – MP4 subtitle mapping from streamInfo ───────────
+
+  describe('buildFfmpegCommand – MP4 subtitles via streamInfo', () => {
+    it('maps only text subtitles individually and converts to mov_text', () => {
+      const job = makeJob({
+        targetContainer: 'mp4',
+        streamInfo: [
+          { index: 0, type: 'video', codec: 'h264', pixFmt: 'yuv420p' },
+          { index: 1, type: 'audio', codec: 'aac' },
+          { index: 2, type: 'subtitle', codec: 'subrip' },
+          { index: 3, type: 'subtitle', codec: 'hdmv_pgs_subtitle' },
+          { index: 4, type: 'subtitle', codec: 'ass' },
+        ],
+      } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mp4');
+      expect(args).toContain('0:s:0?');
+      expect(args).toContain('0:s:2?');
+      expect(args).not.toContain('0:s:1?');
+      expect(args).not.toContain('0:s?');
+      expect(args.filter((a) => a === '-c:s')).toHaveLength(1);
+      expect(args[args.indexOf('-c:s') + 1]).toBe('mov_text');
+    });
+
+    it('maps no subtitles when streamInfo has only bitmap subs', () => {
+      const job = makeJob({
+        targetContainer: 'mp4',
+        streamInfo: [
+          { index: 0, type: 'video', codec: 'h264' },
+          { index: 1, type: 'subtitle', codec: 'hdmv_pgs_subtitle' },
+          { index: 2, type: 'subtitle', codec: 'dvd_subtitle' },
+        ],
+      } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mp4');
+      expect(args).not.toContain('-c:s');
+      expect(args.some((a) => a.startsWith('0:s'))).toBe(false);
+    });
+
+    it('keeps blanket -map 0:s? with -c:s copy for mkv target even with streamInfo', () => {
+      const job = makeJob({
+        targetContainer: 'mkv',
+        streamInfo: [
+          { index: 0, type: 'video', codec: 'h264' },
+          { index: 1, type: 'subtitle', codec: 'hdmv_pgs_subtitle' },
+        ],
+      } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mkv');
+      expect(args).toContain('0:s?');
+      expect(args[args.indexOf('-c:s') + 1]).toBe('copy');
+      expect(args.some((a) => /^0:s:\d/.test(a))).toBe(false);
+    });
+  });
+
+  // ── buildFfmpegCommand – MP4 incompatible-audio auto-transcode ──────────
+
+  describe('buildFfmpegCommand – MP4 audio auto-transcode', () => {
+    const audioStreamInfo = [
+      { index: 0, type: 'video', codec: 'h264' },
+      { index: 1, type: 'audio', codec: 'aac' },
+      { index: 2, type: 'audio', codec: 'ac3' },
+      { index: 3, type: 'audio', codec: 'dts' },
+    ];
+
+    it('adds per-stream aac overrides after base -c:a copy for incompatible tracks only', () => {
+      const job = makeJob({ targetContainer: 'mp4', streamInfo: audioStreamInfo } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mp4');
+      expect(args[args.indexOf('-c:a') + 1]).toBe('copy');
+      expect(args[args.indexOf('-c:a:1') + 1]).toBe('aac');
+      expect(args[args.indexOf('-b:a:1') + 1]).toBe('384k');
+      expect(args[args.indexOf('-c:a:2') + 1]).toBe('aac');
+      expect(args[args.indexOf('-b:a:2') + 1]).toBe('384k');
+      expect(args).not.toContain('-c:a:0');
+      expect(args.indexOf('-c:a')).toBeLessThan(args.indexOf('-c:a:1'));
+    });
+
+    it('skips per-stream overrides when a decision already set a non-copy audio codec', () => {
+      const job = makeJob({
+        targetContainer: 'mp4',
+        streamInfo: audioStreamInfo,
+        decisionData: JSON.stringify({ actionConfig: { audioCodec: 'aac' } }),
+      } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mp4');
+      expect(args[args.indexOf('-c:a') + 1]).toBe('aac');
+      expect(args).not.toContain('-c:a:1');
+      expect(args).not.toContain('-c:a:2');
+    });
+
+    it('adds no overrides for mkv target', () => {
+      const job = makeJob({ targetContainer: 'mkv', streamInfo: audioStreamInfo } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mkv');
+      expect(args).not.toContain('-c:a:1');
+      expect(args).not.toContain('-c:a:2');
+    });
+  });
+
+  // ── buildFfmpegCommand – 10-bit source handling ─────────────────────────
+
+  describe('buildFfmpegCommand – 10-bit sources', () => {
+    // Cover-art mjpeg stream first: must be skipped when finding the video stream
+    const tenBitStreamInfo = [
+      { index: 0, type: 'video', codec: 'mjpeg', pixFmt: 'yuvj420p' },
+      { index: 1, type: 'video', codec: 'hevc', pixFmt: 'yuv420p10le' },
+      { index: 2, type: 'audio', codec: 'aac' },
+    ];
+
+    it('strips the -hwaccel_output_format pair from NVIDIA flags, keeps -hwaccel cuda', () => {
+      const job = makeJob({ streamInfo: tenBitStreamInfo } as Partial<Job>);
+      const hwaccel = makeHwaccel({
+        type: 'NVIDIA',
+        flags: ['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda'],
+        videoCodec: 'hevc_nvenc',
+      });
+      const args = service.buildFfmpegCommand(job, makePolicy(), hwaccel, '/out/out.mkv');
+      expect(args[args.indexOf('-hwaccel') + 1]).toBe('cuda');
+      expect(args).not.toContain('-hwaccel_output_format');
+    });
+
+    it('keeps -hwaccel_output_format for 8-bit sources', () => {
+      const job = makeJob({
+        streamInfo: [{ index: 0, type: 'video', codec: 'h264', pixFmt: 'yuv420p' }],
+      } as Partial<Job>);
+      const hwaccel = makeHwaccel({
+        type: 'NVIDIA',
+        flags: ['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda'],
+        videoCodec: 'hevc_nvenc',
+      });
+      const args = service.buildFfmpegCommand(job, makePolicy(), hwaccel, '/out/out.mkv');
+      expect(args).toContain('-hwaccel_output_format');
+    });
+
+    it('pushes -pix_fmt yuv420p after the quality flag for H264 target', () => {
+      const job = makeJob({ streamInfo: tenBitStreamInfo } as Partial<Job>);
+      const policy = makePolicy({ targetCodec: 'H264' } as Partial<Policy>);
+      const args = service.buildFfmpegCommand(job, policy, makeHwaccel(), '/out/out.mkv');
+      const pixIdx = args.indexOf('-pix_fmt');
+      expect(args[pixIdx + 1]).toBe('yuv420p');
+      expect(pixIdx).toBeGreaterThan(args.indexOf('-crf'));
+    });
+
+    it('does not add -pix_fmt for non-H264 targets', () => {
+      const job = makeJob({ streamInfo: tenBitStreamInfo } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mkv');
+      expect(args).not.toContain('-pix_fmt');
+    });
+
+    it('upgrades VAAPI filter to format=p010 for 10-bit non-H264 target', () => {
+      const job = makeJob({ streamInfo: tenBitStreamInfo } as Partial<Job>);
+      const hwaccel = makeHwaccel({
+        type: 'AMD',
+        flags: ['-hwaccel', 'vaapi', '-vaapi_device', '/dev/dri/renderD129'],
+        videoCodec: 'hevc_vaapi',
+        videoFilter: 'format=nv12,hwupload',
+      } as Partial<HardwareAccelConfig>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), hwaccel, '/out/out.mkv');
+      expect(args[args.indexOf('-vf') + 1]).toBe('format=p010,hwupload');
+    });
+
+    it('keeps VAAPI nv12 filter for 10-bit source with H264 target', () => {
+      const job = makeJob({ streamInfo: tenBitStreamInfo } as Partial<Job>);
+      const policy = makePolicy({ targetCodec: 'H264' } as Partial<Policy>);
+      const hwaccel = makeHwaccel({
+        type: 'AMD',
+        flags: ['-hwaccel', 'vaapi', '-vaapi_device', '/dev/dri/renderD129'],
+        videoCodec: 'h264_vaapi',
+        videoFilter: 'format=nv12,hwupload',
+      } as Partial<HardwareAccelConfig>);
+      const args = service.buildFfmpegCommand(job, policy, hwaccel, '/out/out.mkv');
+      expect(args[args.indexOf('-vf') + 1]).toBe('format=nv12,hwupload');
+    });
+  });
+
+  // ── buildFfmpegCommand – MP4 output flags ───────────────────────────────
+
+  describe('buildFfmpegCommand – MP4 faststart', () => {
+    it('uses -movflags +faststart for ENCODE mp4 output (no frag flags)', () => {
+      const job = makeJob({ targetContainer: 'mp4' } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mp4');
+      expect(args[args.indexOf('-movflags') + 1]).toBe('+faststart');
+      expect(args).not.toContain('+frag_keyframe+empty_moov+default_base_moof');
     });
   });
 

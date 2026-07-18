@@ -10,8 +10,9 @@ import { QueueService } from '../queue/queue.service';
 import { EncodingFileReplacementService } from './encoding-file-replacement.service';
 import { EncodingOutputVerificationService } from './encoding-output-verification.service';
 import { FfmpegService } from './ffmpeg.service';
-import { QualityMetricsService } from './quality-metrics.service';
+import { type QualityMetrics, QualityMetricsService } from './quality-metrics.service';
 import { ContainerValidationService } from './services/container-validation.service';
+import { QualityGateService } from './services/quality-gate.service';
 import { SegmentedEncodeService } from './services/segmented-encode.service';
 import { SystemResourceService } from './system-resource.service';
 
@@ -53,7 +54,8 @@ export class EncodingFileService {
     readonly fileReplacement: EncodingFileReplacementService,
     readonly outputVerification: EncodingOutputVerificationService,
     private readonly segmentedEncode: SegmentedEncodeService,
-    private readonly containerValidation: ContainerValidationService
+    private readonly containerValidation: ContainerValidationService,
+    private readonly qualityGate: QualityGateService
   ) {}
 
   /**
@@ -209,7 +211,21 @@ export class EncodingFileService {
       }
 
       // Calculate quality metrics if enabled (before replacement, while both files exist)
-      await this.calculateQualityMetricsIfEnabled(job, job.filePath, tmpPath);
+      const qualityMetrics = await this.calculateQualityMetricsIfEnabled(
+        job,
+        job.filePath,
+        tmpPath
+      );
+
+      // VMAF quality gate: reject encodes below the configured threshold.
+      // Throwing here routes through the retry strategy; the gate force-passes
+      // after its retry cap, so this cannot loop forever.
+      const gateResult = await this.qualityGate.checkQuality(job, tmpPath, qualityMetrics);
+      if (!gateResult.passed) {
+        throw new Error(
+          `Quality gate failed: VMAF ${gateResult.score} below threshold ${gateResult.threshold}`
+        );
+      }
 
       // Replace original file with encoded version (with Keep Original support)
       await this.fileReplacement.replaceFile(job, tmpPath, policy.atomicReplace);
@@ -532,10 +548,10 @@ export class EncodingFileService {
     job: JobWithPolicy,
     originalPath: string,
     encodedPath: string
-  ): Promise<void> {
+  ): Promise<QualityMetrics | null> {
     try {
       const settings = await this.settingsRepository.findFirst();
-      if (!settings?.qualityMetricsEnabled) return;
+      if (!settings?.qualityMetricsEnabled) return null;
 
       this.logger.log(`Calculating quality metrics for job ${job.id}...`);
       const metrics = await this.qualityMetricsService.calculateAllQualityMetrics(
@@ -551,10 +567,13 @@ export class EncodingFileService {
         },
         qualityMetricsAt: metrics.calculatedAt,
       });
+
+      return metrics;
     } catch (error: unknown) {
       this.logger.warn(
         `Quality metrics calculation failed for job ${job.id}, continuing: ${error instanceof Error ? error.message : String(error)}`
       );
+      return null;
     }
   }
 

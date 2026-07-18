@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TranslocoModule } from '@ngneat/transloco';
 import { JobEventType, type JobHistoryEvent } from '../../models/job-history-event.model';
+import { MAX_AUTO_RETRIES } from '../../models/queue-job.model';
 
 @Component({
   selector: 'app-job-history-modal',
@@ -18,6 +19,7 @@ export class JobHistoryModalComponent {
   @Output() closeModal = new EventEmitter<void>();
 
   protected JobEventType = JobEventType;
+  protected readonly MAX_AUTO_RETRIES = MAX_AUTO_RETRIES;
   protected expandedEventIds = new Set<string>();
 
   close() {

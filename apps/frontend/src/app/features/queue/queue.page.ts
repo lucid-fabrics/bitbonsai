@@ -22,7 +22,7 @@ import type {
 import type { JobHistoryEvent } from './models/job-history-event.model';
 import { JobEventType } from './models/job-history-event.model';
 import { JobStatus } from './models/job-status.enum';
-import type { QueueJob } from './models/queue-job.model';
+import { MAX_AUTO_RETRIES, type QueueJob } from './models/queue-job.model';
 import type { QueueResponse } from './models/queue-response.model';
 import { CodecBadgeClassPipe } from './pipes/codec-badge-class.pipe';
 import { StatusClassPipe } from './pipes/status-class.pipe';
@@ -106,6 +106,9 @@ export class QueueComponent implements OnInit {
   // Expose JobEventType enum for template
   protected readonly JobEventType = JobEventType;
 
+  // Automatic retry ceiling (hourly auto-heal keeps retrying up to this)
+  protected readonly MAX_AUTO_RETRIES = MAX_AUTO_RETRIES;
+
   // UI-only state (not delegatable)
   protected expandedJobId: string | null = null;
   protected openPriorityMenuId: string | null = null;
@@ -153,7 +156,7 @@ export class QueueComponent implements OnInit {
   }
 
   // ============================================================================
-  // FILTER / PAGINATION — delegate to QueueDataService
+  // FILTER / PAGINATION - delegate to QueueDataService
   // ============================================================================
 
   protected get selectedStatus(): JobStatus | 'ALL' {
@@ -210,7 +213,7 @@ export class QueueComponent implements OnInit {
   }
 
   // ============================================================================
-  // DISPLAY DELEGATES — forward to QueueDisplayService
+  // DISPLAY DELEGATES - forward to QueueDisplayService
   // ============================================================================
 
   protected getStatusIcon(status: JobStatus): string {

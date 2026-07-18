@@ -49,7 +49,7 @@ export class FileHealthService {
   private readonly logger = new Logger(FileHealthService.name);
 
   /**
-   * Quick health check — fast ffprobe header scan only.
+   * Quick health check: fast ffprobe header scan only.
    *
    * Catches missing/unreadable files, bad headers, and zero duration.
    * Timeout: 5 seconds. Takes <2s on healthy files.
@@ -125,13 +125,19 @@ export class FileHealthService {
         clearTimeout(timeoutId);
         ffprobe.stdout?.destroy();
         ffprobe.stderr?.destroy();
-        resolve({ passed: false, reason: `Failed to run ffprobe: ${err.message}` });
+        // FAIL OPEN: a spawn failure (binary missing, ENOENT, EAGAIN) is a
+        // tooling problem, not file corruption. Never mark a healthy file
+        // CORRUPTED for it - the encode itself will catch genuinely bad files.
+        this.logger.warn(
+          `Quick health check could not run ffprobe (${err.message}) - failing open, not file corruption`
+        );
+        resolve({ passed: true });
       });
     });
   }
 
   /**
-   * Thorough health check — ffmpeg decode of first 60 seconds.
+   * Thorough health check - ffmpeg decode of first 60 seconds.
    *
    * Catches corrupt macroblocks, audio sync issues, and actual decode errors
    * that ffprobe header scans miss. Timeout: 90 seconds.
@@ -204,7 +210,11 @@ export class FileHealthService {
         clearTimeout(timeoutId);
         ffmpeg.stdout?.destroy();
         ffmpeg.stderr?.destroy();
-        resolve({ passed: false, errors: [`Failed to run ffmpeg: ${err.message}`] });
+        // FAIL OPEN: spawn failure is a tooling problem, not file corruption
+        this.logger.warn(
+          `Thorough health check could not run ffmpeg (${err.message}) - failing open, not file corruption`
+        );
+        resolve({ passed: true, errors: [] });
       });
     });
   }
@@ -240,6 +250,19 @@ export class FileHealthService {
     try {
       // Run comprehensive ffprobe analysis
       const probeResult = await this.runFFProbe(filePath);
+
+      // FAIL OPEN: the probe never ran (binary missing/spawn failure), so we
+      // know nothing about the file. Never mark it CORRUPTED for a tooling
+      // hiccup - the encode itself will catch genuinely bad files.
+      if (probeResult.spawnFailed) {
+        return {
+          status: FileHealthStatus.HEALTHY,
+          score: FileHealthService.MAX_HEALTH_SCORE,
+          issues: [],
+          warnings: ['Health check could not run (ffprobe unavailable) - assuming healthy'],
+          canEncode: true,
+        };
+      }
 
       // Analyze results
       const healthResult = this.evaluateHealth(probeResult);
@@ -292,6 +315,7 @@ export class FileHealthService {
     exitCode: number;
     stdout: string;
     stderr: string;
+    spawnFailed?: boolean;
     duration?: number;
     bitrate?: number;
     hasVideo?: boolean;
@@ -374,7 +398,11 @@ export class FileHealthService {
         // Clean up streams on error
         ffprobe.stdout?.destroy();
         ffprobe.stderr?.destroy();
-        reject(error);
+        // FAIL OPEN: spawn failure is a tooling problem, not file corruption
+        this.logger.warn(
+          `Health probe could not run ffprobe (${error.message}) - failing open, not file corruption`
+        );
+        resolve({ exitCode: 0, stdout: '', stderr: '', spawnFailed: true });
       });
     });
   }
@@ -440,8 +468,15 @@ export class FileHealthService {
     // Analyze stderr for warnings/errors
     const stderrLower = probeResult.stderr.toLowerCase();
 
-    // Critical errors in stderr
-    if (stderrLower.includes('invalid') || stderrLower.includes('corrupt')) {
+    // Critical errors in stderr: match specific corruption phrases only, so
+    // benign warnings that merely contain 'invalid' or 'corrupt' are not penalized
+    const corruptionPhrases = [
+      'invalid data found',
+      'corrupt decoded frame',
+      'error while decoding',
+      'error submitting packet',
+    ];
+    if (corruptionPhrases.some((phrase) => stderrLower.includes(phrase))) {
       issues.push('File contains invalid or corrupted data');
       score -= 30;
     }
@@ -581,10 +616,11 @@ export class FileHealthService {
         clearTimeout(timeoutId);
         ffmpeg.stdout?.destroy();
         ffmpeg.stderr?.destroy();
-        resolve({
-          success: false,
-          error: `Failed to run ffmpeg: ${error.message}`,
-        });
+        // FAIL OPEN: spawn failure is a tooling problem, not file corruption
+        this.logger.warn(
+          `Test decode could not run ffmpeg (${error.message}) - failing open, not file corruption`
+        );
+        resolve({ success: true });
       });
     });
   }

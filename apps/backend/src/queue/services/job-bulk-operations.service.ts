@@ -3,6 +3,7 @@ import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../common/repositories/job.repository';
 import { normalizeCodec } from '../../common/utils/codec.util';
 import { FfmpegService } from '../../encoding/ffmpeg.service';
+import { FileFailureTrackingService } from './file-failure-tracking.service';
 
 /**
  * JobBulkOperationsService
@@ -17,7 +18,8 @@ export class JobBulkOperationsService {
 
   constructor(
     private readonly jobRepository: JobRepository,
-    private readonly ffmpegService: FfmpegService
+    private readonly ffmpegService: FfmpegService,
+    private readonly fileFailureTracking: FileFailureTrackingService
   ) {}
 
   /**
@@ -211,7 +213,12 @@ export class JobBulkOperationsService {
         id: string;
         fileLabel: string;
         error: string | null;
-      }>({ stage: JobStage.FAILED }, { id: true, fileLabel: true, error: true });
+        filePath: string;
+        libraryId: string;
+      }>(
+        { stage: JobStage.FAILED },
+        { id: true, fileLabel: true, error: true, filePath: true, libraryId: true }
+      );
 
       let jobsToRetry = allFailedJobs;
       if (errorFilter) {
@@ -240,6 +247,17 @@ export class JobBulkOperationsService {
         dlqEnteredAt: null,
         totalAttempts: 0,
       });
+
+      // Also clear the cross-job per-file blacklist for each retried job,
+      // mirroring the single-job retry (job-queue-manipulation.service.ts):
+      // a blacklisted file would otherwise stay blocked from re-queue.
+      for (const job of jobsToRetry) {
+        try {
+          await this.fileFailureTracking.clearBlacklist(job.filePath, job.libraryId);
+        } catch (blacklistError: unknown) {
+          this.logger.warn(`Failed to clear file blacklist for ${job.filePath}`, blacklistError);
+        }
+      }
 
       this.logger.log(
         `Retried ${result.count} failed job(s)${errorFilter ? ` with category: ${errorFilter}` : ''}`

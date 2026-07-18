@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../common/repositories/job.repository';
+import { FileFailureTrackingService } from './file-failure-tracking.service';
 
 /**
  * Batch Operation Result
@@ -30,7 +31,10 @@ const DEFAULT_MAX_RETRIES = 3;
 export class BatchOperationsService {
   private readonly logger = new Logger(BatchOperationsService.name);
 
-  constructor(private readonly jobRepository: JobRepository) {}
+  constructor(
+    private readonly jobRepository: JobRepository,
+    private readonly fileFailureTracking: FileFailureTrackingService
+  ) {}
 
   /**
    * Pause all queued and encoding jobs
@@ -218,6 +222,14 @@ export class BatchOperationsService {
         where.nodeId = nodeId;
       }
 
+      // Fetch the affected files before the update so their per-file
+      // blacklists can be cleared afterwards (mirrors single-job retry in
+      // job-queue-manipulation.service.ts).
+      const jobsToRetry = await this.jobRepository.findManySelect<{
+        filePath: string;
+        libraryId: string;
+      }>(where, { filePath: true, libraryId: true });
+
       const result = await this.jobRepository.atomicUpdateMany(where, {
         stage: JobStage.QUEUED,
         progress: 0,
@@ -234,6 +246,16 @@ export class BatchOperationsService {
         dlqEnteredAt: null,
         totalAttempts: 0,
       });
+
+      // Clear the cross-job per-file blacklist for each retried file so the
+      // retried jobs can actually re-queue.
+      for (const job of jobsToRetry) {
+        try {
+          await this.fileFailureTracking.clearBlacklist(job.filePath, job.libraryId);
+        } catch (blacklistError: unknown) {
+          this.logger.warn(`Failed to clear file blacklist for ${job.filePath}`, blacklistError);
+        }
+      }
 
       this.logger.log(`✅ Queued ${result.count} failed job(s) for retry`);
 

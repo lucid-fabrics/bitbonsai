@@ -2,6 +2,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { JobStage } from '@prisma/client';
 import { JobRepository } from '../../../../common/repositories/job.repository';
 import { BatchOperationsService } from '../../batch-operations.service';
+import { FileFailureTrackingService } from '../../file-failure-tracking.service';
 
 describe('BatchOperationsService', () => {
   let service: BatchOperationsService;
@@ -9,17 +10,28 @@ describe('BatchOperationsService', () => {
     atomicUpdateMany: jest.Mock;
     deleteManyWhere: jest.Mock;
     countWhere: jest.Mock;
+    findManySelect: jest.Mock;
   };
+  let fileFailureTracking: { clearBlacklist: jest.Mock };
 
   beforeEach(async () => {
     jobRepository = {
       atomicUpdateMany: jest.fn(),
       deleteManyWhere: jest.fn(),
       countWhere: jest.fn(),
+      findManySelect: jest.fn().mockResolvedValue([]),
+    };
+
+    fileFailureTracking = {
+      clearBlacklist: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [BatchOperationsService, { provide: JobRepository, useValue: jobRepository }],
+      providers: [
+        BatchOperationsService,
+        { provide: JobRepository, useValue: jobRepository },
+        { provide: FileFailureTrackingService, useValue: fileFailureTracking },
+      ],
     }).compile();
 
     service = module.get<BatchOperationsService>(BatchOperationsService);
@@ -206,6 +218,43 @@ describe('BatchOperationsService', () => {
       const result = await service.retryAllFailed('node-3');
 
       expect(result.success).toBe(true);
+    });
+
+    it('should clear the per-file blacklist for every retried job', async () => {
+      jobRepository.findManySelect.mockResolvedValue([
+        { filePath: '/media/a.mkv', libraryId: 'lib-1' },
+        { filePath: '/media/b.mkv', libraryId: 'lib-2' },
+      ]);
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 2 });
+
+      const result = await service.retryAllFailed();
+
+      expect(result.success).toBe(true);
+      // Same where clause used to fetch the files as for the update
+      expect(jobRepository.findManySelect).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: JobStage.FAILED, retryCount: { lt: 3 } }),
+        { filePath: true, libraryId: true }
+      );
+      expect(fileFailureTracking.clearBlacklist).toHaveBeenCalledTimes(2);
+      expect(fileFailureTracking.clearBlacklist).toHaveBeenCalledWith('/media/a.mkv', 'lib-1');
+      expect(fileFailureTracking.clearBlacklist).toHaveBeenCalledWith('/media/b.mkv', 'lib-2');
+    });
+
+    it('should not fail the retry when clearing a blacklist rejects', async () => {
+      jobRepository.findManySelect.mockResolvedValue([
+        { filePath: '/media/a.mkv', libraryId: 'lib-1' },
+        { filePath: '/media/b.mkv', libraryId: 'lib-2' },
+      ]);
+      jobRepository.atomicUpdateMany.mockResolvedValue({ count: 2 });
+      fileFailureTracking.clearBlacklist
+        .mockRejectedValueOnce(new Error('DB error'))
+        .mockResolvedValueOnce(undefined);
+
+      const result = await service.retryAllFailed();
+
+      expect(result.success).toBe(true);
+      expect(result.affectedCount).toBe(2);
+      expect(fileFailureTracking.clearBlacklist).toHaveBeenCalledTimes(2);
     });
 
     it('should handle database errors', async () => {
