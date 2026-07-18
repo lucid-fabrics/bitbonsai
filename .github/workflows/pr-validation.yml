@@ -1,66 +1,31 @@
-name: PR Validation
+name: Docs-only guard
 
 on:
   pull_request:
     branches: [main]
   push:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: [self-hosted, macbook]
+  guard:
+    name: guard
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci --legacy-peer-deps
-      - run: npx prisma generate
-      - run: npx nx run-many --target=lint --all || true
-      - run: npx prettier --check "**/*.{ts,json,md,scss,html}" --ignore-path .prettierignore || true
 
-  test-backend:
-    name: Test Backend
-    runs-on: [self-hosted, macbook]
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
-      - run: npm ci --legacy-peer-deps
-      - run: npx prisma generate
-      - run: npx nx test backend --passWithNoTests
+      - name: Verify only docs content is tracked
+        run: |
+          ALLOWED='^(\.github|\.gitignore|CHANGELOG\.md|README\.md|LICENSE|assets|docs-mintlify|screenshots|unraid-release)(/|$)'
+          BAD=$(git ls-tree -r HEAD --name-only | grep -vE "$ALLOWED" || true)
+          if [ -n "$BAD" ]; then
+            echo "::error::Non-docs content detected - this repo must stay docs-only. See lucid-fabrics/bitbonsai@bb492a77 for why."
+            echo "$BAD"
+            exit 1
+          fi
 
-  test-frontend:
-    name: Test Frontend
-    runs-on: [self-hosted, macbook]
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
-      - run: npm ci --legacy-peer-deps
-      - run: npx nx test frontend --passWithNoTests
-
-  build-backend:
-    name: Build Backend
-    runs-on: [self-hosted, macbook]
-    needs: test-backend
-    steps:
-      - uses: actions/checkout@v4
-      - run: npm ci --legacy-peer-deps
-      - run: npx prisma generate
-      - run: npx nx build backend --configuration=production
-
-  build-frontend:
-    name: Build Frontend
-    runs-on: [self-hosted, macbook]
-    needs: test-frontend
-    steps:
-      - uses: actions/checkout@v4
-      - run: npm ci --legacy-peer-deps
-      - run: npx nx build frontend --configuration=production
-
-  build-website:
-    name: Build Website
-    runs-on: [self-hosted, macbook]
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
-      - run: npm ci --legacy-peer-deps
-      - run: npx nx build website --configuration=production
+      - name: Scan for obvious secret patterns
+        run: |
+          if grep -rlE "BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY|_authToken=[A-Za-z0-9-]{20,}" --exclude-dir=.git .; then
+            echo "::error::Possible secret detected in tracked content"
+            exit 1
+          fi
