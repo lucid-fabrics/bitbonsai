@@ -29,12 +29,23 @@ if [ -z "${DOCKER_HUB_PASSWORD:-}" ]; then
   echo "     DOCKER_HUB_PASSWORD='...' ./scripts/docker-publish.sh"
   exit 1
 fi
+if [ -z "${FONTAWESOME_NPM_AUTH_TOKEN:-}" ]; then
+  echo -e "${RED}❌ FONTAWESOME_NPM_AUTH_TOKEN is not set.${NC}"
+  echo "   Required to build the frontend/backend stages. Set it before running:"
+  echo "     FONTAWESOME_NPM_AUTH_TOKEN='...' DOCKER_HUB_PASSWORD='...' ./scripts/docker-publish.sh"
+  exit 1
+fi
 echo -e "${YELLOW}📦 Logging into Docker Hub...${NC}"
 echo "${DOCKER_HUB_PASSWORD}" | docker login -u "${DOCKER_USER}" --password-stdin
 
-# Step 2: Build the image
+# Step 2: Build the all-in-one production image (same target the Unraid
+# template pulls - the old bare Dockerfile build was a stale pre-all-in-one
+# image and didn't match what unraid-release/bitbonsai.xml actually runs).
 echo -e "${YELLOW}🔨 Building Docker image...${NC}"
-docker build -f Dockerfile \
+docker build \
+  --platform linux/amd64 \
+  --build-arg FONTAWESOME_NPM_AUTH_TOKEN="${FONTAWESOME_NPM_AUTH_TOKEN}" \
+  -f Dockerfile.prod --target production \
   -t "${DOCKER_IMAGE}:latest" \
   -t "${DOCKER_IMAGE}:${VERSION}" \
   -t "${DOCKER_IMAGE}:$(echo ${VERSION} | cut -d. -f1).$(echo ${VERSION} | cut -d. -f2)" \
