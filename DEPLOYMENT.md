@@ -23,7 +23,7 @@
 | **Docker**     | 24+                     | 27+              |
 | **PostgreSQL** | 14+                     | 16+              |
 | **Node.js**    | 20+                     | 22+ LTS          |
-| **FFmpeg**     | 5.0+                    | 7+               |
+| **FFmpeg**     | 7.0+                    | 8.1+             |
 | **OS**         | Ubuntu 22.04, Debian 12 | Ubuntu 24.04 LTS |
 
 **Hardware Requirements:**

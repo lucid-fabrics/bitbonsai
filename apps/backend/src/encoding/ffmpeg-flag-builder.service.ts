@@ -166,34 +166,71 @@ export class FfmpegFlagBuilderService {
   }
 
   /**
+   * Pull `-vf <value>` pairs out of a validated flag array into `vfChain`,
+   * returning the remaining flags. Lets the builder emit a single merged -vf.
+   */
+  private extractVfFragments(flags: string[], vfChain: string[]): string[] {
+    const rest: string[] = [];
+    for (let i = 0; i < flags.length; i++) {
+      if (flags[i] === '-vf' && i + 1 < flags.length) {
+        vfChain.push(flags[i + 1]);
+        i++;
+      } else {
+        rest.push(flags[i]);
+      }
+    }
+    return rest;
+  }
+
+  /**
+   * Map hardware acceleration type to its quality-control flag. CRF is a
+   * software-encoder (x264/x265/aom/vpx) concept; passing it to a hardware
+   * encoder is ignored or rejected depending on the ffmpeg build.
+   *
+   * @param hwType - Hardware acceleration type (NVIDIA, INTEL_QSV, AMD, APPLE_M, CPU)
+   * @returns FFmpeg quality flag (e.g., -cq, -global_quality, -crf)
+   */
+  private getQualityFlag(hwType: string): string {
+    const qualityFlagByHwType: Record<string, string> = {
+      NVIDIA: '-cq',
+      INTEL_QSV: '-global_quality',
+      AMD: '-qp',
+      APPLE_M: '-q:v',
+    };
+    return qualityFlagByHwType[hwType] || '-crf';
+  }
+
+  /**
    * Build ffmpeg command arguments
    *
-   * TRUE RESUME: Supports input seeking (-ss before -i) to skip already-encoded portion
    * REMUX: Supports fast stream copy when job.type === 'REMUX'
    *
    * Command structure:
-   * ENCODE: ffmpeg [-ss HH:MM:SS.MS] [hwaccel flags] -i [input] [video codec] -crf [quality] [audio] [output]
-   * REMUX: ffmpeg -i [input] -c:v copy -c:a copy [output]
+   * ENCODE: ffmpeg [input opts] -i [input] [video codec] [quality flag] [quality] [audio] [maps] [output]
+   * REMUX: ffmpeg -i [input] -c copy [maps] [output]
    *
    * @param job - Job entity with file info
    * @param policy - Policy entity with encoding settings
    * @param hwaccel - Hardware acceleration config
    * @param outputPath - Path to output file
-   * @param resumeFromTimestamp - Optional timestamp to resume from (HH:MM:SS.MS format)
    * @returns Array of ffmpeg arguments
    */
   buildFfmpegCommand(
     job: Job,
     policy: Policy,
     hwaccel: HardwareAccelConfig,
-    outputPath: string,
-    resumeFromTimestamp?: string
+    outputPath: string
   ): string[] {
     const args: string[] = [];
 
     // Check if this is a REMUX job (container change only, no re-encoding)
     const jobWithType = job as JobWithRemuxFields;
     const isRemux = jobWithType.type === 'REMUX';
+
+    // Determine output container up front - both branches need it, and ENCODE
+    // mode also uses it to pick a compatible subtitle codec below.
+    const targetContainer = jobWithType.targetContainer || 'mkv';
+    const isMp4Container = targetContainer === 'mp4' || targetContainer.includes('mp4');
 
     if (isRemux) {
       // REMUX MODE: Fast stream copy (no re-encoding)
@@ -204,34 +241,54 @@ export class FfmpegFlagBuilderService {
       // Input file
       args.push('-i', job.filePath);
 
-      // Stream copy for video and audio (no re-encoding)
-      args.push('-c:v', 'copy');
-      args.push('-c:a', 'copy');
-
-      // Copy all streams (subtitles, metadata, etc.)
-      args.push('-map', '0');
+      if (isMp4Container) {
+        // MP4 can't hold arbitrary streams: bitmap subtitles and font
+        // attachments make `-map 0` a hard failure. Copy only real video
+        // (excluding cover art) and audio.
+        args.push('-map', '0:V', '-map', '0:a?');
+        args.push('-c:v', 'copy');
+        args.push('-c:a', 'copy');
+      } else {
+        // MKV holds anything: copy every stream as-is.
+        args.push('-map', '0');
+        args.push('-c:v', 'copy');
+        args.push('-c:a', 'copy');
+        args.push('-c:s', 'copy');
+      }
     } else {
       // ENCODE MODE: Full transcode with quality settings
       this.logger.log(`ENCODE MODE: Full transcode (${job.sourceCodec} → ${job.targetCodec})`);
 
-      // TRUE RESUME: Add input seeking BEFORE -i for accurate frame seeking
-      // This skips the already-encoded portion of the input file
-      if (resumeFromTimestamp) {
-        args.push('-ss', resumeFromTimestamp);
-        this.logger.log(`TRUE RESUME: Using FFmpeg input seeking: -ss ${resumeFromTimestamp}`);
+      // TIMESTAMP RESILIENCE: health check flagged non-monotonic DTS on this
+      // source (see FileHealthService/health-check-codec-analyzer); genpts
+      // regenerates presentation timestamps to avoid A/V desync mid-encode.
+      const jobHealthMessage = job.healthMessage;
+      if (jobHealthMessage?.toLowerCase().includes('timestamp issues detected')) {
+        args.push('-fflags', '+genpts');
       }
 
-      // Hardware acceleration flags (if available)
-      args.push(...hwaccel.flags);
+      // GPU→CPU FALLBACK: honor a codec override applied after a prior GPU
+      // failure by skipping hardware acceleration entirely for this attempt -
+      // decode flags like -hwaccel_output_format cuda pin frames on the GPU,
+      // which breaks a CPU encoder downstream.
+      if (!job.codecOverride) {
+        args.push(...hwaccel.flags);
+      }
 
       // Input file
       args.push('-i', job.filePath);
 
       // Video codec and quality
-      // Select codec based on policy target and available hardware acceleration
-      const selectedCodec = this.selectCodecForPolicy(policy.targetCodec, hwaccel.type);
+      // Select codec based on policy target and available hardware acceleration,
+      // unless a GPU→CPU fallback already picked one for this job.
+      const selectedCodec =
+        job.codecOverride || this.selectCodecForPolicy(policy.targetCodec, hwaccel.type);
       args.push('-c:v', selectedCodec);
-      args.push('-crf', policy.targetQuality.toString());
+
+      // Quality flag differs per encoder family: CRF is a software x264/x265/
+      // aom concept, hardware encoders use their own quality knob.
+      const qualityFlag = this.getQualityFlag(job.codecOverride ? 'CPU' : hwaccel.type);
+      args.push(qualityFlag, policy.targetQuality.toString());
 
       // Audio codec (from decision config or policy advanced settings)
       // DECISION FIX: Check if decisionData has audio config overrides
@@ -267,6 +324,22 @@ export class FfmpegFlagBuilderService {
         args.push('-b:a', audioBitrate);
       }
 
+      // Map real video (0:V excludes attached_pic cover art) and all audio
+      // (0:a? tolerates video-only sources) instead of ffmpeg's default of
+      // picking one stream of each - without this, multi-audio and commentary
+      // tracks were silently dropped.
+      args.push('-map', '0:V', '-map', '0:a?');
+      if (!isMp4Container) {
+        // MKV can copy any subtitle codec as-is, so keep them all. MP4 gets
+        // NO subtitle map: force-mapping bitmap subs (PGS/DVD) into MP4 is a
+        // hard failure ("only text to text"), and there's no stream metadata
+        // at build time to map only the text ones. Dropping subs for MP4
+        // keeps the encode succeeding, matching ffmpeg's own type-matched
+        // auto-selection behavior for incompatible subs.
+        args.push('-map', '0:s?');
+        args.push('-c:s', 'copy');
+      }
+
       // AV1 THROTTLING: Apply thread limit if specified on job
       const jobWithThreads = job as JobWithThreadsFields;
       if (jobWithThreads.ffmpegThreads) {
@@ -276,12 +349,17 @@ export class FfmpegFlagBuilderService {
         );
       }
 
+      // Collect -vf fragments so exactly one merged -vf is emitted: ffmpeg
+      // takes the LAST -vf when repeated, which would silently drop either
+      // the policy's filters or the VAAPI hwupload chain.
+      const vfChain: string[] = [];
+
       // SECURITY: Validate and add additional ffmpeg flags from policy
       if (advancedSettings.ffmpegFlags) {
         const customFlags = advancedSettings.ffmpegFlags as string[];
         try {
           const validatedFlags = this.validateFfmpegFlags(customFlags);
-          args.push(...validatedFlags);
+          args.push(...this.extractVfFragments(validatedFlags, vfChain));
         } catch (error: unknown) {
           this.logger.error(
             `Invalid FFmpeg flags in policy: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -297,12 +375,28 @@ export class FfmpegFlagBuilderService {
           if (decisionData?.actionConfig?.ffmpegFlags) {
             const decisionFlags = decisionData.actionConfig.ffmpegFlags as string[];
             const validatedFlags = this.validateFfmpegFlags(decisionFlags);
-            args.push(...validatedFlags);
+            args.push(...this.extractVfFragments(validatedFlags, vfChain));
             this.logger.log(`Applied decision FFmpeg flags: ${validatedFlags.join(' ')}`);
           }
         } catch {
           // Ignore JSON parse errors
         }
+      }
+
+      // Hardware filter (e.g. VAAPI format=nv12,hwupload) goes LAST in the
+      // chain: CPU filters must run before frames are uploaded to the GPU.
+      // Skipped on codec override (software fallback) and when a policy
+      // already supplies its own hwupload chain.
+      if (
+        hwaccel.videoFilter &&
+        !job.codecOverride &&
+        !vfChain.some((v) => v.includes('hwupload'))
+      ) {
+        vfChain.push(hwaccel.videoFilter);
+      }
+
+      if (vfChain.length > 0) {
+        args.push('-vf', vfChain.join(','));
       }
     }
 
@@ -314,9 +408,7 @@ export class FfmpegFlagBuilderService {
 
     // Output to specified path (temp file that will be renamed atomically)
     // Determine output format based on job type and target container
-    const targetContainer = jobWithType.targetContainer || 'mkv';
-
-    if (targetContainer === 'mp4' || targetContainer.includes('mp4')) {
+    if (isMp4Container) {
       // MP4 format with fragmentation for streaming compatibility
       // Use fragmented MP4 for instant readability (moov atom at start)
       // This allows preview captures to work at any encoding progress

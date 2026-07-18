@@ -559,9 +559,7 @@ describe('QueueJobStateService', () => {
       await expect(service.retryJob('missing')).rejects.toThrow(NotFoundException);
     });
 
-    it('should preserve progress and resumeTimestamp when temp file exists', async () => {
-      // This test verifies the canResume=true path - hard to fully test without FS mock
-      // but we verify the update is called correctly for a no-temp-file case
+    it('should restart from 0% and clear resume state on retry', async () => {
       const job = makeJob({
         stage: JobStage.FAILED,
         tempFilePath: null,
@@ -583,6 +581,8 @@ describe('QueueJobStateService', () => {
           stage: JobStage.QUEUED,
           progress: 0,
           retryCount: 3,
+          resumeTimestamp: null,
+          tempFilePath: null,
         })
       );
     });

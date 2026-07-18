@@ -1,5 +1,4 @@
 import * as fsModule from 'node:fs';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { FfmpegEncoderService } from '../../ffmpeg/ffmpeg-encoder.service';
 import { FfmpegHealthMonitor } from '../../ffmpeg/ffmpeg-health-monitor.service';
@@ -51,7 +50,6 @@ describe('FfmpegEncoderService', () => {
   let progressTracker: jest.Mocked<FfmpegProgressTracker>;
   let healthMonitor: jest.Mocked<FfmpegHealthMonitor>;
   let hardwareAcceleration: jest.Mocked<HardwareAccelerationService>;
-  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   beforeEach(async () => {
     processManager = {
@@ -104,10 +102,6 @@ describe('FfmpegEncoderService', () => {
       selectCodecForPolicy: jest.fn().mockReturnValue('libx265'),
     } as unknown as jest.Mocked<HardwareAccelerationService>;
 
-    eventEmitter = {
-      emit: jest.fn(),
-    } as unknown as jest.Mocked<EventEmitter2>;
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FfmpegEncoderService,
@@ -120,14 +114,13 @@ describe('FfmpegEncoderService', () => {
         { provide: FfmpegProgressTracker, useValue: progressTracker },
         { provide: FfmpegHealthMonitor, useValue: healthMonitor },
         { provide: HardwareAccelerationService, useValue: hardwareAcceleration },
-        { provide: EventEmitter2, useValue: eventEmitter },
       ],
     }).compile();
 
     service = module.get(FfmpegEncoderService);
   });
 
-  describe('delegation — ffprobe helpers', () => {
+  describe('delegation - ffprobe helpers', () => {
     it('getVideoDuration delegates to FfprobeService', async () => {
       const result = await service.getVideoDuration('/mnt/media/movie.mkv');
       expect(ffprobe.getVideoDuration).toHaveBeenCalledWith('/mnt/media/movie.mkv');
@@ -156,7 +149,7 @@ describe('FfmpegEncoderService', () => {
     });
   });
 
-  describe('delegation — progress helpers', () => {
+  describe('delegation - progress helpers', () => {
     it('parseProgress delegates to FfmpegProgressTracker', () => {
       service.parseProgress('frame=100 fps=25 time=00:00:04');
       expect(progressTracker.parseProgress).toHaveBeenCalledWith('frame=100 fps=25 time=00:00:04');
@@ -174,7 +167,7 @@ describe('FfmpegEncoderService', () => {
     });
   });
 
-  describe('delegation — hardware acceleration', () => {
+  describe('delegation - hardware acceleration', () => {
     it('detectHardwareAcceleration delegates to HardwareAccelerationService', async () => {
       const result = await service.detectHardwareAcceleration();
       expect(hardwareAcceleration.detectHardwareAcceleration).toHaveBeenCalledTimes(1);
@@ -188,7 +181,7 @@ describe('FfmpegEncoderService', () => {
     });
   });
 
-  describe('delegation — file validation', () => {
+  describe('delegation - file validation', () => {
     it('validateFilePath delegates to FfmpegHealthMonitor', () => {
       service.validateFilePath('/mnt/media/movie.mkv', '/mnt/media');
       expect(healthMonitor.validateFilePath).toHaveBeenCalledWith(
@@ -210,7 +203,7 @@ describe('FfmpegEncoderService', () => {
     });
   });
 
-  describe('delegation — buildFfmpegCommand', () => {
+  describe('delegation - buildFfmpegCommand', () => {
     it('delegates to FfmpegFlagBuilderService', () => {
       const job = makeJob() as never;
       const policy = makePolicy() as never;
@@ -222,24 +215,7 @@ describe('FfmpegEncoderService', () => {
         job,
         policy,
         hwaccel,
-        '/tmp/out.mkv',
-        undefined
-      );
-    });
-
-    it('passes resumeFromTimestamp when provided', () => {
-      const job = makeJob() as never;
-      const policy = makePolicy() as never;
-      const hwaccel = { type: 'none' } as never;
-
-      service.buildFfmpegCommand(job, policy, hwaccel, '/tmp/out.mkv', '00:01:30');
-
-      expect(flagBuilder.buildFfmpegCommand).toHaveBeenCalledWith(
-        job,
-        policy,
-        hwaccel,
-        '/tmp/out.mkv',
-        '00:01:30'
+        '/tmp/out.mkv'
       );
     });
   });

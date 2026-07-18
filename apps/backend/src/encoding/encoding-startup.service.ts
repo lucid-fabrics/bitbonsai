@@ -4,8 +4,6 @@ import { JobStage } from '@prisma/client';
 import { JobRepository } from '../common/repositories/job.repository';
 import { LibrariesService } from '../libraries/libraries.service';
 import { QueueService } from '../queue/queue.service';
-import { EncodingFileService } from './encoding-file.service';
-import { FfmpegService } from './ffmpeg.service';
 
 /**
  * EncodingStartupService
@@ -24,9 +22,7 @@ export class EncodingStartupService {
   constructor(
     private readonly jobRepository: JobRepository,
     private readonly queueService: QueueService,
-    private readonly librariesService: LibrariesService,
-    private readonly ffmpegService: FfmpegService,
-    private readonly encodingFileService: EncodingFileService
+    private readonly librariesService: LibrariesService
   ) {}
 
   /**
@@ -236,91 +232,31 @@ export class EncodingStartupService {
             continue; // Another node claimed this job
           }
 
-          // TRUE RESUME: Check if temp file still exists (with retry logic)
-          const tempFileExists = await this.encodingFileService.checkTempFileWithRetry(
-            job.tempFilePath
-          );
-
-          // Log temp file check result for debugging
-          if (job.tempFilePath) {
-            this.logger.log(`  Checking temp file: ${job.tempFilePath}`);
-            this.logger.log(`  File exists: ${tempFileExists}`);
-          }
-
+          // Input-seek resume was removed (it produced truncated outputs that
+          // always failed duration validation). Recovery restarts from 0;
+          // segmented jobs keep their real resume state in JobSegment rows.
           const errorMessage =
             job.stage === JobStage.PAUSED
-              ? 'Paused job reset after backend restart - will resume from last position'
-              : tempFileExists
-                ? `Auto-heal: Successfully resumed from ${job.progress.toFixed(1)}% (was ${job.stage} before restart)`
-                : `Auto-heal attempted but temp file was lost during restart - restarting from 0% (was ${job.stage} at ${job.progress.toFixed(1)}%)`;
-
-          // CRITICAL BUG FIX: Recalculate resumeTimestamp based on current progress
-          // The old resumeTimestamp is STALE (from when job first started encoding)
-          // We need to calculate the CORRECT timestamp for the current progress percentage
-          let recalculatedResumeTimestamp: string | null = null;
-          if (tempFileExists && job.progress > 0) {
-            try {
-              // LOW #15 FIX: Use outer query job data instead of redundant inner query
-              // The job object already has filePath from the outer findMany query
-              const videoJob = await this.jobRepository.findUniqueSelect<{
-                filePath: string;
-              }>({ id: job.id }, { filePath: true });
-
-              const filePath = videoJob?.filePath;
-              if (filePath) {
-                // Get video duration
-                const videoDuration = await this.ffmpegService.getVideoDuration(filePath);
-
-                // Calculate resume time in seconds based on current progress
-                const resumeSeconds = (job.progress / 100) * videoDuration;
-
-                // Convert to HH:MM:SS.MS format
-                recalculatedResumeTimestamp =
-                  this.ffmpegService.formatSecondsToTimestamp(resumeSeconds);
-
-                this.logger.log(
-                  `  🔄 Recalculated resumeTimestamp for job ${job.fileLabel}: progress=${job.progress.toFixed(1)}%, videoDuration=${videoDuration.toFixed(2)}s, resumeSeconds=${resumeSeconds.toFixed(2)}s, resumeTimestamp=${recalculatedResumeTimestamp}`
-                );
-              }
-            } catch (error: unknown) {
-              this.logger.warn(
-                `  ⚠️  Failed to recalculate resumeTimestamp for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`
-              );
-              // Continue with existing resumeTimestamp (better than nothing)
-            }
-          }
+              ? 'Paused job reset after backend restart - restarting from 0%'
+              : `Auto-heal: reset after backend restart - restarting from 0% (was ${job.stage} at ${job.progress.toFixed(1)}%)`;
 
           // MULTI-NODE: Use QueueService proxy to support LINKED nodes
           await this.queueService.update(job.id, {
             stage: JobStage.QUEUED, // CRITICAL FIX: Always QUEUED, never DETECTED
-            // TRUE RESUME: DON'T reset progress if temp file exists
-            ...(tempFileExists ? {} : { progress: 0 }),
+            progress: 0,
             etaSeconds: null,
             error: errorMessage,
             startedAt: null, // Clear startedAt to allow fresh start
-            // AUTO-HEAL TRACKING: ONLY set when temp file exists (successful resume)
-            // Green dot indicator should only show when auto-heal actually worked
-            ...(tempFileExists
-              ? {
-                  autoHealedAt: new Date(),
-                  autoHealedProgress: job.progress,
-                }
-              : {}),
             retryCount: job.retryCount + 1,
-            // TRUE RESUME: Clear resume state if temp file doesn't exist, otherwise update with recalculated timestamp
-            ...(tempFileExists
-              ? { resumeTimestamp: recalculatedResumeTimestamp }
-              : {
-                  tempFilePath: null,
-                  resumeTimestamp: null,
-                }),
+            tempFilePath: null,
+            resumeTimestamp: null,
             // DEEP AUDIT P2: Clear the claim after successful healing
             autoHealClaimedAt: null,
             autoHealClaimedBy: null,
           });
 
           this.logger.log(
-            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → QUEUED, ${tempFileExists ? `will resume from ${job.progress.toFixed(1)}%` : 'restarting from 0%'})`
+            `  ✓ Reset orphaned job: ${job.fileLabel} (${job.stage} → QUEUED, restarting from 0%)`
           );
         } catch (error: unknown) {
           this.logger.error(`  ✗ Failed to reset job ${job.id}:`, error);

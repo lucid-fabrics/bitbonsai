@@ -13,6 +13,8 @@ import { EncodingFileReplacementService } from '../../encoding-file-replacement.
 import { EncodingOutputVerificationService } from '../../encoding-output-verification.service';
 import { FfmpegService } from '../../ffmpeg.service';
 import { QualityMetricsService } from '../../quality-metrics.service';
+import { ContainerValidationService } from '../../services/container-validation.service';
+import { SegmentedEncodeService } from '../../services/segmented-encode.service';
 import { SystemResourceService } from '../../system-resource.service';
 
 jest.mock('node:fs', () => ({
@@ -89,7 +91,7 @@ describe('EncodingFileService', () => {
         {
           provide: FfmpegService,
           useValue: {
-            encode: jest.fn().mockResolvedValue(undefined),
+            encodeFile: jest.fn().mockResolvedValue(undefined),
             verifyFile: jest.fn().mockResolvedValue({ isValid: true, error: undefined }),
             getVideoDuration: jest.fn().mockResolvedValue(3600),
           },
@@ -128,6 +130,30 @@ describe('EncodingFileService', () => {
           provide: NodesService,
           useValue: {
             getCurrentNode: jest.fn().mockResolvedValue({ id: 'node-1' }),
+          },
+        },
+        {
+          provide: SegmentedEncodeService,
+          useValue: {
+            shouldUseSegmentedEncode: jest.fn().mockReturnValue(false),
+            getSegments: jest.fn().mockResolvedValue([]),
+            planSegments: jest.fn(),
+            persistSegmentPlan: jest.fn(),
+            findResumePoint: jest
+              .fn()
+              .mockResolvedValue({ lastVerifiedIndex: -1, partialSegmentIndex: null }),
+            resetPartialSegment: jest.fn(),
+            markSegmentCompleted: jest.fn(),
+            verifySegment: jest.fn(),
+            markSegmentVerified: jest.fn(),
+            concatSegments: jest.fn(),
+            cleanupSegments: jest.fn(),
+          },
+        },
+        {
+          provide: ContainerValidationService,
+          useValue: {
+            validateContainer: jest.fn().mockResolvedValue({ valid: true }),
           },
         },
         EncodingFileReplacementService,
@@ -292,7 +318,7 @@ describe('EncodingFileService', () => {
     });
 
     it('throws when duration mismatch exceeds absolute tolerance for short clips', async () => {
-      // 30s clip, output is 28s — 2s diff exceeds ±1s absolute tolerance
+      // 30s clip, output is 28s - 2s diff exceeds ±1s absolute tolerance
       ffmpegService.getVideoDuration.mockResolvedValue(28);
       await expect(
         service.validateOutputDuration('/tmp/out.mkv', 30, '/media/orig.mkv')
@@ -300,7 +326,7 @@ describe('EncodingFileService', () => {
     });
 
     it('throws when duration mismatch exceeds percentage tolerance for long clips', async () => {
-      // 3700s clip (>1hr), output is 3500s — diff ~5.4% exceeds 1.5% tolerance
+      // 3700s clip (>1hr), output is 3500s - diff ~5.4% exceeds 1.5% tolerance
       ffmpegService.getVideoDuration.mockResolvedValue(3500);
       await expect(
         service.validateOutputDuration('/tmp/out.mkv', 3700, '/media/orig.mkv')
@@ -336,7 +362,7 @@ describe('EncodingFileService', () => {
       expect(() =>
         service.validateOutputSize(
           BigInt(2 * 1024 ** 3),
-          BigInt(1000), // 1 KB — way too small
+          BigInt(1000), // 1 KB - way too small
           3600,
           '/media/test.mkv'
         )
@@ -347,7 +373,7 @@ describe('EncodingFileService', () => {
       // afterSize must be above the bitrate floor (200kbps * 3600s / 8 = 90_000_000 bytes)
       // but still trigger the >95% + <100MB + original>1GB check
       const originalSize = BigInt(4 * 1024 ** 3); // 4 GB
-      const afterSize = BigInt(90 * 1024 * 1024); // 90 MB — 97.8% reduction (bigint: 97 > 95), above bitrate floor
+      const afterSize = BigInt(90 * 1024 * 1024); // 90 MB - 97.8% reduction (bigint: 97 > 95), above bitrate floor
       expect(() =>
         service.validateOutputSize(originalSize, afterSize, 3600, '/media/test.mkv')
       ).toThrow('Extreme compression');
@@ -355,10 +381,10 @@ describe('EncodingFileService', () => {
 
     it('warns but does not throw for high compression on smaller originals', () => {
       const logWarnSpy = jest.spyOn((service as any).logger, 'warn');
-      // 91% reduction, original under 1 GB — warning only (not blocked)
+      // 91% reduction, original under 1 GB - warning only (not blocked)
       // afterSize must be above bitrate floor: 200kbps * 3600s / 8 = 90_000_000 bytes
       const originalSize = BigInt(1024 * 1024 * 1024); // exactly 1 GB (not > 1 GB)
-      const afterSize = BigInt(92 * 1024 * 1024); // 92 MB — 91% reduction, above floor
+      const afterSize = BigInt(92 * 1024 * 1024); // 92 MB - 91% reduction, above floor
       expect(() =>
         service.validateOutputSize(originalSize, afterSize, 3600, '/media/test.mkv')
       ).not.toThrow();
@@ -454,7 +480,7 @@ describe('EncodingFileService', () => {
       });
       (fs.statSync as jest.Mock)
         .mockReturnValueOnce({ size: 1000 }) // source stats before copy
-        .mockReturnValueOnce({ size: 500 }); // dest stats — size mismatch
+        .mockReturnValueOnce({ size: 500 }); // dest stats - size mismatch
       (fs.existsSync as jest.Mock).mockReturnValue(true);
 
       expect(() => service.crossFsSafeRenameSync('/src/file.mkv', '/dst/file.mkv')).toThrow(
@@ -502,38 +528,15 @@ describe('EncodingFileService', () => {
 
   describe('performEncoding', () => {
     it('throws when policy is null', async () => {
-      await expect(
-        service.performEncoding(baseJob, '/tmp/out.mkv', null as never, undefined)
-      ).rejects.toThrow('Policy is required');
-    });
-
-    it('extracts hwaccel from advancedSettings and passes to ffmpeg', async () => {
-      const policy = { ...mockPolicy, advancedSettings: { hwaccel: 'nvenc' } };
-      await service.performEncoding(baseJob, '/tmp/out.mkv', policy, undefined);
-
-      expect(ffmpegService.encode).toHaveBeenCalledWith(
-        baseJob.id,
-        expect.objectContaining({ hwAccel: 'nvenc' })
+      await expect(service.performEncoding(baseJob, '/tmp/out.mkv', null as never)).rejects.toThrow(
+        'Policy is required'
       );
     });
 
-    it('defaults hwaccel to "auto" when not in advancedSettings', async () => {
-      const policy = { ...mockPolicy, advancedSettings: null };
-      await service.performEncoding(baseJob, '/tmp/out.mkv', policy, undefined);
+    it('passes the real job, policy, and temp path to ffmpegService.encodeFile', async () => {
+      await service.performEncoding(baseJob, '/tmp/out.mkv', mockPolicy);
 
-      expect(ffmpegService.encode).toHaveBeenCalledWith(
-        baseJob.id,
-        expect.objectContaining({ hwAccel: 'auto' })
-      );
-    });
-
-    it('passes startedFromSeconds to ffmpeg for true resume', async () => {
-      await service.performEncoding(baseJob, '/tmp/out.mkv', mockPolicy, 1800);
-
-      expect(ffmpegService.encode).toHaveBeenCalledWith(
-        baseJob.id,
-        expect.objectContaining({ startedFromSeconds: 1800 })
-      );
+      expect(ffmpegService.encodeFile).toHaveBeenCalledWith(baseJob, mockPolicy, '/tmp/out.mkv');
     });
   });
 

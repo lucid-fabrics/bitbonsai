@@ -6,7 +6,7 @@ import { FfmpegEncoderService } from './ffmpeg/ffmpeg-encoder.service';
 import { FfmpegProcessManager } from './ffmpeg/ffmpeg-process-manager.service';
 import type { HardwareAccelConfig } from './hardware-acceleration.service';
 
-/** FfmpegService — thin facade over FfmpegProcessManager + FfmpegEncoderService. */
+/** FfmpegService - thin facade over FfmpegProcessManager + FfmpegEncoderService. */
 @Injectable()
 export class FfmpegService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(FfmpegService.name);
@@ -56,11 +56,9 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
     job: Job,
     policy: Policy,
     hwaccel: HardwareAccelConfig,
-    outputPath: string,
-    resumeFromTimestamp?: string,
-    _passNumber?: 1 | 2
+    outputPath: string
   ): string[] {
-    return this.encoder.buildFfmpegCommand(job, policy, hwaccel, outputPath, resumeFromTimestamp);
+    return this.encoder.buildFfmpegCommand(job, policy, hwaccel, outputPath);
   }
   parseProgress(line: string): Pick<EncodingProgressDto, 'frame' | 'fps' | 'currentTime'> | null {
     return this.encoder.parseProgress(line);
@@ -106,21 +104,6 @@ export class FfmpegService implements OnModuleInit, OnModuleDestroy {
       onProgress
     );
   }
-  async encode(
-    jobId: string,
-    options: {
-      inputPath: string;
-      outputPath: string;
-      targetCodec: string;
-      targetQuality: number;
-      hwAccel?: string;
-      advancedSettings?: Record<string, unknown>;
-      startedFromSeconds?: number;
-    }
-  ): Promise<void> {
-    return this.encoder.encode(jobId, options);
-  }
-
   // ─── Process lifecycle delegations → FfmpegProcessManager ─────────────────
 
   async reniceProcess(jobId: string, priority: number): Promise<boolean> {

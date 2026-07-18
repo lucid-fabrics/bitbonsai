@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FileHealthStatus, type Job, JobEventType, JobStage } from '@prisma/client';
 import { JobRepository } from '../../common/repositories/job.repository';
+import { FileFailureTrackingService } from './file-failure-tracking.service';
 import { JobHistoryService } from './job-history.service';
 
 /**
@@ -14,7 +15,8 @@ export class JobQueueManipulationService {
 
   constructor(
     private readonly jobRepository: JobRepository,
-    private readonly jobHistoryService: JobHistoryService
+    private readonly jobHistoryService: JobHistoryService,
+    private readonly fileFailureTracking: FileFailureTrackingService
   ) {}
 
   /**
@@ -33,40 +35,46 @@ export class JobQueueManipulationService {
       throw new BadRequestException('Only failed or cancelled jobs can be retried');
     }
 
-    const { existsSync } = await import('fs');
-    const hasTempFile = existingJob.tempFilePath && existsSync(existingJob.tempFilePath);
-    const canResume = hasTempFile && existingJob.resumeTimestamp;
-
-    let historyMessage: string;
-
-    if (canResume) {
-      const retryMessage = `will resume from ${(existingJob.progress || 0).toFixed(1)}%`;
-      historyMessage = `Manual retry: Will resume encoding from ${(existingJob.progress || 0).toFixed(1)}% (temp file preserved)`;
-      this.logger.log(
-        `✅ Retrying job: ${existingJob.fileLabel} (retry ${existingJob.retryCount + 1}, ${retryMessage})`
-      );
-    } else {
-      const reason = existingJob.tempFilePath ? 'temp file deleted' : 'no temp file';
-      const retryMessage = `starting fresh (${reason})`;
-      historyMessage = `Manual retry: Temp file not available, starting encoding from scratch (was at ${(existingJob.progress || 0).toFixed(1)}%)`;
-      this.logger.log(
-        `⚠️  Retrying job: ${existingJob.fileLabel} (retry ${existingJob.retryCount + 1}, ${retryMessage})`
-      );
-    }
+    const historyMessage = `Manual retry: restarting encoding from 0% (was at ${(existingJob.progress || 0).toFixed(1)}%)`;
+    this.logger.log(
+      `Retrying job: ${existingJob.fileLabel} (retry ${existingJob.retryCount + 1}, restarting from 0%)`
+    );
 
     const job = await this.jobRepository.updateById(id, {
       stage: JobStage.QUEUED,
-      progress: canResume ? existingJob.progress : 0,
+      progress: 0,
       error: null,
       completedAt: null,
       startedAt: null,
+      failedAt: null,
       retryCount: existingJob.retryCount + 1,
-      resumeTimestamp: canResume ? existingJob.resumeTimestamp : null,
-      tempFilePath: canResume ? existingJob.tempFilePath : null,
+      nextRetryAt: null,
+      resumeTimestamp: null,
+      tempFilePath: null,
       // Reset retry caps on manual retry so the job gets fresh attempts
       corruptedRequeueCount: 0,
       stuckRecoveryCount: 0,
+      // An explicit user retry is a fresh start: clear the circuit breaker
+      // and DLQ state, otherwise the retried job insta-fails on its next
+      // error (checkAndBreak short-circuits circuitBroken jobs).
+      circuitBroken: false,
+      circuitBrokenAt: null,
+      circuitBrokenReason: null,
+      dlqEnteredAt: null,
+      totalAttempts: 0,
     });
+
+    // Also clear the cross-job per-file blacklist: a file auto-blacklisted by
+    // 5 FAILED jobs has no other UI path to clear it (unblacklist requires a
+    // CANCELLED job), which permanently blocked it from re-queue.
+    try {
+      await this.fileFailureTracking.clearBlacklist(existingJob.filePath, existingJob.libraryId);
+    } catch (blacklistError: unknown) {
+      this.logger.warn(
+        `Failed to clear file blacklist for ${existingJob.filePath}`,
+        blacklistError
+      );
+    }
 
     await this.jobHistoryService.recordEvent({
       jobId: id,
@@ -75,7 +83,7 @@ export class JobQueueManipulationService {
       progress: existingJob.progress || 0,
       triggeredBy: 'USER',
       systemMessage: historyMessage,
-      tempFileExists: !!hasTempFile,
+      tempFileExists: false,
       retryNumber: existingJob.retryCount + 1,
     });
 

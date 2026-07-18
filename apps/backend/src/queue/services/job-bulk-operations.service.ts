@@ -230,6 +230,15 @@ export class JobBulkOperationsService {
         completedAt: null,
         startedAt: null,
         failedAt: null,
+        resumeTimestamp: null,
+        tempFilePath: null,
+        // Explicit user retry resets the circuit breaker, otherwise a
+        // circuit-broken job insta-fails again on its next error.
+        circuitBroken: false,
+        circuitBrokenAt: null,
+        circuitBrokenReason: null,
+        dlqEnteredAt: null,
+        totalAttempts: 0,
       });
 
       this.logger.log(

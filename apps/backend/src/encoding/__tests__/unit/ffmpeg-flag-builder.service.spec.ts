@@ -14,6 +14,8 @@ const makeJob = (overrides: Partial<Job> = {}): Job =>
     targetCodec: 'hevc',
     type: 'ENCODE',
     decisionData: null,
+    codecOverride: null,
+    healthMessage: null,
     ...overrides,
   }) as unknown as Job;
 
@@ -134,27 +136,27 @@ describe('FfmpegFlagBuilderService', () => {
   // ── buildFfmpegCommand – REMUX mode ─────────────────────────────────────
 
   describe('buildFfmpegCommand – REMUX', () => {
-    it('uses stream copy flags for REMUX job', () => {
+    it('uses stream copy flags for REMUX job (default mkv target copies everything)', () => {
       const job = makeJob({ type: 'REMUX' } as Partial<Job>);
-      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/movie.mp4');
-      expect(args).toContain('-c:v');
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/movie.mkv');
       expect(args[args.indexOf('-c:v') + 1]).toBe('copy');
-      expect(args).toContain('-c:a');
       expect(args[args.indexOf('-c:a') + 1]).toBe('copy');
-      expect(args).toContain('-map');
+      expect(args[args.indexOf('-c:s') + 1]).toBe('copy');
       expect(args[args.indexOf('-map') + 1]).toBe('0');
     });
 
-    it('does not add -ss for REMUX job', () => {
-      const job = makeJob({ type: 'REMUX' } as Partial<Job>);
-      const args = service.buildFfmpegCommand(
-        job,
-        makePolicy(),
-        makeHwaccel(),
-        '/out/movie.mp4',
-        '00:01:00.000'
-      );
-      expect(args).not.toContain('-ss');
+    it('maps only real video and audio for REMUX to mp4 (no -map 0, no subtitles)', () => {
+      const job = makeJob({ type: 'REMUX', targetContainer: 'mp4' } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/movie.mp4');
+      const mapIdx = args.indexOf('-map');
+      expect(args[mapIdx + 1]).toBe('0:V');
+      expect(args[mapIdx + 2]).toBe('-map');
+      expect(args[mapIdx + 3]).toBe('0:a?');
+      expect(args).not.toContain('0');
+      expect(args).not.toContain('0:s?');
+      expect(args).not.toContain('-c:s');
+      expect(args[args.indexOf('-c:v') + 1]).toBe('copy');
+      expect(args[args.indexOf('-c:a') + 1]).toBe('copy');
     });
 
     it('sets MKV format for REMUX with mkv container', () => {
@@ -187,23 +189,7 @@ describe('FfmpegFlagBuilderService', () => {
       expect(args[args.indexOf('-i') + 1]).toBe('/videos/movie.mkv');
     });
 
-    it('adds -ss before -i when resumeFromTimestamp provided', () => {
-      const job = makeJob();
-      const args = service.buildFfmpegCommand(
-        job,
-        makePolicy(),
-        makeHwaccel(),
-        '/out/out.mkv',
-        '00:05:00.000'
-      );
-      const ssIdx = args.indexOf('-ss');
-      const iIdx = args.indexOf('-i');
-      expect(ssIdx).toBeGreaterThanOrEqual(0);
-      expect(ssIdx).toBeLessThan(iIdx);
-      expect(args[ssIdx + 1]).toBe('00:05:00.000');
-    });
-
-    it('does not add -ss when no resumeFromTimestamp', () => {
+    it('never emits -ss for ENCODE jobs', () => {
       const args = service.buildFfmpegCommand(
         makeJob(),
         makePolicy(),
@@ -341,6 +327,131 @@ describe('FfmpegFlagBuilderService', () => {
       const job = makeJob({ targetContainer: 'avi' } as Partial<Job>);
       const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.avi');
       expect(args).toContain('matroska');
+    });
+  });
+
+  // ── buildFfmpegCommand – ENCODE stream mapping ──────────────────────────
+
+  describe('buildFfmpegCommand – ENCODE stream mapping', () => {
+    it('always maps real video then all audio (-map 0:V -map 0:a? adjacent)', () => {
+      const args = service.buildFfmpegCommand(
+        makeJob(),
+        makePolicy(),
+        makeHwaccel(),
+        '/out/out.mkv'
+      );
+      const mapIdx = args.indexOf('-map');
+      expect(args[mapIdx + 1]).toBe('0:V');
+      expect(args[mapIdx + 2]).toBe('-map');
+      expect(args[mapIdx + 3]).toBe('0:a?');
+      expect(args).not.toContain('0:v');
+      expect(args).not.toContain('0:a');
+    });
+
+    it('maps and copies subtitles for mkv target', () => {
+      const args = service.buildFfmpegCommand(
+        makeJob(),
+        makePolicy(),
+        makeHwaccel(),
+        '/out/out.mkv'
+      );
+      expect(args).toContain('0:s?');
+      expect(args[args.indexOf('-c:s') + 1]).toBe('copy');
+    });
+
+    it('drops subtitles entirely for mp4 target', () => {
+      const job = makeJob({ targetContainer: 'mp4' } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mp4');
+      expect(args).not.toContain('0:s?');
+      expect(args).not.toContain('-c:s');
+      expect(args).not.toContain('mov_text');
+    });
+  });
+
+  // ── buildFfmpegCommand – quality flag per encoder family ────────────────
+
+  describe('buildFfmpegCommand – quality flag', () => {
+    const cases: [string, string][] = [
+      ['NVIDIA', '-cq'],
+      ['INTEL_QSV', '-global_quality'],
+      ['AMD', '-qp'],
+      ['APPLE_M', '-q:v'],
+      ['CPU', '-crf'],
+    ];
+
+    it.each(cases)('uses %s quality flag %s', (hwType, qualityFlag) => {
+      const hwaccel = makeHwaccel({ type: hwType } as Partial<HardwareAccelConfig>);
+      const args = service.buildFfmpegCommand(makeJob(), makePolicy(), hwaccel, '/out/out.mkv');
+      expect(args[args.indexOf(qualityFlag) + 1]).toBe('23');
+    });
+
+    it('uses codec override with -crf and no hwaccel flags when codecOverride is set', () => {
+      const job = makeJob({ codecOverride: 'libx265' } as Partial<Job>);
+      const hwaccel = makeHwaccel({
+        type: 'NVIDIA',
+        flags: ['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda'],
+        videoCodec: 'hevc_nvenc',
+      });
+      const args = service.buildFfmpegCommand(job, makePolicy(), hwaccel, '/out/out.mkv');
+      expect(args[args.indexOf('-c:v') + 1]).toBe('libx265');
+      expect(args[args.indexOf('-crf') + 1]).toBe('23');
+      expect(args).not.toContain('-cq');
+      expect(args).not.toContain('-hwaccel');
+    });
+  });
+
+  // ── buildFfmpegCommand – VAAPI video filter merging ─────────────────────
+
+  describe('buildFfmpegCommand – VAAPI -vf', () => {
+    const vaapiHwaccel = (): HardwareAccelConfig =>
+      makeHwaccel({
+        type: 'AMD',
+        flags: ['-hwaccel', 'vaapi', '-vaapi_device', '/dev/dri/renderD129'],
+        videoCodec: 'hevc_vaapi',
+        videoFilter: 'format=nv12,hwupload',
+      } as Partial<HardwareAccelConfig>);
+
+    it('emits exactly one -vf with hwupload chain after -i', () => {
+      const args = service.buildFfmpegCommand(
+        makeJob(),
+        makePolicy(),
+        vaapiHwaccel(),
+        '/out/out.mkv'
+      );
+      expect(args.filter((a) => a === '-vf')).toHaveLength(1);
+      const vfIdx = args.indexOf('-vf');
+      expect(vfIdx).toBeGreaterThan(args.indexOf('-i'));
+      expect(args[vfIdx + 1]).toBe('format=nv12,hwupload');
+    });
+
+    it('merges policy -vf with hwupload chain appended last', () => {
+      const policy = makePolicy({
+        advancedSettings: { ffmpegFlags: ['-vf', 'scale=1280:720'] },
+      } as Partial<Policy>);
+      const args = service.buildFfmpegCommand(makeJob(), policy, vaapiHwaccel(), '/out/out.mkv');
+      expect(args.filter((a) => a === '-vf')).toHaveLength(1);
+      expect(args[args.indexOf('-vf') + 1]).toBe('scale=1280:720,format=nv12,hwupload');
+    });
+
+    it('emits no -vf when codecOverride forces software fallback', () => {
+      const job = makeJob({ codecOverride: 'libx265' } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), vaapiHwaccel(), '/out/out.mkv');
+      expect(args).not.toContain('-vf');
+    });
+  });
+
+  // ── buildFfmpegCommand – timestamp resilience ───────────────────────────
+
+  describe('buildFfmpegCommand – genpts', () => {
+    it('adds -fflags +genpts before -i when health check flagged timestamp issues', () => {
+      const job = makeJob({
+        healthMessage: 'Timestamp issues detected (may cause playback glitches)',
+      } as Partial<Job>);
+      const args = service.buildFfmpegCommand(job, makePolicy(), makeHwaccel(), '/out/out.mkv');
+      const fflagsIdx = args.indexOf('-fflags');
+      expect(args[fflagsIdx + 1]).toBe('+genpts');
+      expect(fflagsIdx).toBeGreaterThanOrEqual(0);
+      expect(fflagsIdx).toBeLessThan(args.indexOf('-i'));
     });
   });
 });

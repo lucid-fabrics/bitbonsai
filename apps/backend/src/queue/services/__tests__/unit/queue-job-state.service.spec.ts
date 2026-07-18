@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-
 jest.mock('fs');
 
 import { HttpService } from '@nestjs/axios';
@@ -625,7 +623,7 @@ describe('QueueJobStateService', () => {
       );
     });
 
-    it('should resume from progress when temp file exists and resumeTimestamp is set', async () => {
+    it('should always restart from 0% and reset circuit/DLQ state, even with temp state present', async () => {
       const job = makeJob({
         stage: JobStage.FAILED,
         tempFilePath: '/tmp/job-1.mkv',
@@ -638,45 +636,68 @@ describe('QueueJobStateService', () => {
         stage: JobStage.QUEUED,
       });
       jobHistoryService.recordEvent.mockResolvedValue(undefined);
-      jest.mocked(fs.existsSync).mockReturnValue(true);
 
       await service.retryJob('job-1');
 
-      expect(jobRepository.updateById).toHaveBeenCalledWith(
-        'job-1',
-        expect.objectContaining({
-          stage: JobStage.QUEUED,
-          progress: 45.5,
-          resumeTimestamp: 120,
-        })
-      );
+      expect(jobRepository.updateById).toHaveBeenCalledWith('job-1', {
+        stage: JobStage.QUEUED,
+        progress: 0,
+        error: null,
+        completedAt: null,
+        startedAt: null,
+        failedAt: null,
+        retryCount: 1,
+        nextRetryAt: null,
+        resumeTimestamp: null,
+        tempFilePath: null,
+        corruptedRequeueCount: 0,
+        stuckRecoveryCount: 0,
+        circuitBroken: false,
+        circuitBrokenAt: null,
+        circuitBrokenReason: null,
+        dlqEnteredAt: null,
+        totalAttempts: 0,
+      });
     });
 
-    it('should start fresh when temp file does not exist', async () => {
-      const job = makeJob({
-        stage: JobStage.FAILED,
-        tempFilePath: '/tmp/gone.mkv',
-        resumeTimestamp: null,
-        progress: 30,
-      }) as any;
+    it('should clear the per-file blacklist and record history on retry', async () => {
+      const job = makeJob({ stage: JobStage.FAILED, progress: 30 }) as any;
       jobRepository.findById.mockResolvedValue(job);
       jobRepository.updateById.mockResolvedValue({
         ...job,
         stage: JobStage.QUEUED,
       });
+      fileFailureTracking.clearBlacklist.mockResolvedValue(undefined);
       jobHistoryService.recordEvent.mockResolvedValue(undefined);
-      jest.mocked(fs.existsSync).mockReturnValue(false);
 
       await service.retryJob('job-1');
 
-      expect(jobRepository.updateById).toHaveBeenCalledWith(
-        'job-1',
+      expect(fileFailureTracking.clearBlacklist).toHaveBeenCalledWith('/media/movie.mkv', 'lib-1');
+      expect(jobHistoryService.recordEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          progress: 0,
-          resumeTimestamp: null,
-          tempFilePath: null,
+          jobId: 'job-1',
+          stage: JobStage.QUEUED,
+          tempFileExists: false,
+          retryNumber: 1,
+          triggeredBy: 'USER',
         })
       );
+    });
+
+    it('should still retry when clearBlacklist rejects', async () => {
+      const job = makeJob({ stage: JobStage.FAILED }) as any;
+      jobRepository.findById.mockResolvedValue(job);
+      jobRepository.updateById.mockResolvedValue({
+        ...job,
+        stage: JobStage.QUEUED,
+      });
+      fileFailureTracking.clearBlacklist.mockRejectedValue(new Error('tracking down'));
+      jobHistoryService.recordEvent.mockResolvedValue(undefined);
+
+      const result = await service.retryJob('job-1');
+
+      expect(result.stage).toBe(JobStage.QUEUED);
+      expect(jobHistoryService.recordEvent).toHaveBeenCalled();
     });
   });
 

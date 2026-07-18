@@ -11,10 +11,12 @@ import { WorkerPoolService } from './worker-pool.service';
  * EncodingWatchdogService
  *
  * Background health management for the encoding system:
- * - Detects and recovers stuck encoding jobs
  * - Auto-cleans zombie FFmpeg processes
  * - Manages load-based job pausing and resuming
  * - Provides system diagnostics for stuck-job error messages
+ *
+ * Stuck/frozen ENCODING job recovery lives in StuckJobRecoveryWorker, not
+ * here - see startStuckJobWatchdog() for why.
  */
 @Injectable()
 export class EncodingWatchdogService {
@@ -30,22 +32,27 @@ export class EncodingWatchdogService {
   ) {}
 
   /**
-   * Start background watchdog to detect stuck jobs during runtime
+   * Start background watchdog for zombie cleanup and load management.
    *
-   * HIGH PRIORITY FIX: Dynamic timeout based on file size
-   * CRITICAL FIX: Intelligent load management with auto-pause/resume
-   * - Small files (<10GB): 5 minute timeout
-   * - Large files (>=10GB): 15 minute timeout
-   * - Runs every 60 seconds for faster detection
-   * - Attempts to kill hung FFmpeg processes before failing
+   * Stuck-ENCODING-job detection intentionally lives in
+   * StuckJobRecoveryWorker, not here. This watchdog used to independently
+   * kill+FAIL jobs stuck 5-15min purely on `updatedAt` staleness, with no
+   * check for whether ffmpeg was actually still alive and producing output.
+   * StuckJobRecoveryWorker runs the same detection with a real liveness
+   * check (isProcessTrulyStuck), preserves resume state instead of failing
+   * outright, and respects a recovery cap + circuit breaker. Having both
+   * meant this watchdog's cruder 5-minute check usually fired first and
+   * permanently failed jobs that were merely slow, not stuck.
+   *
+   * - Runs every 60 seconds
+   * - Auto-cleans zombie FFmpeg processes
    * - Auto-pauses jobs when load is high, resumes when load drops
-   * - Provides detailed diagnostic information
    *
    * @returns The interval ID so caller can clear it on module destroy
    */
   startStuckJobWatchdog(): NodeJS.Timeout {
     this.logger.log(
-      '👀 Starting enhanced stuck job watchdog (checks every 60s, dynamic timeout: 5-15min based on file size, load-based auto-pause)'
+      '👀 Starting watchdog (checks every 60s: zombie cleanup, load-based auto-pause)'
     );
 
     return setInterval(async () => {
@@ -54,116 +61,8 @@ export class EncodingWatchdogService {
         // This eliminates the need for manual "Kill Zombies" button in debug UI
         await this.autoCleanupZombieProcesses();
 
-        // CRITICAL FIX: Intelligent load management FIRST (before stuck job detection)
+        // CRITICAL FIX: Intelligent load management
         await this.manageLoadBasedPausing();
-
-        // Then proceed with stuck job detection
-        // HIGH PRIORITY FIX: Dynamic timeout based on file size
-        // Small files get 5min timeout, large files get 15min timeout
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-        const tenGB = BigInt(10 * 1024 * 1024 * 1024);
-
-        const stuckJobs = await this.jobRepository.findManyWithInclude<{
-          id: string;
-          fileLabel: string;
-          progress: number;
-          updatedAt: Date;
-          beforeSizeBytes: bigint;
-          lastStageChangeAt: Date | null;
-        }>({
-          where: {
-            stage: 'ENCODING',
-            AND: [
-              // CRITICAL FIX #4: Exclude jobs recently paused (prevents false positives)
-              // Only consider jobs that have been in ENCODING state for the full timeout
-              {
-                OR: [
-                  { lastStageChangeAt: null }, // Old jobs without timestamp
-                  { lastStageChangeAt: { lt: fiveMinutesAgo } }, // Must be in ENCODING >= 5min
-                ],
-              },
-              // Dynamic timeout based on file size
-              {
-                OR: [
-                  {
-                    // Small files (<10GB): stuck for 5+ minutes
-                    beforeSizeBytes: {
-                      lt: tenGB,
-                    },
-                    updatedAt: {
-                      lt: fiveMinutesAgo,
-                    },
-                  },
-                  {
-                    // Large files (>=10GB): stuck for 15+ minutes
-                    beforeSizeBytes: {
-                      gte: tenGB,
-                    },
-                    updatedAt: {
-                      lt: fifteenMinutesAgo,
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-          select: {
-            id: true,
-            fileLabel: true,
-            progress: true,
-            updatedAt: true,
-            beforeSizeBytes: true,
-            lastStageChangeAt: true, // CRITICAL FIX #4: Include for debugging
-          },
-        });
-
-        if (stuckJobs.length > 0) {
-          this.logger.warn(
-            `⚠️  Watchdog detected ${stuckJobs.length} stuck job(s) (dynamic timeout: 5-15min based on file size)`
-          );
-
-          for (const job of stuckJobs) {
-            const stuckDurationMs = Date.now() - new Date(job.updatedAt).getTime();
-            const stuckMinutes = Math.floor(stuckDurationMs / 60000);
-            const fileSizeGB = Number(job.beforeSizeBytes) / 1024 ** 3;
-            const timeoutUsed = job.beforeSizeBytes < tenGB ? '5min' : '15min';
-
-            this.logger.warn(
-              `  - ${job.fileLabel} (${fileSizeGB.toFixed(2)}GB) stuck at ${job.progress}% for ${stuckMinutes} minutes (timeout: ${timeoutUsed})`
-            );
-
-            // STEP 1: Try to kill the ffmpeg process
-            const killAttempted = await this.killStuckFFmpegProcess(job.id);
-
-            // STEP 2: Get diagnostic information
-            const lastStderr = this.ffmpegService.getLastStderr(job.id);
-            let errorMessage = `Job stuck - no progress for ${stuckMinutes} minutes`;
-
-            if (killAttempted) {
-              errorMessage += `\n\nFFmpeg process was killed by watchdog`;
-            } else {
-              errorMessage += `\n\nNo active FFmpeg process found (may have crashed)`;
-            }
-
-            if (lastStderr) {
-              // Extract last few lines of stderr for context
-              const stderrLines = lastStderr.trim().split('\n').slice(-5);
-              const stderrContext = stderrLines.join('\n');
-              errorMessage += `\n\nLast ffmpeg output:\n${stderrContext}`;
-            } else {
-              errorMessage += `\n\nNo error output captured (likely process crash or kill)`;
-            }
-
-            // STEP 3: Add system diagnostics
-            const diagnostics = await this.getSystemDiagnostics(job.id);
-            errorMessage += `\n\n${diagnostics}`;
-
-            // STEP 4: Fail the job
-            this.logger.warn(`  ✗ Failing stuck job: ${job.fileLabel}`);
-            await this.queueService.failJob(job.id, errorMessage);
-          }
-        }
       } catch (error: unknown) {
         this.logger.error('Watchdog check failed:', error);
       }
@@ -196,30 +95,6 @@ export class EncodingWatchdogService {
     } catch (error: unknown) {
       // Silently handle errors - don't let zombie cleanup crash the watchdog
       this.logger.debug(`Zombie cleanup error (non-fatal): ${error}`);
-    }
-  }
-
-  /**
-   * Attempt to kill a stuck FFmpeg process
-   *
-   * @param jobId - Job ID
-   * @returns True if process was found and killed
-   */
-  private async killStuckFFmpegProcess(jobId: string): Promise<boolean> {
-    try {
-      // Use FFmpeg service's kill method
-      const killed = await this.ffmpegService.killProcess(jobId);
-
-      if (killed) {
-        this.logger.log(`  ✓ Killed stuck FFmpeg process for job ${jobId}`);
-        return true;
-      }
-
-      this.logger.debug(`  - No active FFmpeg process found for job ${jobId}`);
-      return false;
-    } catch (error: unknown) {
-      this.logger.error(`  ✗ Failed to kill FFmpeg process for job ${jobId}:`, error);
-      return false;
     }
   }
 

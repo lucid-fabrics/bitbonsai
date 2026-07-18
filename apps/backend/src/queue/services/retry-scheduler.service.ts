@@ -76,8 +76,19 @@ export class RetrySchedulerService {
       }>(
         {
           stage: JobStage.FAILED,
+          circuitBroken: false,
           retryCount: { lt: 3 },
-          nextRetryAt: { lte: now },
+          AND: [
+            // failJob() doesn't set nextRetryAt (it's not scheduling a retry),
+            // so without the null branch those jobs are invisible to this cron
+            // forever: only the auto-heal pass would find them.
+            { OR: [{ nextRetryAt: { lte: now } }, { nextRetryAt: null }] },
+            // Skip jobs the retry strategy deliberately failed as non-retriable
+            // (corrupted source): resurrecting them burns doomed encode passes.
+            // The `error: null` branch is load-bearing: Prisma's NOT+startsWith
+            // compiles to NOT(LIKE), which excludes NULL rows in SQL.
+            { OR: [{ error: null }, { NOT: { error: { startsWith: 'Non-retriable' } } }] },
+          ],
         },
         {
           id: true,

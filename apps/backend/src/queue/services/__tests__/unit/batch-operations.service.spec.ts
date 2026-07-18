@@ -176,6 +176,13 @@ describe('BatchOperationsService', () => {
         expect.objectContaining({
           stage: JobStage.QUEUED,
           progress: 0,
+          resumeTimestamp: null,
+          tempFilePath: null,
+          circuitBroken: false,
+          circuitBrokenAt: null,
+          circuitBrokenReason: null,
+          dlqEnteredAt: null,
+          totalAttempts: 0,
         })
       );
     });

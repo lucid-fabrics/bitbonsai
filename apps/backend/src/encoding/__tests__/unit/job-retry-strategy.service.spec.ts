@@ -2,12 +2,16 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { QueueService } from '../../../queue/queue.service';
 import type { JobWithPolicy } from '../../encoding-file.service';
 import { JobRetryStrategyService } from '../../job-retry-strategy.service';
+import { CodecFallbackService } from '../../services/codec-fallback.service';
+import { GpuHealthService } from '../../services/gpu-health.service';
 
 const makeJob = (overrides: Partial<JobWithPolicy> = {}): JobWithPolicy =>
   ({
     id: 'job-1',
     retryCount: 0,
     filePath: '/videos/movie.mkv',
+    targetCodec: 'HEVC',
+    codecOverride: null,
     ...overrides,
   }) as unknown as JobWithPolicy;
 
@@ -19,11 +23,29 @@ describe('JobRetryStrategyService', () => {
     failJob: jest.fn(),
   };
 
+  const mockCodecFallbackService = {
+    shouldFallback: jest.fn().mockReturnValue(false),
+    applyFallback: jest.fn().mockResolvedValue(undefined),
+    clearFallback: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const mockGpuHealthService = {
+    isGpuHealthy: jest.fn().mockResolvedValue(true),
+    recordGpuFailure: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockCodecFallbackService.shouldFallback.mockReturnValue(false);
+    mockGpuHealthService.isGpuHealthy.mockResolvedValue(true);
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [JobRetryStrategyService, { provide: QueueService, useValue: mockQueueService }],
+      providers: [
+        JobRetryStrategyService,
+        { provide: QueueService, useValue: mockQueueService },
+        { provide: CodecFallbackService, useValue: mockCodecFallbackService },
+        { provide: GpuHealthService, useValue: mockGpuHealthService },
+      ],
     }).compile();
 
     service = module.get(JobRetryStrategyService);
@@ -187,18 +209,65 @@ describe('JobRetryStrategyService', () => {
       });
     });
 
-    describe('non-transient, non-corrupted errors', () => {
-      it('permanently fails for errors that are neither transient nor non-retriable', async () => {
+    describe('generic errors default to retry', () => {
+      it('retries an error that is neither a known transient pattern nor non-retriable', async () => {
         const job = makeJob({ retryCount: 0 });
         const error = new Error('codec not supported');
+
+        await service.handleJobFailure(job, error);
+
+        expect(mockQueueService.failJob).not.toHaveBeenCalled();
+        expect(mockQueueService.update).toHaveBeenCalledWith(
+          'job-1',
+          expect.objectContaining({ stage: 'QUEUED', retryCount: 1 })
+        );
+      });
+
+      it('permanently fails a [FATAL]-flagged error without retrying', async () => {
+        const job = makeJob({ retryCount: 0 });
+        const error = new Error('[FATAL] Codec Not Supported: encoder not found');
 
         await service.handleJobFailure(job, error);
 
         expect(mockQueueService.update).not.toHaveBeenCalled();
         expect(mockQueueService.failJob).toHaveBeenCalledWith(
           'job-1',
-          expect.stringContaining('Non-retriable error after 1 attempt(s)')
+          expect.stringContaining('Non-retriable error')
         );
+      });
+
+      it('still exhausts retries and fails permanently for a persistent generic error', async () => {
+        const job = makeJob({ retryCount: 3 });
+        const error = new Error('unexpected ffmpeg exit code 1');
+
+        await service.handleJobFailure(job, error);
+
+        expect(mockQueueService.update).not.toHaveBeenCalled();
+        expect(mockQueueService.failJob).toHaveBeenCalledWith(
+          'job-1',
+          expect.stringContaining('All 3 retry attempts exhausted')
+        );
+      });
+    });
+
+    describe('GPU→CPU fallback', () => {
+      it('applies the fallback and requeues without touching retryCount when a GPU error is detected', async () => {
+        const job = makeJob({ retryCount: 0, targetCodec: 'hevc_nvenc' });
+        mockCodecFallbackService.shouldFallback.mockReturnValue(true);
+        const error = new Error('nvenc: device open failed');
+
+        await service.handleJobFailure(job, error);
+
+        expect(mockGpuHealthService.recordGpuFailure).toHaveBeenCalledWith(
+          'nvenc: device open failed'
+        );
+        expect(mockCodecFallbackService.applyFallback).toHaveBeenCalledWith('job-1', 'hevc_nvenc');
+        expect(mockQueueService.update).toHaveBeenCalledWith(
+          'job-1',
+          expect.objectContaining({ stage: 'QUEUED', progress: 0 })
+        );
+        expect(mockQueueService.update.mock.calls[0][1]).not.toHaveProperty('retryCount');
+        expect(mockQueueService.failJob).not.toHaveBeenCalled();
       });
     });
 

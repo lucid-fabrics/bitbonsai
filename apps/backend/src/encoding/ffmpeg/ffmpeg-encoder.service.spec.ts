@@ -1,5 +1,4 @@
 import { existsSync } from 'node:fs';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { FfmpegFlagBuilderService } from '../ffmpeg-flag-builder.service';
 import { FfprobeService } from '../ffprobe.service';
@@ -127,7 +126,6 @@ describe('FfmpegEncoderService', () => {
           useValue: {
             validateFilePath: jest.fn(),
             verifyFile: jest.fn().mockResolvedValue({ isValid: true }),
-            verifyPartialEncode: jest.fn().mockResolvedValue(false),
             handleEncodingSuccess: jest.fn().mockResolvedValue(undefined),
             handleEncodingFailure: jest.fn().mockResolvedValue(undefined),
           },
@@ -173,10 +171,6 @@ describe('FfmpegEncoderService', () => {
             cleanupJobTempFiles: jest.fn().mockResolvedValue(undefined),
           },
         },
-        {
-          provide: EventEmitter2,
-          useValue: { emit: jest.fn() },
-        },
       ],
     }).compile();
 
@@ -206,7 +200,7 @@ describe('FfmpegEncoderService', () => {
     return proc;
   }
 
-  describe('encodeFile — successful encode', () => {
+  describe('encodeFile - successful encode', () => {
     it('resolves and calls handleEncodingSuccess', async () => {
       mockExistsSync.mockReturnValue(true);
       setupMockProcess({ exitCode: 0 });
@@ -232,7 +226,7 @@ describe('FfmpegEncoderService', () => {
     });
   });
 
-  describe('encodeFile — missing input file', () => {
+  describe('encodeFile - missing input file', () => {
     it('throws when input file does not exist', async () => {
       mockExistsSync.mockReturnValue(false);
 
@@ -241,7 +235,7 @@ describe('FfmpegEncoderService', () => {
     });
   });
 
-  describe('encodeFile — mid-encode process crash', () => {
+  describe('encodeFile - mid-encode process crash', () => {
     it('rejects and calls handleEncodingFailure on non-zero exit code', async () => {
       mockExistsSync.mockReturnValue(true);
       setupMockProcess({ exitCode: 1 });
@@ -259,7 +253,7 @@ describe('FfmpegEncoderService', () => {
     });
   });
 
-  describe('encodeFile — GPU unavailability fallback', () => {
+  describe('encodeFile - GPU unavailability fallback', () => {
     it('falls back to CPU encoding when GPU detection returns CPU type', async () => {
       mockExistsSync.mockReturnValue(true);
       hardwareAcceleration.detectHardwareAcceleration.mockResolvedValue({
@@ -275,8 +269,7 @@ describe('FfmpegEncoderService', () => {
         baseJob,
         basePolicy,
         expect.objectContaining({ type: 'CPU' }),
-        expect.any(String),
-        undefined
+        expect.any(String)
       );
     });
   });

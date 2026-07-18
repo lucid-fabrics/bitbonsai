@@ -1,6 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobEventType, JobStage } from '@prisma/client';
-import * as fs from 'fs';
 import { JobRepository } from '../../../../common/repositories/job.repository';
 import { JobHistoryRepository } from '../../../../common/repositories/job-history.repository';
 import { SettingsRepository } from '../../../../common/repositories/settings.repository';
@@ -9,16 +8,12 @@ import { AutoHealingService } from '../../auto-healing.service';
 import { CircuitBreakerService } from '../../circuit-breaker.service';
 import { RetrySchedulerService } from '../../retry-scheduler.service';
 
-jest.mock('fs', () => ({
-  ...jest.requireActual('fs'),
-  existsSync: jest.fn(),
-}));
-
 describe('AutoHealingService', () => {
   let service: AutoHealingService;
   let jobHistoryRepository: { createEntry: jest.Mock };
   let jobRepository: { findManySelect: jest.Mock; updateById: jest.Mock };
   let settingsRepository: { findFirst: jest.Mock };
+  let nodeConfig: { getNodeId: jest.Mock; isMainNode: jest.Mock };
 
   beforeEach(async () => {
     jobHistoryRepository = {
@@ -31,6 +26,10 @@ describe('AutoHealingService', () => {
     settingsRepository = {
       findFirst: jest.fn(),
     };
+    nodeConfig = {
+      getNodeId: jest.fn().mockReturnValue(null),
+      isMainNode: jest.fn().mockReturnValue(true),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -38,13 +37,7 @@ describe('AutoHealingService', () => {
         { provide: JobHistoryRepository, useValue: jobHistoryRepository },
         { provide: JobRepository, useValue: jobRepository },
         { provide: SettingsRepository, useValue: settingsRepository },
-        {
-          provide: NodeConfigService,
-          useValue: {
-            getNodeId: jest.fn().mockReturnValue(null),
-            isMainNode: jest.fn().mockReturnValue(true),
-          },
-        },
+        { provide: NodeConfigService, useValue: nodeConfig },
         {
           provide: CircuitBreakerService,
           useValue: {
@@ -84,8 +77,6 @@ describe('AutoHealingService', () => {
     retryCount: 0,
     nextRetryAt: null,
     progress: 0,
-    tempFilePath: null,
-    resumeTimestamp: null,
     ...overrides,
   });
 
@@ -104,6 +95,34 @@ describe('AutoHealingService', () => {
       );
     });
 
+    it('should query only non-circuit-broken retriable jobs under the retry limit', async () => {
+      settingsRepository.findFirst.mockResolvedValue({
+        maxAutoHealRetries: 15,
+      });
+      jobRepository.findManySelect.mockResolvedValue([]);
+
+      await service.healFailedJobs();
+
+      expect(jobRepository.findManySelect).toHaveBeenCalledWith(
+        {
+          stage: JobStage.FAILED,
+          circuitBroken: false,
+          retryCount: { lt: 15 },
+          AND: [
+            { OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: expect.any(Date) } }] },
+            { OR: [{ error: null }, { NOT: { error: { startsWith: 'Non-retriable' } } }] },
+          ],
+        },
+        {
+          id: true,
+          fileLabel: true,
+          retryCount: true,
+          nextRetryAt: true,
+          progress: true,
+        }
+      );
+    });
+
     it('should heal failed jobs by resetting to QUEUED', async () => {
       settingsRepository.findFirst.mockResolvedValue({
         maxAutoHealRetries: 15,
@@ -114,47 +133,37 @@ describe('AutoHealingService', () => {
       ]);
       jobRepository.updateById.mockResolvedValue({});
       jobHistoryRepository.createEntry.mockResolvedValue({});
-      (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       const result = await service.healFailedJobs();
 
       expect(result).toBe(2);
       expect(jobRepository.updateById).toHaveBeenCalledTimes(2);
 
-      // Verify first job reset
-      expect(jobRepository.updateById).toHaveBeenCalledWith(
-        'job-1',
-        expect.objectContaining({
-          stage: JobStage.QUEUED,
-          progress: 0, // Reset since no temp file
-          error: null,
-          completedAt: null,
-          startedAt: null,
-          retryCount: 3, // Incremented from 2
-          nextRetryAt: expect.any(Date),
-          autoHealedAt: expect.any(Date),
-          autoHealedProgress: 30,
-          resumeTimestamp: null,
-          tempFilePath: null,
-        })
-      );
+      // Verify first job reset - full update payload
+      expect(jobRepository.updateById).toHaveBeenCalledWith('job-1', {
+        stage: JobStage.QUEUED,
+        progress: 0,
+        error: null,
+        completedAt: null,
+        startedAt: null,
+        retryCount: 3, // Incremented from 2
+        nextRetryAt: expect.any(Date),
+        autoHealedAt: expect.any(Date),
+        autoHealedProgress: 30,
+        resumeTimestamp: null,
+        tempFilePath: null,
+      });
     });
 
-    it('should preserve progress when temp file exists for resume', async () => {
+    it('should always restart from 0% and clear resume state (input-seek resume removed)', async () => {
       settingsRepository.findFirst.mockResolvedValue({
         maxAutoHealRetries: 15,
       });
       jobRepository.findManySelect.mockResolvedValue([
-        createFailedJob('job-1', {
-          retryCount: 1,
-          progress: 65,
-          tempFilePath: '/tmp/encode-job-1.mkv',
-          resumeTimestamp: '00:45:30',
-        }),
+        createFailedJob('job-1', { retryCount: 1, progress: 65 }),
       ]);
       jobRepository.updateById.mockResolvedValue({});
       jobHistoryRepository.createEntry.mockResolvedValue({});
-      (fs.existsSync as jest.Mock).mockReturnValue(true);
 
       const result = await service.healFailedJobs();
 
@@ -163,41 +172,12 @@ describe('AutoHealingService', () => {
         'job-1',
         expect.objectContaining({
           stage: JobStage.QUEUED,
-          progress: 65, // Preserved for resume
-          nextRetryAt: expect.any(Date),
-          resumeTimestamp: '00:45:30',
-          tempFilePath: '/tmp/encode-job-1.mkv',
-          autoHealedProgress: 65,
-        })
-      );
-    });
-
-    it('should clear resume state when temp file is missing', async () => {
-      settingsRepository.findFirst.mockResolvedValue({
-        maxAutoHealRetries: 15,
-      });
-      jobRepository.findManySelect.mockResolvedValue([
-        createFailedJob('job-1', {
-          retryCount: 1,
-          progress: 40,
-          tempFilePath: '/tmp/deleted-file.mkv',
-          resumeTimestamp: '00:20:00',
-        }),
-      ]);
-      jobRepository.updateById.mockResolvedValue({});
-      jobHistoryRepository.createEntry.mockResolvedValue({});
-      (fs.existsSync as jest.Mock).mockReturnValue(false);
-
-      const result = await service.healFailedJobs();
-
-      expect(result).toBe(1);
-      expect(jobRepository.updateById).toHaveBeenCalledWith(
-        'job-1',
-        expect.objectContaining({
-          progress: 0, // Reset since temp file gone
+          progress: 0, // Never resumes mid-file
+          retryCount: 2,
           nextRetryAt: expect.any(Date),
           resumeTimestamp: null,
           tempFilePath: null,
+          autoHealedProgress: 65, // Original progress recorded for history
         })
       );
     });
@@ -211,7 +191,6 @@ describe('AutoHealingService', () => {
       ]);
       jobRepository.updateById.mockResolvedValue({});
       jobHistoryRepository.createEntry.mockResolvedValue({});
-      (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       await service.healFailedJobs();
 
@@ -224,7 +203,7 @@ describe('AutoHealingService', () => {
         tempFileExists: false,
         retryNumber: 1,
         triggeredBy: 'BACKEND_RESTART',
-        systemMessage: expect.stringContaining('starting encoding from scratch'),
+        systemMessage: 'Auto-healed: restarting encode from 0% (was at 20.0%)',
       });
     });
 
@@ -237,7 +216,6 @@ describe('AutoHealingService', () => {
         createFailedJob('job-2'),
         createFailedJob('job-3'),
       ]);
-      (fs.existsSync as jest.Mock).mockReturnValue(false);
       jobHistoryRepository.createEntry.mockResolvedValue({});
 
       jobRepository.updateById
@@ -286,6 +264,66 @@ describe('AutoHealingService', () => {
       await service.onModuleInit();
 
       expect(healSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should skip healing on LINKED node', async () => {
+      nodeConfig.isMainNode.mockReturnValue(false);
+      const healSpy = jest.spyOn(service, 'healFailedJobs').mockResolvedValue(0);
+
+      await service.onModuleInit();
+
+      expect(healSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('healFailedJobsCron', () => {
+    it('should run healFailedJobs and release the overlap lock', async () => {
+      const healSpy = jest.spyOn(service, 'healFailedJobs').mockResolvedValue(1);
+
+      await service.healFailedJobsCron();
+
+      expect(healSpy).toHaveBeenCalledTimes(1);
+      expect((service as any).cronRunning).toBe(false);
+    });
+
+    it('should release the lock even when healFailedJobs throws', async () => {
+      jest.spyOn(service, 'healFailedJobs').mockRejectedValue(new Error('boom'));
+
+      await expect(service.healFailedJobsCron()).rejects.toThrow('boom');
+      expect((service as any).cronRunning).toBe(false);
+    });
+
+    it('should skip on LINKED node', async () => {
+      nodeConfig.isMainNode.mockReturnValue(false);
+      const healSpy = jest.spyOn(service, 'healFailedJobs').mockResolvedValue(0);
+
+      await service.healFailedJobsCron();
+
+      expect(healSpy).not.toHaveBeenCalled();
+    });
+
+    it('should skip when a previous run still holds a fresh lock', async () => {
+      const healSpy = jest.spyOn(service, 'healFailedJobs').mockResolvedValue(0);
+      (service as any).cronRunning = true;
+      (service as any).cronLockExpiry = Date.now();
+
+      await service.healFailedJobsCron();
+
+      expect(healSpy).not.toHaveBeenCalled();
+      expect((service as any).logger.warn).toHaveBeenCalledWith(
+        'Auto-heal cron already running, skipping this tick'
+      );
+    });
+
+    it('should proceed when the held lock is stale (older than 2 hours)', async () => {
+      const healSpy = jest.spyOn(service, 'healFailedJobs').mockResolvedValue(0);
+      (service as any).cronRunning = true;
+      (service as any).cronLockExpiry = Date.now() - (2 * 60 * 60 * 1000 + 1000);
+
+      await service.healFailedJobsCron();
+
+      expect(healSpy).toHaveBeenCalledTimes(1);
+      expect((service as any).cronRunning).toBe(false);
     });
   });
 

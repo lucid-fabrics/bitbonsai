@@ -84,8 +84,12 @@ describe('RetrySchedulerService', () => {
       expect(jobRepository.findManySelect).toHaveBeenCalledWith(
         {
           stage: JobStage.FAILED,
+          circuitBroken: false,
           retryCount: { lt: 3 },
-          nextRetryAt: { lte: expect.any(Date) },
+          AND: [
+            { OR: [{ nextRetryAt: { lte: expect.any(Date) } }, { nextRetryAt: null }] },
+            { OR: [{ error: null }, { NOT: { error: { startsWith: 'Non-retriable' } } }] },
+          ],
         },
         {
           id: true,
@@ -173,14 +177,43 @@ describe('RetrySchedulerService', () => {
       );
     });
 
-    it('should only find jobs with nextRetryAt in the past', async () => {
+    it('should only find jobs with nextRetryAt in the past or unset, excluding non-retriable errors', async () => {
       jobRepository.findManySelect.mockResolvedValue([]);
 
       await service.retryFailedJobs();
 
       expect(jobRepository.findManySelect).toHaveBeenCalledWith(
-        expect.objectContaining({ nextRetryAt: { lte: expect.any(Date) } }),
+        expect.objectContaining({
+          AND: [
+            { OR: [{ nextRetryAt: { lte: expect.any(Date) } }, { nextRetryAt: null }] },
+            { OR: [{ error: null }, { NOT: { error: { startsWith: 'Non-retriable' } } }] },
+          ],
+        }),
         expect.anything()
+      );
+    });
+
+    it('should skip circuit-broken jobs in the query', async () => {
+      jobRepository.findManySelect.mockResolvedValue([]);
+
+      await service.retryFailedJobs();
+
+      expect(jobRepository.findManySelect).toHaveBeenCalledWith(
+        expect.objectContaining({ circuitBroken: false }),
+        expect.anything()
+      );
+    });
+
+    it('picks up a FAILED job whose nextRetryAt was never set (failJob does not schedule one)', async () => {
+      const failedJobs = [createFailedJob('job-1', { retryCount: 0, nextRetryAt: null })];
+      jobRepository.findManySelect.mockResolvedValue(failedJobs);
+      jobRepository.updateById.mockResolvedValue({});
+
+      await service.retryFailedJobs();
+
+      expect(jobRepository.updateById).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ stage: JobStage.QUEUED, retryCount: 1 })
       );
     });
 

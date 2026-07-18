@@ -125,6 +125,21 @@ describe('JobBulkOperationsService', () => {
 
       expect(result.retriedCount).toBe(2);
       expect(result.jobs).toHaveLength(2);
+      expect(jobRepository.updateManyByIds).toHaveBeenCalledWith(['job-1', 'job-2'], {
+        stage: JobStage.QUEUED,
+        progress: 0,
+        error: null,
+        completedAt: null,
+        startedAt: null,
+        failedAt: null,
+        resumeTimestamp: null,
+        tempFilePath: null,
+        circuitBroken: false,
+        circuitBrokenAt: null,
+        circuitBrokenReason: null,
+        dlqEnteredAt: null,
+        totalAttempts: 0,
+      });
     });
 
     it('should filter by error category when errorFilter is provided', async () => {

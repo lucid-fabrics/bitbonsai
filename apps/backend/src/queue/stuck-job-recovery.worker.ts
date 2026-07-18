@@ -261,13 +261,16 @@ export class StuckJobRecoveryWorker implements OnModuleInit {
           continue;
         }
 
-        // CAPA CRITICAL FIX: Preserve temp file and resume state when recovering frozen jobs
-        // DO NOT reset progress or startedAt - this allows job to resume from where it froze
+        // Input-seek resume was removed (it produced truncated outputs), so
+        // recovery restarts from 0. Segmented jobs keep their real resume
+        // state in JobSegment rows and skip already-verified segments.
         await this.jobRepository.updateById(job.id, {
           stage: JobStage.QUEUED,
           stuckRecoveryCount: { increment: 1 },
-          // Keep progress, tempFilePath, resumeTimestamp intact for resume capability
-          error: `Encoding timed out (no progress for ${this.ENCODING_TIMEOUT_MIN}min, recovery ${job.stuckRecoveryCount + 1}/${this.MAX_STUCK_RECOVERY}). Job will resume from ${job.progress}%.`,
+          progress: 0,
+          tempFilePath: null,
+          resumeTimestamp: null,
+          error: `Encoding timed out (no progress for ${this.ENCODING_TIMEOUT_MIN}min, recovery ${job.stuckRecoveryCount + 1}/${this.MAX_STUCK_RECOVERY}). Job will restart from 0%.`,
         });
 
         // CAPA FIX: Show lastProgressUpdate time for better visibility
