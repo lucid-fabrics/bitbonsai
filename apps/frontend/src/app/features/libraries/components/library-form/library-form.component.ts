@@ -8,6 +8,7 @@ import {
   type OnDestroy,
   type OnInit,
   output,
+  signal,
   viewChild,
 } from '@angular/core';
 import {
@@ -58,7 +59,7 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
   libraryForm!: FormGroup<LibraryFormControls>;
   mediaTypes = Object.values(MediaType);
   isEditMode = false;
-  showFolderBrowser = false;
+  showFolderBrowser = signal(false);
   apiUrl = environment.apiUrl;
 
   // Policies state
@@ -89,9 +90,9 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
         wrapper &&
         event.target &&
         !wrapper.contains(event.target as globalThis.Node) &&
-        this.showFolderBrowser
+        this.showFolderBrowser()
       ) {
-        this.showFolderBrowser = false;
+        this.showFolderBrowser.set(false);
       }
     };
     // Use capture phase to ensure we get the event before any stopPropagation
@@ -201,7 +202,7 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
   onPathFocus(): void {
     const currentPath = this.libraryForm.get('path')?.value || '/';
     if (currentPath.startsWith('/')) {
-      this.showFolderBrowser = true;
+      this.showFolderBrowser.set(true);
     }
   }
 
@@ -209,7 +210,7 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
     const input = event.target as HTMLInputElement;
     const path = input.value;
     if (path.startsWith('/') && path.length > 0) {
-      this.showFolderBrowser = true;
+      this.showFolderBrowser.set(true);
     }
   }
 
@@ -219,6 +220,6 @@ export class LibraryFormComponent implements OnInit, OnDestroy {
   }
 
   closeFolderBrowser(): void {
-    this.showFolderBrowser = false;
+    this.showFolderBrowser.set(false);
   }
 }

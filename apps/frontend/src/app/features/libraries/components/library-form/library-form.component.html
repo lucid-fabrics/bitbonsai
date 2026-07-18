@@ -55,7 +55,7 @@
           (focus)="onPathFocus()"
           (input)="onPathInput($event)"
         />
-        @if (showFolderBrowser) {
+        @if (showFolderBrowser()) {
           <lib-path-selector
             [apiUrl]="apiUrl"
             (pathSelected)="onFolderSelected($event)"
