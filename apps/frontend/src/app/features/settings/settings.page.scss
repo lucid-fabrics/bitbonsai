@@ -1012,28 +1012,6 @@ input:focus + .slider {
   }
 }
 
-// Field hint (reusable for informational text under form fields)
-.field-hint {
-  padding: 12px;
-  background: rgba(0, 113, 197, 0.05);
-  border: 1px solid rgba(0, 113, 197, 0.2);
-  border-radius: 8px;
-  font-size: 13px;
-  color: $text-secondary;
-  line-height: 1.5;
-  margin-top: 8px;
-
-  i {
-    color: #0071c5;
-    margin-right: 6px;
-  }
-
-  strong {
-    color: $text-primary;
-    font-weight: 600;
-  }
-}
-
 .unraid-gpu-help {
   display: flex;
   gap: 16px;
