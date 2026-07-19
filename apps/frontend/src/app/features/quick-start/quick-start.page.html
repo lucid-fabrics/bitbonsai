@@ -1,0 +1,293 @@
+<div class="quick-start-page">
+  <div class="quick-start-container">
+    <div class="brand-section">
+      <div class="brand-logo">
+        <fa-icon [icon]="icons.tree"></fa-icon>
+      </div>
+      <h1 class="brand-title">{{ 'app.name' | transloco }}</h1>
+      <p class="brand-tagline">{{ 'app.tagline' | transloco }}</p>
+    </div>
+
+    <div class="quick-start-card">
+      @if (currentStep() !== QuickStartStep.Done) {
+        <div class="progress-section">
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="((currentStep() + 1) / totalSteps) * 100"></div>
+          </div>
+          <div class="progress-text">
+            {{ 'quickstart.progressStep' | transloco: { current: currentStep() + 1, total: totalSteps } }}
+          </div>
+        </div>
+      }
+
+      <!-- Step 1: Folders -->
+      @if (currentStep() === QuickStartStep.Folders) {
+        <div class="step-content" [@stepTransition]>
+          <div class="step-icon">
+            <fa-icon [icon]="icons.folderOpen"></fa-icon>
+          </div>
+          <h2 class="step-title">{{ 'quickstart.foldersTitle' | transloco }}</h2>
+          <p class="step-subtitle">{{ 'quickstart.foldersSubtitle' | transloco }}</p>
+
+          <div class="path-input-wrapper" #pathWrapper (click)="onWrapperClick($event)">
+            <input
+              type="text"
+              class="form-input"
+              [value]="currentFolderPath()"
+              [placeholder]="'quickstart.folderPathPlaceholder' | transloco"
+              [attr.aria-label]="'quickstart.folderPathPlaceholder' | transloco"
+              (focus)="onPathFocus()"
+              (input)="onPathInput($event)"
+            />
+            @if (showFolderBrowser()) {
+              <lib-path-selector
+                [apiUrl]="apiUrl"
+                (pathSelected)="onFolderSelected($event)"
+                (closed)="closeFolderBrowser()"
+              />
+            }
+          </div>
+
+          <button type="button" class="btn btn-secondary btn-add-folder" (click)="addFolder()">
+            <fa-icon [icon]="icons.plus"></fa-icon>
+            <span>{{ 'quickstart.addFolder' | transloco }}</span>
+          </button>
+
+          @if (paths().length > 0) {
+            <div class="folder-chips">
+              @for (path of paths(); track path) {
+                <div class="folder-chip">
+                  <fa-icon [icon]="icons.folder"></fa-icon>
+                  <span class="folder-chip__path">{{ path }}</span>
+                  <button
+                    type="button"
+                    class="folder-chip__remove"
+                    [attr.aria-label]="'quickstart.removeFolder' | transloco"
+                    (click)="removeFolder(path)"
+                  >
+                    <fa-icon [icon]="icons.xmark"></fa-icon>
+                  </button>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="field-hint">
+              <fa-icon [icon]="icons.circleInfo"></fa-icon>
+              {{ 'quickstart.noFoldersHint' | transloco }}
+            </div>
+          }
+
+          <div class="step-actions">
+            <button
+              type="button"
+              class="btn btn-primary"
+              [disabled]="paths().length === 0"
+              (click)="nextStep()"
+            >
+              <span>{{ 'quickstart.next' | transloco }}</span>
+              <fa-icon [icon]="icons.arrowRight"></fa-icon>
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Step 2: Preset -->
+      @if (currentStep() === QuickStartStep.Preset) {
+        <div class="step-content" [@stepTransition]>
+          <div class="step-icon">
+            <fa-icon [icon]="icons.sliders"></fa-icon>
+          </div>
+          <h2 class="step-title">{{ 'quickstart.presetTitle' | transloco }}</h2>
+          <p class="step-subtitle">{{ 'quickstart.presetSubtitle' | transloco }}</p>
+
+          <div class="preset-gallery">
+            @if (presetsLoading() && presets().length === 0) {
+              @for (placeholder of [1, 2, 3]; track placeholder) {
+                <div class="preset-card-skeleton skeleton"></div>
+              }
+            } @else {
+              @for (preset of presets(); track preset.preset) {
+                <div
+                  class="preset-card"
+                  [class.preset-card--selected]="selectedPreset()?.preset === preset.preset"
+                  role="button"
+                  tabindex="0"
+                  (click)="selectPreset(preset)"
+                  (keydown.enter)="selectPreset(preset)"
+                  (keydown.space)="$event.preventDefault(); selectPreset(preset)"
+                >
+                  @if (preset.recommended) {
+                    <div class="preset-card__badge">
+                      <fa-icon [icon]="icons.star"></fa-icon>
+                      {{ 'quickstart.recommended' | transloco }}
+                    </div>
+                  }
+                  <div class="preset-card__icon">
+                    <fa-icon [icon]="getPresetIcon(preset.preset)"></fa-icon>
+                  </div>
+                  <h3 class="preset-card__title">{{ preset.name }}</h3>
+                  <div class="preset-card__details">
+                    <div class="preset-card__detail-row">
+                      <span>{{ 'quickstart.codecLabel' | transloco }}:</span>
+                      <strong>{{ codecLabelKey(preset.codec) | transloco }}</strong>
+                    </div>
+                    <div class="preset-card__detail-row">
+                      <span>{{ 'quickstart.qualityLabel' | transloco }}:</span>
+                      <strong>{{ qualityLabelKey(preset.crf) | transloco }}</strong>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+
+          <div class="step-actions">
+            <button type="button" class="btn btn-secondary" (click)="previousStep()">
+              <fa-icon [icon]="icons.arrowLeft"></fa-icon>
+              <span>{{ 'quickstart.back' | transloco }}</span>
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              [disabled]="!selectedPreset()"
+              (click)="nextStep()"
+            >
+              <span>{{ 'quickstart.next' | transloco }}</span>
+              <fa-icon [icon]="icons.arrowRight"></fa-icon>
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Step 3: Confirm and run -->
+      @if (currentStep() === QuickStartStep.Confirm) {
+        <div class="step-content" [@stepTransition]>
+          @if (phase() === 'idle') {
+            <div class="step-icon">
+              <fa-icon [icon]="icons.rocket"></fa-icon>
+            </div>
+            <h2 class="step-title">{{ 'quickstart.confirmTitle' | transloco }}</h2>
+
+            <div class="confirm-summary">
+              <p>
+                {{ 'quickstart.confirmFolderCount' | transloco: { count: paths().length } }}
+              </p>
+              <p>
+                {{ 'quickstart.confirmPresetLabel' | transloco: { preset: selectedPreset()?.name } }}
+              </p>
+            </div>
+
+            <p class="step-description">{{ 'quickstart.confirmReassurance' | transloco }}</p>
+
+            @if (error()) {
+              <div class="alert alert-error">
+                <fa-icon [icon]="icons.exclamationCircle"></fa-icon>
+                <span>{{ error() | transloco }}</span>
+              </div>
+            }
+
+            <div class="step-actions">
+              <button type="button" class="btn btn-secondary" (click)="previousStep()">
+                <fa-icon [icon]="icons.arrowLeft"></fa-icon>
+                <span>{{ 'quickstart.back' | transloco }}</span>
+              </button>
+              <button type="button" class="btn btn-primary" (click)="start()">
+                <fa-icon [icon]="icons.bolt"></fa-icon>
+                <span>{{ 'quickstart.startEncoding' | transloco }}</span>
+              </button>
+            </div>
+          } @else {
+            <div class="step-icon">
+              <fa-icon [icon]="icons.gears"></fa-icon>
+            </div>
+            <h2 class="step-title">{{ 'quickstart.confirmTitle' | transloco }}</h2>
+
+            <ul class="run-checklist">
+              <li class="run-checklist__item" [class.run-checklist__item--done]="isPhaseDone('creating-policy')">
+                @if (isPhaseActive('creating-policy')) {
+                  <fa-icon [icon]="icons.spinner" [animation]="'spin'"></fa-icon>
+                } @else if (isPhaseDone('creating-policy')) {
+                  <fa-icon [icon]="icons.circleCheck"></fa-icon>
+                } @else {
+                  <fa-icon [icon]="icons.circle"></fa-icon>
+                }
+                <span>{{ 'quickstart.stepCreatingPolicy' | transloco }}</span>
+              </li>
+              <li class="run-checklist__item" [class.run-checklist__item--done]="isPhaseDone('creating-libraries')">
+                @if (isPhaseActive('creating-libraries')) {
+                  <fa-icon [icon]="icons.spinner" [animation]="'spin'"></fa-icon>
+                } @else if (isPhaseDone('creating-libraries')) {
+                  <fa-icon [icon]="icons.circleCheck"></fa-icon>
+                } @else {
+                  <fa-icon [icon]="icons.circle"></fa-icon>
+                }
+                <span>{{ 'quickstart.stepCreatingLibraries' | transloco }}</span>
+              </li>
+              <li class="run-checklist__item" [class.run-checklist__item--done]="isPhaseDone('queueing')">
+                @if (isPhaseActive('queueing')) {
+                  <fa-icon [icon]="icons.spinner" [animation]="'spin'"></fa-icon>
+                } @else if (isPhaseDone('queueing')) {
+                  <fa-icon [icon]="icons.circleCheck"></fa-icon>
+                } @else {
+                  <fa-icon [icon]="icons.circle"></fa-icon>
+                }
+                <span>{{ 'quickstart.stepQueueing' | transloco }}</span>
+              </li>
+            </ul>
+
+            @if (error()) {
+              <div class="alert alert-error">
+                <fa-icon [icon]="icons.exclamationCircle"></fa-icon>
+                <span>{{ error() | transloco }}</span>
+              </div>
+              <div class="step-actions step-actions-center">
+                <button type="button" class="btn btn-primary" (click)="start()">
+                  <fa-icon [icon]="icons.rotateRight"></fa-icon>
+                  <span>{{ 'quickstart.tryAgain' | transloco }}</span>
+                </button>
+              </div>
+            }
+          }
+        </div>
+      }
+
+      <!-- Done -->
+      @if (currentStep() === QuickStartStep.Done) {
+        <div class="step-content" [@stepTransition]>
+          <div class="step-icon step-icon--success">
+            <fa-icon [icon]="icons.circleCheck"></fa-icon>
+          </div>
+          <h2 class="step-title">{{ 'quickstart.doneTitle' | transloco }}</h2>
+          <p class="step-subtitle">
+            {{ 'quickstart.jobsQueued' | transloco: { count: jobsCreated() } }}
+          </p>
+
+          @if (sampleJobs().length > 0) {
+            <div class="sample-jobs">
+              <p class="sample-jobs__title">{{ 'quickstart.sampleJobsTitle' | transloco }}</p>
+              <ul>
+                @for (job of sampleJobs(); track job) {
+                  <li>{{ job }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          <div class="step-actions step-actions-column">
+            <a routerLink="/queue" class="btn btn-primary btn-large">
+              <fa-icon [icon]="icons.listCheck"></fa-icon>
+              <span>{{ 'quickstart.viewQueue' | transloco }}</span>
+            </a>
+            <button type="button" class="btn btn-secondary" (click)="reset()">
+              <fa-icon [icon]="icons.plus"></fa-icon>
+              <span>{{ 'quickstart.addMoreFolders' | transloco }}</span>
+            </button>
+            <a routerLink="/overview" class="tertiary-link">
+              {{ 'quickstart.goToOverview' | transloco }}
+            </a>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

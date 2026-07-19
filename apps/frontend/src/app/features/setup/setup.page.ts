@@ -230,7 +230,7 @@ export class SetupComponent {
     const { allowLocalNetworkWithoutAuth } = this.networkForm.getRawValue();
     const { nodeType } = this.nodeTypeForm.getRawValue();
 
-    this.redirectUrl = allowLocalNetworkWithoutAuth ? '/' : '/login';
+    this.redirectUrl = allowLocalNetworkWithoutAuth ? '/quick-start' : '/login';
 
     this.setupService
       .initializeSetup({

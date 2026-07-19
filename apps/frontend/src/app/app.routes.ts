@@ -154,6 +154,12 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'quick-start',
+    loadComponent: () =>
+      import('./features/quick-start/quick-start.page').then((m) => m.QuickStartComponent),
+    canActivate: [setupGuard, authGuard, mainNodeGuard],
+  },
+  {
     path: '**',
     redirectTo: 'queue', // Redirect to queue (accessible by all authenticated nodes)
   },

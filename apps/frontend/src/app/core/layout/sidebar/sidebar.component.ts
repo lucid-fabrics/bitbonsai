@@ -12,6 +12,7 @@ import {
   faServer,
   faSignOutAlt,
   faSliders,
+  faWandMagicSparkles,
 } from '@fortawesome/pro-solid-svg-icons';
 import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
@@ -66,6 +67,12 @@ export class SidebarComponent implements OnInit {
 
   private readonly allMenuItems: MenuItem[] = [
     { label: 'sidebar.overview', icon: faChartLine, route: '/overview' },
+    {
+      label: 'sidebar.quickStart',
+      icon: faWandMagicSparkles,
+      route: '/quick-start',
+      mainNodeOnly: true,
+    },
     { label: 'sidebar.queue', icon: faListCheck, route: '/queue' },
     {
       label: 'sidebar.libraries',
