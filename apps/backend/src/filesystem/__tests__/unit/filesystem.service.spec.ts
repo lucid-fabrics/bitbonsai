@@ -112,6 +112,28 @@ describe('FilesystemService', () => {
 
       await expect(service.listDirectories('/nonexistent')).rejects.toThrow();
     });
+
+    it('should still allow browsing the filesystem root itself', async () => {
+      (fs.readdir as jest.Mock).mockResolvedValue([]);
+
+      await expect(service.listDirectories('/')).resolves.not.toThrow();
+    });
+
+    it('should hide system directories from the listing so they can never be selected', async () => {
+      const mockEntries = [
+        { name: 'etc', isDirectory: () => true },
+        { name: 'proc', isDirectory: () => true },
+        { name: 'Users', isDirectory: () => true },
+        { name: 'Volumes', isDirectory: () => true },
+      ];
+
+      (fs.readdir as jest.Mock).mockResolvedValue(mockEntries);
+      (fs.stat as jest.Mock).mockResolvedValue({});
+
+      const result = await service.listDirectories('/');
+
+      expect(result.directories.map((d) => d.name)).toEqual(['Users', 'Volumes']);
+    });
   });
 
   describe('sanitizePath (private)', () => {
@@ -127,6 +149,21 @@ describe('FilesystemService', () => {
       await expect(service.listDirectories('/etc/shadow')).rejects.toThrow(BadRequestException);
       await expect(service.listDirectories('/etc/passwd')).rejects.toThrow(BadRequestException);
       await expect(service.listDirectories('/root/.ssh')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should block the broader system directory tree, not just individual files', async () => {
+      (fs.readdir as jest.Mock).mockResolvedValue([]);
+
+      await expect(service.listDirectories('/proc')).rejects.toThrow(BadRequestException);
+      await expect(service.listDirectories('/sys')).rejects.toThrow(BadRequestException);
+      await expect(service.listDirectories('/System')).rejects.toThrow(BadRequestException);
+      await expect(service.listDirectories('/private/var')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should not block real media directories that were previously off the whitelist', async () => {
+      (fs.readdir as jest.Mock).mockResolvedValue([]);
+
+      await expect(service.listDirectories('/Volumes/Sigma Setup')).resolves.not.toThrow();
     });
 
     it('should normalize path with double slashes', async () => {

@@ -1,3 +1,4 @@
+import * as fs from 'node:fs/promises';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { JobRepository } from '../../../common/repositories/job.repository';
@@ -93,6 +94,12 @@ const mockLibraryBulkJobService = {
   getLibraryFiles: jest.fn(),
 };
 
+jest.mock('node:fs/promises', () => ({
+  ...jest.requireActual('node:fs/promises'),
+  access: jest.fn(),
+  stat: jest.fn(),
+}));
+
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
 describe('LibraryScannerService', () => {
@@ -107,6 +114,8 @@ describe('LibraryScannerService', () => {
     mockSettingsService.getReadyFilesCacheTtl.mockResolvedValue({
       readyFilesCacheTtlMinutes: 5,
     });
+    (fs.access as jest.Mock).mockResolvedValue(undefined);
+    (fs.stat as jest.Mock).mockResolvedValue({ isDirectory: () => true });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -135,48 +144,86 @@ describe('LibraryScannerService', () => {
   // ─── validateLibraryPath ───────────────────────────────────────────────────
 
   describe('validateLibraryPath', () => {
-    it('returns normalized path for valid allowed path', () => {
-      expect(service.validateLibraryPath('/mnt/user/media/Movies')).toBe('/mnt/user/media/Movies');
+    it('returns normalized path for an existing, readable directory (Unraid-style)', async () => {
+      await expect(service.validateLibraryPath('/mnt/user/media/Movies')).resolves.toBe(
+        '/mnt/user/media/Movies'
+      );
     });
 
-    it('normalizes redundant slashes', () => {
-      expect(service.validateLibraryPath('/mnt/user//media/Movies')).toBe('/mnt/user/media/Movies');
+    it('normalizes redundant slashes', async () => {
+      await expect(service.validateLibraryPath('/mnt/user//media/Movies')).resolves.toBe(
+        '/mnt/user/media/Movies'
+      );
     });
 
-    it('accepts /media base path', () => {
-      expect(service.validateLibraryPath('/media/videos')).toBe('/media/videos');
+    it('accepts any existing, readable directory - no fixed base-path whitelist', async () => {
+      // Previously rejected because it doesn't start with a hardcoded Unraid
+      // prefix. Now allowed since the directory exists and is readable.
+      await expect(service.validateLibraryPath('/Volumes/Sigma Setup')).resolves.toBe(
+        '/Volumes/Sigma Setup'
+      );
     });
 
-    it('accepts /Users base path (macOS)', () => {
-      expect(service.validateLibraryPath('/Users/john/Movies')).toBe('/Users/john/Movies');
+    it('accepts /Users paths (macOS)', async () => {
+      await expect(service.validateLibraryPath('/Users/john/Movies')).resolves.toBe(
+        '/Users/john/Movies'
+      );
     });
 
-    it('throws BadRequestException for relative path', () => {
-      expect(() => service.validateLibraryPath('relative/path')).toThrow(BadRequestException);
-    });
-
-    it('throws BadRequestException for path with traversal sequence', () => {
-      // Pass a path that after normalization still contains .. (e.g. on root)
-      expect(() => service.validateLibraryPath('/mnt/user/../../etc/passwd')).toThrow(
+    it('throws BadRequestException for relative path', async () => {
+      await expect(service.validateLibraryPath('relative/path')).rejects.toThrow(
         BadRequestException
       );
     });
 
-    it('throws BadRequestException for disallowed base directory', () => {
-      expect(() => service.validateLibraryPath('/etc/passwd')).toThrow(BadRequestException);
+    it('throws BadRequestException for path with traversal sequence', async () => {
+      // Pass a path that after normalization still contains .. (e.g. on root)
+      await expect(service.validateLibraryPath('/mnt/user/../../etc/passwd')).rejects.toThrow(
+        BadRequestException
+      );
     });
 
-    it('throws BadRequestException for /tmp path', () => {
-      expect(() => service.validateLibraryPath('/tmp/videos')).toThrow(BadRequestException);
+    it('throws BadRequestException for the filesystem root', async () => {
+      await expect(service.validateLibraryPath('/')).rejects.toThrow(BadRequestException);
     });
 
-    it('error message for disallowed path lists allowed directories', () => {
-      try {
-        service.validateLibraryPath('/var/log');
-        fail('should have thrown');
-      } catch (err) {
-        expect((err as BadRequestException).message).toContain('/mnt/user');
-      }
+    it('throws BadRequestException for a system directory', async () => {
+      await expect(service.validateLibraryPath('/etc/passwd')).rejects.toThrow(
+        BadRequestException
+      );
+      await expect(service.validateLibraryPath('/root')).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when the directory does not exist', async () => {
+      (fs.access as jest.Mock).mockRejectedValue(new Error('ENOENT'));
+
+      await expect(service.validateLibraryPath('/Users/nonexistent-xyz')).rejects.toThrow(
+        BadRequestException
+      );
+    });
+
+    it('error message for a missing directory mentions Docker volume mounts', async () => {
+      (fs.access as jest.Mock).mockRejectedValue(new Error('ENOENT'));
+
+      await expect(service.validateLibraryPath('/Users/nonexistent-xyz')).rejects.toThrow(
+        /Docker/
+      );
+    });
+
+    it('throws BadRequestException when the path is a file, not a directory', async () => {
+      (fs.stat as jest.Mock).mockResolvedValue({ isDirectory: () => false });
+
+      await expect(service.validateLibraryPath('/Users/john/movie.mkv')).rejects.toThrow(
+        BadRequestException
+      );
+    });
+
+    it('throws BadRequestException when the directory is not readable', async () => {
+      (fs.access as jest.Mock).mockRejectedValue(new Error('EACCES'));
+
+      await expect(service.validateLibraryPath('/Users/john/restricted')).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 

@@ -1,4 +1,5 @@
-import { opendir } from 'node:fs/promises';
+import { access, opendir, stat } from 'node:fs/promises';
+import { constants } from 'node:fs';
 import { normalize } from 'node:path';
 import {
   BadRequestException,
@@ -10,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import type { Job, Library, Policy } from '@prisma/client';
+import { isAbsoluteLibraryPath, isBlockedSystemPath } from '../common/path-policy';
 import { JobRepository } from '../common/repositories/job.repository';
 import { LibraryRepository } from '../common/repositories/library.repository';
 import {
@@ -62,20 +64,6 @@ export class LibraryScannerService {
   };
 
   /**
-   * SECURITY: Whitelist of allowed base directories for libraries
-   * Prevents access to sensitive system directories
-   */
-  private readonly ALLOWED_BASE_PATHS = [
-    '/mnt/user', // Unraid media paths
-    '/mnt/cache', // Unraid cache
-    '/media', // Standard media mount
-    '/downloads', // Downloads folder
-    '/data', // Data folder
-    '/home', // User home directories (Linux)
-    '/Users', // User home directories (macOS)
-  ];
-
-  /**
    * Batch size for processing files from directory scan
    * Prevents memory overload with large libraries (100K+ files)
    */
@@ -121,21 +109,26 @@ export class LibraryScannerService {
 
   /**
    * SECURITY: Validate and sanitize library path
-   * Prevents path traversal attacks by:
+   * Prevents path traversal attacks and unsafe roots by:
    * - Normalizing path (removes .. and redundant slashes)
-   * - Checking against allowed base paths
-   * - Ensuring no escape from allowed directories
+   * - Rejecting system directories and the filesystem root
+   * - Confirming the backend can actually see and read the directory
+   *
+   * No fixed base-directory whitelist: it can never cover every deployment
+   * (Docker on Linux/Mac/Windows/Unraid all bind-mount different host paths
+   * to different container paths). The only check that works everywhere is
+   * "does this directory exist and can we read it".
    *
    * @param path - User-provided path
    * @returns Sanitized absolute path
-   * @throws BadRequestException if path is invalid or not allowed
+   * @throws BadRequestException if path is invalid, blocked, or unreadable
    */
-  validateLibraryPath(path: string): string {
+  async validateLibraryPath(path: string): Promise<string> {
     // Normalize path (removes .., //, etc.)
     const normalizedPath = normalize(path);
 
-    // Ensure it's an absolute path
-    if (!normalizedPath.startsWith('/')) {
+    // Ensure it's an absolute path (cross-platform: handles both /foo and C:\foo)
+    if (!isAbsoluteLibraryPath(normalizedPath)) {
       throw new BadRequestException('Library path must be an absolute path');
     }
 
@@ -144,14 +137,30 @@ export class LibraryScannerService {
       throw new BadRequestException('Path traversal sequences (..) are not allowed');
     }
 
-    // Verify path starts with an allowed base directory
-    const isAllowed = this.ALLOWED_BASE_PATHS.some((basePath) =>
-      normalizedPath.startsWith(basePath)
-    );
-
-    if (!isAllowed) {
+    if (normalizedPath === '/') {
       throw new BadRequestException(
-        `Library path must start with one of the allowed base directories: ${this.ALLOWED_BASE_PATHS.join(', ')}`
+        'The filesystem root cannot be used as a library path. Choose a specific media folder instead.'
+      );
+    }
+
+    if (isBlockedSystemPath(normalizedPath)) {
+      throw new BadRequestException(
+        `"${normalizedPath}" is a system directory and cannot be used as a library path`
+      );
+    }
+
+    try {
+      await access(normalizedPath, constants.R_OK);
+      const pathStats = await stat(normalizedPath);
+      if (!pathStats.isDirectory()) {
+        throw new BadRequestException(`"${normalizedPath}" is not a directory`);
+      }
+    } catch (error: unknown) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        `Cannot access "${normalizedPath}". Make sure the folder exists and is readable. If BitBonsai runs in Docker, the folder must be added as a volume mount to the container.`
       );
     }
 

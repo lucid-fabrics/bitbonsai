@@ -1,6 +1,7 @@
 import { readdir, stat } from 'node:fs/promises';
 import { dirname, join, normalize, resolve } from 'node:path';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { isAbsoluteLibraryPath, isBlockedSystemPath } from '../common/path-policy';
 
 export interface DirectoryInfo {
   name: string;
@@ -37,6 +38,13 @@ export class FilesystemService {
       for (const entry of entries) {
         if (entry.isDirectory() && !entry.name.startsWith('.')) {
           const fullPath = join(normalizedPath, entry.name);
+
+          // Hide system directories from the picker entirely, so users can
+          // never select a path that library creation would then reject.
+          if (isBlockedSystemPath(fullPath)) {
+            continue;
+          }
+
           let isAccessible = true;
 
           try {
@@ -83,17 +91,16 @@ export class FilesystemService {
     // Normalize the path (resolves .., ., removes duplicate slashes)
     const normalizedPath = normalize(inputPath);
 
-    // Ensure path is absolute
+    // Ensure path is absolute (cross-platform: handles both /foo and C:\foo)
     const absolutePath = resolve(normalizedPath);
 
-    // Check for path traversal attempts
-    if (!absolutePath.startsWith('/')) {
+    if (!isAbsoluteLibraryPath(absolutePath)) {
       throw new BadRequestException('Invalid path: must be absolute');
     }
 
-    // Block certain sensitive directories
-    const blockedPaths = ['/etc/shadow', '/etc/passwd', '/root/.ssh'];
-    if (blockedPaths.some((blocked) => absolutePath.startsWith(blocked))) {
+    // Block sensitive system directories (root '/' itself stays browsable so
+    // users can navigate down into an allowed folder)
+    if (isBlockedSystemPath(absolutePath)) {
       throw new BadRequestException('Access denied to sensitive system directories');
     }
 

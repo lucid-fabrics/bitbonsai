@@ -48,7 +48,7 @@ export class LibrariesService {
     this.logger.log(`Creating library: ${createLibraryDto.name}`);
 
     // SECURITY: Validate and sanitize path
-    const sanitizedPath = this.libraryScanner.validateLibraryPath(createLibraryDto.path);
+    const sanitizedPath = await this.libraryScanner.validateLibraryPath(createLibraryDto.path);
 
     // Auto-assign to first available node if nodeId not provided
     let nodeId = createLibraryDto.nodeId;

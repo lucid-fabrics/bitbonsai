@@ -202,6 +202,29 @@ export class LibraryBulkJobService {
 
     const blacklistedPaths = new Set(blacklistedJobs.map((job) => job.filePath));
 
+    // Skip files that already have an active/completed job in this library, so a
+    // retried call (e.g. after a lost response) does not create duplicate jobs.
+    const existingJobs = await this.jobRepository.findManySelect<{
+      filePath: string;
+    }>(
+      {
+        libraryId: library.id,
+        stage: {
+          in: [
+            JobStage.DETECTED,
+            JobStage.HEALTH_CHECK,
+            JobStage.QUEUED,
+            JobStage.ENCODING,
+            JobStage.VERIFYING,
+            JobStage.COMPLETED,
+          ],
+        },
+      },
+      { filePath: true }
+    );
+
+    const existingPaths = new Set(existingJobs.map((job) => job.filePath));
+
     // Cross-job failure tracking: batch check auto-blacklisted files
     const autoBlacklistedPaths = await this.fileFailureTracking.getBlacklistedPaths(
       filesToEncode,
@@ -227,6 +250,12 @@ export class LibraryBulkJobService {
           // Skip blacklisted files
           if (blacklistedPaths.has(filePath)) {
             this.logger.log(`Skipping blacklisted file: ${filePath}`);
+            return null;
+          }
+
+          // Skip files that already have a job (prevents duplicates on retry)
+          if (existingPaths.has(filePath)) {
+            this.logger.debug(`Skipping ${filePath} - job already exists`);
             return null;
           }
 
