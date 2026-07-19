@@ -1,0 +1,72 @@
+name: ci-main
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: docker:docker://node:20-bookworm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+
+      - name: Install deps
+        env:
+          FONTAWESOME_NPM_AUTH_TOKEN: ${{ secrets.FONTAWESOME_NPM_AUTH_TOKEN }}
+        run: |
+          npm ci --legacy-peer-deps
+          npx prisma generate
+
+      - name: Build and test (affected)
+        env:
+          CI_PREV_COMMIT_SHA: ${{ env.CI_PREV_COMMIT_SHA }}
+        run: |
+          env | sort | grep '^CI_' || true
+          BASE="${CI_PREV_COMMIT_SHA:-}"
+          if [ -n "$BASE" ] && git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            echo "Affected base: $BASE"
+            npx nx affected -t test build --configuration=production --base="$BASE" --head="$GITHUB_SHA"
+          else
+            echo "No usable base commit - running all projects"
+            npx nx run-many -t test build --configuration=production
+          fi
+
+      - name: Backend boot check
+        run: |
+          if [ -f dist/apps/backend/main.js ]; then
+            bash scripts/verify-backend-boot.sh
+          else
+            echo "backend not built this run, skipping boot check"
+          fi
+
+      - name: Deploy website (Cloudflare Pages)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -d dist/apps/website/browser ]; then
+            npx wrangler pages deploy dist/apps/website/browser --project-name=bitbonsai-website
+          else
+            echo "website not built this run, skipping deploy"
+          fi
+
+      - name: Notify Telegram
+        if: always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          apk add --no-cache curl
+          if [ "${{ job.status }}" = "success" ]; then TG_EMOJI="✅"; else TG_EMOJI="❌"; fi
+          COMMIT_SHORT="${GITHUB_SHA:0:7}"
+          COMMIT_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          COMMIT_AUTHOR=$(echo "${{ github.actor }}" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | head -1 | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          MSG=$(printf '⚙️ <b>BitBonsai Main</b> - %s\n\n🌿 <code>%s</code>\n🔖 <code>%s</code> · %s\n📝 %s\n\n🔗 %s' \
+            "$TG_EMOJI" "$COMMIT_BRANCH" "$COMMIT_SHORT" "$COMMIT_AUTHOR" "$COMMIT_MSG" "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}")
+          curl -s --max-time 30 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}&parse_mode=HTML&disable_web_page_preview=true" \
+            --data-urlencode "text=$MSG" || true

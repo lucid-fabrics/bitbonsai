@@ -1,0 +1,39 @@
+name: release
+on:
+  workflow_dispatch:
+
+jobs:
+  docker:
+    runs-on: docker:docker://docker:27-cli
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+
+      - name: Login Docker Hub
+        env:
+          DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
+        run: echo "$DOCKER_HUB_PASSWORD" | docker login -u lucidfabrics --password-stdin
+
+      - name: Build and push
+        env:
+          FONTAWESOME_NPM_AUTH_TOKEN: ${{ secrets.FONTAWESOME_NPM_AUTH_TOKEN }}
+        run: |
+          apk add --no-cache nodejs
+          VERSION=$(node -p "require('./package.json').version")
+          MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1,2)
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          echo "Releasing lucidfabrics/bitbonsai:$VERSION"
+          docker build \
+            --platform linux/amd64 \
+            --build-arg FONTAWESOME_NPM_AUTH_TOKEN="$FONTAWESOME_NPM_AUTH_TOKEN" \
+            -t lucidfabrics/bitbonsai:"$VERSION" \
+            -t lucidfabrics/bitbonsai:latest \
+            -t lucidfabrics/bitbonsai:"$MAJOR_MINOR" \
+            -t lucidfabrics/bitbonsai:"$MAJOR" \
+            .
+          docker push lucidfabrics/bitbonsai:"$VERSION"
+          docker push lucidfabrics/bitbonsai:latest
+          docker push lucidfabrics/bitbonsai:"$MAJOR_MINOR"
+          docker push lucidfabrics/bitbonsai:"$MAJOR"
