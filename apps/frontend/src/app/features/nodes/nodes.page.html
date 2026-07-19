@@ -99,7 +99,7 @@
                 [icon]="['fas', 'circle']"
                 class="pending-request-card__status-icon"
               ></fa-icon>
-              {{ request.status }}
+              {{ requestStatusLabel(request.status) | transloco }}
             </span>
           </div>
           <div class="header-right">
@@ -260,12 +260,24 @@
 
   <!-- Loading State -->
   @if (isLoading && !hasNodes) {
-  <div class="loading-state">
-    <fa-icon
-      [icon]="['fas', 'spinner']"
-      class="loading-state__icon fa-spin"
-    ></fa-icon>
-    <p class="loading-state__message">{{ 'common.loading' | transloco }}</p>
+  <div class="skeleton-layout">
+    <div class="nodes-grid">
+      @for (i of skeletonPlaceholders; track i) {
+      <div class="node-card">
+        <div class="card-header">
+          <div class="node-card__header-left">
+            <div class="skeleton skeleton-line" style="width: 140px"></div>
+            <div class="skeleton skeleton-line" style="width: 60px"></div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line" style="width: 80%"></div>
+          <div class="skeleton skeleton-line" style="width: 60%"></div>
+        </div>
+      </div>
+      }
+    </div>
   </div>
   }
 
@@ -578,6 +590,12 @@
           {{ deletingNodeId === node.id ? ('nodes.removing' | transloco) :
           ('nodes.remove' | transloco) }}
         </button>
+        @if (node.role === NodeRole.MAIN) {
+        <div class="field-hint">
+          <fa-icon [icon]="['fas', 'info-circle']"></fa-icon>
+          {{ 'nodes.mainNodeRemoveHint' | transloco }}
+        </div>
+        }
       </div>
     </div>
     }

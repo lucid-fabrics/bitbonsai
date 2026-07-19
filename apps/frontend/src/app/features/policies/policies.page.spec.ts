@@ -449,9 +449,9 @@ describe('PoliciesComponent', () => {
   });
 
   describe('getDeviceLabel', () => {
-    it('should replace underscores with spaces', () => {
-      expect(component.getDeviceLabel(DeviceProfile.APPLE_TV)).toBe('APPLE TV');
-      expect(component.getDeviceLabel(DeviceProfile.WEB)).toBe('WEB');
+    it('should return a readable label for each device profile', () => {
+      expect(component.getDeviceLabel(DeviceProfile.APPLE_TV)).toBe('Apple TV');
+      expect(component.getDeviceLabel(DeviceProfile.WEB)).toBe('Web & media servers');
     });
   });
 

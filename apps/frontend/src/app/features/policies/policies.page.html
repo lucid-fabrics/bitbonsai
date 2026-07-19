@@ -33,7 +33,11 @@
     </div>
 
     @if (isLoading$ | async) {
-    <div class="loading-state">{{ 'common.loading' | transloco }}</div>
+    <div class="preset-gallery">
+      @for (placeholder of [1, 2, 3]; track placeholder) {
+      <div class="preset-card-skeleton skeleton"></div>
+      }
+    </div>
     } @else {
     <div class="preset-gallery">
       @for (preset of (presets$ | async) || []; track preset.preset) {
@@ -96,7 +100,14 @@
     </div>
 
     @if (isLoading$ | async) {
-    <div class="loading-state">{{ 'common.loading' | transloco }}</div>
+    <div class="skeleton-layout">
+      <div class="skeleton skeleton-title"></div>
+      <div class="skeleton skeleton-line"></div>
+      <div class="skeleton skeleton-line" style="width: 85%"></div>
+      <div class="skeleton skeleton-line" style="width: 75%"></div>
+      <div class="skeleton skeleton-line" style="width: 80%"></div>
+      <div class="skeleton skeleton-line" style="width: 65%"></div>
+    </div>
     } @else if ((policies$ | async)?.length === 0) {
     <div class="empty-state">
       <div class="empty-icon">
@@ -176,7 +187,7 @@
             <td class="policies-table__cell">{{ presetLabel(policy.preset) }}</td>
             <td class="policies-table__cell">
               <span class="policies-table__codec-badge"
-                >{{ policy.targetCodec }}</span
+                >{{ codecLabel(policy.targetCodec) }}</span
               >
             </td>
             <td class="policies-table__cell">

@@ -4,22 +4,31 @@
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 12px;
-  border-left: 4px solid;
   background: rgba(255, 255, 255, 0.02);
 
+  // Severity is shown via the badge color + card background tint, not a border accent
   &.severity-blocker {
-    border-left-color: #f44336;
     background: rgba(244, 67, 54, 0.08);
+
+    .severity-badge {
+      color: #f44336;
+    }
   }
 
   &.severity-warning {
-    border-left-color: #fbbf24;
     background: rgba(255, 152, 0, 0.08);
+
+    .severity-badge {
+      color: #fbbf24;
+    }
   }
 
   &.severity-info {
-    border-left-color: #2196f3;
     background: rgba(33, 150, 243, 0.08);
+
+    .severity-badge {
+      color: #2196f3;
+    }
   }
 
   .severity-badge {

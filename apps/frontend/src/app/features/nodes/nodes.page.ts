@@ -108,6 +108,9 @@ export class NodesComponent implements OnInit {
   // Highlighted request ID (for pulsing effect after notification click)
   readonly highlightedRequestId = signal<string | null>(null);
 
+  // Placeholder cards for the loading skeleton
+  readonly skeletonPlaceholders = [1, 2, 3];
+
   // Track initial uptime from server to calculate current uptime
   private nodeStartTimes = new Map<string, number>(); // nodeId -> timestamp when we first saw it
 
@@ -492,6 +495,26 @@ export class NodesComponent implements OnInit {
       [ContainerType.UNKNOWN]: 'Unknown',
     };
     return labels[type];
+  }
+
+  /**
+   * Get friendly transloco key for a registration request status
+   */
+  requestStatusLabel(status: RegistrationRequestStatus): string {
+    switch (status) {
+      case RegistrationRequestStatus.PENDING:
+        return 'nodes.requestStatusPending';
+      case RegistrationRequestStatus.APPROVED:
+        return 'nodes.requestStatusApproved';
+      case RegistrationRequestStatus.REJECTED:
+        return 'nodes.requestStatusRejected';
+      case RegistrationRequestStatus.EXPIRED:
+        return 'nodes.requestStatusExpired';
+      case RegistrationRequestStatus.CANCELLED:
+        return 'nodes.requestStatusCancelled';
+      default:
+        return status;
+    }
   }
 
   /**

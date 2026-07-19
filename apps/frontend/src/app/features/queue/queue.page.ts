@@ -2,6 +2,7 @@ import { AsyncPipe, DecimalPipe, KeyValuePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { CarouselImage, ImageCarouselComponent } from '@bitbonsai/shared-ui';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faBolt, faFire, faLayerGroup } from '@fortawesome/pro-solid-svg-icons';
@@ -38,6 +39,7 @@ import { QueueJobActionsService } from './services/queue-job-actions.service';
     DecimalPipe,
     KeyValuePipe,
     FormsModule,
+    RouterLink,
     FontAwesomeModule,
     TranslocoModule,
     DiskSpaceWarningBannerComponent,

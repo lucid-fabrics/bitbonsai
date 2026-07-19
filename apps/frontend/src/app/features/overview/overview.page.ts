@@ -6,6 +6,7 @@ import {
   type OnDestroy,
   type OnInit,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
   faArrowTrendDown,
@@ -20,6 +21,7 @@ import {
   faSpinner,
   faTimes,
   faTriangleExclamation,
+  faWandMagicSparkles,
 } from '@fortawesome/pro-solid-svg-icons';
 import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
@@ -94,11 +96,12 @@ import {
   selectOverviewData,
   selectTotalQueueItems,
 } from './+state/overview.selectors';
+import { selectIsMainNode } from '../../core/+state/current-node.selectors';
 
 @Component({
   selector: 'app-overview',
   standalone: true,
-  imports: [AsyncPipe, FontAwesomeModule, TranslocoModule],
+  imports: [AsyncPipe, FontAwesomeModule, TranslocoModule, RouterLink],
   templateUrl: './overview.page.html',
   styleUrls: ['./overview.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -122,6 +125,7 @@ export class OverviewComponent implements OnInit, OnDestroy {
   readonly totalQueueItems$ = this.store.select(selectTotalQueueItems);
   readonly mainNode$ = this.store.select(selectMainNode);
   readonly childNodes$ = this.store.select(selectChildNodes);
+  readonly isMainNode$ = this.store.select(selectIsMainNode);
 
   // Fetched once, not part of the polling NgRx slice - supplementary,
   // non-critical widget data. Errors resolve to a safe empty value so a
@@ -147,10 +151,16 @@ export class OverviewComponent implements OnInit, OnDestroy {
     trendUp: faArrowTrendUp,
     trendDown: faArrowTrendDown,
     topFailure: faTriangleExclamation,
+    quickStart: faWandMagicSparkles,
   };
 
   ngOnInit(): void {
     // Initialize overview - loads all data and starts polling
+    this.store.dispatch(OverviewActions.initOverview());
+  }
+
+  retry(): void {
+    // Re-trigger the same load the initial mount dispatches
     this.store.dispatch(OverviewActions.initOverview());
   }
 

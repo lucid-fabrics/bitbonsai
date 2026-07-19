@@ -3,7 +3,7 @@
     <div>
       <h1 class="page-header__title">{{ 'queue.title' | transloco }}</h1>
       <p class="page-header__subtitle">
-        {{ 'queue2.subtitle' | transloco }}
+        {{ 'queue.subtitle' | transloco }}
         <button
           (click)="openAddFilesModal()"
           class="btn btn-primary btn-add-files"
@@ -24,7 +24,7 @@
         title="Skip encoding for files already in target codec"
       >
         <i class="fas fa-forward"></i>
-        {{ 'queue2.skipCodecMatch' | transloco }} ({{ (queueData$ |
+        {{ 'queue.skipCodecMatch' | transloco }} ({{ (queueData$ |
         async)!.stats!.codecMatchCount }})
       </button>
       <button
@@ -33,28 +33,28 @@
         title="Force re-encode files already in target codec (for re-compression)"
       >
         <i class="fas fa-compress-arrows-alt"></i>
-        {{ 'queue2.reEncodeAnyway' | transloco }} ({{ (queueData$ |
+        {{ 'queue.reEncodeAnyway' | transloco }} ({{ (queueData$ |
         async)!.stats!.codecMatchCount }})
       </button>
       } @if ((queueData$ | async)?.stats?.cancelled && (queueData$ |
       async)!.stats!.cancelled > 0) {
       <button (click)="openRetryAllDialog()" class="btn btn-success">
         <i class="fas fa-redo"></i>
-        {{ 'queue2.retryAllCancelled' | transloco }} ({{ (queueData$ |
+        {{ 'queue.retryAllCancelled' | transloco }} ({{ (queueData$ |
         async)!.stats!.cancelled }})
       </button>
       } @if ((queueData$ | async)?.stats?.failed && (queueData$ |
       async)!.stats!.failed > 0) {
       <button (click)="openRetryFailedDialog()" class="btn btn-success">
         <i class="fas fa-redo"></i>
-        {{ 'queue2.retryFailedJobs' | transloco }} ({{ (queueData$ |
+        {{ 'queue.retryFailedJobs' | transloco }} ({{ (queueData$ |
         async)!.stats!.failed }})
       </button>
       } @if ((queueData$ | async)?.stats?.queued && (queueData$ |
       async)!.stats!.queued > 0) {
       <button (click)="openCancelAllDialog()" class="btn btn-danger">
         <i class="fas fa-times-circle"></i>
-        {{ 'queue2.cancelAllQueued' | transloco }} ({{ (queueData$ |
+        {{ 'queue.cancelAllQueued' | transloco }} ({{ (queueData$ |
         async)!.stats!.queued }})
       </button>
       <button
@@ -63,7 +63,7 @@
         title="Redistribute queued jobs across available nodes"
       >
         <i class="fas fa-balance-scale"></i>
-        {{ 'queue2.rebalanceJobs' | transloco }}
+        {{ 'queue.rebalanceJobs' | transloco }}
       </button>
       }
       <button
@@ -71,8 +71,8 @@
         class="btn btn-warning btn-clear-jobs"
       >
         <i class="fas fa-trash-alt"></i>
-        @if (selectedStatus !== 'ALL') { {{ 'queue2.clearJobs' | transloco : {
-        status: selectedStatus } }} } @else { {{ 'queue2.clearAllJobs' |
+        @if (selectedStatus !== 'ALL') { {{ 'queue.clearJobs' | transloco : {
+        status: selectedStatus } }} } @else { {{ 'queue.clearAllJobs' |
         transloco }} }
       </button>
     </div>
@@ -139,7 +139,7 @@
       >
         <i class="fas fa-search"></i>
         <span class="count">{{ queueData.stats.detected }}</span>
-        <span class="label">{{ 'queue2.detected' | transloco }}</span>
+        <span class="label">{{ 'queue.detected' | transloco }}</span>
       </div>
       <i class="fas fa-chevron-right arrow"></i>
       }
@@ -156,7 +156,7 @@
       >
         <i class="fas fa-heartbeat fa-pulse"></i>
         <span class="count">{{ queueData.stats.healthCheck }}</span>
-        <span class="label">{{ 'queue2.healthCheck' | transloco }}</span>
+        <span class="label">{{ 'queue.healthCheck' | transloco }}</span>
       </div>
       <i class="fas fa-chevron-right arrow"></i>
       }
@@ -172,7 +172,7 @@
       >
         <i class="fas fa-clock"></i>
         <span class="count">{{ queueData.stats.queued }}</span>
-        <span class="label">{{ 'queue2.queued' | transloco }}</span>
+        <span class="label">{{ 'queue.queued' | transloco }}</span>
       </div>
       <i class="fas fa-chevron-right arrow"></i>
 
@@ -192,7 +192,7 @@
         <i class="fas fa-pause-circle"></i>
         }
         <span class="count">{{ queueData.stats.encoding }}</span>
-        <span class="label">{{ 'queue2.encoding' | transloco }}</span>
+        <span class="label">{{ 'queue.encoding' | transloco }}</span>
       </div>
       <i class="fas fa-chevron-right arrow"></i>
 
@@ -207,7 +207,7 @@
       >
         <i class="fas fa-check-circle"></i>
         <span class="count">{{ queueData.stats.completed }}</span>
-        <span class="label">{{ 'queue2.done' | transloco }}</span>
+        <span class="label">{{ 'queue.done' | transloco }}</span>
         @if (Number.parseInt(queueData.stats.totalSavedBytes) > 0) {
         <span class="saved"
           >{{ formatBytes(Number.parseInt(queueData.stats.totalSavedBytes))
@@ -228,7 +228,7 @@
       >
         <i class="fas fa-hand-paper"></i>
         <span class="count">{{ queueData.stats.needsDecision }}</span>
-        <span class="label">{{ 'queue2.needsInput' | transloco }}</span>
+        <span class="label">{{ 'queue.needsInput' | transloco }}</span>
       </div>
       } @if (queueData.stats.failed > 0) {
       <div
@@ -254,7 +254,7 @@
     <!-- Mobile Status Dropdown (shown on mobile only) -->
     <div class="filter-group mobile-status-select">
       <label for="status-filter-mobile"
-        >{{ 'queue2.statusLabel' | transloco }}</label
+        >{{ 'queue.statusLabel' | transloco }}</label
       >
       <select
         id="status-filter-mobile"
@@ -270,7 +270,7 @@
 
     <!-- Desktop Status Buttons (hidden on mobile) -->
     <div class="filter-group desktop-status-buttons">
-      <label>{{ 'queue2.statusLabel' | transloco }}</label>
+      <label>{{ 'queue.statusLabel' | transloco }}</label>
       <div class="status-filters">
         @for (status of statuses; track status) {
         <button
@@ -328,7 +328,7 @@
       <input
         id="search-input"
         type="text"
-        placeholder="{{ 'queue2.filterByFilename' | transloco }}"
+        placeholder="{{ 'queue.filterByFilename' | transloco }}"
         [value]="searchQuery"
         (input)="onSearchChange($any($event.target).value)"
         class="search-input"
@@ -355,7 +355,7 @@
         <thead>
           <tr>
             <th class="col-status">{{ 'queue.status' | transloco }}</th>
-            <th class="col-filename">{{ 'queue2.fileName' | transloco }}</th>
+            <th class="col-filename">{{ 'queue.fileName' | transloco }}</th>
             @if (advancedMode()) {
             <th class="col-library">{{ 'policies.library' | transloco }}</th>
             }
@@ -394,13 +394,13 @@
               <span
                 [class]="'status-badge ' + (job.status | statusClass)"
                 bbTooltip
-                [tooltipTitle]="job.status"
+                [tooltipTitle]="getStatusLabel(job.status)"
                 [tooltipContent]="getStatusExplanation(job.status)"
                 tooltipWhen="Check job status to understand what's happening with this encoding task."
                 tooltipPlacement="right"
               >
                 <i [class]="'fas ' + getStatusIcon(job.status)"></i>
-                {{ job.status }}
+                {{ getStatusLabel(job.status) }}
               </span>
             </td>
             <td class="col-filename" [title]="job.fileName">
@@ -415,7 +415,7 @@
                 tooltipContent="The video is being repackaged into a new format without converting it. Much faster, and keeps the original quality."
                 tooltipPlacement="top"
               >
-                <i class="fas fa-bolt"></i> {{ 'queue2.remuxing' | transloco }}
+                <i class="fas fa-bolt"></i> {{ 'queue.remuxing' | transloco }}
               </span>
               } @else if (job.type === 'ENCODE') {
               <span
@@ -425,7 +425,7 @@
                 tooltipContent="The video is being converted to save space."
                 tooltipPlacement="top"
               >
-                <i class="fas fa-cog"></i> {{ 'queue2.encoding' | transloco }}
+                <i class="fas fa-cog"></i> {{ 'queue.encoding' | transloco }}
               </span>
               } } @if (wasHealedFreshStart(job)) {
               <span
@@ -436,7 +436,7 @@
                 tooltipPlacement="top"
               >
                 <i class="fas fa-exclamation-triangle"></i> {{
-                'queue2.restarted' | transloco }}
+                'queue.restarted' | transloco }}
               </span>
               } @else if (wasHealedWithResume(job)) {
               <span
@@ -446,7 +446,7 @@
                 [tooltipContent]="'System auto-recovered this job and resumed from ' + (job.autoHealedProgress || 0).toFixed(1) + '%' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times - it may be on unreliable storage.' : '')"
                 tooltipPlacement="top"
               >
-                <i class="fas fa-shield-alt"></i> {{ 'queue2.resumed' |
+                <i class="fas fa-shield-alt"></i> {{ 'queue.resumed' |
                 transloco }}
               </span>
               } @else if (job.autoHealedAt) {
@@ -457,7 +457,7 @@
                 [tooltipContent]="'System auto-recovered this job on restart' + ((job.stuckRecoveryCount || 0) >= 2 ? '. This file has been recovered multiple times - it may be on unreliable storage.' : '')"
                 tooltipPlacement="top"
               >
-                <i class="fas fa-shield-alt"></i> {{ 'queue2.autoHealed' |
+                <i class="fas fa-shield-alt"></i> {{ 'queue.autoHealed' |
                 transloco }}
               </span>
               } @if (job.stage === 'FAILED' && job.fileExists === false) {
@@ -469,7 +469,7 @@
                 tooltipPlacement="top"
               >
                 <i class="fas fa-exclamation-triangle"></i> {{
-                'queue2.fileMissing' | transloco }}
+                'queue.fileMissing' | transloco }}
               </span>
               } @if (job.isBlacklisted) {
               <span
@@ -624,7 +624,7 @@
                   </span>
                   <span class="meta-item elapsed">
                     <i class="fas fa-hourglass-half"></i>
-                    {{ getElapsedTime(job.startedAt) }} {{ 'queue2.elapsed' |
+                    {{ getElapsedTime(job.startedAt) }} {{ 'queue.elapsed' |
                     transloco }}
                   </span>
                 </div>
@@ -645,7 +645,7 @@
                 <div class="progress-meta">
                   <span class="meta-item">
                     <i class="fas fa-exchange-alt"></i>
-                    {{ 'queue2.transferringTo' | transloco : { node:
+                    {{ 'queue.transferringTo' | transloco : { node:
                     job.nodeName } }}
                   </span>
                   @if (job.transferSpeedMBps) {
@@ -665,7 +665,7 @@
               <div class="queue-position">
                 <i class="fas fa-pause-circle"></i>
                 <span
-                  >{{ 'queue2.pausedAt' | transloco : { progress: job.progress }
+                  >{{ 'queue.pausedAt' | transloco : { progress: job.progress }
                   }}</span
                 >
               </div>
@@ -743,7 +743,7 @@
                   tooltipContent="This job was manually assigned to this node by a user."
                   tooltipPlacement="top"
                 >
-                  <i class="fas fa-hand-pointer"></i> {{ 'queue2.manual' |
+                  <i class="fas fa-hand-pointer"></i> {{ 'queue.manual' |
                   transloco }}
                 </span>
                 } @if (job.originalNodeId && job.originalNodeId !== job.nodeId)
@@ -755,7 +755,7 @@
                   tooltipContent="This job was delegated from another node."
                   tooltipPlacement="top"
                 >
-                  <i class="fas fa-share"></i> {{ 'queue2.delegated' | transloco
+                  <i class="fas fa-share"></i> {{ 'queue.delegated' | transloco
                   }}
                 </span>
                 } @if (getStorageAccessType(job, (availableNodesWithRole$ |
@@ -767,7 +767,7 @@
                   tooltipContent="File was copied to node's local storage before encoding. Provides faster encoding speeds."
                   tooltipPlacement="top"
                 >
-                  <i class="fas fa-download"></i> {{ 'queue2.copied' | transloco
+                  <i class="fas fa-download"></i> {{ 'queue.copied' | transloco
                   }}
                 </span>
                 } @else if (getStorageAccessType(job, (availableNodesWithRole$ |
@@ -779,7 +779,7 @@
                   tooltipContent="File accessed directly via Docker volume mount. Native performance."
                   tooltipPlacement="top"
                 >
-                  <i class="fas fa-hdd"></i> {{ 'queue2.local' | transloco }}
+                  <i class="fas fa-hdd"></i> {{ 'queue.local' | transloco }}
                 </span>
                 } @else {
                 <span
@@ -789,7 +789,7 @@
                   tooltipContent="File accessed via NFS network mount from main node."
                   tooltipPlacement="top"
                 >
-                  <i class="fas fa-network-wired"></i> {{ 'queue2.nfs' |
+                  <i class="fas fa-network-wired"></i> {{ 'queue.nfs' |
                   transloco }}
                 </span>
                 }
@@ -905,7 +905,7 @@
                       class="priority-option priority-0"
                     >
                       <fa-icon [icon]="icons.layers"></fa-icon>
-                      {{ 'queue2.normal' | transloco }}
+                      {{ 'queue.normal' | transloco }}
                     </button>
                     <button
                       (click)="setPriority(job.id, 1, $event)"
@@ -913,7 +913,7 @@
                       class="priority-option priority-1"
                     >
                       <fa-icon [icon]="icons.bolt"></fa-icon>
-                      {{ 'queue2.high' | transloco }}
+                      {{ 'queue.high' | transloco }}
                     </button>
                     <button
                       (click)="setPriority(job.id, 2, $event)"
@@ -921,7 +921,7 @@
                       class="priority-option priority-2"
                     >
                       <fa-icon [icon]="icons.fire"></fa-icon>
-                      {{ 'queue2.topPriority' | transloco }}
+                      {{ 'queue.topPriority' | transloco }}
                     </button>
                   </div>
                 </div>
@@ -1059,7 +1059,7 @@
                 @if (advancedMode()) {
                 <div class="timeline-section">
                   <h4>
-                    <i class="fas fa-history"></i> {{ 'queue2.jobTimeline' |
+                    <i class="fas fa-history"></i> {{ 'queue.jobTimeline' |
                     transloco }}
                   </h4>
                   <div class="timeline-horizontal">
@@ -1069,7 +1069,7 @@
                         <i class="fas fa-plus-circle"></i>
                       </div>
                       <div class="timeline-label">
-                        {{ 'queue2.created' | transloco }}
+                        {{ 'queue.created' | transloco }}
                       </div>
                       <div class="timeline-timestamp">
                         <div class="timestamp-relative">
@@ -1089,10 +1089,10 @@
                         <i class="fas fa-heartbeat"></i>
                       </div>
                       <div class="timeline-label">
-                        {{ 'queue2.healthCheck' | transloco }}
+                        {{ 'queue.healthCheck' | transloco }}
                       </div>
                       <div class="timeline-timestamp">
-                        {{ 'queue2.passed' | transloco }}
+                        {{ 'queue.passed' | transloco }}
                       </div>
                     </div>
                     }
@@ -1105,7 +1105,7 @@
                         <i class="fas fa-play-circle"></i>
                       </div>
                       <div class="timeline-label">
-                        {{ 'queue2.started' | transloco }}
+                        {{ 'queue.started' | transloco }}
                       </div>
                       <div class="timeline-timestamp">
                         <div class="timestamp-relative">
@@ -1126,7 +1126,7 @@
                         <i class="fas fa-exclamation-triangle"></i>
                       </div>
                       <div class="timeline-label">
-                        {{ 'queue2.restartedTempMissing' | transloco }}
+                        {{ 'queue.restartedTempMissing' | transloco }}
                       </div>
                       <div class="timeline-timestamp">
                         <div class="timestamp-relative">
@@ -1145,7 +1145,7 @@
                         <i class="fas fa-shield-alt"></i>
                       </div>
                       <div class="timeline-label">
-                        {{ 'queue2.resumed' | transloco }}
+                        {{ 'queue.resumed' | transloco }}
                       </div>
                       <div class="timeline-timestamp">
                         <div class="timestamp-relative">
@@ -1164,7 +1164,7 @@
                         <i class="fas fa-shield-alt"></i>
                       </div>
                       <div class="timeline-label">
-                        {{ 'queue2.autoHealed' | transloco }}
+                        {{ 'queue.autoHealed' | transloco }}
                       </div>
                       <div class="timeline-timestamp">
                         <div class="timestamp-relative">
@@ -1185,11 +1185,11 @@
                         <i class="fas fa-redo"></i>
                       </div>
                       <div class="timeline-label">
-                        {{ 'queue2.retryNumber' | transloco : { count:
+                        {{ 'queue.retryNumber' | transloco : { count:
                         job.retryCount } }}
                       </div>
                       <div class="timeline-timestamp">
-                        {{ 'queue2.inProgress' | transloco }}
+                        {{ 'queue.inProgress' | transloco }}
                       </div>
                     </div>
                     }
@@ -1202,7 +1202,7 @@
                         <i class="fas fa-cog fa-spin"></i>
                       </div>
                       <div class="timeline-label">
-                        {{ 'queue2.encoding' | transloco }}
+                        {{ 'queue.encoding' | transloco }}
                       </div>
                       <div class="timeline-timestamp">{{ job.progress }}%</div>
                     </div>
@@ -1272,7 +1272,7 @@
                 <div class="encoding-preview-section">
                   <div class="preview-header">
                     <h4>
-                      <i class="fas fa-images"></i> {{ 'queue2.encodingPreview'
+                      <i class="fas fa-images"></i> {{ 'queue.encodingPreview'
                       | transloco }}
                     </h4>
                     <button
@@ -1286,8 +1286,8 @@
                     >
                       @if (capturingJobId === job.id) {
                       <i class="fas fa-spinner fa-spin"></i> {{
-                      'queue2.capturing' | transloco }} } @else {
-                      <i class="fas fa-camera"></i> {{ 'queue2.captureNow' |
+                      'queue.capturing' | transloco }} } @else {
+                      <i class="fas fa-camera"></i> {{ 'queue.captureNow' |
                       transloco }} }
                     </button>
                   </div>
@@ -1303,7 +1303,7 @@
                     } @else {
                     <div class="preview-placeholder">
                       <i class="fas fa-camera"></i>
-                      <span>{{ 'queue2.noPreviewsYet' | transloco }}</span>
+                      <span>{{ 'queue.noPreviewsYet' | transloco }}</span>
                     </div>
                     }
                   </div>
@@ -1315,12 +1315,12 @@
                 <div class="results-section">
                   <h4>
                     <i class="fas fa-calculator"></i> {{
-                    'queue2.expectedResults' | transloco }}
+                    'queue.expectedResults' | transloco }}
                   </h4>
                   <div class="results-grid">
                     <div class="result-item">
                       <span class="result-label"
-                        >{{ 'queue2.currentSize' | transloco }}</span
+                        >{{ 'queue.currentSize' | transloco }}</span
                       >
                       <span class="result-value"
                         >{{ formatBytes(job.originalSize) }}</span
@@ -1328,7 +1328,7 @@
                     </div>
                     <div class="result-item">
                       <span class="result-label"
-                        >{{ 'queue2.expectedFinalSize' | transloco }}</span
+                        >{{ 'queue.expectedFinalSize' | transloco }}</span
                       >
                       <span class="result-value"
                         >{{ calculateExpectedSize(job) }}</span
@@ -1336,7 +1336,7 @@
                     </div>
                     <div class="result-item">
                       <span class="result-label"
-                        >{{ 'queue2.expectedSavingsLabel' | transloco }}</span
+                        >{{ 'queue.expectedSavingsLabel' | transloco }}</span
                       >
                       <span class="result-value savings"
                         >{{ calculateExpectedSavings(job) }}</span
@@ -1345,7 +1345,7 @@
                     @if (job.status === 'ENCODING') {
                     <div class="result-item">
                       <span class="result-label"
-                        >{{ 'queue2.encodingSpeed' | transloco }}</span
+                        >{{ 'queue.encodingSpeed' | transloco }}</span
                       >
                       <span class="result-value"
                         >{{ calculateEncodingSpeed(job) }}</span
@@ -1361,7 +1361,7 @@
                 <div class="original-file-section">
                   <h4>
                     <i class="fas fa-file-archive"></i> {{
-                    'queue2.originalFileStatus' | transloco }}
+                    'queue.originalFileStatus' | transloco }}
                   </h4>
                   <div class="original-file-info">
                     @if (job.originalBackupPath) {
@@ -1369,14 +1369,14 @@
                       <div class="original-status">
                         <i class="fas fa-check-circle status-icon success"></i>
                         <span class="status-label"
-                          >{{ 'queue2.originalKept' | transloco }}</span
+                          >{{ 'queue.originalKept' | transloco }}</span
                         >
                         <span class="badge badge-success">KEPT</span>
                       </div>
                       <div class="original-details">
                         <div class="detail-row">
                           <span class="detail-label"
-                            >{{ 'queue2.backupPath' | transloco }}</span
+                            >{{ 'queue.backupPath' | transloco }}</span
                           >
                           <span class="detail-value path"
                             >{{ job.originalBackupPath }}</span
@@ -1384,7 +1384,7 @@
                         </div>
                         <div class="detail-row">
                           <span class="detail-label"
-                            >{{ 'queue2.originalSize' | transloco }}</span
+                            >{{ 'queue.originalSize' | transloco }}</span
                           >
                           <span class="detail-value"
                             >{{ formatBytes(job.originalSizeBytes || 0) }}</span
@@ -1392,7 +1392,7 @@
                         </div>
                         <div class="detail-row">
                           <span class="detail-label"
-                            >{{ 'queue2.encodedSize' | transloco }}</span
+                            >{{ 'queue.encodedSize' | transloco }}</span
                           >
                           <span class="detail-value"
                             >{{ formatBytes(job.currentSize) }}</span
@@ -1410,7 +1410,7 @@
                           tooltipPlacement="top"
                         >
                           <i class="fas fa-trash"></i>
-                          {{ 'queue2.deleteOriginal' | transloco }}
+                          {{ 'queue.deleteOriginal' | transloco }}
                         </button>
                         <button
                           (click)="restoreOriginal(job, $event)"
@@ -1422,7 +1422,7 @@
                           tooltipPlacement="top"
                         >
                           <i class="fas fa-undo"></i>
-                          {{ 'queue2.restoreOriginal' | transloco }}
+                          {{ 'queue.restoreOriginal' | transloco }}
                         </button>
                       </div>
                     </div>
@@ -1431,14 +1431,14 @@
                       <div class="original-status">
                         <i class="fas fa-times-circle status-icon replaced"></i>
                         <span class="status-label"
-                          >{{ 'queue2.originalDeleted' | transloco }}</span
+                          >{{ 'queue.originalDeleted' | transloco }}</span
                         >
                         <span class="badge badge-info">REPLACED</span>
                       </div>
                       <div class="original-details">
                         <div class="detail-row">
                           <span class="detail-label"
-                            >{{ 'queue2.spaceFreed' | transloco }}</span
+                            >{{ 'queue.spaceFreed' | transloco }}</span
                           >
                           <span class="detail-value savings"
                             >{{ formatBytes(job.savedSize) }}</span
@@ -1446,7 +1446,7 @@
                         </div>
                         <div class="detail-row">
                           <span class="detail-label"
-                            >{{ 'queue2.savings' | transloco }}</span
+                            >{{ 'queue.savings' | transloco }}</span
                           >
                           <span class="detail-value savings"
                             >{{ job.savedPercentage.toFixed(2) }}%</span
@@ -1459,7 +1459,7 @@
                       <div class="original-status">
                         <i class="fas fa-question-circle status-icon"></i>
                         <span class="status-label"
-                          >{{ 'queue2.statusUnknown' | transloco }}</span
+                          >{{ 'queue.statusUnknown' | transloco }}</span
                         >
                       </div>
                     </div>
@@ -1472,7 +1472,7 @@
                 @if ((advancedMode()) && job.retryCount && job.retryCount > 0) {
                 <div class="retry-section">
                   <h4>
-                    <i class="fas fa-redo"></i> {{ 'queue2.retryHistory' |
+                    <i class="fas fa-redo"></i> {{ 'queue.retryHistory' |
                     transloco }}
                   </h4>
                   <div class="retry-info">
@@ -1501,7 +1501,7 @@
                 <div class="decision-issues-section">
                   <h4>
                     <i class="fas fa-exclamation-triangle"></i> {{
-                    'queue2.actionRequired' | transloco }}
+                    'queue.actionRequired' | transloco }}
                   </h4>
                   @for (issue of parseDecisionIssues(job.decisionIssues); track
                   issue.code) {
@@ -1517,7 +1517,7 @@
                 <!-- File Information -->
                 <div class="file-info-section">
                   <h4>
-                    <i class="fas fa-info-circle"></i> {{ 'queue2.fileDetails' |
+                    <i class="fas fa-info-circle"></i> {{ 'queue.fileDetails' |
                     transloco }}
                   </h4>
                   <div class="file-info-grid">
@@ -1590,31 +1590,31 @@
         <div class="card-header-mobile">
           <span class="status-badge-mobile" [class]="job.status | statusClass">
             <i [class]="'fas ' + getStatusIcon(job.status)"></i>
-            {{ job.status }}
+            {{ getStatusLabel(job.status) }}
           </span>
           <h4 class="filename-mobile" [title]="job.fileName">
             {{ job.fileName }}
           </h4>
           @if (job.type === 'REMUX') {
           <span class="job-type-badge-mobile remux">
-            <i class="fas fa-bolt"></i> {{ 'queue2.remuxing' | transloco }}
+            <i class="fas fa-bolt"></i> {{ 'queue.remuxing' | transloco }}
           </span>
           } @else if (job.type === 'ENCODE') {
           <span class="job-type-badge-mobile encode">
-            <i class="fas fa-cog"></i> {{ 'queue2.encoding' | transloco }}
+            <i class="fas fa-cog"></i> {{ 'queue.encoding' | transloco }}
           </span>
           } @if (wasHealedFreshStart(job)) {
           <span class="auto-heal-badge-mobile warning">
-            <i class="fas fa-exclamation-triangle"></i> {{ 'queue2.restarted' |
+            <i class="fas fa-exclamation-triangle"></i> {{ 'queue.restarted' |
             transloco }}
           </span>
           } @else if (wasHealedWithResume(job)) {
           <span class="auto-heal-badge-mobile">
-            <i class="fas fa-shield-alt"></i> {{ 'queue2.resumed' | transloco }}
+            <i class="fas fa-shield-alt"></i> {{ 'queue.resumed' | transloco }}
           </span>
           } @else if (job.autoHealedAt) {
           <span class="auto-heal-badge-mobile">
-            <i class="fas fa-shield-alt"></i> {{ 'queue2.autoHealed' | transloco
+            <i class="fas fa-shield-alt"></i> {{ 'queue.autoHealed' | transloco
             }}
           </span>
           }
@@ -1668,7 +1668,7 @@
           <div class="size-savings">
             <i class="fas fa-piggy-bank"></i>
             {{ formatBytes(job.originalSize - job.currentSize) }} {{
-            'queue2.saved' | transloco }} ({{ ((job.originalSize -
+            'queue.saved' | transloco }} ({{ ((job.originalSize -
             job.currentSize) / job.originalSize * 100).toFixed(1) }}%)
           </div>
         </div>
@@ -1798,22 +1798,22 @@
       <div class="empty-icon">
         <i class="fas fa-filter"></i>
       </div>
-      <h2>{{ 'queue2.noJobsMatchFilter' | transloco }}</h2>
+      <h2>{{ 'queue.noJobsMatchFilter' | transloco }}</h2>
       <!-- prettier-ignore -->
       <p class="empty-description">
-        @if (selectedStatus === JobStatus.COMPLETED) { {{ 'queue2.noCompletedYet' | transloco }} }
-        @else if (selectedStatus === JobStatus.ENCODING) { {{ 'queue2.noEncodingNow' | transloco }} }
-        @else if (selectedStatus === JobStatus.PAUSED) { {{ 'queue2.noPausedJobs' | transloco }} }
-        @else if (selectedStatus === JobStatus.QUEUED) { {{ 'queue2.noQueuedJobs' | transloco }} }
-        @else if (selectedStatus === JobStatus.FAILED) { {{ 'queue2.noFailedJobs' | transloco }} }
-        @else if (selectedStatus === JobStatus.CANCELLED) { {{ 'queue2.noCancelledJobs' | transloco }} }
-        @else if (selectedStatus === JobStatus.DETECTED) { {{ 'queue2.noDetectedJobs' | transloco }} }
-        @else if (selectedStatus === JobStatus.HEALTH_CHECK) { {{ 'queue2.noHealthCheckJobs' | transloco }} }
-        @else if (selectedStatus === JobStatus.VERIFYING) { {{ 'queue2.noVerifyingJobs' | transloco }} }
-        @else if (searchQuery) { {{ 'queue2.noSearchResults' | transloco : { query: searchQuery } }} }
-        @else if (selectedNodeId) { {{ 'queue2.noNodeJobs' | transloco }} }
-        @else if (selectedLibraryId) { {{ 'queue2.noLibraryJobs' | transloco }} }
-        @else { {{ 'queue2.noFilterMatch' | transloco }} }
+        @if (selectedStatus === JobStatus.COMPLETED) { {{ 'queue.noCompletedYet' | transloco }} }
+        @else if (selectedStatus === JobStatus.ENCODING) { {{ 'queue.noEncodingNow' | transloco }} }
+        @else if (selectedStatus === JobStatus.PAUSED) { {{ 'queue.noPausedJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.QUEUED) { {{ 'queue.noQueuedJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.FAILED) { {{ 'queue.noFailedJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.CANCELLED) { {{ 'queue.noCancelledJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.DETECTED) { {{ 'queue.noDetectedJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.HEALTH_CHECK) { {{ 'queue.noHealthCheckJobs' | transloco }} }
+        @else if (selectedStatus === JobStatus.VERIFYING) { {{ 'queue.noVerifyingJobs' | transloco }} }
+        @else if (searchQuery) { {{ 'queue.noSearchResults' | transloco : { query: searchQuery } }} }
+        @else if (selectedNodeId) { {{ 'queue.noNodeJobs' | transloco }} }
+        @else if (selectedLibraryId) { {{ 'queue.noLibraryJobs' | transloco }} }
+        @else { {{ 'queue.noFilterMatch' | transloco }} }
       </p>
       <div class="filter-summary">
         @if (selectedStatus !== 'ALL') {
@@ -1844,7 +1844,7 @@
       <div class="empty-actions">
         <button (click)="clearAllFilters()" class="btn btn-secondary">
           <i class="fas fa-times-circle"></i>
-          {{ 'queue2.clearAllFilters' | transloco }}
+          {{ 'queue.clearAllFilters' | transloco }}
         </button>
       </div>
     </div>
@@ -1856,30 +1856,32 @@
       </div>
       <h2>{{ 'queue.noJobsYet' | transloco }}</h2>
       <p class="empty-description">
-        {{ 'queue2.noJobsDescription' | transloco }}
+        {{ 'queue.noJobsDescription' | transloco }}
       </p>
 
       <div class="getting-started">
-        <h3>{{ 'queue2.gettingStarted' | transloco }}</h3>
+        <h3>{{ 'queue.gettingStarted' | transloco }}</h3>
         <ol>
-          <li>{{ 'queue2.step1' | transloco }}</li>
-          <li>{{ 'queue2.step2' | transloco }}</li>
-          <li>{{ 'queue2.step3' | transloco }}</li>
-          <li>{{ 'queue2.step4' | transloco }}</li>
-          <li>{{ 'queue2.step5' | transloco }}</li>
+          <li>{{ 'queue.step1' | transloco }}</li>
+          <li>{{ 'queue.step2' | transloco }}</li>
+          <li>{{ 'queue.step3' | transloco }}</li>
+          <li>{{ 'queue.step4' | transloco }}</li>
+          <li>{{ 'queue.step5' | transloco }}</li>
         </ol>
         <p class="help-tip">
           <i class="fas fa-lightbulb"></i>
-          <strong>{{ 'queue2.tip' | transloco }}</strong>
+          <strong>{{ 'queue.tip' | transloco }}</strong>
         </p>
       </div>
 
+      @if (isMainNode$ | async) {
       <div class="empty-actions">
-        <a href="/libraries" class="btn btn-primary btn-large">
+        <a routerLink="/quick-start" class="btn btn-primary btn-large">
           <i class="fas fa-folder"></i>
-          {{ 'queue2.setUpFirstLibrary' | transloco }}
+          {{ 'queue.quickStartCta' | transloco }}
         </a>
       </div>
+      }
     </div>
     } } }
   </div>
@@ -1896,7 +1898,7 @@
           >{{ queueData.stats.queued + queueData.stats.encoding +
           queueData.stats.completed + queueData.stats.failed }}</span
         >
-        <span class="stat-label">{{ 'queue2.totalJobs' | transloco }}</span>
+        <span class="stat-label">{{ 'queue.totalJobs' | transloco }}</span>
       </div>
     </div>
 
@@ -1906,7 +1908,7 @@
       </div>
       <div class="stat-content">
         <span class="stat-value">{{ queueData.stats.queued }}</span>
-        <span class="stat-label">{{ 'queue2.queued' | transloco }}</span>
+        <span class="stat-label">{{ 'queue.queued' | transloco }}</span>
       </div>
     </div>
 
@@ -1916,7 +1918,7 @@
       </div>
       <div class="stat-content">
         <span class="stat-value">{{ queueData.stats.encoding }}</span>
-        <span class="stat-label">{{ 'queue2.encoding' | transloco }}</span>
+        <span class="stat-label">{{ 'queue.encoding' | transloco }}</span>
       </div>
     </div>
 
@@ -1949,7 +1951,7 @@
           >{{ formatBytes(Number.parseInt(queueData.stats.totalSavedBytes))
           }}</span
         >
-        <span class="stat-label">{{ 'queue2.totalSavings' | transloco }}</span>
+        <span class="stat-label">{{ 'queue.totalSavings' | transloco }}</span>
       </div>
     </div>
   </div>
@@ -1960,7 +1962,7 @@
   <div class="pagination-controls">
     <!-- Page Size Selector -->
     <div class="page-size-selector">
-      <label for="page-size">{{ 'queue2.show' | transloco }}</label>
+      <label for="page-size">{{ 'queue.show' | transloco }}</label>
       <select
         id="page-size"
         [value]="pageSize"
@@ -1981,7 +1983,7 @@
     <div class="pagination-info">
       @let startIndex = (queueData.page - 1) * queueData.limit + 1; @let
       endIndex = Math.min(queueData.page * queueData.limit, queueData.total); {{
-      'queue2.showingJobs' | transloco : { start: startIndex, end: endIndex,
+      'queue.showingJobs' | transloco : { start: startIndex, end: endIndex,
       total: queueData.total } }}
     </div>
 
@@ -2056,7 +2058,7 @@
   <div class="dialog-content cancel-dialog" (click)="$event.stopPropagation()">
     <div class="dialog-header">
       <h3>
-        <i class="fas fa-times-circle"></i> {{ 'queue2.cancelEncodingJob' |
+        <i class="fas fa-times-circle"></i> {{ 'queue.cancelEncodingJob' |
         transloco }}
       </h3>
       <button
@@ -2069,7 +2071,7 @@
     </div>
     <div class="dialog-body">
       <p class="dialog-message">
-        {{ 'queue2.cancelDialogMessage' | transloco }}
+        {{ 'queue.cancelDialogMessage' | transloco }}
       </p>
     </div>
     <div class="dialog-footer cancel-actions">
@@ -2079,7 +2081,7 @@
         [disabled]="cancelDialogLoading"
       >
         <i class="fas fa-arrow-left"></i>
-        <span>{{ 'queue2.keepJob' | transloco }}</span>
+        <span>{{ 'queue.keepJob' | transloco }}</span>
       </button>
       <button
         (click)="confirmCancelAndRetry()"
@@ -2093,10 +2095,10 @@
         }
         <div class="btn-content">
           <span class="btn-title"
-            >{{ 'queue2.cancelAndRetry' | transloco }}</span
+            >{{ 'queue.cancelAndRetry' | transloco }}</span
           >
           <span class="btn-subtitle"
-            >{{ 'queue2.cancelAndRetrySubtitle' | transloco }}</span
+            >{{ 'queue.cancelAndRetrySubtitle' | transloco }}</span
           >
         </div>
       </button>
@@ -2112,10 +2114,10 @@
         }
         <div class="btn-content">
           <span class="btn-title"
-            >{{ 'queue2.cancelAndBlacklist' | transloco }}</span
+            >{{ 'queue.cancelAndBlacklist' | transloco }}</span
           >
           <span class="btn-subtitle"
-            >{{ 'queue2.cancelAndBlacklistSubtitle' | transloco }}</span
+            >{{ 'queue.cancelAndBlacklistSubtitle' | transloco }}</span
           >
         </div>
       </button>
@@ -2133,7 +2135,7 @@
   >
     <div class="dialog-header">
       <h3>
-        <i class="fas fa-forward"></i> {{ 'queue2.skipCodecMatchJobs' |
+        <i class="fas fa-forward"></i> {{ 'queue.skipCodecMatchJobs' |
         transloco }}
       </h3>
       <button
@@ -2154,7 +2156,7 @@
           <div class="summary-content">
             <div class="summary-value">{{ data.stats.codecMatchCount }}</div>
             <div class="summary-label">
-              {{ 'queue2.jobsToSkip' | transloco }}
+              {{ 'queue.jobsToSkip' | transloco }}
             </div>
           </div>
         </div>
@@ -2163,20 +2165,20 @@
       <div class="info-box" style="border-color: var(--info-color)">
         <i class="fas fa-info-circle" style="color: var(--info-color)"></i>
         <div class="info-content">
-          <strong>{{ 'queue2.whyFlagged' | transloco }}</strong>
-          <p>{{ 'queue2.whyFlaggedDesc' | transloco }}</p>
+          <strong>{{ 'queue.whyFlagged' | transloco }}</strong>
+          <p>{{ 'queue.whyFlaggedDesc' | transloco }}</p>
           <ul style="margin: 0.5rem 0; padding-left: 1.5rem">
-            <li>{{ 'queue2.flaggedReason1' | transloco }}</li>
-            <li>{{ 'queue2.flaggedReason2' | transloco }}</li>
+            <li>{{ 'queue.flaggedReason1' | transloco }}</li>
+            <li>{{ 'queue.flaggedReason2' | transloco }}</li>
           </ul>
           <p style="margin-top: 0.5rem">
-            <strong>{{ 'queue2.whatHappensSkip' | transloco }}</strong>
+            <strong>{{ 'queue.whatHappensSkip' | transloco }}</strong>
           </p>
           <ul style="margin: 0.5rem 0; padding-left: 1.5rem">
-            <li>{{ 'queue2.skipResult1' | transloco }}</li>
-            <li>{{ 'queue2.skipResult2' | transloco }}</li>
-            <li>{{ 'queue2.skipResult3' | transloco }}</li>
-            <li>{{ 'queue2.skipResult4' | transloco }}</li>
+            <li>{{ 'queue.skipResult1' | transloco }}</li>
+            <li>{{ 'queue.skipResult2' | transloco }}</li>
+            <li>{{ 'queue.skipResult3' | transloco }}</li>
+            <li>{{ 'queue.skipResult4' | transloco }}</li>
           </ul>
         </div>
       </div>
@@ -2189,7 +2191,7 @@
       </button>
       <button (click)="confirmSkipCodecMatch()" class="btn btn-info">
         <i class="fas fa-forward"></i>
-        {{ 'queue2.skipAllCodecMatchJobs' | transloco }}
+        {{ 'queue.skipAllCodecMatchJobs' | transloco }}
       </button>
     </div>
   </div>
@@ -2206,7 +2208,7 @@
     <div class="dialog-header">
       <h3>
         <i class="fas fa-compress-arrows-alt"></i> {{
-        'queue2.reEncodeCodecMatchJobs' | transloco }}
+        'queue.reEncodeCodecMatchJobs' | transloco }}
       </h3>
       <button
         (click)="closeForceEncodeCodecMatchDialog()"
@@ -2226,7 +2228,7 @@
           <div class="summary-content">
             <div class="summary-value">{{ data.stats.codecMatchCount }}</div>
             <div class="summary-label">
-              {{ 'queue2.jobsToReEncode' | transloco }}
+              {{ 'queue.jobsToReEncode' | transloco }}
             </div>
           </div>
         </div>
@@ -2238,20 +2240,20 @@
           style="color: var(--warning-color)"
         ></i>
         <div class="info-content">
-          <strong>{{ 'queue2.whyForceReEncode' | transloco }}</strong>
-          <p>{{ 'queue2.whyForceReEncodeDesc' | transloco }}</p>
+          <strong>{{ 'queue.whyForceReEncode' | transloco }}</strong>
+          <p>{{ 'queue.whyForceReEncodeDesc' | transloco }}</p>
           <ul style="margin: 0.5rem 0; padding-left: 1.5rem">
-            <li>{{ 'queue2.forceReason1' | transloco }}</li>
-            <li>{{ 'queue2.forceReason2' | transloco }}</li>
-            <li>{{ 'queue2.forceReason3' | transloco }}</li>
+            <li>{{ 'queue.forceReason1' | transloco }}</li>
+            <li>{{ 'queue.forceReason2' | transloco }}</li>
+            <li>{{ 'queue.forceReason3' | transloco }}</li>
           </ul>
           <p style="margin-top: 0.5rem">
-            <strong>{{ 'queue2.forceWarning' | transloco }}</strong>
+            <strong>{{ 'queue.forceWarning' | transloco }}</strong>
           </p>
           <ul style="margin: 0.5rem 0; padding-left: 1.5rem">
-            <li>{{ 'queue2.forceWarning1' | transloco }}</li>
-            <li>{{ 'queue2.forceWarning2' | transloco }}</li>
-            <li>{{ 'queue2.forceWarning3' | transloco }}</li>
+            <li>{{ 'queue.forceWarning1' | transloco }}</li>
+            <li>{{ 'queue.forceWarning2' | transloco }}</li>
+            <li>{{ 'queue.forceWarning3' | transloco }}</li>
           </ul>
         </div>
       </div>
@@ -2267,7 +2269,7 @@
       </button>
       <button (click)="confirmForceEncodeCodecMatch()" class="btn btn-warning">
         <i class="fas fa-compress-arrows-alt"></i>
-        {{ 'queue2.reEncodeAllCodecMatchJobs' | transloco }}
+        {{ 'queue.reEncodeAllCodecMatchJobs' | transloco }}
       </button>
     </div>
   </div>
@@ -2283,7 +2285,7 @@
   >
     <div class="dialog-header">
       <h3>
-        <i class="fas fa-redo"></i> {{ 'queue2.retryAllCancelledJobs' |
+        <i class="fas fa-redo"></i> {{ 'queue.retryAllCancelledJobs' |
         transloco }}
       </h3>
       <button
@@ -2308,7 +2310,7 @@
           <div class="summary-content">
             <div class="summary-value">{{ cancelledJobs.length }}</div>
             <div class="summary-label">
-              {{ 'queue2.filesToRetry' | transloco }}
+              {{ 'queue.filesToRetry' | transloco }}
             </div>
           </div>
         </div>
@@ -2320,7 +2322,7 @@
           <div class="summary-content">
             <div class="summary-value">{{ formatBytes(totalSize) }}</div>
             <div class="summary-label">
-              {{ 'queue2.totalFileSize' | transloco }}
+              {{ 'queue.totalFileSize' | transloco }}
             </div>
           </div>
         </div>
@@ -2338,7 +2340,7 @@
             <div class="summary-value">~{{ estimatedTime.minutes }}m</div>
             }
             <div class="summary-label">
-              {{ 'queue2.estimatedTime' | transloco }}
+              {{ 'queue.estimatedTime' | transloco }}
             </div>
           </div>
         </div>
@@ -2347,9 +2349,9 @@
       <div class="info-box">
         <i class="fas fa-info-circle"></i>
         <div class="info-content">
-          <strong>{{ 'queue2.whatHappensNext' | transloco }}</strong>
+          <strong>{{ 'queue.whatHappensNext' | transloco }}</strong>
           <p>
-            {{ 'queue2.retryAllCancelledDesc' | transloco : { count:
+            {{ 'queue.retryAllCancelledDesc' | transloco : { count:
             cancelledJobs.length, speed: formatBytes(getAvgEncodingSpeed()) } }}
           </p>
         </div>
@@ -2357,7 +2359,7 @@
 
       <div class="policy-note">
         <i class="fas fa-cog"></i>
-        <span>{{ 'queue2.policyNote' | transloco }}</span>
+        <span>{{ 'queue.policyNote' | transloco }}</span>
       </div>
       }
     </div>
@@ -2368,7 +2370,7 @@
       </button>
       <button (click)="confirmRetryAll()" class="btn btn-success">
         <i class="fas fa-redo"></i>
-        {{ 'queue2.retryAllCancelledJobs' | transloco }}
+        {{ 'queue.retryAllCancelledJobs' | transloco }}
       </button>
     </div>
   </div>
@@ -2384,7 +2386,7 @@
   >
     <div class="dialog-header">
       <h3>
-        <i class="fas fa-redo"></i> {{ 'queue2.retryFailedJobsTitle' | transloco
+        <i class="fas fa-redo"></i> {{ 'queue.retryFailedJobsTitle' | transloco
         }}
       </h3>
       <button
@@ -2403,20 +2405,20 @@
       <div class="info-box">
         <i class="fas fa-info-circle"></i>
         <div class="info-content">
-          <strong>{{ 'queue2.whatHappensNext' | transloco }}</strong>
+          <strong>{{ 'queue.whatHappensNext' | transloco }}</strong>
           <p>
-            @if (retryFailedSelectedError) { {{ 'queue2.retryFilteredDesc' |
+            @if (retryFailedSelectedError) { {{ 'queue.retryFilteredDesc' |
             transloco : { count: filteredJobs.length } }} } @else { {{
-            'queue2.retryAllFailedDesc' | transloco : { count: failedJobs.length
+            'queue.retryAllFailedDesc' | transloco : { count: failedJobs.length
             } }} }
           </p>
         </div>
       </div>
 
       <div class="filter-section">
-        <h4>{{ 'queue2.filterByErrorReason' | transloco }}</h4>
+        <h4>{{ 'queue.filterByErrorReason' | transloco }}</h4>
         <p class="filter-description">
-          {{ 'queue2.filterDescription' | transloco }}
+          {{ 'queue.filterDescription' | transloco }}
         </p>
 
         <div class="error-filter-list">
@@ -2434,10 +2436,10 @@
             </div>
             <div class="error-content">
               <div class="error-label">
-                {{ 'queue2.allFailedJobs' | transloco }}
+                {{ 'queue.allFailedJobs' | transloco }}
               </div>
               <div class="error-count">
-                {{ 'queue2.jobCount' | transloco : { count: failedJobs.length }
+                {{ 'queue.jobCount' | transloco : { count: failedJobs.length }
                 }}
               </div>
             </div>
@@ -2459,7 +2461,7 @@
             <div class="error-content">
               <div class="error-label">{{ errorReason.error }}</div>
               <div class="error-count">
-                {{ 'queue2.jobCount' | transloco : { count: errorReason.count }
+                {{ 'queue.jobCount' | transloco : { count: errorReason.count }
                 }}
               </div>
             </div>
@@ -2476,7 +2478,7 @@
           <div class="summary-content">
             <div class="summary-value">{{ filteredJobs.length }}</div>
             <div class="summary-label">
-              {{ 'queue2.filesToRetry' | transloco }}
+              {{ 'queue.filesToRetry' | transloco }}
             </div>
           </div>
         </div>
@@ -2490,7 +2492,7 @@
               {{ formatBytes(calculateTotalSize(filteredJobs)) }}
             </div>
             <div class="summary-label">
-              {{ 'queue2.totalFileSize' | transloco }}
+              {{ 'queue.totalFileSize' | transloco }}
             </div>
           </div>
         </div>
@@ -2498,7 +2500,7 @@
 
       <div class="policy-note">
         <i class="fas fa-cog"></i>
-        <span>{{ 'queue2.policyNote' | transloco }}</span>
+        <span>{{ 'queue.policyNote' | transloco }}</span>
       </div>
       }
     </div>
@@ -2509,8 +2511,8 @@
       </button>
       <button (click)="confirmRetryFailed()" class="btn btn-success">
         <i class="fas fa-redo"></i>
-        @if (retryFailedSelectedError) { {{ 'queue2.retrySelectedFailedJobs' |
-        transloco }} } @else { {{ 'queue2.retryAllFailedJobs' | transloco }} }
+        @if (retryFailedSelectedError) { {{ 'queue.retrySelectedFailedJobs' |
+        transloco }} } @else { {{ 'queue.retryAllFailedJobs' | transloco }} }
       </button>
     </div>
   </div>
@@ -2522,7 +2524,7 @@
 <div class="dialog-overlay" (click)="closeCancelAllDialog()">
   <div class="dialog-content" (click)="$event.stopPropagation()">
     <div class="dialog-header">
-      <h3>{{ 'queue2.cancelAllQueuedJobs' | transloco }}</h3>
+      <h3>{{ 'queue.cancelAllQueuedJobs' | transloco }}</h3>
       <button
         (click)="closeCancelAllDialog()"
         class="dialog-close"
@@ -2532,19 +2534,19 @@
       </button>
     </div>
     <div class="dialog-body">
-      <p>{{ 'queue2.cancelAllConfirm' | transloco }}</p>
+      <p>{{ 'queue.cancelAllConfirm' | transloco }}</p>
       <p class="warning-text">
         <i class="fas fa-exclamation-triangle"></i>
-        {{ 'queue2.cancelAllWarning' | transloco : { count: (queueData$ |
+        {{ 'queue.cancelAllWarning' | transloco : { count: (queueData$ |
         async)?.stats?.queued || 0 } }}
       </p>
     </div>
     <div class="dialog-footer">
       <button (click)="closeCancelAllDialog()" class="btn btn-secondary">
-        {{ 'queue2.noKeepJobs' | transloco }}
+        {{ 'queue.noKeepJobs' | transloco }}
       </button>
       <button (click)="confirmCancelAll()" class="btn btn-danger">
-        {{ 'queue2.yesCancelAll' | transloco }}
+        {{ 'queue.yesCancelAll' | transloco }}
       </button>
     </div>
   </div>
@@ -2557,7 +2559,7 @@
   <div class="dialog-content" (click)="$event.stopPropagation()">
     <div class="dialog-header">
       <h3>
-        <i class="fas fa-trash-alt"></i> {{ 'queue2.clearJobsTitle' | transloco
+        <i class="fas fa-trash-alt"></i> {{ 'queue.clearJobsTitle' | transloco
         }}
       </h3>
       <button
@@ -2571,27 +2573,27 @@
     <div class="dialog-body">
       @if (clearJobsStages.length > 0) {
       <p>
-        {{ 'queue2.clearJobsConfirmStages' | transloco : { stages:
+        {{ 'queue.clearJobsConfirmStages' | transloco : { stages:
         clearJobsStages.join(', ') } }}
       </p>
       } @else {
-      <p>{{ 'queue2.clearJobsConfirmAll' | transloco }}</p>
+      <p>{{ 'queue.clearJobsConfirmAll' | transloco }}</p>
       }
       <p class="warning-text">
         <i class="fas fa-exclamation-triangle"></i>
-        {{ 'queue2.clearJobsWarning' | transloco }}
+        {{ 'queue.clearJobsWarning' | transloco }}
       </p>
       <p class="info-text">
         <i class="fas fa-info-circle"></i>
-        {{ 'queue2.clearJobsNote' | transloco }}
+        {{ 'queue.clearJobsNote' | transloco }}
       </p>
     </div>
     <div class="dialog-footer">
       <button (click)="closeClearJobsDialog()" class="btn btn-secondary">
-        {{ 'queue2.noKeepJobs' | transloco }}
+        {{ 'queue.noKeepJobs' | transloco }}
       </button>
       <button (click)="confirmClearJobs()" class="btn btn-danger">
-        {{ 'queue2.yesDeleteJobs' | transloco }}
+        {{ 'queue.yesDeleteJobs' | transloco }}
       </button>
     </div>
   </div>

@@ -21,11 +21,32 @@
   <div class="error-state">
     <fa-icon [icon]="icons.failed" size="2x"></fa-icon>
     <p>{{ error$ | async }}</p>
+    <button type="button" class="error-state__retry" (click)="retry()">
+      {{ 'overview.retry' | transloco }}
+    </button>
   </div>
   }
 
   <!-- Main Dashboard Content -->
-  @if (overviewData$ | async; as overviewData) {
+  @if (overviewData$ | async; as overviewData) { @if
+  (overviewData.top_libraries.length === 0 && (isMainNode$ | async)) {
+  <div class="quick-start-banner">
+    <div class="quick-start-banner__icon">
+      <fa-icon [icon]="icons.quickStart"></fa-icon>
+    </div>
+    <div class="quick-start-banner__content">
+      <h2 class="quick-start-banner__title">
+        {{ 'overview.quickStartBannerTitle' | transloco }}
+      </h2>
+      <p class="quick-start-banner__subtitle">
+        {{ 'overview.quickStartBannerSubtitle' | transloco }}
+      </p>
+    </div>
+    <a routerLink="/quick-start" class="quick-start-banner__cta">
+      {{ 'overview.quickStartBannerCta' | transloco }}
+    </a>
+  </div>
+  }
   <div class="dashboard-grid">
     <!-- Encode Success Trend -->
     <div class="system-health">

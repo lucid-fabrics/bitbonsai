@@ -4259,7 +4259,6 @@
   .mobile-job-card {
     background: $bg-tertiary;
     border: 1px solid $border-secondary;
-    border-left: 4px solid $border-secondary;
     border-radius: 12px;
     padding: 14px;
     cursor: pointer;
@@ -4268,31 +4267,6 @@
     &:active {
       transform: scale(0.98);
       background: rgba($bg-tertiary, 0.9);
-    }
-
-    // Status-specific border colors
-    &.status-queued {
-      border-left-color: #fbbf24;
-    }
-
-    &.status-encoding {
-      border-left-color: $accent-primary;
-    }
-
-    &.status-paused {
-      border-left-color: #f97316;
-    }
-
-    &.status-completed {
-      border-left-color: $success;
-    }
-
-    &.status-failed {
-      border-left-color: $danger;
-    }
-
-    &.status-cancelled {
-      border-left-color: $text-secondary;
     }
   }
 
@@ -4316,6 +4290,37 @@
 
     fa-icon {
       font-size: 10px;
+    }
+
+    // Status colors live on the badge, not as a border accent on the card
+    &.status-queued {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+    }
+
+    &.status-encoding {
+      background: rgba($accent-primary, 0.15);
+      color: $accent-primary;
+    }
+
+    &.status-paused {
+      background: rgba(249, 115, 22, 0.15);
+      color: #f97316;
+    }
+
+    &.status-completed {
+      background: rgba($success, 0.15);
+      color: $success;
+    }
+
+    &.status-failed {
+      background: rgba($danger, 0.15);
+      color: $danger;
+    }
+
+    &.status-cancelled {
+      background: rgba($text-secondary, 0.15);
+      color: $text-secondary;
     }
   }
 

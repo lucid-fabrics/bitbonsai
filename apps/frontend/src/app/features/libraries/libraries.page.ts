@@ -2,6 +2,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { AsyncPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { TranslocoModule } from '@ngneat/transloco';
 import { Store } from '@ngrx/store';
@@ -28,6 +29,7 @@ import type { CreateLibraryDto, Library, UpdateLibraryDto } from './models/libra
   standalone: true,
   imports: [
     AsyncPipe,
+    RouterLink,
     FontAwesomeModule,
     TranslocoModule,
     LibraryCardComponent,

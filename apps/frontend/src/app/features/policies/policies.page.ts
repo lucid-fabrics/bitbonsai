@@ -337,7 +337,18 @@ export class PoliciesComponent implements OnInit {
   }
 
   getDeviceLabel(profile: DeviceProfile): string {
-    return profile.replace('_', ' ');
+    switch (profile) {
+      case DeviceProfile.APPLE_TV:
+        return 'Apple TV';
+      case DeviceProfile.ROKU:
+        return 'Roku';
+      case DeviceProfile.WEB:
+        return 'Web & media servers';
+      case DeviceProfile.CHROMECAST:
+        return 'Chromecast';
+      default:
+        return profile;
+    }
   }
 
   getDeviceProfileExplanation(profile: DeviceProfile): string {

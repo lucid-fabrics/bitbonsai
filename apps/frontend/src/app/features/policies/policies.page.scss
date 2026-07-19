@@ -37,8 +37,7 @@
   font-size: 14px;
 }
 
-// Loading & Empty States
-.loading-state,
+// Empty State
 .empty-state {
   text-align: center;
   padding: 48px 24px;
@@ -89,8 +88,9 @@
   }
 }
 
-.preset-card--recommended {
-  border-color: $accent-primary;
+.preset-card-skeleton {
+  height: 280px;
+  border-radius: $border-radius-lg;
 }
 
 .preset-card__recommended-badge {
