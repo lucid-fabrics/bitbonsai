@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!-- Unraid Community Applications template for BitBonsai.
+     Per-version overrides happen at CD time: cd-main.yml emits
+     apps/dist-unraid/<VERSION>/template.xml with the right <Version>, <Image>, <Registry>. -->
+<Container name="bitbonsai">
+  <Repository>lucidfabrics/bitbonsai</Repository>
+  <Image>0.1.0</Image>
+  <Tag>0.1.0</Tag>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/lucid-fabrics/bitbonsai/issues</Support>
+  <Project>https://bitbonsai.wmsolinc.com</Project>
+  <Category>MediaServer:Image</Category>
+  <WebUI>http://<IP>:8108/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/apps/dist-unraid/template.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/lucid-fabrics/bitbonsai/main/apps/dist-unraid/icon.png</Icon>
+  <Description>BitBonsai all-in-one media app. Bundles nginx + node + postgresql in one image. State under /config; media under /media.</Description>
+  <Config name="confdir" target="/config" description="Persistent state (Postgres data + cache)" Default="/mnt/user/appdata/bitbonsai" Type="Path" />
+  <Config name="mediadir" target="/media" description="Read-only media library" Default="/mnt/user/media" Type="Path" Mode="ro" />
+  <Config name="port" target="8108" description="Web UI port" Default="8108" Type="Port" />
+  <Config name="env_domain" target="DOMAIN" description="Public hostname" Default="bitbonsai.wmsolinc.com" Type="Variable" />
+</Container>
