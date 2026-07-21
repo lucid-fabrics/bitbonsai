@@ -4,7 +4,9 @@ on:
 
 jobs:
   docker:
-    runs-on: docker:docker://docker:27-cli
+    runs-on: self-hosted
+    container:
+      image: docker:27-cli
     steps:
       - uses: actions/checkout@v4
         with:

@@ -4,7 +4,9 @@ on:
 
 jobs:
   validate:
-    runs-on: docker:docker://node:20-bookworm
+    runs-on: self-hosted
+    container:
+      image: node:22-bookworm
     steps:
       - uses: actions/checkout@v4
         with:
